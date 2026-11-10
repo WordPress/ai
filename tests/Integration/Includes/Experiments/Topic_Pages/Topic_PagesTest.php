@@ -32,7 +32,7 @@ class Topic_PagesTest extends WP_UnitTestCase {
 
 	private function version( string $text ): array {
 		return array(
-			'content'    => '<!-- wp:paragraph --><p>' . $text . ' <a href="' . get_permalink( $this->posts[0] ) . '">Source</a></p><!-- /wp:paragraph -->',
+			'content'    => '<!-- wp:paragraph --><p>' . $text . '</p><!-- /wp:paragraph -->',
 			'source_ids' => $this->posts,
 		);
 	}
@@ -40,11 +40,11 @@ class Topic_PagesTest extends WP_UnitTestCase {
 	public function test_pending_generation_does_not_replace_approved_content(): void {
 		$store = new Store();
 		$state = $store->get( $this->term_id );
-		$state = $store->save_generated( $this->term_id, array( 'summary' => $this->version( 'First version' ) ), $state['revision'] );
+		$state = $store->save_generated( $this->term_id, 'summary', $this->version( 'First version' ), $state['revision'] );
 		$this->assertSame( '', $store->render( $this->term_id, 'summary' ) );
 		$state = $store->change( $this->term_id, 'save', 'summary', $state['revision'] );
 		$this->assertStringContainsString( 'First version', $store->render( $this->term_id, 'summary' ) );
-		$state = $store->save_generated( $this->term_id, array( 'summary' => $this->version( 'Replacement' ) ), $state['revision'] );
+		$state = $store->save_generated( $this->term_id, 'summary', $this->version( 'Replacement' ), $state['revision'] );
 		$this->assertStringContainsString( 'First version', $store->render( $this->term_id, 'summary' ) );
 		$store->change( $this->term_id, 'save', 'summary', $state['revision'] );
 		$this->assertStringContainsString( 'Replacement', $store->render( $this->term_id, 'summary' ) );
@@ -53,7 +53,7 @@ class Topic_PagesTest extends WP_UnitTestCase {
 	public function test_stale_editor_cannot_overwrite_newer_work(): void {
 		$store = new Store();
 		$old   = $store->get( $this->term_id )['revision'];
-		$store->save_generated( $this->term_id, array( 'summary' => $this->version( 'New work' ) ), $old );
+		$store->save_generated( $this->term_id, 'summary', $this->version( 'New work' ), $old );
 		$result = $store->change( $this->term_id, 'save', 'summary', $old );
 		$this->assertWPError( $result );
 		$this->assertSame( 'topic_conflict', $result->get_error_code() );
@@ -61,7 +61,7 @@ class Topic_PagesTest extends WP_UnitTestCase {
 
 	public function test_private_or_unassigned_sources_hide_approved_output(): void {
 		$store = new Store();
-		$state = $store->save_generated( $this->term_id, array( 'summary' => $this->version( 'Sensitive history' ) ), '' );
+		$state = $store->save_generated( $this->term_id, 'summary', $this->version( 'Sensitive history' ), '' );
 		$store->change( $this->term_id, 'save', 'summary', $state['revision'] );
 		// Keep the topic eligible so source visibility, not the minimum, hides it.
 		self::factory()->post->create(
@@ -101,18 +101,19 @@ class Topic_PagesTest extends WP_UnitTestCase {
 		$store              = new Store();
 		$version            = $this->version( 'Draft' );
 		$version['content'] = '<!-- wp:shortcode -->[private-data]<!-- /wp:shortcode -->';
-		$this->assertWPError( $store->save_generated( $this->term_id, array( 'summary' => $version ), '' ) );
+		$this->assertWPError( $store->save_generated( $this->term_id, 'summary', $version, '' ) );
 	}
 
 	public function test_block_attributes_survive_approval_and_later_saves(): void {
 		$store              = new Store();
 		$version            = $this->version( 'Quoted content' );
-		$version['content'] = $version['content'] . '<!-- wp:heading {"level":3} --><h3 class="wp-block-heading">A heading</h3><!-- /wp:heading -->';
-		$state              = $store->save_generated( $this->term_id, array( 'overview' => $version ), '' );
+		$version['content'] = '<!-- wp:paragraph --><p>Quoted content <a data-wpai-source-id="' . $this->posts[0] . '" href="' . get_permalink( $this->posts[0] ) . '">Source</a></p><!-- /wp:paragraph -->';
+		$version['content'] = $version['content'] . '<!-- wp:paragraph {"fontSize":"small"} --><p class="has-small-font-size">A styled paragraph <a data-wpai-source-id="' . $this->posts[0] . '" href="' . get_permalink( $this->posts[0] ) . '">Source</a></p><!-- /wp:paragraph -->';
+		$state              = $store->save_generated( $this->term_id, 'overview', $version, '' );
 		$this->assertIsArray( $state );
 		$state = $store->change( $this->term_id, 'save', 'overview', $state['revision'] );
 		$this->assertIsArray( $state );
-		$this->assertStringContainsString( 'A heading', $store->render( $this->term_id, 'overview' ) );
+		$this->assertStringContainsString( 'has-small-font-size', $store->render( $this->term_id, 'overview' ) );
 	}
 
 	public function test_only_term_managers_can_access_editorial_state(): void {
@@ -191,38 +192,79 @@ class Topic_PagesTest extends WP_UnitTestCase {
 		$prepare->setAccessible( true );
 		$sources = ( new Sources() )->collect( $this->term_id );
 		$payload = array(
-			'summary' => array(
+			'summary'  => array(
 				array(
 					'text'       => '<script>alert(1)</script> A supported claim.',
 					'source_ids' => array( $this->posts[0] ),
 				),
 			),
+			'overview' => array(
+				array(
+					'text'       => '<script>alert(1)</script> First overview point.',
+					'source_ids' => array( $this->posts[0] ),
+				),
+				array(
+					'text'       => 'Second overview point.',
+					'source_ids' => array( $this->posts[1] ),
+				),
+			),
 		);
-		$result  = $prepare->invoke( $ability, $payload, array( 'summary' ), $sources );
+		$result  = $prepare->invoke( $ability, $payload, array( 'summary', 'overview' ), $sources );
 		$this->assertIsArray( $result );
 		$this->assertStringNotContainsString( '<script>', $result['summary']['content'] );
-		$this->assertStringContainsString( esc_url( get_permalink( $this->posts[0] ) ), $result['summary']['content'] );
+		$this->assertStringNotContainsString( '<script>', $result['overview']['content'] );
+		$this->assertStringNotContainsString( '<a', $result['summary']['content'] );
+		$this->assertStringContainsString( esc_url( (string) get_permalink( $this->posts[0] ) ), $result['overview']['content'] );
 		$payload['summary'][0]['source_ids'] = array( 99999999 );
 		$this->assertWPError( $prepare->invoke( $ability, $payload, array( 'summary' ), $sources ) );
 	}
 
 	public function test_summary_previews_and_public_content_omit_citations(): void {
-		$store              = new Store();
-		$version            = $this->version( 'A short summary.' );
-		$version['content'] = '<!-- wp:paragraph --><p>A short summary. <cite class="wpai-topic-citation">Sources: <a href="' . get_permalink( $this->posts[0] ) . '">Source</a></cite></p><!-- /wp:paragraph -->';
-		$state              = $store->save_generated(
-			$this->term_id,
-			array(
-				'summary'  => $version,
-				'overview' => $version,
-			),
-			''
+		$store    = new Store();
+		$version  = array(
+			'content'    => '<!-- wp:paragraph --><p>A short summary.</p><!-- /wp:paragraph -->',
+			'source_ids' => $this->posts,
 		);
-		$this->assertSame( '<p>A short summary.</p>', $store->state( $this->term_id )['sections']['summary']['draft']['preview_html'] );
-		$store->change( $this->term_id, 'save', 'all', $state['revision'] );
-		$this->assertSame( '<p>A short summary.</p>', $store->render( $this->term_id, 'summary' ) );
+		$overview = array(
+			'content'    => str_repeat( '<!-- wp:paragraph --><p>An overview. <cite class="wpai-topic-citation">Sources: <a data-wpai-source-id="' . $this->posts[0] . '" href="' . get_permalink( $this->posts[0] ) . '">Source</a></cite></p><!-- /wp:paragraph -->', 2 ),
+			'source_ids' => $this->posts,
+		);
+		$state    = $store->save_generated( $this->term_id, 'summary', $version, '' );
+		$state    = $store->save_generated( $this->term_id, 'overview', $overview, $state['revision'] );
+		$this->assertSame( '<p class="wp-block-paragraph">A short summary.</p>', $store->state( $this->term_id )['sections']['summary']['draft']['preview_html'] );
+		$state = $store->change( $this->term_id, 'save', 'summary', $state['revision'] );
+		$store->change( $this->term_id, 'save', 'overview', $state['revision'] );
+		$this->assertSame( '<p class="wp-block-paragraph">A short summary.</p>', $store->render( $this->term_id, 'summary' ) );
 		$this->assertStringContainsString( '<cite', $store->render( $this->term_id, 'overview' ) );
 		$this->assertSame( $this->posts, $store->get( $this->term_id )['sections']['summary']['approved']['source_ids'] );
+	}
+
+	public function test_uncited_source_withdrawal_prevents_save_and_hides_published_text(): void {
+		$store    = new Store();
+		$link     = '<a data-wpai-source-id="' . $this->posts[0] . '" href="' . get_permalink( $this->posts[0] ) . '">Source</a>';
+		$overview = array(
+			'content'    => str_repeat( '<!-- wp:paragraph --><p>Reported coverage. ' . $link . '</p><!-- /wp:paragraph -->', 2 ),
+			'source_ids' => $this->posts,
+		);
+		$state    = $store->save_generated( $this->term_id, 'overview', $overview, '' );
+		$this->assertNotWPError( $state );
+		$state = $store->change( $this->term_id, 'save', 'overview', $state['revision'] );
+		$this->assertSame( $this->posts, $state['sections']['overview']['approved']['source_ids'] );
+		$state = $store->save_generated( $this->term_id, 'overview', $overview, $state['revision'] );
+		self::factory()->post->create(
+			array(
+				'post_status'   => 'publish',
+				'post_category' => array( $this->term_id ),
+			)
+		);
+		wp_update_post(
+			array(
+				'ID'          => $this->posts[1],
+				'post_status' => 'private',
+			)
+		);
+		$this->assertWPError( $store->change( $this->term_id, 'save', 'overview', $state['revision'] ) );
+		$this->assertSame( '', $store->render( $this->term_id, 'overview' ) );
 	}
 
 	public function test_overview_requires_exactly_two_cited_paragraphs(): void {
@@ -260,7 +302,7 @@ class Topic_PagesTest extends WP_UnitTestCase {
 
 	public function test_approval_rejects_a_source_withdrawn_since_generation(): void {
 		$store = new Store();
-		$state = $store->save_generated( $this->term_id, array( 'summary' => $this->version( 'Draft' ) ), '' );
+		$state = $store->save_generated( $this->term_id, 'summary', $this->version( 'Draft' ), '' );
 		wp_update_post(
 			array(
 				'ID'          => $this->posts[0],
@@ -274,15 +316,16 @@ class Topic_PagesTest extends WP_UnitTestCase {
 
 	public function test_public_block_renders_approved_content_without_inserting_it_into_the_description(): void {
 		$store = new Store();
-		$state = $store->save_generated( $this->term_id, array( 'summary' => $this->version( 'Visible on archive' ) ), '' );
+		$state = $store->save_generated( $this->term_id, 'summary', $this->version( 'Visible on archive' ), '' );
 		$store->change( $this->term_id, 'save', 'summary', $state['revision'] );
 
 		$topic_pages = new \WordPress\AI\Experiments\Topic_Pages\Topic_Pages();
 		$topic_pages->register();
+		$this->go_to( get_term_link( $this->term_id ) );
 		$rendered = render_block(
 			array(
 				'blockName'    => 'ai/topic-summary',
-				'attrs'        => array( 'termId' => $this->term_id ),
+				'attrs'        => array(),
 				'innerBlocks'  => array(),
 				'innerHTML'    => '',
 				'innerContent' => array(),
@@ -319,7 +362,7 @@ class Topic_PagesTest extends WP_UnitTestCase {
 		);
 		$versions = $prepare->invoke( $ability, $payload, array( 'summary' ), ( new Sources() )->collect( $this->term_id ) );
 		$store    = new Store();
-		$store->save_generated( $this->term_id, $versions, '' );
+		$store->save_generated( $this->term_id, 'summary', $versions['summary'], '' );
 		$this->assertSame( array(), $store->state( $this->term_id )['stale'] );
 		wp_update_post(
 			array(

@@ -75,7 +75,7 @@ class SimpleFlowTest extends WP_UnitTestCase {
 
 	public function test_summary_preview_does_not_collect_unused_overview_sources(): void {
 		$store = new Store();
-		$store->save_generated( $this->term_id, array( 'summary' => $this->version() ), '' );
+		$store->save_generated( $this->term_id, 'summary', $this->version(), '' );
 		$key = 'wpai_topic_sample_' . $this->term_id . '_20';
 		delete_transient( $key );
 
@@ -108,20 +108,19 @@ class SimpleFlowTest extends WP_UnitTestCase {
 	}
 
 	public function test_discard_removes_only_the_selected_private_preview(): void {
-		$store   = new Store();
-		$version = array(
-			'content'    => '<!-- wp:paragraph --><p>Coverage <a href="' . get_permalink( $this->posts[0] ) . '">Source</a></p><!-- /wp:paragraph -->',
-			'source_ids' => array( $this->posts[0] ),
-		);
-		$state   = $store->save_generated(
+		$store = new Store();
+		$state = $store->save_generated( $this->term_id, 'summary', $this->version(), '' );
+		$link  = '<a data-wpai-source-id="' . $this->posts[0] . '" href="' . get_permalink( $this->posts[0] ) . '">Source</a>';
+		$state = $store->save_generated(
 			$this->term_id,
+			'overview',
 			array(
-				'summary'  => $version,
-				'overview' => $version,
+				'content'    => str_repeat( '<!-- wp:paragraph --><p>Coverage ' . $link . '</p><!-- /wp:paragraph -->', 2 ),
+				'source_ids' => array( $this->posts[0] ),
 			),
-			''
+			$state['revision']
 		);
-		$state   = $store->change( $this->term_id, 'discard', 'summary', $state['revision'] );
+		$state = $store->change( $this->term_id, 'discard', 'summary', $state['revision'] );
 		$this->assertIsArray( $state );
 		$this->assertNull( $state['sections']['summary']['draft'] );
 		$this->assertNotNull( $state['sections']['overview']['draft'] );
@@ -130,7 +129,7 @@ class SimpleFlowTest extends WP_UnitTestCase {
 
 	private function version( string $text = 'Coverage', string $section = 'summary' ): array {
 		return array(
-			'content'     => '<!-- wp:paragraph --><p>' . $text . ' <a href="' . get_permalink( $this->posts[29] ) . '">Source</a></p><!-- /wp:paragraph -->',
+			'content'     => '<!-- wp:paragraph --><p>' . $text . '</p><!-- /wp:paragraph -->',
 			'source_ids'  => array( $this->posts[29] ),
 			'fingerprint' => hash( 'sha256', (string) wp_json_encode( ( new Sources() )->collect( $this->term_id, $section ) ) ),
 		);
@@ -138,12 +137,12 @@ class SimpleFlowTest extends WP_UnitTestCase {
 
 	public function test_first_and_later_generations_stay_private_until_saved(): void {
 		$store = new Store();
-		$state = $store->save_generated( $this->term_id, array( 'summary' => $this->version( 'First version' ) ), '' );
+		$state = $store->save_generated( $this->term_id, 'summary', $this->version( 'First version' ), '' );
 		$this->assertIsArray( $state );
 		$this->assertSame( '', $store->render( $this->term_id, 'summary' ) );
 		$state = $store->change( $this->term_id, 'save', 'summary', $state['revision'] );
 		$this->assertStringContainsString( 'First version', $store->render( $this->term_id, 'summary' ) );
-		$state = $store->save_generated( $this->term_id, array( 'summary' => $this->version( 'Replacement' ) ), $state['revision'] );
+		$state = $store->save_generated( $this->term_id, 'summary', $this->version( 'Replacement' ), $state['revision'] );
 		$this->assertStringNotContainsString( 'Replacement', $store->render( $this->term_id, 'summary' ) );
 		$state = $store->change( $this->term_id, 'save', 'summary', $state['revision'] );
 		$this->assertNull( $state['sections']['summary']['draft'] );
@@ -152,7 +151,7 @@ class SimpleFlowTest extends WP_UnitTestCase {
 
 	public function test_save_without_a_preview_keeps_the_published_text(): void {
 		$store = new Store();
-		$state = $store->save_generated( $this->term_id, array( 'summary' => $this->version( 'Keep published' ) ), '' );
+		$state = $store->save_generated( $this->term_id, 'summary', $this->version( 'Keep published' ), '' );
 		$state = $store->change( $this->term_id, 'save', 'summary', $state['revision'] );
 		$this->assertWPError( $store->change( $this->term_id, 'save', 'summary', $state['revision'] ) );
 		$this->assertSame( $state, $store->get( $this->term_id ) );
@@ -160,10 +159,10 @@ class SimpleFlowTest extends WP_UnitTestCase {
 
 	public function test_discard_keeps_published_text_and_stale_tabs_cannot_save(): void {
 		$store = new Store();
-		$state = $store->save_generated( $this->term_id, array( 'summary' => $this->version( 'Published text' ) ), '' );
+		$state = $store->save_generated( $this->term_id, 'summary', $this->version( 'Published text' ), '' );
 		$state = $store->change( $this->term_id, 'save', 'summary', $state['revision'] );
 		$old   = $state['revision'];
-		$state = $store->save_generated( $this->term_id, array( 'summary' => $this->version( 'Discard this' ) ), $old );
+		$state = $store->save_generated( $this->term_id, 'summary', $this->version( 'Discard this' ), $old );
 		$this->assertWPError( $store->change( $this->term_id, 'save', 'summary', $old ) );
 		$state = $store->change( $this->term_id, 'discard', 'summary', $state['revision'] );
 		$this->assertNull( $state['sections']['summary']['draft'] );
@@ -178,7 +177,7 @@ class SimpleFlowTest extends WP_UnitTestCase {
 				'post_content' => 'Updated reporting.',
 			)
 		);
-		$result = ( new Store() )->save_generated( $this->term_id, array( 'summary' => $version ), '' );
+		$result = ( new Store() )->save_generated( $this->term_id, 'summary', $version, '' );
 		$this->assertWPError( $result );
 		$this->assertSame( 'topic_sources_changed', $result->get_error_code() );
 		$this->assertSame( '', get_term_meta( $this->term_id, Store::META_KEY, true ) );
@@ -196,7 +195,7 @@ class SimpleFlowTest extends WP_UnitTestCase {
 			);
 		}
 
-		$this->assertWPError( ( new Store() )->save_generated( $this->term_id, array( 'summary' => $version ), '' ) );
+		$this->assertWPError( ( new Store() )->save_generated( $this->term_id, 'summary', $version, '' ) );
 		$this->assertFalse( ( new Sources() )->eligible( $this->term_id ) );
 	}
 
@@ -245,7 +244,7 @@ class SimpleFlowTest extends WP_UnitTestCase {
 
 	public function test_save_route_uses_stored_preview_and_ignores_injected_edits(): void {
 		$store = new Store();
-		$state = $store->save_generated( $this->term_id, array( 'summary' => $this->version( 'Safe preview' ) ), '' );
+		$state = $store->save_generated( $this->term_id, 'summary', $this->version( 'Safe preview' ), '' );
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
 		$controller = new \WordPress\AI\Experiments\Topic_Pages\Controller();
 		$register   = static function () use ( $controller ) {
@@ -283,7 +282,7 @@ class SimpleFlowTest extends WP_UnitTestCase {
 		// Simulate a separate request: this process still holds the original post in its local cache.
 		$wpdb->update( $wpdb->posts, array( 'post_content' => 'Reporting corrected in another request.' ), array( 'ID' => $this->posts[29] ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- Deliberately leave the request-local cache unchanged.
 		$this->assertNotSame( 'Reporting corrected in another request.', get_post( $this->posts[29] )->post_content );
-		$result = ( new Store() )->save_generated( $this->term_id, array( 'summary' => $version ), '' );
+		$result = ( new Store() )->save_generated( $this->term_id, 'summary', $version, '' );
 		$this->assertWPError( $result );
 		$this->assertSame( 'topic_sources_changed', $result->get_error_code() );
 		$this->assertSame( '', get_term_meta( $this->term_id, Store::META_KEY, true ) );

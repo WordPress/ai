@@ -21,7 +21,7 @@ use WP_REST_Request;
 final class Controller {
 
 	/**
-	 * Register authenticated editor routes.
+	 * Registers authenticated editor routes.
 	 *
 	 * @since x.x.x
 	 */
@@ -49,7 +49,7 @@ final class Controller {
 						'section'  => array(
 							'type'        => 'string',
 							'description' => __( 'The topic section to target.', 'ai' ),
-							'enum'        => array_merge( array( 'all' ), Store::SECTIONS ),
+							'enum'        => Store::SECTIONS,
 							'required'    => true,
 						),
 						'revision' => array(
@@ -72,15 +72,14 @@ final class Controller {
 	 * @return bool|\WP_Error Whether this user manages the requested term.
 	 */
 	public function permission( WP_REST_Request $request ) {
-		$term = ( new Sources() )->term( (int) $request['id'] );
+		$sources = new Sources();
+		$term    = $sources->term( (int) $request['id'] );
 
 		if ( is_wp_error( $term ) ) {
 			return $term;
 		}
 
-		$taxonomy = get_taxonomy( $term->taxonomy );
-		// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- WordPress supplies the registered taxonomy capability mapping.
-		return $taxonomy && current_user_can( $taxonomy->cap->manage_terms ) && current_user_can( 'edit_term', $term->term_id );
+		return $sources->can_manage_term( $term );
 	}
 
 	/**
@@ -119,12 +118,6 @@ final class Controller {
 			return new WP_Error( 'topic_conflict', __( 'This topic has changed. Reload before generating.', 'ai' ), array( 'status' => 409 ) );
 		}
 
-		$sections = array( $request['section'] );
-
-		if ( 'all' === $request['section'] ) {
-			$sections = Store::SECTIONS;
-		}
-
 		$lock  = new Lock();
 		$owner = $lock->acquire( $term_id, 'generation' );
 
@@ -142,7 +135,7 @@ final class Controller {
 			$result = $ability->execute(
 				array(
 					'term_id'  => $term_id,
-					'sections' => $sections,
+					'sections' => array( $request['section'] ),
 				)
 			);
 
@@ -154,7 +147,7 @@ final class Controller {
 				);
 			}
 
-			$saved = is_wp_error( $result ) ? $result : $store->save_generated( $term_id, $result, $request['revision'] );
+			$saved = is_wp_error( $result ) ? $result : $store->save_generated( $term_id, $request['section'], $result[ $request['section'] ], $request['revision'] );
 
 			return is_wp_error( $saved ) ? $saved : $store->state( $term_id );
 		} finally {

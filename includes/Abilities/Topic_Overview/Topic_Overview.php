@@ -28,7 +28,7 @@ class Topic_Overview extends Abstract_Ability {
 	 *
 	 * @since x.x.x
 	 *
-	 * @return string[] Editorial guideline categories.
+	 * @return list<string> Editorial guideline categories.
 	 */
 	protected function guideline_categories(): array {
 		return array( 'site', 'copy' );
@@ -124,32 +124,31 @@ class Topic_Overview extends Abstract_Ability {
 	}
 
 	/**
-	 * Check term management permissions.
+	 * Checks term management permissions.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param mixed $input Ability input.
-	 * @return bool|\WP_Error
+	 * @return bool|\WP_Error Whether the user can manage the term, or a validation error.
 	 */
 	protected function permission_callback( $input ) {
-		$term = ( new Sources() )->term( absint( $input['term_id'] ?? 0 ) );
+		$sources = new Sources();
+		$term    = $sources->term( absint( $input['term_id'] ?? 0 ) );
 
 		if ( is_wp_error( $term ) ) {
 			return $term;
 		}
 
-		$taxonomy = get_taxonomy( $term->taxonomy );
-		// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- WordPress supplies the registered taxonomy capability mapping.
-		return $taxonomy && current_user_can( $taxonomy->cap->manage_terms ) && current_user_can( 'edit_term', $term->term_id );
+		return $sources->can_manage_term( $term );
 	}
 
 	/**
-	 * Generate sections without changing editorial state.
+	 * Generates sections without changing editorial state.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param mixed $input Ability input.
-	 * @return array<string,mixed>|\WP_Error
+	 * @return array<string,mixed>|\WP_Error Generated sections or error.
 	 */
 	protected function execute_callback( $input ) {
 		$term_id  = absint( $input['term_id'] );
@@ -214,12 +213,12 @@ class Topic_Overview extends Abstract_Ability {
 	}
 
 	/**
-	 * Define the provider response for the requested sections.
+	 * Defines the provider response for the requested sections.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string[] $sections Requested sections.
-	 * @return array<string,mixed>
+	 * @param list<string> $sections Requested sections.
+	 * @return array<string,mixed> Response schema definition.
 	 */
 	private function response_schema( array $sections ): array {
 		$properties = array();
@@ -254,14 +253,14 @@ class Topic_Overview extends Abstract_Ability {
 	}
 
 	/**
-	 * Reject unknown sources and create static paragraphs with real permalinks.
+	 * Rejects unknown sources and creates static paragraphs with real permalinks.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param mixed $decoded Provider response.
-	 * @param string[] $sections Requested sections.
-	 * @param array<int,array<string,mixed>> $sources Source records sent to the provider.
-	 * @return array<string,mixed>|\WP_Error
+	 * @param list<string> $sections Requested sections.
+	 * @param list<array<string,mixed>> $sources Source records sent to the provider.
+	 * @return array<string,mixed>|\WP_Error Prepared sections or error.
 	 */
 	private function prepare_sections( $decoded, array $sections, array $sources ) {
 		$valid = rest_validate_value_from_schema( $decoded, $this->response_schema( $sections ), 'topic' );
@@ -285,6 +284,11 @@ class Topic_Overview extends Abstract_Ability {
 			$content = '';
 
 			foreach ( $entries as $entry ) {
+				if ( Store::SUMMARY === $section ) {
+					$content .= '<!-- wp:paragraph --><p>' . esc_html( $entry['text'] ) . '</p><!-- /wp:paragraph -->' . "\n";
+					continue;
+				}
+
 				$links = array();
 
 				foreach ( array_unique( $entry['source_ids'] ) as $id ) {
@@ -299,10 +303,10 @@ class Topic_Overview extends Abstract_Ability {
 				$content      .= '<!-- wp:paragraph --><p>' . esc_html( $entry['text'] ) . $citation_html . '</p><!-- /wp:paragraph -->' . "\n";
 			}
 
-			// All supplied sources may influence a synthesis, including uncited context.
+			// Uncited inputs can still influence the text and must remain tracked.
 			$versions[ $section ] = array(
 				'content'      => $content,
-				'source_ids'   => array_keys( $by_id ),
+				'source_ids'   => array_values( array_map( 'intval', array_column( $sources, 'id' ) ) ),
 				'fingerprint'  => Sources::fingerprint( $sources ),
 				'generated_at' => gmdate( 'c' ),
 			);
