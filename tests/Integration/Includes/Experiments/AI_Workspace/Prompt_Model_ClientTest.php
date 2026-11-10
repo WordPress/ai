@@ -240,6 +240,56 @@ class Prompt_Model_ClientTest extends WP_UnitTestCase {
 
 		$this->assertSame( $messages, Prompt_Model_Client::without_unsigned_thoughts( $messages ) );
 	}
+
+	/**
+	 * A round waits longer than core's 30 second default, which cut off a
+	 * round that wrote a full proposal.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_round_waits_longer_than_the_core_default(): void {
+		$this->assertSame( Prompt_Model_Client::REQUEST_TIMEOUT, Prompt_Model_Client::request_timeout( 30.0 ) );
+	}
+
+	/**
+	 * A longer timeout a site already set is kept.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_longer_site_timeout_is_kept(): void {
+		$this->assertSame( 300.0, Prompt_Model_Client::request_timeout( 300.0 ) );
+	}
+
+	/**
+	 * The workspace's own wait can be changed with a filter.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_the_round_timeout_is_filterable(): void {
+		$filter = static function (): float {
+			return 45.0;
+		};
+
+		add_filter( 'wpai_workspace_request_timeout', $filter );
+
+		try {
+			$this->assertSame( 45.0, Prompt_Model_Client::request_timeout( 30.0 ) );
+		} finally {
+			remove_filter( 'wpai_workspace_request_timeout', $filter );
+		}
+	}
+
+	/**
+	 * The raise is removed once the round's request is built, so other model
+	 * calls on the same page keep core's default.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_the_raise_does_not_outlive_the_round(): void {
+		( new Prompt_Model_Client() )->generate( $this->conversation(), array(), 'system' );
+
+		$this->assertFalse( has_filter( 'wp_ai_client_default_request_timeout', array( Prompt_Model_Client::class, 'request_timeout' ) ) );
+	}
 }
 
 /**
