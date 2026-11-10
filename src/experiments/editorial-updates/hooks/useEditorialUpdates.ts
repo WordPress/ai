@@ -20,6 +20,7 @@ import { store as noticesStore } from '@wordpress/notices';
 import {
 	flattenBlocks,
 	getBlockText,
+	getPostContentBlockContext,
 	replaceBlockWithPlaceholder,
 	getEditableTextAttribute,
 } from '../../../utils/blocks';
@@ -27,185 +28,26 @@ import {
 	REVIEWABLE_BLOCK_TYPES,
 	fetchAllNotesByStatus,
 	buildContextWindow,
+	collectThreadTexts,
+	getNoteIds,
 } from '../../../utils/notes';
 import { ensureProvider } from '../../../utils/provider-status';
 import { runAbility } from '../../../utils/run-ability';
+import type { Block } from '../types';
+import { getRevisionReviewAction, resolveNote } from '../utils';
 
 const BLOCK_PLACEHOLDER = '[[BLOCK_GOES_HERE]]';
 const NOTICE_ID = 'wpai_editorial_updates_error';
-
-interface BlockAttributes {
-	content?: string;
-	value?: string;
-	alt?: string;
-	caption?: string;
-	metadata?: {
-		noteId?: number;
-		[ key: string ]: unknown;
-	};
-	[ key: string ]: unknown;
-}
-
-interface Block {
-	clientId: string;
-	name: string;
-	attributes: BlockAttributes;
-	innerBlocks: Block[];
-}
-
-/**
- * Updates a Note status to approved.
- *
- * @param noteId Note ID.
- */
-async function resolveNote( noteId: number ): Promise< void > {
-	return apiFetch< void >( {
-		path: `/wp/v2/comments/${ noteId }`,
-		method: 'PUT',
-		data: { status: 'approve' },
-	} );
-}
-
-/**
- * Navigates to the classic revisions screen.
- *
- * @param adminUrl       Site admin URL, or undefined if unavailable.
- * @param lastRevisionId The revision ID to open.
- */
-function navigateToClassicRevisions(
-	adminUrl: string | undefined,
-	lastRevisionId: number
-): void {
-	if ( adminUrl ) {
-		window.location.href = `${ adminUrl }revision.php?revision=${ lastRevisionId }`;
-	}
-}
-
-/**
- * Opens WordPress's in-editor visual revisions UI by clicking the
- * "Revisions" button Core already renders in the Document Settings
- * sidebar (`PrivatePostLastRevision` in @wordpress/editor).
- *
- * There is no public JS API for this in WP 7.0 — the underlying store
- * action (`setCurrentRevisionId`) is registered as a private action and
- * is gated behind @wordpress/private-apis, which only allows a hardcoded
- * list of core module names to opt in. Calling it directly from a plugin
- * throws, since the action is never attached to the public dispatch
- * object. Simulating a real click on Core's own rendered button is the
- * supported workaround.
- *
- * Elements are located by stable, locale-independent attributes rather
- * than translated accessible names: the sidebar toggle uses
- * `aria-controls="edit-post:document"`, which comes from the
- * complementary area identifier `edit-post/document` registered by
- * the WordPress editor package for the Document Settings sidebar, and
- * is the same regardless of site language.
- *
- * Falls back to the classic revisions screen if the button can't be
- * found within a short polling window (e.g. markup changes upstream, or
- * the post genuinely has fewer than two revisions so Core doesn't render
- * the button at all).
- *
- * @param root0                Options.
- * @param root0.adminUrl       Site admin URL, used for the classic
- *                             revisions fallback.
- * @param root0.lastRevisionId The revision ID to open.
- */
-function openVisualRevisions( {
-	adminUrl,
-	lastRevisionId,
-}: {
-	adminUrl: string | undefined;
-	lastRevisionId: number;
-} ): void {
-	const MAX_ATTEMPTS = 20;
-	const INTERVAL_MS = 100;
-
-	// The revisions button only exists in the DOM once the Document
-	// Settings sidebar is mounted, so open it first if it's collapsed.
-	const settingsToggle = document.querySelector< HTMLButtonElement >(
-		'button[aria-controls="edit-post:document"]'
-	);
-	if ( settingsToggle?.getAttribute( 'aria-expanded' ) === 'false' ) {
-		settingsToggle.click();
-	}
-
-	let attempts = 0;
-	const tryClick = () => {
-		const revisionsButton = document.querySelector< HTMLButtonElement >(
-			'.editor-private-post-last-revision__button, .editor-post-last-revision__title'
-		);
-		if ( revisionsButton ) {
-			revisionsButton.click();
-			return;
-		}
-		attempts++;
-		if ( attempts >= MAX_ATTEMPTS ) {
-			navigateToClassicRevisions( adminUrl, lastRevisionId );
-			return;
-		}
-		setTimeout( tryClick, INTERVAL_MS );
-	};
-	tryClick();
-}
-
-/**
- * Builds the snackbar action for reviewing changes in the revisions UI.
- *
- * Uses the in-editor visual revisions path (WP 7.0+ default) via
- * openVisualRevisions(). Falls back to the classic revisions screen when
- * visual revisions are disabled, e.g. when classic metaboxes are active
- * on the post.
- *
- * @param root0                        Options.
- * @param root0.lastRevisionId         The revision ID to open.
- * @param root0.adminUrl               Site admin URL, used for the
- *                                     classic revisions fallback.
- * @param root0.disableVisualRevisions Whether Core has disabled visual
- *                                     revisions for this post.
- * @return Snackbar notice actions, or an empty array when neither path
- *         is available.
- */
-function getRevisionReviewAction( {
-	lastRevisionId,
-	adminUrl,
-	disableVisualRevisions,
-}: {
-	lastRevisionId: number;
-	adminUrl: string | undefined;
-	disableVisualRevisions: boolean;
-} ): Array< { label: string; url?: string; onClick?: () => void } > {
-	if ( ! disableVisualRevisions ) {
-		return [
-			{
-				label: __( 'Review in Revisions', 'ai' ),
-				onClick: () =>
-					openVisualRevisions( { adminUrl, lastRevisionId } ),
-			},
-		];
-	}
-
-	if ( adminUrl ) {
-		return [
-			{
-				label: __( 'Review in Revisions', 'ai' ),
-				url: `${ adminUrl }revision.php?revision=${ lastRevisionId }`,
-			},
-		];
-	}
-
-	return [];
-}
 
 /**
  * Hook for refining blocks based on existing notes with AI.
  *
  * @return {Object}   Object with refining state and functions.
- * @property {boolean}  isRefining      Whether a refine operation is in progress.
- * @property {number}   progress        The number of blocks processed so far.
- * @property {number}   total           The total number of blocks to process.
- * @property {boolean}  hasPendingNotes Whether there are pending notes to process.
- * @property {Function} runRefinement   Function to trigger the refinement process.
+ * @property {boolean}           isRefining      Whether a refine operation is in progress.
+ * @property {number}            progress        The number of blocks processed so far.
+ * @property {number}            total           The total number of blocks to process.
+ * @property {boolean}           hasPendingNotes Whether there are pending notes to process.
+ * @property {()=>Promise<void>} runRefinement   Function to trigger the refinement process.
  */
 export function useEditorialUpdates(): {
 	isRefining: boolean;
@@ -235,15 +77,17 @@ export function useEditorialUpdates(): {
 			// Collect Note IDs linked from block metadata, then check whether any are
 			// still pending. This avoids showing the action for stale Notes left behind
 			// after refreshing before the generated Note metadata was explicitly saved.
-			const allBlocks = sel( blockEditorStore ).getBlocks() as Block[];
+			const allBlocks = getPostContentBlockContext( sel )
+				.allBlocks as Block[];
 			const linkedNoteIds = Array.from(
 				new Set(
 					flattenBlocks( allBlocks )
 						.filter( ( block ) =>
 							REVIEWABLE_BLOCK_TYPES.includes( block.name )
 						)
-						.map( ( block ) => block.attributes.metadata?.noteId )
-						.filter( ( id ) => typeof id === 'number' )
+						.flatMap( ( block ) =>
+							getNoteIds( block.attributes.metadata )
+						)
 				)
 			);
 
@@ -286,7 +130,7 @@ export function useEditorialUpdates(): {
 			).getEditedPostContent() as string;
 
 			// Get all blocks and flatten the tree.
-			const allBlocks = select( blockEditorStore ).getBlocks() as Block[];
+			const allBlocks = getPostContentBlockContext().allBlocks as Block[];
 			const flatBlocks = flattenBlocks( allBlocks );
 
 			// Fetch pending Notes for this post.
@@ -307,17 +151,18 @@ export function useEditorialUpdates(): {
 				noteContentById.set( note.id, note.content?.rendered ?? '' );
 			}
 
+			// Pending note threads attached to the block, human or AI.
+			const getRefinableNoteIds = ( block: Block ) =>
+				getNoteIds( block.attributes.metadata ).filter( ( id ) =>
+					noteContentById.has( id )
+				);
+
 			// Find which blocks have matching notes
 			const refineableBlocks = flatBlocks.filter( ( block ) => {
 				if ( ! REVIEWABLE_BLOCK_TYPES.includes( block.name ) ) {
 					return false;
 				}
-				const existingNoteId =
-					block.attributes.metadata?.noteId ?? null;
-				if (
-					! existingNoteId ||
-					! noteContentById.has( existingNoteId )
-				) {
+				if ( getRefinableNoteIds( block ).length === 0 ) {
 					return false;
 				}
 				const blockText = getBlockText( block );
@@ -355,28 +200,16 @@ export function useEditorialUpdates(): {
 
 				await Promise.all(
 					batch.map( async ( block ) => {
-						const existingNoteId = block.attributes.metadata
-							?.noteId as number;
+						const pendingNoteIds = getRefinableNoteIds( block );
 
 						const blockText = getBlockText( block );
 
 						// Collect notes logic
-						const existingNoteTexts: string[] = [];
-						const rootText = noteContentById.get( existingNoteId );
-						if ( rootText ) {
-							existingNoteTexts.push( rootText );
-						}
-
-						for ( const note of pendingNotes ) {
-							if ( note.parent === existingNoteId ) {
-								const replyText = noteContentById.get(
-									note.id
-								);
-								if ( replyText ) {
-									existingNoteTexts.push( replyText );
-								}
-							}
-						}
+						const existingNoteTexts = collectThreadTexts(
+							pendingNoteIds,
+							noteContentById,
+							pendingNotes
+						);
 
 						// Replace the block with the placeholder.
 						const contentWithPlaceholder =
@@ -430,9 +263,11 @@ export function useEditorialUpdates(): {
 								refinedBlocksCount++;
 
 								// Add notes for resolution
-								notesToResolve.push( existingNoteId );
+								notesToResolve.push( ...pendingNoteIds );
 								for ( const note of pendingNotes ) {
-									if ( note.parent === existingNoteId ) {
+									if (
+										pendingNoteIds.includes( note.parent )
+									) {
 										notesToResolve.push( note.id );
 									}
 								}
@@ -487,7 +322,7 @@ export function useEditorialUpdates(): {
 				// changes" prompt when navigating to the revisions link.
 				await dispatch( editorStore ).savePost();
 				const { aiEditorialUpdatesData } = window as any;
-				const restBase = aiEditorialUpdatesData?.rest_base as
+				const restRoute = aiEditorialUpdatesData?.rest_route as
 					| string
 					| undefined;
 
@@ -495,7 +330,7 @@ export function useEditorialUpdates(): {
 				try {
 					const revisions = await apiFetch< Array< { id: number } > >(
 						{
-							path: `/wp/v2/${ restBase }/${ postId }/revisions?per_page=1`,
+							path: `${ restRoute }/${ postId }/revisions?per_page=1`,
 							method: 'GET',
 						}
 					);

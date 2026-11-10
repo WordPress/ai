@@ -19,59 +19,20 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import {
 	flattenBlocks,
-	getBlockText,
 	getPostContentBlockContext,
-	replaceBlockWithPlaceholder,
 } from '../../../utils/blocks';
-import type { ExistingNote } from '../../../utils/notes';
 import {
 	REVIEWABLE_BLOCK_TYPES,
 	fetchAllNotesByStatus,
-	buildContextWindow,
 } from '../../../utils/notes';
 import { ensureProvider } from '../../../utils/provider-status';
-import { runAbility } from '../../../utils/run-ability';
 import { hasMinimumContent } from '../../../utils/character-count';
-
-const BLOCK_PLACEHOLDER = '[[BLOCK_GOES_HERE]]';
+import { reviewSingleBlock } from '../utils';
 
 const BATCH_SIZE = 4;
 const NOTICE_ID = 'ai_editorial_notes_error';
 const NOTES_SIDEBAR_ID = 'edit-post/collab-sidebar';
 const MINIMUM_CONTENT_COUNT_DEFAULT = 75;
-
-interface BlockAttributes {
-	content?: string;
-	value?: string;
-	alt?: string;
-	caption?: string;
-	metadata?: {
-		noteId?: number;
-		[ key: string ]: unknown;
-	};
-	[ key: string ]: unknown;
-}
-
-interface Block {
-	clientId: string;
-	name: string;
-	attributes: BlockAttributes;
-	innerBlocks: Block[];
-}
-
-interface Suggestion {
-	review_type: string;
-	text: string;
-}
-
-interface ReviewResult {
-	suggestions: Suggestion[];
-}
-
-interface NoteRecord {
-	id: number;
-	[ key: string ]: unknown;
-}
 
 /**
  * Hook for determining whether Editorial Notes should be available.
@@ -96,91 +57,6 @@ function useEditorialNotesAvailability(): {
 		minContentLength,
 		isContentTooShort: ! hasMinimumContent( content, minContentLength ),
 	};
-}
-
-/**
- * Reviews a single block and creates/updates a Note if suggestions are found.
- *
- * @param block           The block to review.
- * @param postId          The current post ID.
- * @param content         The full post content (HTML).
- * @param resolvedNoteIds Set of Note IDs that have been resolved (approved).
- * @param noteContentById Map of Note ID → rendered Note content (pending only).
- * @param pendingNotes    All pending Notes for the post (for reply lookup).
- * @return The number of suggestions created, or 0 if the block was skipped.
- */
-async function reviewSingleBlock(
-	block: Block,
-	postId: number,
-	content: string,
-	resolvedNoteIds: Set< number >,
-	noteContentById: Map< number, string >,
-	pendingNotes: ExistingNote[]
-): Promise< number > {
-	// Look up any existing Note thread on this block.
-	const existingNoteId = block.attributes.metadata?.noteId ?? null;
-
-	// Skip blocks whose Note thread has been resolved.
-	if ( existingNoteId && resolvedNoteIds.has( existingNoteId ) ) {
-		return 0;
-	}
-
-	const blockText = getBlockText( block );
-
-	if ( blockText.length === 0 ) {
-		return 0;
-	}
-
-	// Collect pending Note texts for this block's thread as context.
-	const existingNoteTexts: string[] = [];
-	if ( existingNoteId ) {
-		const rootText = noteContentById.get( existingNoteId );
-		if ( rootText ) {
-			existingNoteTexts.push( rootText );
-		}
-
-		// Also collect replies (Notes with parent === existingNoteId).
-		for ( const note of pendingNotes ) {
-			if ( note.parent === existingNoteId ) {
-				const replyText = noteContentById.get( note.id );
-				if ( replyText ) {
-					existingNoteTexts.push( replyText );
-				}
-			}
-		}
-	}
-
-	// Replace the block with the placeholder.
-	const contentWithPlaceholder =
-		block.clientId !== undefined
-			? replaceBlockWithPlaceholder(
-					content,
-					block.clientId,
-					BLOCK_PLACEHOLDER
-			  )
-			: content;
-
-	// Prepare a bounded context around the placeholder.
-	const context = buildContextWindow(
-		contentWithPlaceholder,
-		BLOCK_PLACEHOLDER
-	);
-
-	// Call the review Ability.
-	const result = await runAbility< ReviewResult >( 'ai/editorial-notes', {
-		block_type: block.name,
-		block_content: blockText,
-		context,
-		post_id: postId,
-		existing_notes: existingNoteTexts,
-	} );
-
-	if ( result?.suggestions && result.suggestions.length > 0 ) {
-		await createNote( block, postId, result.suggestions, existingNoteId );
-		return result.suggestions.length;
-	}
-
-	return 0;
 }
 
 /**
@@ -262,8 +138,12 @@ export function useEditorialNotes(): {
 				fetchAllNotesByStatus( postId, 'hold' ),
 				fetchAllNotesByStatus( postId, 'approve' ),
 			] );
+
+			// Only resolved AI threads mark a block as already reviewed.
 			const resolvedNoteIds = new Set(
-				approvedNotes.map( ( n ) => n.id )
+				approvedNotes
+					.filter( ( note ) => note.meta?.wpai_note === true )
+					.map( ( n ) => n.id )
 			);
 
 			// Build a lookup: noteId → Note content text (pending Notes only).
@@ -273,6 +153,8 @@ export function useEditorialNotes(): {
 			}
 
 			let totalSuggestions = 0;
+			let failedBlocks = 0;
+			let firstError: any = null;
 
 			// Process blocks in batches.
 			for (
@@ -285,7 +167,8 @@ export function useEditorialNotes(): {
 					batchStart + BATCH_SIZE
 				);
 
-				const results = await Promise.all(
+				// A block that fails must not discard the blocks that succeed.
+				const results = await Promise.allSettled(
 					batch.map( ( block ) =>
 						reviewSingleBlock(
 							block,
@@ -297,14 +180,27 @@ export function useEditorialNotes(): {
 						)
 					)
 				);
-				totalSuggestions += results.reduce( ( sum, n ) => sum + n, 0 );
+
+				for ( const result of results ) {
+					if ( result.status === 'fulfilled' ) {
+						totalSuggestions += result.value;
+					} else {
+						failedBlocks++;
+						firstError = firstError ?? result.reason;
+					}
+				}
 
 				setProgress(
 					Math.min( batchStart + BATCH_SIZE, reviewableBlocks.length )
 				);
 			}
 
-			setLastRunCount( totalSuggestions );
+			// "No new suggestions found." would be wrong when blocks failed.
+			setLastRunCount(
+				failedBlocks > 0 && totalSuggestions === 0
+					? null
+					: totalSuggestions
+			);
 
 			if ( totalSuggestions > 0 ) {
 				dispatch( coreStore ).invalidateResolutionForStoreSelector(
@@ -323,6 +219,26 @@ export function useEditorialNotes(): {
 						totalSuggestions
 					),
 					{ type: 'snackbar' }
+				);
+			}
+
+			if ( failedBlocks > 0 ) {
+				dispatch( noticesStore ).createErrorNotice(
+					sprintf(
+						/* translators: 1: number of blocks that could not be reviewed, 2: error message. */
+						_n(
+							'%1$d block could not be reviewed: %2$s',
+							'%1$d blocks could not be reviewed: %2$s',
+							failedBlocks,
+							'ai'
+						),
+						failedBlocks,
+						firstError?.message ?? String( firstError )
+					),
+					{
+						id: NOTICE_ID,
+						isDismissible: true,
+					}
 				);
 			}
 		} catch ( error: any ) {
@@ -391,7 +307,9 @@ export function useEditorialBlock(): {
 				fetchAllNotesByStatus( postId, 'approve' ),
 			] );
 			const resolvedNoteIds = new Set(
-				approvedNotes.map( ( n ) => n.id )
+				approvedNotes
+					.filter( ( note ) => note.meta?.wpai_note === true )
+					.map( ( n ) => n.id )
 			);
 
 			const noteContentById = new Map< number, string >();
@@ -455,52 +373,4 @@ export function useEditorialBlock(): {
 		minContentLength,
 		reviewBlock,
 	};
-}
-
-/**
- * Creates a Note (or appends a reply) for a reviewed block.
- *
- * When no existing Note thread is present, creates a new Note and updates
- * the block's metadata with the resulting Note ID. When a thread already
- * exists, appends a reply to preserve the conversation history.
- *
- * @param block          The block that received suggestions.
- * @param postId         The current post ID.
- * @param suggestions    The suggestions to include in the Note.
- * @param existingNoteId The ID of an existing Note thread, or null for a new thread.
- */
-async function createNote(
-	block: Block,
-	postId: number,
-	suggestions: Suggestion[],
-	existingNoteId: number | null
-): Promise< void > {
-	const noteContent = suggestions
-		.map( ( s ) => `[${ s.review_type.toUpperCase() }] ${ s.text }` )
-		.join( '\n\n' );
-
-	const note = ( await dispatch( coreStore ).saveEntityRecord(
-		'root',
-		'comment',
-		{
-			post: postId,
-			content: noteContent,
-			type: 'note',
-			status: 'hold',
-			parent: existingNoteId ?? 0,
-			meta: { wpai_note: true },
-		}
-	) ) as NoteRecord | undefined;
-
-	// Only update block metadata when creating a new thread (not a reply).
-	if ( ! existingNoteId && note?.id ) {
-		const existingMeta =
-			( select( blockEditorStore ) as any ).getBlockAttributes(
-				block.clientId
-			)?.metadata ?? {};
-
-		dispatch( blockEditorStore ).updateBlockAttributes( block.clientId, {
-			metadata: { ...existingMeta, noteId: note.id },
-		} );
-	}
 }

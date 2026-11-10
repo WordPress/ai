@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Renders a single post as a Markdown document.
+ * Renders a single post as a Markdown document, its approved comments included.
  *
  * @since 1.4.0
  */
@@ -68,17 +68,22 @@ class Markdown_Singular_Renderer {
 				__( 'Published: %s', 'ai' ),
 				(string) get_the_date( 'c', $post )
 			),
-			'- ' . sprintf(
-				/* translators: %s: post author display name. */
-				__( 'Author: %s', 'ai' ),
-				(string) get_the_author_meta( 'display_name', (int) $post->post_author )
-			),
 		);
 
+		$author_name = trim( (string) get_the_author_meta( 'display_name', (int) $post->post_author ) );
+		if ( '' !== $author_name ) {
+			$meta_lines[] = '- ' . sprintf(
+				/* translators: %s: post author display name. */
+				__( 'Author: %s', 'ai' ),
+				$this->converter->escape_markdown( $this->converter->decode_entities( $author_name ) )
+			);
+		}
+
 		$sections = array(
-			'title'   => '# ' . $title,
-			'meta'    => implode( "\n", $meta_lines ),
-			'content' => $this->converter->convert( $content_html, $permalink ),
+			'title'    => '# ' . $title,
+			'meta'     => implode( "\n", $meta_lines ),
+			'content'  => $this->converter->convert( $content_html, $permalink ),
+			'comments' => ( new Markdown_Comment_Renderer( $this->converter ) )->render_post_comments( $post ),
 		);
 
 		/**

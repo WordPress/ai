@@ -100,6 +100,28 @@ export const purgeRequestLogs = async ( requestUtils: RequestUtils ) => {
 };
 
 /**
+ * Inserts an AI request log entry dated a number of days in the past.
+ *
+ * Requires the E2E Testing plugin and an existing request log table
+ * (the AI Request Logging experiment must have been enabled).
+ *
+ * @param requestUtils The request utils fixture from the test context.
+ * @param daysAgo      How many days old the entry should be.
+ * @param operation    Operation name to store on the entry.
+ */
+export const seedRequestLog = async (
+	requestUtils: RequestUtils,
+	daysAgo: number,
+	operation: string
+) => {
+	await requestUtils.rest( {
+		method: 'POST',
+		path: '/ai-e2e/v1/request-logs/seed',
+		data: { days_ago: daysAgo, operation },
+	} );
+};
+
+/**
  * Clears out any existing Connectors.
  *
  * @param admin The admin fixture from the test context.
@@ -202,7 +224,7 @@ export const enableExperiment = async (
 ) => {
 	await visitSettingsPage( admin );
 
-	const toggle = page.getByLabel( experimentLabel );
+	const toggle = page.getByRole( 'checkbox', { name: experimentLabel } );
 	await expect( toggle ).toBeVisible( { timeout: 10000 } );
 	await expect( toggle ).toBeEnabled( { timeout: 10000 } );
 
@@ -235,7 +257,7 @@ export const disableExperiment = async (
 ) => {
 	await visitSettingsPage( admin );
 
-	const toggle = page.getByLabel( experimentLabel );
+	const toggle = page.getByRole( 'checkbox', { name: experimentLabel } );
 	await expect( toggle ).toBeVisible( { timeout: 10000 } );
 	await expect( toggle ).toBeEnabled( { timeout: 10000 } );
 
@@ -419,6 +441,25 @@ export const seedCredentials = async ( requestUtils: RequestUtils ) => {
 };
 
 /**
+ * Overrides a feature's minimum content length, or restores the default.
+ *
+ * @param requestUtils The requestUtils fixture from the test context.
+ * @param feature      The feature ID passed to the `wpai_min_content_length` filter.
+ * @param length       The minimum length to use, or undefined to restore the default.
+ */
+export const setMinContentLength = async (
+	requestUtils: RequestUtils,
+	feature: string,
+	length?: number
+) => {
+	await requestUtils.rest( {
+		path: '/ai-e2e/v1/min-content-length',
+		method: 'POST',
+		data: { feature, length },
+	} );
+};
+
+/**
  * Clears the dummy OpenAI API key.
  *
  * @param requestUtils The requestUtils fixture from the test context.
@@ -571,4 +612,40 @@ export const disableAdvancedSettings = async ( page: Page ) => {
 
 	// Close the menu.
 	await page.keyboard.press( 'Escape' );
+};
+
+/**
+ * Opens the Document Overview (List View) in the block editor.
+ *
+ * @param page The page object.
+ */
+export const openListView = async ( page: Page ) => {
+	const documentOverviewBtn = page.getByRole( 'button', {
+		name: /Document Overview/i,
+	} );
+	await expect( documentOverviewBtn ).toBeVisible();
+	if (
+		( await documentOverviewBtn.getAttribute( 'aria-pressed' ) ) !== 'true'
+	) {
+		await documentOverviewBtn.click();
+	}
+	await expect(
+		page.locator( '.editor-list-view-sidebar__list-view-container' )
+	).toBeVisible();
+};
+
+/**
+ * Closes the Document Overview (List View) in the block editor.
+ *
+ * @param page The page object.
+ */
+export const closeListView = async ( page: Page ) => {
+	const documentOverviewBtn = page.getByRole( 'button', {
+		name: /Document Overview/i,
+	} );
+	if (
+		( await documentOverviewBtn.getAttribute( 'aria-pressed' ) ) === 'true'
+	) {
+		await documentOverviewBtn.click();
+	}
 };

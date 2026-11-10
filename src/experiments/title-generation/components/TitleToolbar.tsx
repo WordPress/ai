@@ -24,61 +24,9 @@ import { store as noticesStore } from '@wordpress/notices';
 /**
  * Internal dependencies
  */
-import { runAbility } from '../../../utils/run-ability';
 import { ensureProvider } from '../../../utils/provider-status';
 import { hasMinimumContent } from '../../../utils/character-count';
-import type {
-	TitleGenerationAbilityInput,
-	GeneratedTitleData,
-	TitleGenerationData,
-} from '../types';
-
-const NOTICE_ID = 'ai_title_generation_error';
-const MINIMUM_CONTENT_COUNT_DEFAULT = 250;
-
-const getSettings = (): TitleGenerationData => {
-	const settings = ( window as any ).aiTitleGenerationData ?? {};
-
-	return {
-		enabled: settings.enabled ?? false,
-		minContentLength:
-			settings.minContentLength ?? MINIMUM_CONTENT_COUNT_DEFAULT,
-	};
-};
-
-/**
- * Generates a title for the given post ID and content.
- *
- * @param {number} postId  The ID of the post to generate a title for.
- * @param {string} content The content of the post to generate a title for.
- * @return {Promise<string>} A promise that resolves to the generated title.
- */
-async function generateTitle(
-	postId: number,
-	content: string
-): Promise< string > {
-	const params: TitleGenerationAbilityInput = {
-		context: postId.toString(),
-		content,
-	};
-
-	const response = await runAbility< GeneratedTitleData >(
-		'ai/title-generation',
-		params
-	);
-
-	if (
-		response &&
-		typeof response === 'object' &&
-		'title' in response &&
-		typeof response.title === 'string' &&
-		response.title.length > 0
-	) {
-		return response.title;
-	}
-
-	throw new Error( __( 'No title suggestion was generated.', 'ai' ) );
-}
+import { generateTitle, getSettings, NOTICE_ID } from '../utils';
 
 /**
  * TitleToolbar component.

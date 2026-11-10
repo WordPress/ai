@@ -221,4 +221,69 @@ test.describe( 'Title Generation Experiment', () => {
 			} )
 		).not.toBeVisible();
 	} );
+
+	test( 'Can generate title from the Rename modal in the Post tab', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Enable the Title Generation Experiment.
+		await enableExperiment( admin, page, 'Title Generation' );
+
+		// Create a new post.
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'Initial Post Title',
+			content: LONG_CONTENT,
+		} );
+
+		// Save the post.
+		await editor.saveDraft();
+
+		// Open the Settings sidebar and switch to the Post tab if needed.
+		await editor.openDocumentSettingsSidebar();
+
+		// Click the Actions dropdown (three dots) in the post summary panel.
+		const actionsButton = page
+			.getByRole( 'region', { name: 'Editor settings' } )
+			.getByRole( 'button', { name: 'Actions' } );
+		await actionsButton.click();
+
+		// Click "Rename" from the dropdown menu.
+		await page.getByRole( 'menuitem', { name: 'Rename' } ).click();
+
+		// Ensure the Rename modal is visible.
+		const renameModal = page.getByRole( 'dialog', { name: 'Rename' } );
+		await expect( renameModal ).toBeVisible();
+
+		// Ensure the generate title button is visible right before Cancel.
+		const regenerateButton = renameModal.getByRole( 'button', {
+			name: 'Generate title',
+		} );
+		await expect( regenerateButton ).toBeVisible();
+
+		// Click Generate title.
+		await regenerateButton.click();
+
+		// Ensure the title textbox in the modal is updated with the generated title.
+		const nameInput = renameModal.getByRole( 'textbox', { name: 'Name' } );
+		await expect( nameInput ).toHaveValue(
+			'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure',
+			{ timeout: 10000 }
+		);
+
+		// Click Save to commit the rename.
+		await renameModal.getByRole( 'button', { name: 'Save' } ).click();
+
+		// Ensure the Rename modal is closed.
+		await expect( renameModal ).not.toBeVisible();
+
+		// Ensure the title is updated in the canvas.
+		await expect(
+			editor.canvas.getByRole( 'textbox', { name: 'Add Title' } )
+		).toHaveText(
+			'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure',
+			{ timeout: 10000 }
+		);
+	} );
 } );

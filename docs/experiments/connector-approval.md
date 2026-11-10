@@ -4,6 +4,15 @@
 
 The Connector Approval experiment adds an administrator-controlled permission layer for AI connector usage. When enabled, outbound HTTP requests that include a configured AI connector credential are attributed to the calling plugin or theme. If that caller has not been approved for the connector, the request is blocked and a pending approval request is recorded for review.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** Doesn't call your AI provider
+- **When it runs:** On each AI request from a plugin or theme
+- **Sent to your AI provider:** Nothing
+- **Requests and data:** Blocks AI requests, including this plugin's, until you approve them
+- **Good to know:** Turning this on blocks this plugin's own AI features until you approve them.
+
 ## Overview
 
 ### For End Users
