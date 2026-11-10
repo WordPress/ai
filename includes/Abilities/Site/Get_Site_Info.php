@@ -77,8 +77,13 @@ final class Get_Site_Info {
 				'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'input_schema'        => array(
 					'type'                 => 'object',
+					/*
+					 * No `properties` key: an empty one is sent to the model as
+					 * `"properties": []`, and OpenAI refuses the whole request
+					 * because `[]` is not an object. `additionalProperties`
+					 * already refuses any input.
+					 */
 					'additionalProperties' => false,
-					'properties'           => array(),
 					// Lets the ability run with no input at all, as `core/get-site-info` does.
 					'default'              => array(),
 				),
