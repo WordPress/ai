@@ -49,6 +49,17 @@ add_action( 'wp_abilities_api_categories_init', 'ai_e2e_register_explorer_catego
 add_action( 'wp_abilities_api_init', 'ai_e2e_register_explorer_abilities' );
 add_action( 'admin_enqueue_scripts', 'ai_e2e_enqueue_explorer_field' );
 
+// Treat Hello Dolly as a Markdown-serving plugin, so the Markdown Feeds conflict notice can be tested.
+add_filter( 'wpai_markdown_feeds_conflicting_plugins', 'ai_e2e_markdown_conflicting_plugins' );
+
+// On an editor visit with `?ai-e2e-rank-math`, report Rank Math as the
+// active SEO plugin and register a stand-in `rank-math` store.
+// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- E2E test query flag.
+if ( isset( $_GET['ai-e2e-rank-math'] ) ) {
+	add_filter( 'pre_transient_wpai_active_seo_plugin', 'ai_e2e_fake_rank_math_slug' );
+	add_action( 'enqueue_block_editor_assets', 'ai_e2e_enqueue_rank_math_store', 1 );
+}
+
 /**
  * Registers REST endpoints for seeding and clearing dummy AI provider credentials.
  *
@@ -448,6 +459,28 @@ function ai_e2e_enqueue_explorer_field( $hook_suffix ) {
 }
 
 /**
+ * Reports Rank Math as the active SEO plugin, through the detection cache.
+ *
+ * @return string The Rank Math slug used by SEO_Integration.
+ */
+function ai_e2e_fake_rank_math_slug() {
+	return 'rank-math';
+}
+
+/**
+ * Enqueues the stand-in `rank-math` store before the editor scripts that read it.
+ */
+function ai_e2e_enqueue_rank_math_store() {
+	wp_enqueue_script(
+		'ai-e2e-rank-math-store',
+		plugins_url( 'rank-math-store.js', __FILE__ ),
+		array( 'wp-data' ),
+		'0.1.0',
+		false
+	);
+}
+
+/**
  * Mock the HTTP requests and provide known responses.
  *
  * @param mixed  $preempt     Whether to preempt an HTTP request's return value.
@@ -632,6 +665,17 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 
 	// Return the original response if the URL is not a known request.
 	return $preempt;
+}
+
+/**
+ * Adds Hello Dolly to the plugins that also serve Markdown.
+ *
+ * @param array<string, string> $plugins Map of plugin file to plugin name.
+ * @return array<string, string>
+ */
+function ai_e2e_markdown_conflicting_plugins( array $plugins ): array {
+	$plugins['hello.php'] = 'Hello Dolly';
+	return $plugins;
 }
 
 /**

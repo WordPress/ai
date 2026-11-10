@@ -380,6 +380,7 @@ add_filter( 'wpai_normalize_content', function( $content ) {
 
 3. **Test SEO plugin integration:**
    - With Yoast SEO active, verify the description is saved to `_yoast_wpseo_metadesc`
+   - With Rank Math active, verify the description shows in Rank Math's Edit Snippet without a reload and is saved to `rank_math_description`
    - Without any SEO plugin, verify the description is saved to `wpai_meta_description`
    - Verify the correct meta key is displayed in the localized data
 
