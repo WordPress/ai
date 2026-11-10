@@ -68,12 +68,15 @@ class Topic_Pages extends Abstract_Feature {
 		foreach ( Sources::taxonomies() as $taxonomy ) {
 			add_action( $taxonomy . '_edit_form_fields', array( $this, 'term_panel' ) );
 		}
-		$labels     = array(
-			'summary'  => __( 'Summary', 'ai' ),
-			'overview' => __( 'Narrative overview', 'ai' ),
-			'timeline' => __( 'Timeline', 'ai' ),
-		);
-		$store      = new Store();
+		$this->register_blocks();
+	}
+
+	/**
+	 * Registers the topic display blocks and their shared stylesheet.
+	 *
+	 * @since x.x.x
+	 */
+	private function register_blocks(): void {
 		$style_path = WPAI_PLUGIN_DIR . 'build-scripts/experiments/topic-pages-frontend.css';
 		foreach ( array( 'summary', 'overview', 'timeline' ) as $section ) {
 			wp_enqueue_block_style(
@@ -112,28 +115,44 @@ class Topic_Pages extends Abstract_Feature {
 							'default' => 0,
 						),
 					),
-					'render_callback' => function ( array $attributes ) use ( $section, $labels, $store ): string {
-						$term_id = (int) ( $attributes['termId'] ?? 0 );
-						if ( ! $term_id ) {
-							$term    = get_queried_object();
-							$term_id = $term instanceof WP_Term ? $term->term_id : 0;
-						}
-						$content = 'timeline' === $section ? $this->timeline( $term_id ) : $store->render( $term_id, $section );
-						if ( '' === $content ) {
-							return '';
-						}
-						$classes = 'wpai-topic-block wpai-topic-' . $section;
-						if ( 'overview' === $section ) {
-							$content .= '<p class="wpai-topic-note">' . esc_html__( 'Based on selected article excerpts, rather than every post in this category.', 'ai' ) . '</p>';
-						}
-						return '<section ' . get_block_wrapper_attributes( array( 'class' => $classes ) ) . '>' .
-							'<header class="wpai-topic-header"><h2 class="wpai-topic-title">' . esc_html( $labels[ $section ] ) . '</h2></header>' .
-							'<div class="wpai-topic-content">' . $content . '</div>' .
-							'</section>';
-					},
+					'render_callback' => fn( array $attributes ): string => $this->render_block( $section, $attributes ),
 				)
 			);
 		}
+	}
+
+	/**
+	 * Renders one topic section for the selected category.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $section Topic section name.
+	 * @param array<string,mixed> $attributes Block attributes.
+	 * @return string Section HTML, or an empty string when content is unavailable.
+	 */
+	private function render_block( string $section, array $attributes ): string {
+		$term_id = (int) ( $attributes['termId'] ?? 0 );
+		if ( ! $term_id ) {
+			$term    = get_queried_object();
+			$term_id = $term instanceof WP_Term ? $term->term_id : 0;
+		}
+		$content = 'timeline' === $section ? $this->timeline( $term_id ) : ( new Store() )->render( $term_id, $section );
+		if ( '' === $content ) {
+			return '';
+		}
+		$labels  = array(
+			'summary'  => __( 'Summary', 'ai' ),
+			'overview' => __( 'Narrative overview', 'ai' ),
+			'timeline' => __( 'Timeline', 'ai' ),
+		);
+		$classes = 'wpai-topic-block wpai-topic-' . $section;
+		if ( 'overview' === $section ) {
+			$content .= '<p class="wpai-topic-note">' . esc_html__( 'Based on selected article excerpts, rather than every post in this category.', 'ai' ) . '</p>';
+		}
+		return '<section ' . get_block_wrapper_attributes( array( 'class' => $classes ) ) . '>' .
+			'<header class="wpai-topic-header"><h2 class="wpai-topic-title">' . esc_html( $labels[ $section ] ) . '</h2></header>' .
+			'<div class="wpai-topic-content">' . $content . '</div>' .
+			'</section>';
 	}
 
 	/**
