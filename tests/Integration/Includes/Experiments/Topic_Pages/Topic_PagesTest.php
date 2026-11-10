@@ -405,6 +405,33 @@ class Topic_PagesTest extends WP_UnitTestCase {
 		}
 	}
 
+	public function test_admin_review_controls_require_the_same_permissions_as_rest(): void {
+		register_taxonomy(
+			'topic_roles',
+			'post',
+			array(
+				'public'       => true,
+				'capabilities' => array(
+					'manage_terms' => 'manage_categories',
+					'edit_terms'   => 'edit_topic_roles',
+				),
+			)
+		);
+		$term   = get_term( self::factory()->term->create( array( 'taxonomy' => 'topic_roles' ) ) );
+		$editor = self::factory()->user->create( array( 'role' => 'editor' ) );
+		wp_set_current_user( $editor );
+		wp_get_current_user()->add_cap( 'manage_categories', false );
+		wp_get_current_user()->add_cap( 'edit_topic_roles', true );
+		$this->assertTrue( current_user_can( 'edit_term', $term->term_id ) );
+		$this->assertFalse( ( new Sources() )->can_manage_term( $term ) );
+		$feature = new \WordPress\AI\Experiments\Topic_Pages\Topic_Pages();
+		ob_start();
+		$feature->term_panel( $term );
+		$output = ob_get_clean();
+		unregister_taxonomy( 'topic_roles' );
+		$this->assertSame( '', $output );
+	}
+
 	public function test_generation_tracks_source_changes_even_within_the_same_second(): void {
 		$ability = new Topic_Overview(
 			'ai/topic-overview',

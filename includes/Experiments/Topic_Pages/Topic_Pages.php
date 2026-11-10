@@ -187,7 +187,7 @@ class Topic_Pages extends Abstract_Feature {
 	 * @param \WP_Term $term Category term.
 	 */
 	public function term_panel( WP_Term $term ): void {
-		if ( ! current_user_can( 'edit_term', $term->term_id ) ) {
+		if ( ! ( new Sources() )->can_manage_term( $term ) ) {
 			return;
 		}
 
@@ -213,7 +213,7 @@ class Topic_Pages extends Abstract_Feature {
 		$sources = new Sources();
 		$term    = $sources->term( $id );
 
-		if ( is_wp_error( $term ) || ! current_user_can( 'edit_term', $id ) ) {
+		if ( is_wp_error( $term ) || ! $sources->can_manage_term( $term ) ) {
 			return;
 		}
 
