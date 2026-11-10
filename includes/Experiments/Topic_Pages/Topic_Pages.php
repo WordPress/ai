@@ -132,7 +132,7 @@ class Topic_Pages extends Abstract_Feature {
 	private function render_block( string $section ): string {
 		$term = get_queried_object();
 
-		if ( ! is_archive() || ! $term instanceof WP_Term ) {
+		if ( ! is_archive() || ! $term instanceof WP_Term || ! in_array( $term->taxonomy, Sources::taxonomies(), true ) ) {
 			return '';
 		}
 

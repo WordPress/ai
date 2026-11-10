@@ -2,9 +2,8 @@
 /**
  * Short database-backed serialization of reviewed Topic Page saves.
  *
- * @since x.x.x
- *
  * @package WordPress\AI
+ * @since x.x.x
  */
 
 declare( strict_types=1 );
@@ -105,7 +104,6 @@ final class Lock {
 	 *
 	 * @param int $id Topic term ID.
 	 * @param string $operation Operation being serialized.
-	 *
 	 * @param string $owner Serialized save lease owner.
 	 */
 	public function release( int $id, string $operation, string $owner ): void {
