@@ -14,6 +14,7 @@ use WordPress\AI\Experiments\Topic_Pages\Sources;
 use WordPress\AI\Experiments\Topic_Pages\Store;
 
 class Topic_PagesTest extends WP_UnitTestCase {
+
 	private int $term_id;
 	private array $posts;
 
@@ -35,7 +36,6 @@ class Topic_PagesTest extends WP_UnitTestCase {
 			'source_ids' => $this->posts,
 		);
 	}
-
 
 	public function test_pending_generation_does_not_replace_approved_content(): void {
 		$store = new Store();
@@ -119,10 +119,12 @@ class Topic_PagesTest extends WP_UnitTestCase {
 		$controller    = new Controller();
 		$request       = new \WP_REST_Request( 'GET', '/ai/v1/topic-pages/' . $this->term_id );
 		$request['id'] = $this->term_id;
+
 		foreach ( array( 'subscriber', 'author', 'editor', 'administrator' ) as $role ) {
 			wp_set_current_user( self::factory()->user->create( array( 'role' => $role ) ) );
 			$this->assertSame( in_array( $role, array( 'editor', 'administrator' ), true ), $controller->permission( $request ), $role );
 		}
+
 		wp_set_current_user( 0 );
 		$this->assertFalse( $controller->permission( $request ) );
 	}
@@ -157,6 +159,7 @@ class Topic_PagesTest extends WP_UnitTestCase {
 		);
 		$filter = static fn() => array( 'post', 'topic_private' );
 		add_filter( 'wpai_topic_pages_post_types', $filter );
+
 		try {
 			$this->assertSame( 5, ( new Sources() )->query( get_term( $this->term_id ), 1 )->found_posts );
 		} finally {
@@ -168,6 +171,7 @@ class Topic_PagesTest extends WP_UnitTestCase {
 	public function test_empty_eligible_post_types_return_no_sources(): void {
 		$filter = static fn() => array();
 		add_filter( 'wpai_topic_pages_post_types', $filter );
+
 		try {
 			$this->assertSame( 0, ( new Sources() )->query( get_term( $this->term_id ), 1 )->found_posts );
 		} finally {
@@ -287,11 +291,14 @@ class Topic_PagesTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'wp-block-ai-topic-summary', $rendered );
 		$this->go_to( get_term_link( $this->term_id ) );
 		$this->assertStringNotContainsString( 'Visible on archive', term_description( $this->term_id ) );
+
 		foreach ( array( 'summary', 'overview', 'timeline' ) as $section ) {
 			unregister_block_type( 'ai/topic-' . $section );
 		}
+
 		$this->assertStringContainsString( 'Visible on archive', $rendered );
 	}
+
 	public function test_generation_tracks_source_changes_even_within_the_same_second(): void {
 		$ability = new Topic_Overview(
 			'ai/topic-overview',

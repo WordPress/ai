@@ -39,6 +39,7 @@ for ( const section of sections ) {
 		},
 		edit: function TopicBlockEdit( { attributes, setAttributes } ) {
 			const { termId } = attributes;
+
 			const options = [
 				{ value: '0', label: __( 'Current archive topic', 'ai' ) },
 				...( window.aiTopicBlockData?.terms ?? [] ).map( ( term ) => ( {
@@ -46,6 +47,7 @@ for ( const section of sections ) {
 					label: term.label,
 				} ) ),
 			];
+
 			return (
 				<div { ...useBlockProps() }>
 					<InspectorControls>

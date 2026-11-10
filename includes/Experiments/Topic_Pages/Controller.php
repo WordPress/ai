@@ -19,6 +19,7 @@ use WP_REST_Request;
  * @since x.x.x
  */
 final class Controller {
+
 	/**
 	 * Register authenticated editor routes.
 	 *
@@ -72,9 +73,11 @@ final class Controller {
 	 */
 	public function permission( WP_REST_Request $request ) {
 		$term = ( new Sources() )->term( (int) $request['id'] );
+
 		if ( is_wp_error( $term ) ) {
 			return $term;
 		}
+
 		$taxonomy = get_taxonomy( $term->taxonomy );
 		// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- WordPress supplies the registered taxonomy capability mapping.
 		return $taxonomy && current_user_can( $taxonomy->cap->manage_terms ) && current_user_can( 'edit_term', $term->term_id );
@@ -103,38 +106,56 @@ final class Controller {
 	public function update( WP_REST_Request $request ) {
 		$term_id = (int) $request['id'];
 		$store   = new Store();
+
 		if ( 'generate' !== $request['action'] ) {
 			$result = $store->change( $term_id, (string) $request['action'], (string) $request['section'], (string) $request['revision'] );
+
 			return is_wp_error( $result ) ? $result : $store->state( $term_id );
 		}
+
 		$state = $store->get( $term_id );
+
 		if ( $state['revision'] !== $request['revision'] ) {
 			return new WP_Error( 'topic_conflict', __( 'This topic has changed. Reload before generating.', 'ai' ), array( 'status' => 409 ) );
 		}
+
 		$sections = array( $request['section'] );
+
 		if ( 'all' === $request['section'] ) {
 			$sections = Store::SECTIONS;
 		}
+
 		$lock  = new Lock();
 		$owner = $lock->acquire( $term_id, 'generation' );
+
 		if ( false === $owner ) {
 			return new WP_Error( 'topic_busy', __( 'Generation is already running for this topic. Try again shortly.', 'ai' ), array( 'status' => 409 ) );
 		}
+
 		try {
 			$ability = wp_get_ability( 'ai/topic-overview' );
+
 			if ( ! $ability ) {
 				return new WP_Error( 'topic_unavailable', __( 'The topic generation ability is unavailable.', 'ai' ) );
 			}
+
 			$result = $ability->execute(
 				array(
 					'term_id'  => $term_id,
 					'sections' => $sections,
 				)
 			);
+
 			if ( ! $lock->owns( $term_id, 'generation', $owner ) ) {
-				return new WP_Error( 'topic_conflict', __( 'This generation request expired. Your saved content has not changed. Try generating again.', 'ai' ), array( 'status' => 409 ) );
+				return new WP_Error(
+					'topic_conflict',
+					__( 'This generation request expired. Your saved content has not changed. Try generating again.', 'ai' ),
+					array( 'status' => 409 )
+				);
 			}
+
 			$saved = is_wp_error( $result ) ? $result : $store->save_generated( $term_id, $result, $request['revision'] );
+
 			return is_wp_error( $saved ) ? $saved : $store->state( $term_id );
 		} finally {
 			$lock->release( $term_id, 'generation', $owner );

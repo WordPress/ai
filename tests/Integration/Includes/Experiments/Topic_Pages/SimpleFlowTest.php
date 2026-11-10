@@ -11,6 +11,7 @@ use WordPress\AI\Experiments\Topic_Pages\Sources;
 use WordPress\AI\Experiments\Topic_Pages\Store;
 
 class SimpleFlowTest extends WP_UnitTestCase {
+
 	private int $term_id;
 	private array $posts;
 
@@ -18,6 +19,7 @@ class SimpleFlowTest extends WP_UnitTestCase {
 		parent::setUp();
 		$this->term_id = self::factory()->category->create();
 		$this->posts   = array();
+
 		for ( $i = 0; $i < 30; $i++ ) {
 			$this->posts[] = self::factory()->post->create(
 				array(
@@ -78,6 +80,7 @@ class SimpleFlowTest extends WP_UnitTestCase {
 		$this->assertNotNull( $state['sections']['overview']['draft'] );
 		$this->assertSame( '', $store->render( $this->term_id, 'summary' ) );
 	}
+
 	private function version( string $text = 'Coverage', string $section = 'summary' ): array {
 		return array(
 			'content'     => '<!-- wp:paragraph --><p>' . $text . ' <a href="' . get_permalink( $this->posts[29] ) . '">Source</a></p><!-- /wp:paragraph -->',
@@ -136,6 +139,7 @@ class SimpleFlowTest extends WP_UnitTestCase {
 
 	public function test_ineligible_category_does_not_publish_a_completed_generation(): void {
 		$version = $this->version();
+
 		foreach ( array_slice( $this->posts, 0, 26 ) as $id ) {
 			wp_update_post(
 				array(
@@ -144,6 +148,7 @@ class SimpleFlowTest extends WP_UnitTestCase {
 				)
 			);
 		}
+
 		$this->assertWPError( ( new Store() )->save_generated( $this->term_id, array( 'summary' => $version ), '' ) );
 		$this->assertFalse( ( new Sources() )->eligible( $this->term_id ) );
 	}
@@ -157,6 +162,7 @@ class SimpleFlowTest extends WP_UnitTestCase {
 				)
 			);
 		}
+
 		$ids = ( new Sources() )->sample( $this->term_id, 10 );
 		$this->assertCount( 10, $ids );
 		$this->assertSame( $this->posts[0], $ids[0] );
@@ -208,6 +214,7 @@ class SimpleFlowTest extends WP_UnitTestCase {
 				'content'  => '<script>Injected</script>',
 			)
 		);
+
 		try {
 			$response = rest_get_server()->dispatch( $request );
 			$this->assertSame( 200, $response->get_status() );
@@ -222,6 +229,7 @@ class SimpleFlowTest extends WP_UnitTestCase {
 			remove_action( 'rest_api_init', $register );
 		}
 	}
+
 	public function test_generation_rechecks_sources_changed_by_a_different_request(): void {
 		global $wpdb;
 		$version = $this->version();
@@ -233,6 +241,7 @@ class SimpleFlowTest extends WP_UnitTestCase {
 		$this->assertSame( 'topic_sources_changed', $result->get_error_code() );
 		$this->assertSame( '', get_term_meta( $this->term_id, Store::META_KEY, true ) );
 	}
+
 	public function test_multibyte_excerpts_are_valid_utf8_and_stay_within_the_byte_limit(): void {
 		foreach ( array_slice( $this->posts, -5 ) as $id ) {
 			wp_update_post(
@@ -242,13 +251,16 @@ class SimpleFlowTest extends WP_UnitTestCase {
 				)
 			);
 		}
+
 		$records = ( new Sources() )->collect( $this->term_id, 'summary' );
 		$this->assertLessThanOrEqual( 60000, array_sum( array_map( 'strlen', array_column( $records, 'content' ) ) ) );
+
 		foreach ( $records as $record ) {
 			$this->assertTrue( wp_is_valid_utf8( $record['content'] ) );
 			$this->assertStringNotContainsString( '�', $record['content'] );
 		}
 	}
+
 	public function test_posts_without_titles_have_readable_source_and_timeline_links(): void {
 		wp_update_post(
 			array(

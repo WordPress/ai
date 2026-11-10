@@ -11,6 +11,7 @@ use WordPress\AI\Experiments\Topic_Pages\Lock;
 use WordPress\AI\Experiments\Topic_Pages\Store;
 
 class EditorialTest extends WP_UnitTestCase {
+
 	private $term;
 	private $posts;
 	private $store;
@@ -37,6 +38,7 @@ class EditorialTest extends WP_UnitTestCase {
 			'content'    => $this->content(),
 			'source_ids' => array( $this->posts[0] ),
 		);
+
 		return $this->store->save_generated(
 			$this->term->term_id,
 			array(
@@ -78,6 +80,7 @@ class EditorialTest extends WP_UnitTestCase {
 
 	public function test_unrelated_links_and_missing_citations_cannot_replace_a_preview(): void {
 		$state = $this->seed();
+
 		foreach ( array( '<!-- wp:paragraph --><p>Uncited claim.</p><!-- /wp:paragraph -->', '<!-- wp:paragraph --><p><a href="https://unrelated.example/">Unsupported source</a></p><!-- /wp:paragraph -->' ) as $content ) {
 			$version = array(
 				'content'    => $content,
@@ -92,6 +95,7 @@ class EditorialTest extends WP_UnitTestCase {
 		$state = $this->seed();
 		$this->store->change( $this->term->term_id, 'save', 'overview', $state['revision'] );
 		$old = (string) get_option( 'permalink_structure' );
+
 		try {
 			$this->set_permalink_structure( '/%postname%/' );
 			wp_update_post(
@@ -155,6 +159,7 @@ class EditorialTest extends WP_UnitTestCase {
 	public function test_a_competing_writer_cannot_save_even_the_first_version(): void {
 		$lock  = new Lock();
 		$owner = $lock->acquire( $this->term->term_id, 'save' );
+
 		try {
 			$this->assertWPError( $this->seed() );
 			$this->assertSame( '', get_term_meta( $this->term->term_id, Store::META_KEY, true ) );
@@ -173,8 +178,10 @@ class EditorialTest extends WP_UnitTestCase {
 		$this->assertIsString( $next );
 		$lock->release( $this->term->term_id, 'generation', $next );
 	}
+
 	public function test_retired_actions_are_rejected_without_changing_storage(): void {
 		$state = $this->seed();
+
 		foreach ( array( 'lock', 'approve', 'publish' ) as $action ) {
 			$this->assertWPError( $this->store->change( $this->term->term_id, $action, 'summary', $state['revision'] ) );
 			$this->assertSame( $state, $this->store->get( $this->term->term_id ) );
@@ -213,6 +220,7 @@ class EditorialTest extends WP_UnitTestCase {
 		);
 		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Simulate the registration hook only while registering this test ability.
 		$wp_current_filter[] = 'wp_abilities_api_init';
+
 		try {
 			wp_register_ability(
 				'ai/topic-overview',
@@ -232,6 +240,7 @@ class EditorialTest extends WP_UnitTestCase {
 							),
 							false
 						);
+
 						return array( 'summary' => $version );
 					},
 				)
@@ -239,6 +248,7 @@ class EditorialTest extends WP_UnitTestCase {
 		} finally {
 			array_pop( $wp_current_filter );
 		}
+
 		try {
 			$request = new \WP_REST_Request( 'POST', '/ai/v1/topic-pages/' . $id );
 			$request->set_param( 'id', $id );
@@ -287,11 +297,13 @@ class EditorialTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'Reviewed coverage', $state['sections']['summary']['approved']['preview_html'] );
 		$this->assertStringNotContainsString( 'Unapproved replacement', $state['sections']['summary']['approved']['preview_html'] );
 	}
+
 	public function test_retired_timeline_text_is_preserved_when_saving_new_sections(): void {
 		$legacy = array(
 			'approved' => array( 'content' => 'Earlier timeline text' ),
 			'draft'    => array( 'content' => 'Earlier private timeline' ),
 		);
+
 		foreach ( array( array( 'timeline' => $legacy ), array( 'sections' => array( 'timeline' => $legacy ) ) ) as $raw ) {
 			update_term_meta( $this->term->term_id, Store::META_KEY, $raw );
 			$state  = $this->store->get( $this->term->term_id );

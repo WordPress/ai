@@ -11,11 +11,13 @@ use WordPress\AI\Experiments\Topic_Pages\Store;
 use WordPress\AI\Experiments\Topic_Pages\Topic_Pages;
 
 class OnDemandTest extends WP_UnitTestCase {
+
 	public function test_enabling_and_source_changes_do_not_schedule_generation(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
 		update_option( 'wpai_feature_topic-pages_enabled', true );
 		$feature = new Topic_Pages();
 		$feature->register();
+
 		try {
 			$id = self::factory()->category->create();
 			self::factory()->post->create_many(

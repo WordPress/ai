@@ -22,6 +22,7 @@ use WordPress\AI\Experiments\Topic_Pages\Topic_Pages;
  * @since x.x.x
  */
 class Topic_Overview extends Abstract_Ability {
+
 	/**
 	 * Returns the editorial guideline categories.
 	 *
@@ -76,6 +77,7 @@ class Topic_Overview extends Abstract_Ability {
 	 */
 	protected function output_schema(): array {
 		$properties = array();
+
 		foreach ( Store::SECTIONS as $section ) {
 			$properties[ $section ] = array(
 				'type'                 => 'object',
@@ -102,6 +104,7 @@ class Topic_Overview extends Abstract_Ability {
 				'additionalProperties' => false,
 			);
 		}
+
 		return array(
 			'type'                 => 'object',
 			'properties'           => $properties,
@@ -130,9 +133,11 @@ class Topic_Overview extends Abstract_Ability {
 	 */
 	protected function permission_callback( $input ) {
 		$term = ( new Sources() )->term( absint( $input['term_id'] ?? 0 ) );
+
 		if ( is_wp_error( $term ) ) {
 			return $term;
 		}
+
 		$taxonomy = get_taxonomy( $term->taxonomy );
 		// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- WordPress supplies the registered taxonomy capability mapping.
 		return $taxonomy && current_user_can( $taxonomy->cap->manage_terms ) && current_user_can( 'edit_term', $term->term_id );
@@ -150,41 +155,60 @@ class Topic_Overview extends Abstract_Ability {
 		$term_id  = absint( $input['term_id'] );
 		$sections = $input['sections'] ?? Store::SECTIONS;
 		$term     = ( new Sources() )->term( $term_id );
+
 		if ( is_wp_error( $term ) ) {
 			return $term;
 		}
+
 		Sources::invalidate( array( $term_id ), $term->taxonomy );
 		$versions = array();
+
 		foreach ( $sections as $section ) {
 			if ( ! in_array( $section, Store::SECTIONS, true ) ) {
 				return new WP_Error( 'topic_invalid_section', __( 'Choose Summary or Overview.', 'ai' ) );
 			}
+
 			$sources = ( new Sources() )->collect( $term_id, $section );
+
 			if ( is_wp_error( $sources ) ) {
 				return $sources;
 			}
+
 			$context = array(
 				'topic'    => $term->name,
 				'sections' => array( $section ),
 				'sources'  => $sources,
 			);
-			$prompt  = $this->filter_prompt( 'Write the requested section using only these article excerpts. Return the required JSON object.' . "\n\n" . wp_json_encode( $context ), $context );
-			$builder = wp_ai_client_prompt( $prompt )->using_system_instruction( $this->get_system_instruction() )->as_json_response( $this->response_schema( array( $section ) ) );
+			$prompt  = $this->filter_prompt(
+				'Write the requested section using only these article excerpts. Return the required JSON object.' .
+				"\n\n" . wp_json_encode( $context ),
+				$context
+			);
+			$builder = wp_ai_client_prompt( $prompt )
+				->using_system_instruction( $this->get_system_instruction() )
+				->as_json_response( $this->response_schema( array( $section ) ) );
 			$builder = $this->filter_prompt_builder( $builder, Topic_Pages::class, array(), $context );
 			$builder = $this->ensure_text_generation_supported( $builder, __( 'Connect a text-generation provider in Settings → AI.', 'ai' ) );
+
 			if ( is_wp_error( $builder ) ) {
 				return $builder;
 			}
+
 			$result = $builder->generate_text();
+
 			if ( is_wp_error( $result ) ) {
 				return $result;
 			}
+
 			$prepared = $this->prepare_sections( json_decode( $result, true ), array( $section ), $sources );
+
 			if ( is_wp_error( $prepared ) ) {
 				return $prepared;
 			}
+
 			$versions = array_merge( $versions, $prepared );
 		}
+
 		return $versions;
 	}
 
@@ -198,6 +222,7 @@ class Topic_Overview extends Abstract_Ability {
 	 */
 	private function response_schema( array $sections ): array {
 		$properties = array();
+
 		foreach ( $sections as $section ) {
 			$properties[ $section ] = array(
 				'type'     => 'array',
@@ -218,6 +243,7 @@ class Topic_Overview extends Abstract_Ability {
 				),
 			);
 		}
+
 		return array(
 			'type'                 => 'object',
 			'properties'           => $properties,
@@ -238,27 +264,40 @@ class Topic_Overview extends Abstract_Ability {
 	 */
 	private function prepare_sections( $decoded, array $sections, array $sources ) {
 		$valid = rest_validate_value_from_schema( $decoded, $this->response_schema( $sections ), 'topic' );
+
 		if ( is_wp_error( $valid ) ) {
 			return new WP_Error( 'topic_invalid_response', __( 'The provider returned invalid topic content. Your saved content has not changed.', 'ai' ) );
 		}
+
 		$by_id    = array_column( $sources, null, 'id' );
 		$versions = array();
+
 		foreach ( $sections as $section ) {
 			$entries = $decoded[ $section ];
+
 			foreach ( $entries as $entry ) {
 				if ( '' === trim( $entry['text'] ) || array_diff( $entry['source_ids'], array_keys( $by_id ) ) ) {
 					return new WP_Error( 'topic_invalid_sources', __( 'The provider returned an empty section or an unknown source. Please regenerate.', 'ai' ) );
 				}
 			}
+
 			$content = '';
+
 			foreach ( $entries as $entry ) {
 				$links = array();
+
 				foreach ( array_unique( $entry['source_ids'] ) as $id ) {
-					$links[] = '<a class="wpai-topic-source-link" data-wpai-source-id="' . $id . '" href="' . esc_url( (string) get_permalink( $id ) ) . '">' . esc_html( $by_id[ $id ]['title'] ) . '</a>';
+					$links[] = '<a class="wpai-topic-source-link" data-wpai-source-id="' . $id . '" href="' .
+						esc_url( (string) get_permalink( $id ) ) . '">' .
+						esc_html( $by_id[ $id ]['title'] ) . '</a>';
 				}
-				$citation_html = ! empty( $links ) ? ' <cite class="wpai-topic-citation">' . esc_html__( 'Sources:', 'ai' ) . ' ' . implode( ', ', $links ) . '</cite>' : '';
+
+				$citation_html = ! empty( $links )
+					? ' <cite class="wpai-topic-citation">' . esc_html__( 'Sources:', 'ai' ) . ' ' . implode( ', ', $links ) . '</cite>'
+					: '';
 				$content      .= '<!-- wp:paragraph --><p>' . esc_html( $entry['text'] ) . $citation_html . '</p><!-- /wp:paragraph -->' . "\n";
 			}
+
 			// All supplied sources may influence a synthesis, including uncited context.
 			$versions[ $section ] = array(
 				'content'      => $content,
@@ -267,6 +306,7 @@ class Topic_Overview extends Abstract_Ability {
 				'generated_at' => gmdate( 'c' ),
 			);
 		}
+
 		return $versions;
 	}
 }

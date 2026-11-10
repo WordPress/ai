@@ -22,6 +22,7 @@ use WordPress\AI\Experiments\Experiment_Category;
  * @since x.x.x
  */
 class Topic_Pages extends Abstract_Feature {
+
 	/**
 	 * {@inheritDoc}
 	 *
@@ -61,13 +62,17 @@ class Topic_Pages extends Abstract_Feature {
 		add_action( 'rest_api_init', array( new Controller(), 'register_routes' ) );
 		add_action( 'save_post', array( Sources::class, 'post_changed' ), 20 );
 		add_action( 'clean_term_cache', array( Sources::class, 'invalidate' ), 10, 2 );
+
 		add_filter( 'category_template_hierarchy', array( new Template(), 'hierarchy' ) );
 		( new Template() )->register();
+
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin' ) );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_blocks' ) );
+
 		foreach ( Sources::taxonomies() as $taxonomy ) {
 			add_action( $taxonomy . '_edit_form_fields', array( $this, 'term_panel' ) );
 		}
+
 		$this->register_blocks();
 	}
 
@@ -78,6 +83,7 @@ class Topic_Pages extends Abstract_Feature {
 	 */
 	private function register_blocks(): void {
 		$style_path = WPAI_PLUGIN_DIR . 'build-scripts/experiments/topic-pages-frontend.css';
+
 		foreach ( array( 'summary', 'overview', 'timeline' ) as $section ) {
 			wp_enqueue_block_style(
 				'ai/topic-' . $section,
@@ -132,25 +138,32 @@ class Topic_Pages extends Abstract_Feature {
 	 */
 	private function render_block( string $section, array $attributes ): string {
 		$term_id = (int) ( $attributes['termId'] ?? 0 );
+
 		if ( ! $term_id ) {
 			$term    = get_queried_object();
 			$term_id = $term instanceof WP_Term ? $term->term_id : 0;
 		}
+
 		$content = 'timeline' === $section ? $this->timeline( $term_id ) : ( new Store() )->render( $term_id, $section );
+
 		if ( '' === $content ) {
 			return '';
 		}
+
 		$labels  = array(
 			'summary'  => __( 'Summary', 'ai' ),
 			'overview' => __( 'Narrative overview', 'ai' ),
 			'timeline' => __( 'Timeline', 'ai' ),
 		);
 		$classes = 'wpai-topic-block wpai-topic-' . $section;
+
 		if ( 'overview' === $section ) {
 			$content .= '<p class="wpai-topic-note">' . esc_html__( 'Based on selected article excerpts, rather than every post in this category.', 'ai' ) . '</p>';
 		}
+
 		return '<section ' . get_block_wrapper_attributes( array( 'class' => $classes ) ) . '>' .
-			'<header class="wpai-topic-header"><h2 class="wpai-topic-title">' . esc_html( $labels[ $section ] ) . '</h2></header>' .
+			'<header class="wpai-topic-header"><h2 class="wpai-topic-title">' .
+			esc_html( $labels[ $section ] ) . '</h2></header>' .
 			'<div class="wpai-topic-content">' . $content . '</div>' .
 			'</section>';
 	}
@@ -172,25 +185,35 @@ class Topic_Pages extends Abstract_Feature {
 		);
 	}
 
-	/** Add the small review panel to the existing Category form. */
+	/**
+	 * Add the small review panel to the existing Category form.
+	 */
 	public function term_panel( WP_Term $term ): void {
 		if ( ! current_user_can( 'edit_term', $term->term_id ) ) {
 			return;
 		}
-		echo '<tr class="form-field"><th scope="row">' . esc_html__( 'Topic guide', 'ai' ) . '</th><td><div id="ai-topic-review"></div></td></tr>';
+
+		echo '<tr class="form-field"><th scope="row">' .
+			esc_html__( 'Topic guide', 'ai' ) .
+			'</th><td><div id="ai-topic-review"></div></td></tr>';
 	}
 
-	/** Load only on an existing supported term's edit screen. */
+	/**
+	 * Load only on an existing supported term's edit screen.
+	 */
 	public function enqueue_admin( string $hook ): void {
 		if ( 'term.php' !== $hook ) {
 			return;
 		}
+
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation; REST writes use nonces and capabilities.
 		$id   = isset( $_GET['tag_ID'] ) ? absint( $_GET['tag_ID'] ) : 0;
 		$term = ( new Sources() )->term( $id );
+
 		if ( is_wp_error( $term ) || ! current_user_can( 'edit_term', $id ) ) {
 			return;
 		}
+
 		wp_enqueue_style( 'wp-components' );
 		Asset_Loader::enqueue_script( 'topic_review', 'experiments/topic-pages' );
 		Asset_Loader::enqueue_style( 'topic_review', 'experiments/topic-pages' );
@@ -205,19 +228,31 @@ class Topic_Pages extends Abstract_Feature {
 		);
 	}
 
-	/** Show at most ten real posts in date order, without an AI request. */
+	/**
+	 * Show at most ten real posts in date order, without an AI request.
+	 */
 	public function timeline( int $term_id ): string {
 		$sources = new Sources();
+
 		if ( ! $sources->eligible( $term_id ) ) {
 			return '';
 		}
+
 		$html = '<ol class="wpai-topic-events">';
+
 		foreach ( $sources->sample( $term_id, 10 ) as $id ) {
 			$title = get_the_title( $id );
 			$title = '' !== trim( $title ) ? $title : __( '(no title)', 'ai' );
-			$html .= '<li><time datetime="' . esc_attr( (string) get_the_date( 'c', $id ) ) . '">' . esc_html( (string) get_the_date( '', $id ) ) . '</time><a href="' . esc_url( (string) get_permalink( $id ) ) . '">' . esc_html( $title ) . '</a></li>';
+
+			$html .= '<li><time datetime="' . esc_attr( (string) get_the_date( 'c', $id ) ) . '">' .
+				esc_html( (string) get_the_date( '', $id ) ) . '</time><a href="' .
+				esc_url( (string) get_permalink( $id ) ) . '">' .
+				esc_html( $title ) . '</a></li>';
 		}
-		return $html . '</ol><p class="wpai-topic-note">' . esc_html__( 'Selected posts across this category’s history. Browse all posts below.', 'ai' ) . '</p>';
+
+		return $html . '</ol><p class="wpai-topic-note">' .
+			esc_html__( 'Selected posts across this category’s history. Browse all posts below.', 'ai' ) .
+			'</p>';
 	}
 
 	/**
@@ -235,6 +270,7 @@ class Topic_Pages extends Abstract_Feature {
 			)
 		);
 		$options = array();
+
 		if ( ! is_wp_error( $terms ) ) {
 			foreach ( $terms as $term ) {
 				$options[] = array(
@@ -243,6 +279,7 @@ class Topic_Pages extends Abstract_Feature {
 				);
 			}
 		}
+
 		Asset_Loader::localize_script( 'topic_blocks', 'TopicBlockData', array( 'terms' => $options ) );
 	}
 }

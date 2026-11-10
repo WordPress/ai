@@ -21,7 +21,9 @@ import { getErrorMessage } from '../../utils/errors';
 import './index.scss';
 
 type Section = 'summary' | 'overview';
+
 type Version = { preview_html?: string };
+
 type State = {
 	revision: string;
 	sections: Record<
@@ -32,16 +34,19 @@ type State = {
 	stale: Section[];
 	generationError: string;
 };
+
 type Settings = {
 	termId: number;
 	archiveUrl: string;
 	state: State;
 };
+
 declare global {
 	interface Window {
 		aiTopicReviewData?: Settings;
 	}
 }
+
 const labels: Record< Section, string > = {
 	summary: __( 'Summary', 'ai' ),
 	overview: __( 'Narrative overview', 'ai' ),
@@ -58,6 +63,7 @@ function TopicReview( { settings }: { settings: Settings } ) {
 		overview: null,
 	} );
 	const focusAfterAction = useRef< Section | null >( null );
+
 	useEffect( () => {
 		if ( ! busy && focusAfterAction.current ) {
 			regenerateButtons.current[ focusAfterAction.current ]?.focus();
@@ -78,18 +84,22 @@ function TopicReview( { settings }: { settings: Settings } ) {
 		if ( pending.current ) {
 			return;
 		}
+
 		pending.current = true;
 		setBusy( `${ action }-${ section }` );
 		setNotice( null );
+
 		try {
 			const next = await apiFetch< State >( {
 				path: `/ai/v1/topic-pages/${ settings.termId }`,
 				method: 'POST',
 				data: { action, section, revision: state.revision },
 			} );
+
 			if ( action !== 'generate' ) {
 				focusAfterAction.current = section;
 			}
+
 			setState( next );
 			setConflict( false );
 			const text = {
@@ -122,8 +132,10 @@ function TopicReview( { settings }: { settings: Settings } ) {
 		if ( pending.current ) {
 			return;
 		}
+
 		pending.current = true;
 		setBusy( 'reload' );
+
 		try {
 			setState(
 				await apiFetch< State >( {
@@ -342,6 +354,7 @@ function TopicReview( { settings }: { settings: Settings } ) {
 
 domReady( () => {
 	const element = document.getElementById( 'ai-topic-review' );
+
 	if ( element && window.aiTopicReviewData ) {
 		createRoot( element ).render(
 			<TopicReview settings={ window.aiTopicReviewData } />

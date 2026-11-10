@@ -11,6 +11,7 @@ use WP_UnitTestCase;
 use WordPress\AI\Abilities\Topic_Overview\Topic_Overview;
 
 class Topic_OverviewTest extends WP_UnitTestCase {
+
 	private function ability(): Topic_Overview {
 		return new Topic_Overview(
 			'ai/topic-overview',

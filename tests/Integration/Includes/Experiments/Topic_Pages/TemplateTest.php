@@ -10,6 +10,7 @@ use WP_UnitTestCase;
 use WordPress\AI\Experiments\Topic_Pages\Template;
 
 class TemplateTest extends WP_UnitTestCase {
+
 	private int $term_id;
 	private string $stylesheet;
 
@@ -39,9 +40,11 @@ class TemplateTest extends WP_UnitTestCase {
 		$template->register();
 		$preset = get_block_template( get_stylesheet() . '//' . Template::SLUG );
 		$this->assertNotNull( $preset );
+
 		foreach ( array( 'summary', 'overview', 'timeline' ) as $section ) {
 			$this->assertSame( 1, substr_count( $preset->content, '<!-- wp:ai/topic-' . $section ) );
 		}
+
 		$this->assertStringContainsString( '"slug":"header"', $preset->content );
 		$this->assertStringContainsString( '"slug":"footer"', $preset->content );
 		$this->assertStringContainsString( 'wp:query', $preset->content );
@@ -75,6 +78,7 @@ class TemplateTest extends WP_UnitTestCase {
 		$original = array( 'category.php', 'archive.php' );
 		$this->assertSame( $original, ( new Template() )->hierarchy( $original ) );
 	}
+
 	public function test_preset_adds_missing_blocks_without_duplicating_existing_ones(): void {
 		$id = self::factory()->post->create(
 			array(
@@ -87,6 +91,7 @@ class TemplateTest extends WP_UnitTestCase {
 		wp_set_object_terms( $id, get_stylesheet(), 'wp_theme' );
 		( new Template() )->register();
 		$preset = get_block_template( get_stylesheet() . '//' . Template::SLUG );
+
 		foreach ( array( 'summary', 'overview', 'timeline' ) as $section ) {
 			$this->assertSame( 1, substr_count( $preset->content, '<!-- wp:ai/topic-' . $section ) );
 		}

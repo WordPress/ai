@@ -694,7 +694,9 @@ function wpai_e2e_topic_response( string $body, string $format ): string {
 			if ( ! is_string( $value ) ) {
 				return;
 			}
+
 			$start = strpos( $value, '{"topic":' );
+
 			if ( false === $start ) {
 				return;
 			}
@@ -724,10 +726,12 @@ function wpai_e2e_topic_response( string $body, string $format ): string {
 		);
 	$response = json_decode( file_get_contents( __DIR__ . '/responses/OpenAI/' . $format . '.json' ), true );
 	$content  = wp_json_encode( array( $section => $entries ) );
+
 	if ( 'responses' === $format ) {
 		$response['output'][0]['content'][0]['text'] = $content;
 	} else {
 		$response['choices'][0]['message']['content'] = $content;
 	}
+
 	return wp_json_encode( $response );
 }
