@@ -462,4 +462,92 @@ class Topic_PagesTest extends WP_UnitTestCase {
 		);
 		$this->assertContains( 'summary', $store->state( $this->term_id )['stale'] );
 	}
+
+	public function test_enabling_and_source_changes_do_not_schedule_generation(): void {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		update_option( 'wpai_feature_topic-pages_enabled', true );
+		$feature = new \WordPress\AI\Experiments\Topic_Pages\Topic_Pages();
+		$feature->register();
+
+		try {
+			$id = self::factory()->category->create();
+			self::factory()->post->create_many(
+				5,
+				array(
+					'post_status'   => 'publish',
+					'post_category' => array( $id ),
+				)
+			);
+			$this->assertSame( '', get_term_meta( $id, Store::META_KEY, true ) );
+			$this->assertFalse( has_action( 'wpai_topic_pages_scan' ) );
+			$this->assertFalse( has_action( 'wpai_topic_pages_generate' ) );
+			$this->assertFalse( wp_next_scheduled( 'wpai_topic_pages_scan' ) );
+			$this->assertFalse( wp_next_scheduled( 'wpai_topic_pages_generate', array( $id ) ) );
+		} finally {
+			foreach ( array( 'summary', 'overview', 'timeline' ) as $section ) {
+				unregister_block_type( 'ai/topic-' . $section );
+			}
+		}
+	}
+
+	public function test_store_rejects_wrong_paragraph_counts_and_untracked_citations(): void {
+		$link      = '<a data-wpai-source-id="' . $this->posts[0] . '" href="' . get_permalink( $this->posts[0] ) . '">Source</a>';
+		$paragraph = '<!-- wp:paragraph --><p>Coverage. ' . $link . '</p><!-- /wp:paragraph -->';
+		$store     = new Store();
+		foreach ( array(
+			'summary'  => str_repeat( '<!-- wp:paragraph --><p>Coverage.</p><!-- /wp:paragraph -->', 2 ),
+			'overview' => $paragraph,
+		) as $section => $content ) {
+			$this->assertWPError(
+				$store->save_generated(
+					$this->term_id,
+					$section,
+					array(
+						'content'    => $content,
+						'source_ids' => $this->posts,
+					),
+					''
+				)
+			);
+		}
+		$this->assertWPError(
+			$store->save_generated(
+				$this->term_id,
+				'overview',
+				array(
+					'content'    => $paragraph . $paragraph,
+					'source_ids' => array( $this->posts[1] ),
+				),
+				''
+			)
+		);
+	}
+
+	public function test_each_overview_paragraph_requires_a_tracked_citation(): void {
+		$paragraph = '<!-- wp:paragraph --><p>Coverage <a data-wpai-source-id="' . $this->posts[0] . '" href="' . get_permalink( $this->posts[0] ) . '">Source</a></p><!-- /wp:paragraph -->';
+		$uncited   = '<!-- wp:paragraph --><p>An unsupported claim.</p><!-- /wp:paragraph -->';
+		$this->assertWPError(
+			( new Store() )->save_generated(
+				$this->term_id,
+				'overview',
+				array(
+					'content'    => $paragraph . $uncited,
+					'source_ids' => $this->posts,
+				),
+				''
+			)
+		);
+	}
+
+	public function test_eligibility_warning_uses_the_configured_minimum(): void {
+		$filter = static fn() => 10;
+		add_filter( 'wpai_topic_pages_minimum_posts', $filter );
+		try {
+			$result = ( new Sources() )->eligible_term( $this->term_id );
+			$this->assertWPError( $result );
+			$this->assertStringContainsString( 'at least 10 public posts', $result->get_error_message() );
+		} finally {
+			remove_filter( 'wpai_topic_pages_minimum_posts', $filter );
+		}
+	}
 }

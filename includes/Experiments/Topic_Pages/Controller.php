@@ -114,44 +114,25 @@ final class Controller {
 
 		$state = $store->get( $term_id );
 
-		if ( $state['revision'] !== $request['revision'] ) {
+		if ( ! hash_equals( $state['revision'], (string) $request['revision'] ) ) {
 			return new WP_Error( 'topic_conflict', __( 'This topic has changed. Reload before generating.', 'ai' ), array( 'status' => 409 ) );
 		}
 
-		$lock  = new Lock();
-		$owner = $lock->acquire( $term_id, 'generation' );
+		$ability = wp_get_ability( 'ai/topic-overview' );
 
-		if ( false === $owner ) {
-			return new WP_Error( 'topic_busy', __( 'Generation is already running for this topic. Try again shortly.', 'ai' ), array( 'status' => 409 ) );
+		if ( ! $ability ) {
+			return new WP_Error( 'topic_unavailable', __( 'The topic generation ability is unavailable.', 'ai' ) );
 		}
 
-		try {
-			$ability = wp_get_ability( 'ai/topic-overview' );
+		$result = $ability->execute(
+			array(
+				'term_id'  => $term_id,
+				'sections' => array( $request['section'] ),
+			)
+		);
 
-			if ( ! $ability ) {
-				return new WP_Error( 'topic_unavailable', __( 'The topic generation ability is unavailable.', 'ai' ) );
-			}
+		$saved = is_wp_error( $result ) ? $result : $store->save_generated( $term_id, $request['section'], $result[ $request['section'] ], $request['revision'] );
 
-			$result = $ability->execute(
-				array(
-					'term_id'  => $term_id,
-					'sections' => array( $request['section'] ),
-				)
-			);
-
-			if ( ! $lock->owns( $term_id, 'generation', $owner ) ) {
-				return new WP_Error(
-					'topic_conflict',
-					__( 'This generation request expired. Your saved content has not changed. Try generating again.', 'ai' ),
-					array( 'status' => 409 )
-				);
-			}
-
-			$saved = is_wp_error( $result ) ? $result : $store->save_generated( $term_id, $request['section'], $result[ $request['section'] ], $request['revision'] );
-
-			return is_wp_error( $saved ) ? $saved : $store->state( $term_id );
-		} finally {
-			$lock->release( $term_id, 'generation', $owner );
-		}
+		return is_wp_error( $saved ) ? $saved : $store->state( $term_id );
 	}
 }

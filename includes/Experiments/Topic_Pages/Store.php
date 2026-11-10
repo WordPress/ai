@@ -163,83 +163,72 @@ final class Store {
 			return new WP_Error( 'topic_invalid_section', __( 'Choose a valid topic section.', 'ai' ) );
 		}
 
-		$lock  = new Lock();
-		$owner = $lock->acquire( $term_id, 'save' );
+		wp_cache_delete( $term_id, 'term_meta' );
+		$raw   = get_term_meta( $term_id, self::META_KEY, true );
+		$state = $this->get( $term_id );
 
-		if ( false === $owner ) {
+		if ( ! hash_equals( $state['revision'], $revision ) ) {
 			return $this->conflict();
 		}
 
-		try {
-			wp_cache_delete( $term_id, 'term_meta' );
-			$raw   = get_term_meta( $term_id, self::META_KEY, true );
-			$state = $this->get( $term_id );
+		if ( 'discard' === $action ) {
+			$state['sections'][ $section ]['draft'] = null;
+		} else {
+			$version = $this->version( 'generate' === $action ? $version : $state['sections'][ $section ]['draft'] );
 
-			if ( ! hash_equals( $state['revision'], $revision ) ) {
-				return $this->conflict();
+			if ( ! $version ) {
+				return 'save' === $action ? new WP_Error( 'topic_no_draft', __( 'There are no changes to save.', 'ai' ) ) : $this->invalid();
 			}
 
-			if ( 'discard' === $action ) {
-				$state['sections'][ $section ]['draft'] = null;
+			if ( 'generate' === $action ) {
+				// A provider call can outlive edits in another request.
+				foreach ( $version['source_ids'] as $source_id ) {
+					clean_post_cache( $source_id );
+				}
+
+				$sources = new Sources();
+				$term    = $sources->eligible_term( $term_id );
+
+				if ( is_wp_error( $term ) ) {
+					return $term;
+				}
+
+				Sources::invalidate( array( $term_id ), $term->taxonomy );
+				$records = $sources->collect_for_term( $term, $section );
+
+				if ( is_wp_error( $records ) ) {
+					return $records;
+				}
+
+				if ( isset( $version['fingerprint'] ) && ! hash_equals( Sources::fingerprint( $records ), $version['fingerprint'] ) ) {
+					return new WP_Error(
+						'topic_sources_changed',
+						__( 'Source articles changed during generation. Regenerate to use the latest articles. Your published text has not changed.', 'ai' ),
+						array( 'status' => 409 )
+					);
+				}
+			}
+
+			$validated = $this->review( $term_id, $version, $section );
+
+			if ( is_wp_error( $validated ) || ! $this->can_display( $term_id, $validated ) ) {
+				return $this->invalid();
+			}
+
+			if ( 'generate' === $action ) {
+				$state['sections'][ $section ]['draft'] = $validated;
 			} else {
-				$version = $this->version( 'generate' === $action ? $version : $state['sections'][ $section ]['draft'] );
-
-				if ( ! $version ) {
-					return 'save' === $action ? new WP_Error( 'topic_no_draft', __( 'There are no changes to save.', 'ai' ) ) : $this->invalid();
-				}
-
-				if ( 'generate' === $action ) {
-					// A provider call can outlive edits in another request.
-					foreach ( $version['source_ids'] as $source_id ) {
-						clean_post_cache( $source_id );
-					}
-
-					$sources = new Sources();
-					$term    = $sources->eligible_term( $term_id );
-
-					if ( is_wp_error( $term ) ) {
-						return $term;
-					}
-
-					Sources::invalidate( array( $term_id ), $term->taxonomy );
-					$records = $sources->collect_for_term( $term, $section );
-
-					if ( is_wp_error( $records ) ) {
-						return $records;
-					}
-
-					if ( isset( $version['fingerprint'] ) && ! hash_equals( Sources::fingerprint( $records ), $version['fingerprint'] ) ) {
-						return new WP_Error(
-							'topic_sources_changed',
-							__( 'Source articles changed during generation. Regenerate to use the latest articles. Your published text has not changed.', 'ai' ),
-							array( 'status' => 409 )
-						);
-					}
-				}
-
-				$validated = $this->review( $term_id, $version, $section );
-
-				if ( is_wp_error( $validated ) || ! $this->can_display( $term_id, $validated ) ) {
-					return $this->invalid();
-				}
-
-				if ( 'generate' === $action ) {
-					$state['sections'][ $section ]['draft'] = $validated;
-				} else {
-					$state['sections'][ $section ]['approved'] = $validated;
-					$state['sections'][ $section ]['draft']    = null;
-				}
+				$state['sections'][ $section ]['approved'] = $validated;
+				$state['sections'][ $section ]['draft']    = null;
 			}
-
-			$state['revision'] = wp_generate_uuid4();
-			$saved             = metadata_exists( 'term', $term_id, self::META_KEY )
-				? update_term_meta( $term_id, self::META_KEY, wp_slash( $state ), $raw )
-				: add_term_meta( $term_id, self::META_KEY, wp_slash( $state ), true );
-
-			return $saved && ! is_wp_error( $saved ) ? $this->get( $term_id ) : $this->conflict();
-		} finally {
-			$lock->release( $term_id, 'save', $owner );
 		}
+
+		$state['revision'] = wp_generate_uuid4();
+		$saved             = metadata_exists( 'term', $term_id, self::META_KEY )
+			? update_term_meta( $term_id, self::META_KEY, wp_slash( $state ), $raw )
+			: add_term_meta( $term_id, self::META_KEY, wp_slash( $state ), true );
+
+		return $saved && ! is_wp_error( $saved ) ? $this->get( $term_id ) : $this->conflict();
 	}
 
 	/**

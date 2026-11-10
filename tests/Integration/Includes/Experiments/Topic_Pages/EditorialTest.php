@@ -7,7 +7,6 @@
 namespace WordPress\AI\Tests\Integration\Includes\Experiments\Topic_Pages;
 
 use WP_UnitTestCase;
-use WordPress\AI\Experiments\Topic_Pages\Lock;
 use WordPress\AI\Experiments\Topic_Pages\Store;
 
 class EditorialTest extends WP_UnitTestCase {
@@ -142,35 +141,35 @@ class EditorialTest extends WP_UnitTestCase {
 		$this->assertSame( '', $this->store->render( $this->term->term_id, 'summary' ) );
 	}
 
-	public function test_a_competing_writer_cannot_save_even_the_first_version(): void {
-		$lock  = new Lock();
-		$owner = $lock->acquire( $this->term->term_id, 'save' );
-
-		try {
-			$this->assertWPError( $this->seed() );
-			$this->assertSame( '', get_term_meta( $this->term->term_id, Store::META_KEY, true ) );
-		} finally {
-			$lock->release( $this->term->term_id, 'save', $owner );
-		}
-	}
-
-	public function test_a_lock_can_only_be_released_by_its_owner(): void {
-		$lock  = new Lock();
-		$owner = $lock->acquire( $this->term->term_id, 'generation' );
-		$lock->release( $this->term->term_id, 'generation', 'different-owner' );
-		$this->assertFalse( $lock->acquire( $this->term->term_id, 'generation' ) );
-		$lock->release( $this->term->term_id, 'generation', $owner );
-		$next = $lock->acquire( $this->term->term_id, 'generation' );
-		$this->assertIsString( $next );
-		$lock->release( $this->term->term_id, 'generation', $next );
-	}
-
 	public function test_invalid_actions_are_rejected_without_changing_storage(): void {
 		$state = $this->seed();
 
 		foreach ( array( 'invalid' ) as $action ) {
 			$this->assertWPError( $this->store->change( $this->term->term_id, $action, 'summary', $state['revision'] ) );
 			$this->assertSame( $state, $this->store->get( $this->term->term_id ) );
+		}
+	}
+
+	public function test_rest_rejects_bulk_actions_without_changing_storage(): void {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
+		$register = array( new \WordPress\AI\Experiments\Topic_Pages\Controller(), 'register_routes' );
+		add_action( 'rest_api_init', $register );
+		try {
+			$server = rest_get_server();
+			foreach ( array( 'generate', 'save', 'discard' ) as $action ) {
+				$request = new \WP_REST_Request( 'POST', '/ai/v1/topic-pages/' . $this->term->term_id );
+				$request->set_body_params(
+					array(
+						'action'   => $action,
+						'section'  => 'all',
+						'revision' => '',
+					)
+				);
+				$this->assertSame( 400, $server->dispatch( $request )->get_status() );
+			}
+			$this->assertSame( '', get_term_meta( $this->term->term_id, Store::META_KEY, true ) );
+		} finally {
+			remove_action( 'rest_api_init', $register );
 		}
 	}
 
@@ -195,60 +194,6 @@ class EditorialTest extends WP_UnitTestCase {
 		$this->assertNull( $state['sections']['summary']['approved'] );
 		$this->assertNull( $state['sections']['overview']['approved'] );
 		$this->assertSame( '', $this->store->render( $this->term->term_id, 'summary' ) );
-	}
-
-	public function test_expired_generation_owner_cannot_persist_over_its_replacement(): void {
-		global $wp_current_filter;
-		$id      = $this->term->term_id;
-		$version = array(
-			'content'    => $this->content(),
-			'source_ids' => array( $this->posts[0] ),
-		);
-		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Simulate the registration hook only while registering this test ability.
-		$wp_current_filter[] = 'wp_abilities_api_init';
-
-		try {
-			wp_register_ability(
-				'ai/topic-overview',
-				array(
-					'label'               => 'Review fixture',
-					'description'         => 'Simulates a provider completing after lease replacement.',
-					'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
-					'permission_callback' => '__return_true',
-					'input_schema'        => array( 'type' => 'object' ),
-					'output_schema'       => array( 'type' => 'object' ),
-					'execute_callback'    => static function () use ( $id, $version ) {
-						update_option(
-							'wpai_topic_pages_generation_' . $id,
-							array(
-								'token'   => 'new-owner',
-								'expires' => time() + 300,
-							),
-							false
-						);
-
-						return array( 'summary' => $version );
-					},
-				)
-			);
-		} finally {
-			array_pop( $wp_current_filter );
-		}
-
-		try {
-			$request = new \WP_REST_Request( 'POST', '/ai/v1/topic-pages/' . $id );
-			$request->set_param( 'id', $id );
-			$request->set_param( 'action', 'generate' );
-			$request->set_param( 'section', 'summary' );
-			$request->set_param( 'revision', '' );
-			$result = ( new \WordPress\AI\Experiments\Topic_Pages\Controller() )->update( $request );
-			$this->assertWPError( $result );
-			$this->assertSame( '', get_term_meta( $id, Store::META_KEY, true ) );
-			$this->assertSame( 'new-owner', get_option( 'wpai_topic_pages_generation_' . $id )['token'] );
-		} finally {
-			wp_unregister_ability( 'ai/topic-overview' );
-			delete_option( 'wpai_topic_pages_generation_' . $id );
-		}
 	}
 
 	public function test_uninstall_removes_only_owned_topic_metadata(): void {
