@@ -2005,6 +2005,7 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 		$this->assertCount( 1, $client->calls );
 		$this->assertCount( 1, $data['tool_calls'] );
 		$this->assertSame( 'success', $data['tool_calls'][0]['status'] );
+		$this->assertSame( 'I am proposing the draft now.', $data['text'], 'The sentence before the call is the reply the person sees.' );
 	}
 
 	/**
@@ -2032,6 +2033,7 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 
 		$this->assertSame( 200, $response->get_status() );
 		$this->assertSame( Turn_Runner::STATUS_COMPLETE, $response->get_data()['status'] );
+		$this->assertSame( 'Done.', $response->get_data()['text'], 'Only the last reply is the text, not an earlier round\'s.' );
 		$this->assertCount( 2, $client->calls );
 
 		$shape = array();
