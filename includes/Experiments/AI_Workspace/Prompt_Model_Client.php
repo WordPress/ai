@@ -83,7 +83,7 @@ class Prompt_Model_Client implements Model_Client_Interface {
 	 * @param list<string>                                   $ability_names      Abilities to declare as tools.
 	 * @param string                                         $system_instruction The system instruction.
 	 * @param callable|null                                  $on_text            Optional. Receives text deltas as they stream.
-	 * @return \WordPress\AiClient\Messages\DTO\Message|\WP_Error The assistant message, or an error.
+	 * @return \WordPress\AiClient\Messages\DTO\Message|non-empty-list<\WordPress\AiClient\Messages\DTO\Message>|\WP_Error The assistant message, the assistant messages when the reply came as several, or an error.
 	 */
 	public function generate( array $messages, array $ability_names, string $system_instruction, ?callable $on_text = null ) {
 		$messages = self::without_unsigned_thoughts( $messages );
@@ -161,7 +161,7 @@ class Prompt_Model_Client implements Model_Client_Interface {
 	 * @param list<\WordPress\AiClient\Messages\DTO\Message> $messages           The conversation so far.
 	 * @param list<string>                                   $ability_names      Abilities to declare as tools.
 	 * @param string                                         $system_instruction The system instruction.
-	 * @return \WordPress\AiClient\Messages\DTO\Message|\WP_Error The assistant message, or an error.
+	 * @return \WordPress\AiClient\Messages\DTO\Message|non-empty-list<\WordPress\AiClient\Messages\DTO\Message>|\WP_Error The assistant message, the assistant messages when the reply came as several, or an error.
 	 */
 	protected function generate_buffered( array $messages, array $ability_names, string $system_instruction ) {
 		if ( ! function_exists( 'wp_ai_client_prompt' ) ) {
@@ -193,6 +193,22 @@ class Prompt_Model_Client implements Model_Client_Interface {
 			return $result;
 		}
 
-		return $result->toMessage();
+		/*
+		 * Every candidate is kept, not only the first. The OpenAI connector
+		 * returns each item of a Responses API reply as its own candidate, so a
+		 * model that says what it is about to do and then calls a tool sends the
+		 * sentence and the call as two. Reading only the first kept the sentence
+		 * and lost the call: the model announced a proposal the person never saw.
+		 * They stay separate messages because that connector refuses a function
+		 * call that shares a message with anything else when the history is
+		 * replayed. A connector that replies in one candidate is unchanged.
+		 */
+		$replies = array();
+
+		foreach ( $result->getCandidates() as $candidate ) {
+			$replies[] = $candidate->getMessage();
+		}
+
+		return 1 === count( $replies ) ? $replies[0] : $replies;
 	}
 }

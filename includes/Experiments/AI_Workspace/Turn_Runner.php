@@ -485,7 +485,27 @@ final class Turn_Runner {
 				break;
 			}
 
-			$history[] = $assistant;
+			$replies = $assistant instanceof Message ? array( $assistant ) : $assistant;
+
+			/*
+			 * Each reply message's calls are kept together, so they can be
+			 * answered in a message of their own below. A connector that sent
+			 * the sentence and the call as separate messages gets its history
+			 * back in that shape, and one that sent them together gets one
+			 * answer for all of them, as before.
+			 */
+			$calls = array();
+
+			foreach ( $replies as $reply ) {
+				$history[]   = $reply;
+				$reply_calls = $this->function_calls( $reply );
+
+				if ( array() === $reply_calls ) {
+					continue;
+				}
+
+				$calls[] = $reply_calls;
+			}
 
 			/*
 			 * Every function call the message carries is answered, not only the
@@ -499,8 +519,6 @@ final class Turn_Runner {
 			 * keeps the history well formed, so there is nothing to gain by
 			 * filtering those calls out here.
 			 */
-			$calls = $this->function_calls( $assistant );
-
 			if ( array() === $calls ) {
 				$status = self::STATUS_COMPLETE;
 				break;
@@ -513,26 +531,29 @@ final class Turn_Runner {
 				break;
 			}
 
-			$parts     = array();
 			$ends_turn = false;
 
 			/*
 			 * Every call in the message runs, even after one that ends the turn,
 			 * because each needs an answer for the stored history to replay.
 			 */
-			foreach ( $calls as $call ) {
-				$invocation   = $this->invoke( $resolver, $call, $conversation_id, $user_id, $rounds );
-				$tool_calls[] = $invocation['record'];
-				$parts[]      = new MessagePart( $invocation['response'] );
+			foreach ( $calls as $reply_calls ) {
+				$parts = array();
 
-				if ( 'success' !== $invocation['record']['status'] || ! in_array( $invocation['record']['ability'], $turn_ending, true ) ) {
-					continue;
+				foreach ( $reply_calls as $call ) {
+					$invocation   = $this->invoke( $resolver, $call, $conversation_id, $user_id, $rounds );
+					$tool_calls[] = $invocation['record'];
+					$parts[]      = new MessagePart( $invocation['response'] );
+
+					if ( 'success' !== $invocation['record']['status'] || ! in_array( $invocation['record']['ability'], $turn_ending, true ) ) {
+						continue;
+					}
+
+					$ends_turn = true;
 				}
 
-				$ends_turn = true;
+				$history[] = new UserMessage( $parts );
 			}
-
-			$history[] = new UserMessage( $parts );
 
 			if ( $ends_turn ) {
 				$status = self::STATUS_AWAITING_USER;
