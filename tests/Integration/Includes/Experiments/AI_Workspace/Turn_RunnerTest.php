@@ -14,6 +14,7 @@ use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Experiments\AI_Workspace\Ask_User;
 use WordPress\AI\Experiments\AI_Workspace\Conversation_Store;
 use WordPress\AI\Experiments\AI_Workspace\Model_Client_Interface;
+use WordPress\AI\Experiments\AI_Workspace\Proposal_Store;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Drafts;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Template;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Selector;
@@ -328,6 +329,19 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 			self::PROPOSAL_FRAGMENT,
 			$instruction,
 			'The instruction must still tell the model to call the proposal tool while that tool is on the admitted surface.'
+		);
+	}
+
+	/**
+	 * The instruction states how many drafts one proposal holds, so a request
+	 * for more is split rather than written at once until the request times out.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_instruction_states_the_draft_limit(): void {
+		$this->assertStringContainsString(
+			sprintf( 'at most %d drafts', Proposal_Store::MAX_ITEMS ),
+			$this->instruction_for_turn()
 		);
 	}
 
