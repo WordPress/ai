@@ -2,16 +2,10 @@
  * WordPress dependencies
  */
 import { registerBlockType } from '@wordpress/blocks';
-import { InspectorControls, useBlockProps } from '@wordpress/block-editor';
-import { PanelBody, SelectControl, Placeholder } from '@wordpress/components';
+import { useBlockProps } from '@wordpress/block-editor';
+import { Placeholder } from '@wordpress/components';
 import { page } from '@wordpress/icons';
 import { __ } from '@wordpress/i18n';
-
-declare global {
-	interface Window {
-		aiTopicBlockData?: { terms: Array< { value: number; label: string } > };
-	}
-}
 
 const sections = [
 	{ name: 'summary', title: __( 'Topic Summary', 'ai' ) },
@@ -29,7 +23,7 @@ for ( const section of sections ) {
 			'Displays a category guide. Review generated text on the Category edit screen.',
 			'ai'
 		),
-		attributes: { termId: { type: 'number', default: 0 } },
+		attributes: {},
 		supports: {
 			html: false,
 			align: [ 'wide', 'full' ],
@@ -37,37 +31,9 @@ for ( const section of sections ) {
 			spacing: { margin: true, padding: true },
 			typography: { fontSize: true, lineHeight: true },
 		},
-		edit: function TopicBlockEdit( { attributes, setAttributes } ) {
-			const { termId } = attributes;
-
-			const options = [
-				{ value: '0', label: __( 'Current archive topic', 'ai' ) },
-				...( window.aiTopicBlockData?.terms ?? [] ).map( ( term ) => ( {
-					value: String( term.value ),
-					label: term.label,
-				} ) ),
-			];
-
+		edit: function TopicBlockEdit() {
 			return (
 				<div { ...useBlockProps() }>
-					<InspectorControls>
-						<PanelBody title={ __( 'Topic', 'ai' ) }>
-							<SelectControl
-								__next40pxDefaultSize
-								__nextHasNoMarginBottom
-								label={ __( 'Source topic', 'ai' ) }
-								value={ String( termId ) }
-								options={ options }
-								onChange={ ( value ) =>
-									setAttributes( { termId: Number( value ) } )
-								}
-								help={ __(
-									'Use the current topic in an archive template, or select a topic for another context.',
-									'ai'
-								) }
-							/>
-						</PanelBody>
-					</InspectorControls>
 					<Placeholder
 						icon="book-alt"
 						label={ section.title }
@@ -84,12 +50,10 @@ for ( const section of sections ) {
 						}
 					>
 						<p>
-							{
-								options.find(
-									( option ) =>
-										option.value === String( termId )
-								)?.label
-							}
+							{ __(
+								'Displays the guide for the current category archive.',
+								'ai'
+							) }
 						</p>
 					</Placeholder>
 				</div>

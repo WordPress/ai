@@ -84,7 +84,7 @@ class Topic_Pages extends Abstract_Feature {
 	private function register_blocks(): void {
 		$style_path = WPAI_PLUGIN_DIR . 'build-scripts/experiments/topic-pages-frontend.css';
 
-		foreach ( array( Store::SUMMARY, Store::OVERVIEW, 'timeline' ) as $section ) {
+		foreach ( Store::ALL_SECTIONS as $section ) {
 			wp_enqueue_block_style(
 				'ai/topic-' . $section,
 				array(
@@ -115,36 +115,30 @@ class Topic_Pages extends Abstract_Feature {
 							'lineHeight' => true,
 						),
 					),
-					'attributes'      => array(
-						'termId' => array(
-							'type'    => 'number',
-							'default' => 0,
-						),
-					),
-					'render_callback' => fn( array $attributes ): string => $this->render_block( $section, $attributes ),
+					'render_callback' => fn(): string => $this->render_block( $section ),
 				)
 			);
 		}
 	}
 
 	/**
-	 * Renders one topic section for the selected category.
+	 * Renders one topic section for the current term archive.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param string $section Topic section name.
-	 * @param array<string,mixed> $attributes Block attributes.
 	 * @return string Section HTML, or an empty string when content is unavailable.
 	 */
-	private function render_block( string $section, array $attributes ): string {
-		$term_id = (int) ( $attributes['termId'] ?? 0 );
+	private function render_block( string $section ): string {
+		$term = get_queried_object();
 
-		if ( ! $term_id ) {
-			$term    = get_queried_object();
-			$term_id = $term instanceof WP_Term ? $term->term_id : 0;
+		if ( ! is_archive() || ! $term instanceof WP_Term ) {
+			return '';
 		}
 
-		$content = 'timeline' === $section ? $this->timeline( $term_id ) : ( new Store() )->render( $term_id, $section );
+		$term_id = $term->term_id;
+
+		$content = Store::TIMELINE === $section ? $this->timeline( $term_id ) : ( new Store() )->render( $term_id, $section );
 
 		if ( '' === $content ) {
 			return '';
@@ -153,7 +147,7 @@ class Topic_Pages extends Abstract_Feature {
 		$labels  = array(
 			Store::SUMMARY  => __( 'Summary', 'ai' ),
 			Store::OVERVIEW => __( 'Narrative overview', 'ai' ),
-			'timeline'      => __( 'Timeline', 'ai' ),
+			Store::TIMELINE => __( 'Timeline', 'ai' ),
 		);
 		$classes = 'wpai-topic-block wpai-topic-' . $section;
 
@@ -169,7 +163,7 @@ class Topic_Pages extends Abstract_Feature {
 	}
 
 	/**
-	 * Register reusable generation, following the Suggest Reply experiment.
+	 * Registers reusable generation, following the Suggest Reply experiment.
 	 *
 	 * @since x.x.x
 	 */
@@ -186,7 +180,11 @@ class Topic_Pages extends Abstract_Feature {
 	}
 
 	/**
-	 * Add the small review panel to the existing Category form.
+	 * Adds the small review panel to the existing Category form.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Term $term Category term.
 	 */
 	public function term_panel( WP_Term $term ): void {
 		if ( ! current_user_can( 'edit_term', $term->term_id ) ) {
@@ -199,7 +197,11 @@ class Topic_Pages extends Abstract_Feature {
 	}
 
 	/**
-	 * Load only on an existing supported term's edit screen.
+	 * Loads only on an existing supported term's edit screen.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $hook Current admin page.
 	 */
 	public function enqueue_admin( string $hook ): void {
 		if ( 'term.php' !== $hook ) {
@@ -207,8 +209,9 @@ class Topic_Pages extends Abstract_Feature {
 		}
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation; REST writes use nonces and capabilities.
-		$id   = isset( $_GET['tag_ID'] ) ? absint( $_GET['tag_ID'] ) : 0;
-		$term = ( new Sources() )->term( $id );
+		$id      = isset( $_GET['tag_ID'] ) ? absint( $_GET['tag_ID'] ) : 0;
+		$sources = new Sources();
+		$term    = $sources->term( $id );
 
 		if ( is_wp_error( $term ) || ! current_user_can( 'edit_term', $id ) ) {
 			return;
@@ -229,7 +232,12 @@ class Topic_Pages extends Abstract_Feature {
 	}
 
 	/**
-	 * Show at most ten real posts in date order, without an AI request.
+	 * Shows at most ten real posts in date order, without an AI request.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $term_id Term ID.
+	 * @return string HTML timeline list.
 	 */
 	public function timeline( int $term_id ): string {
 		$sources = new Sources();
@@ -256,30 +264,11 @@ class Topic_Pages extends Abstract_Feature {
 	}
 
 	/**
-	 * Register public display blocks in the Site Editor and post editor.
+	 * Registers public display blocks in the Site Editor and post editor.
 	 *
 	 * @since x.x.x
 	 */
 	public function enqueue_blocks(): void {
 		Asset_Loader::enqueue_script( 'topic_blocks', 'experiments/topic-pages-blocks' );
-		$terms   = get_terms(
-			array(
-				'taxonomy'   => Sources::taxonomies(),
-				'hide_empty' => false,
-				'number'     => 100,
-			)
-		);
-		$options = array();
-
-		if ( ! is_wp_error( $terms ) ) {
-			foreach ( $terms as $term ) {
-				$options[] = array(
-					'value' => $term->term_id,
-					'label' => $term->name . ' (' . $term->taxonomy . ')',
-				);
-			}
-		}
-
-		Asset_Loader::localize_script( 'topic_blocks', 'TopicBlockData', array( 'terms' => $options ) );
 	}
 }

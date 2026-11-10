@@ -342,6 +342,69 @@ class Topic_PagesTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'Visible on archive', $rendered );
 	}
 
+	public function test_blocks_inherit_the_current_archive_and_ignore_other_term_ids(): void {
+		$other       = self::factory()->category->create();
+		$other_posts = self::factory()->post->create_many(
+			5,
+			array(
+				'post_status'   => 'publish',
+				'post_category' => array( $other ),
+				'post_title'    => 'Space report',
+			)
+		);
+		foreach ( $this->posts as $id ) {
+			wp_update_post(
+				array(
+					'ID'         => $id,
+					'post_title' => 'Garden report',
+				)
+			);
+		}
+		$store = new Store();
+		foreach ( array( array( $this->term_id, $this->posts, 'Garden' ), array( $other, $other_posts, 'Space' ) ) as [ $id, $sources, $label ] ) {
+			$state = $store->save_generated(
+				$id,
+				'summary',
+				array(
+					'content'    => '<!-- wp:paragraph --><p>' . $label . ' summary</p><!-- /wp:paragraph -->',
+					'source_ids' => $sources,
+				),
+				''
+			);
+			$state = $store->change( $id, 'save', 'summary', $state['revision'] );
+			$link  = '<a data-wpai-source-id="' . $sources[0] . '" href="' . get_permalink( $sources[0] ) . '">Source</a>';
+			$state = $store->save_generated(
+				$id,
+				'overview',
+				array(
+					'content'    => str_repeat( '<!-- wp:paragraph --><p>' . $label . ' overview ' . $link . '</p><!-- /wp:paragraph -->', 2 ),
+					'source_ids' => $sources,
+				),
+				$state['revision']
+			);
+			$this->assertNotWPError( $store->change( $id, 'save', 'overview', $state['revision'] ) );
+		}
+		( new \WordPress\AI\Experiments\Topic_Pages\Topic_Pages() )->register();
+		try {
+			foreach ( array( array( $this->term_id, $other, 'Garden', 'Space' ), array( $other, $this->term_id, 'Space', 'Garden' ) ) as [ $id, $override, $expected, $unexpected ] ) {
+				$this->go_to( get_term_link( $id ) );
+				foreach ( Store::ALL_SECTIONS as $section ) {
+					$html = do_blocks( '<!-- wp:ai/topic-' . $section . ' {"termId":' . $override . '} /-->' );
+					$this->assertStringContainsString( $expected, $html );
+					$this->assertStringNotContainsString( $unexpected, $html );
+				}
+			}
+			$this->go_to( get_permalink( $this->posts[0] ) );
+			foreach ( Store::ALL_SECTIONS as $section ) {
+				$this->assertSame( '', do_blocks( '<!-- wp:ai/topic-' . $section . ' {"termId":' . $other . '} /-->' ) );
+			}
+		} finally {
+			foreach ( Store::ALL_SECTIONS as $section ) {
+				unregister_block_type( 'ai/topic-' . $section );
+			}
+		}
+	}
+
 	public function test_generation_tracks_source_changes_even_within_the_same_second(): void {
 		$ability = new Topic_Overview(
 			'ai/topic-overview',

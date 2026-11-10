@@ -3,6 +3,7 @@
  * Preset category archive template.
  *
  * @package WordPress\AI
+ * @since x.x.x
  */
 
 declare( strict_types=1 );
@@ -11,13 +12,17 @@ namespace WordPress\AI\Experiments\Topic_Pages;
 
 /**
  * Reuses the theme's archive layout and WordPress's template registry.
+ *
+ * @since x.x.x
  */
 final class Template {
 
 	public const SLUG = 'topic-category';
 
 	/**
-	 * Add the Topic blocks to a copy of the current theme's archive template.
+	 * Adds the Topic blocks to a copy of the current theme's archive template.
+	 *
+	 * @since x.x.x
 	 */
 	public function register(): void {
 		if ( ! wp_is_block_theme() ) {
@@ -41,7 +46,7 @@ final class Template {
 		$content = $base->content;
 		$guide   = '';
 
-		foreach ( array( Store::SUMMARY, Store::OVERVIEW, 'timeline' ) as $section ) {
+		foreach ( Store::ALL_SECTIONS as $section ) {
 			if ( has_block( 'ai/topic-' . $section, $content ) ) {
 				continue;
 			}
@@ -85,10 +90,12 @@ final class Template {
 	}
 
 	/**
-	 * Apply the preset only to qualifying categories; preserve specific category templates.
+	 * Applies the preset only to qualifying categories; preserves specific category templates.
 	 *
-	 * @param string[] $templates Template hierarchy.
-	 * @return string[] Filtered hierarchy.
+	 * @since x.x.x
+	 *
+	 * @param list<string> $templates Template hierarchy.
+	 * @return list<string> Filtered hierarchy.
 	 */
 	public function hierarchy( array $templates ): array {
 		$term = get_queried_object();
