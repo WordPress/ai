@@ -308,6 +308,37 @@ class Get_Site_InfoTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * The input schema, as declared to the model, holds no empty list where
+	 * JSON Schema expects an object. OpenAI refused every request that offered
+	 * this ability while it sent `"properties": []`.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_input_schema_declared_to_the_model_has_no_empty_list(): void {
+		$schema = wp_get_ability( Get_Site_Info::ABILITY )->get_input_schema();
+
+		if ( function_exists( 'wp_prepare_json_schema_for_client' ) ) {
+			$schema = wp_prepare_json_schema_for_client( $schema );
+		}
+
+		$this->assertStringNotContainsString( '"properties":[]', (string) wp_json_encode( $schema ) );
+	}
+
+	/**
+	 * Input is still refused, with no properties declared.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_refuses_any_input(): void {
+		wp_set_current_user( self::$user_ids['editor'] );
+
+		$result = wp_get_ability( Get_Site_Info::ABILITY )->execute( array( 'fields' => array( 'name' ) ) );
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
+	}
+
+	/**
 	 * The output schema requires the shared fields and leaves the versions optional.
 	 *
 	 * @since x.x.x

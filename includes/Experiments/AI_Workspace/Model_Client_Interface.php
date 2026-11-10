@@ -46,13 +46,17 @@ interface Model_Client_Interface {
 	/**
 	 * Runs one model round.
 	 *
+	 * A reply usually comes as one message. Some connectors return it as several,
+	 * such as a sentence and then a tool call, and those come back as a list in
+	 * the order they arrived, to be replayed as they are.
+	 *
 	 * @since x.x.x
 	 *
 	 * @param list<\WordPress\AiClient\Messages\DTO\Message> $messages           The conversation so far.
 	 * @param list<string>                                   $ability_names      Abilities to declare as tools.
 	 * @param string                                         $system_instruction The system instruction.
 	 * @param callable|null                                  $on_text            Optional. Receives text deltas as they stream.
-	 * @return \WordPress\AiClient\Messages\DTO\Message|\WP_Error The assistant message, or an error.
+	 * @return \WordPress\AiClient\Messages\DTO\Message|non-empty-list<\WordPress\AiClient\Messages\DTO\Message>|\WP_Error The assistant message, the assistant messages when the reply came as several, or an error.
 	 */
 	public function generate( array $messages, array $ability_names, string $system_instruction, ?callable $on_text = null );
 }

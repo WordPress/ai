@@ -1977,6 +1977,85 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A proposal that arrives as its own message, after the sentence announcing
+	 * it, still runs and ends the turn. The OpenAI connector returns a reply in
+	 * that shape, and reading only its first message lost the call.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_proposal_after_its_announcement_ends_the_turn(): void {
+		$this->login_as( 'administrator' );
+		$this->register_proposal_ability();
+
+		$client = new Scripted_Model_Client(
+			array(
+				array(
+					$this->text_message( 'I am proposing the draft now.' ),
+					$this->proposal_message(),
+				),
+				$this->text_message( 'This narration should never be requested.' ),
+			)
+		);
+
+		$response = $this->dispatch_turn( $client, array( 'message' => 'Draft me a post.' ) );
+		$data     = $response->get_data();
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( Turn_Runner::STATUS_AWAITING_USER, $data['status'] );
+		$this->assertCount( 1, $client->calls );
+		$this->assertCount( 1, $data['tool_calls'] );
+		$this->assertSame( 'success', $data['tool_calls'][0]['status'] );
+	}
+
+	/**
+	 * A reply that came as several messages is replayed in that shape: each
+	 * call keeps its own message and is answered in a message of its own,
+	 * because the OpenAI connector refuses a call that shares a message.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_reply_in_several_messages_is_replayed_in_that_shape(): void {
+		$this->login_as( 'administrator' );
+
+		$client = new Scripted_Model_Client(
+			array(
+				array(
+					$this->text_message( 'Let me look.' ),
+					$this->tool_call_message( 'ai/search-content', array( 'search' => 'hello' ), 'call_a' ),
+					$this->tool_call_message( 'ai/search-content', array( 'search' => 'world' ), 'call_b' ),
+				),
+				$this->text_message( 'Done.' ),
+			)
+		);
+
+		$response = $this->dispatch_turn( $client, array( 'message' => 'What is on this site?' ) );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( Turn_Runner::STATUS_COMPLETE, $response->get_data()['status'] );
+		$this->assertCount( 2, $client->calls );
+
+		$shape = array();
+
+		foreach ( array_slice( $client->calls[1]['messages'], -5 ) as $message ) {
+			$parts = $message->getParts();
+			$this->assertCount( 1, $parts, 'Each message of the split reply, and each answer, must hold one part.' );
+
+			$call   = $parts[0]->getFunctionCall();
+			$answer = $parts[0]->getFunctionResponse();
+
+			if ( null !== $call ) {
+				$shape[] = 'call ' . $call->getId();
+			} elseif ( null !== $answer ) {
+				$shape[] = 'answer ' . $answer->getId();
+			} else {
+				$shape[] = 'text';
+			}
+		}
+
+		$this->assertSame( array( 'text', 'call call_a', 'call call_b', 'answer call_a', 'answer call_b' ), $shape );
+	}
+
+	/**
 	 * A newly registered kind's propose ability ends the turn without editing the runner.
 	 *
 	 * @since x.x.x
@@ -2549,9 +2628,10 @@ class Scripted_Model_Client implements Model_Client_Interface {
 	public $on_generate = null;
 
 	/**
-	 * Scripted replies, consumed in order.
+	 * Scripted replies, consumed in order. A list stands for a reply that came
+	 * as several messages, as the OpenAI connector returns one.
 	 *
-	 * @var list<\WordPress\AiClient\Messages\DTO\Message>
+	 * @var list<\WordPress\AiClient\Messages\DTO\Message|non-empty-list<\WordPress\AiClient\Messages\DTO\Message>>
 	 */
 	private $replies;
 
@@ -2565,8 +2645,8 @@ class Scripted_Model_Client implements Model_Client_Interface {
 	/**
 	 * Constructor.
 	 *
-	 * @param list<\WordPress\AiClient\Messages\DTO\Message> $replies  Scripted replies.
-	 * @param \WordPress\AiClient\Messages\DTO\Message|null  $fallback Reply used once the script runs out.
+	 * @param list<\WordPress\AiClient\Messages\DTO\Message|non-empty-list<\WordPress\AiClient\Messages\DTO\Message>> $replies  Scripted replies.
+	 * @param \WordPress\AiClient\Messages\DTO\Message|null                                                           $fallback Reply used once the script runs out.
 	 */
 	public function __construct( array $replies, ?Message $fallback = null ) {
 		$this->replies  = $replies;
@@ -2594,7 +2674,7 @@ class Scripted_Model_Client implements Model_Client_Interface {
 	 * @param list<string>                                   $ability_names      Declared abilities.
 	 * @param string                                         $system_instruction The system instruction.
 	 * @param callable|null                                  $on_text            Text delta callback.
-	 * @return \WordPress\AiClient\Messages\DTO\Message|\WP_Error The reply.
+	 * @return \WordPress\AiClient\Messages\DTO\Message|non-empty-list<\WordPress\AiClient\Messages\DTO\Message>|\WP_Error The reply.
 	 */
 	public function generate( array $messages, array $ability_names, string $system_instruction, ?callable $on_text = null ) {
 		if ( null !== $this->on_generate ) {
