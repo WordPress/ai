@@ -135,9 +135,28 @@ final class Sources {
 	 * Check the threshold with a limited ID query, not a full count.
 	 */
 	public function eligible( int $term_id ): bool {
+		return ! is_wp_error( $this->eligible_term( $term_id ) );
+	}
+
+	/**
+	 * Validate a category and its source threshold together.
+	 *
+	 * @return \WP_Term|\WP_Error Eligible category or the reason it cannot generate content.
+	 */
+	public function eligible_term( int $term_id ) {
 		$term = $this->term( $term_id );
 
-		return ! is_wp_error( $term ) && count( $this->ids( $term, self::minimum() ) ) >= self::minimum();
+		if ( is_wp_error( $term ) ) {
+			return $term;
+		}
+
+		$minimum = self::minimum();
+
+		if ( count( $this->ids( $term, $minimum ) ) < $minimum ) {
+			return new WP_Error( 'topic_below_minimum', __( 'This category needs at least five public posts before a topic guide can be generated.', 'ai' ) );
+		}
+
+		return $term;
 	}
 
 	/**
@@ -184,8 +203,17 @@ final class Sources {
 			return array();
 		}
 
+		return $this->sample_for_term( $term, $limit );
+	}
+
+	/**
+	 * Sample a category already validated by the caller.
+	 *
+	 * @return int[] Posts distributed across publication dates.
+	 */
+	private function sample_for_term( WP_Term $term, int $limit = 20 ): array {
 		$limit  = max( 2, min( 20, $limit ) );
-		$key    = 'wpai_topic_sample_' . $term_id . '_' . $limit;
+		$key    = 'wpai_topic_sample_' . $term->term_id . '_' . $limit;
 		$cached = get_transient( $key );
 
 		if (
@@ -258,18 +286,26 @@ final class Sources {
 	/**
 	 * @return array<int,array<string,mixed>>|\WP_Error A bounded set of text excerpts.
 	 */
-	public function collect( int $term_id, string $section = 'overview' ) {
-		$term = $this->term( $term_id );
+	public function collect( int $term_id, string $section = Store::OVERVIEW ) {
+		$term = $this->eligible_term( $term_id );
 
 		if ( is_wp_error( $term ) ) {
 			return $term;
 		}
 
-		if ( ! $this->eligible( $term_id ) ) {
-			return new WP_Error( 'topic_below_minimum', __( 'This category needs at least five public posts before a topic guide can be generated.', 'ai' ) );
-		}
+		return $this->collect_for_term( $term, $section );
+	}
 
-		$ids     = 'summary' === $section ? array_reverse(
+	/**
+	 * Collect excerpts after the caller has checked category eligibility.
+	 *
+	 * @internal
+	 * @param \WP_Term $term Validated, eligible category.
+	 * @param string $section Requested section.
+	 * @return array<int,array<string,mixed>>|\WP_Error Bounded text excerpts.
+	 */
+	public function collect_for_term( WP_Term $term, string $section ) {
+		$ids     = Store::SUMMARY === $section ? array_reverse(
 			$this->ids(
 				$term,
 				5,
@@ -280,7 +316,7 @@ final class Sources {
 					),
 				)
 			)
-		) : $this->sample( $term_id );
+		) : $this->sample_for_term( $term );
 		$budget  = (int) floor( 60000 / max( 1, count( $ids ) ) );
 		$sources = array();
 
@@ -306,6 +342,16 @@ final class Sources {
 		}
 
 		return $sources;
+	}
+
+	/**
+	 * Fingerprint the exact source records used for generation or freshness checks.
+	 *
+	 * @param array<int,array<string,mixed>> $sources Bounded source records.
+	 * @return string Source fingerprint.
+	 */
+	public static function fingerprint( array $sources ): string {
+		return hash( 'sha256', (string) wp_json_encode( $sources ) );
 	}
 
 	/**

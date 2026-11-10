@@ -41,7 +41,7 @@ final class Template {
 		$content = $base->content;
 		$guide   = '';
 
-		foreach ( array( 'summary', 'overview', 'timeline' ) as $section ) {
+		foreach ( array( Store::SUMMARY, Store::OVERVIEW, 'timeline' ) as $section ) {
 			if ( has_block( 'ai/topic-' . $section, $content ) ) {
 				continue;
 			}

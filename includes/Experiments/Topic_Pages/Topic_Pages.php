@@ -84,7 +84,7 @@ class Topic_Pages extends Abstract_Feature {
 	private function register_blocks(): void {
 		$style_path = WPAI_PLUGIN_DIR . 'build-scripts/experiments/topic-pages-frontend.css';
 
-		foreach ( array( 'summary', 'overview', 'timeline' ) as $section ) {
+		foreach ( array( Store::SUMMARY, Store::OVERVIEW, 'timeline' ) as $section ) {
 			wp_enqueue_block_style(
 				'ai/topic-' . $section,
 				array(
@@ -151,13 +151,13 @@ class Topic_Pages extends Abstract_Feature {
 		}
 
 		$labels  = array(
-			'summary'  => __( 'Summary', 'ai' ),
-			'overview' => __( 'Narrative overview', 'ai' ),
-			'timeline' => __( 'Timeline', 'ai' ),
+			Store::SUMMARY  => __( 'Summary', 'ai' ),
+			Store::OVERVIEW => __( 'Narrative overview', 'ai' ),
+			'timeline'      => __( 'Timeline', 'ai' ),
 		);
 		$classes = 'wpai-topic-block wpai-topic-' . $section;
 
-		if ( 'overview' === $section ) {
+		if ( Store::OVERVIEW === $section ) {
 			$content .= '<p class="wpai-topic-note">' . esc_html__( 'Based on selected article excerpts, rather than every post in this category.', 'ai' ) . '</p>';
 		}
 

@@ -20,7 +20,9 @@ use WP_Error;
 final class Store {
 
 	public const META_KEY       = '_wpai_topic_page';
-	public const SECTIONS       = array( 'summary', 'overview' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- One array constant.
+	public const SUMMARY        = 'summary';
+	public const OVERVIEW       = 'overview';
+	public const SECTIONS       = array( self::SUMMARY, self::OVERVIEW ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- One array constant.
 	public const ALLOWED_BLOCKS = array( 'core/paragraph', 'core/heading', 'core/list', 'core/list-item', 'core/quote' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- One array constant.
 
 	/**
@@ -72,18 +74,25 @@ final class Store {
 	public function state( int $term_id ): array {
 		$state            = $this->get( $term_id );
 		$sources          = new Sources();
-		$generation_error = '';
+		$term             = $sources->eligible_term( $term_id );
+		$generation_error = is_wp_error( $term ) ? $term->get_error_message() : '';
 		$state['hidden']  = array();
 		$state['stale']   = array();
 
 		foreach ( $state['sections'] as $name => $item ) {
-			$records = $sources->collect( $term_id, $name );
+			$version = $item['draft'] ?? $item['approved'];
+
+			if ( ! $version ) {
+				continue;
+			}
+
+			$records = is_wp_error( $term ) ? $term : $sources->collect_for_term( $term, $name );
 
 			if ( is_wp_error( $records ) ) {
 				$generation_error = $records->get_error_message();
 			}
 
-			$fingerprint = is_wp_error( $records ) ? '' : hash( 'sha256', (string) wp_json_encode( $records ) );
+			$fingerprint = is_wp_error( $records ) ? '' : Sources::fingerprint( $records );
 
 			if ( $item['draft'] ) {
 				$reviewed = $this->review( $term_id, $item['draft'] );
@@ -99,9 +108,7 @@ final class Store {
 				}
 			}
 
-			$version = $item['draft'] ?? $item['approved'];
-
-			if ( ! $version || ( '' !== $fingerprint && ( $version['fingerprint'] ?? '' ) === $fingerprint ) ) {
+			if ( '' !== $fingerprint && ( $version['fingerprint'] ?? '' ) === $fingerprint ) {
 				continue;
 			}
 
@@ -192,19 +199,21 @@ final class Store {
 						clean_post_cache( $source_id );
 					}
 
-					$term = ( new Sources() )->term( $term_id );
+					$sources = new Sources();
+					$term    = $sources->eligible_term( $term_id );
 
-					if ( ! is_wp_error( $term ) ) {
-						Sources::invalidate( array( $term_id ), $term->taxonomy );
+					if ( is_wp_error( $term ) ) {
+						return $term;
 					}
 
-					$records = ( new Sources() )->collect( $term_id, $name );
+					Sources::invalidate( array( $term_id ), $term->taxonomy );
+					$records = $sources->collect_for_term( $term, $name );
 
 					if ( is_wp_error( $records ) ) {
 						return $records;
 					}
 
-					if ( isset( $version['fingerprint'] ) && ! hash_equals( hash( 'sha256', (string) wp_json_encode( $records ) ), $version['fingerprint'] ) ) {
+					if ( isset( $version['fingerprint'] ) && ! hash_equals( Sources::fingerprint( $records ), $version['fingerprint'] ) ) {
 						return new WP_Error(
 							'topic_sources_changed',
 							__( 'Source articles changed during generation. Regenerate to use the latest articles. Your published text has not changed.', 'ai' ),
@@ -302,7 +311,7 @@ final class Store {
 	private function render_content( string $content, string $section ): string {
 		$html = wp_kses_post( do_blocks( $content ) );
 
-		if ( 'summary' === $section ) {
+		if ( self::SUMMARY === $section ) {
 			$html = (string) preg_replace( '/<cite\b[^>]*>.*?<\/cite>/is', '', $html );
 
 			return '<p>' . esc_html( trim( wp_strip_all_tags( $html ) ) ) . '</p>';
@@ -321,9 +330,9 @@ final class Store {
 	 */
 	public function can_display( int $term_id, array $version ): bool {
 		$sources = new Sources();
-		$term    = $sources->term( $term_id );
+		$term    = $sources->eligible_term( $term_id );
 
-		if ( is_wp_error( $term ) || ! $this->version( $version ) || ! $sources->eligible( $term_id ) ) {
+		if ( is_wp_error( $term ) || ! $this->version( $version ) ) {
 			return false;
 		}
 

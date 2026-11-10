@@ -58,7 +58,7 @@ class Topic_Overview extends Abstract_Ability {
 						'enum' => Store::SECTIONS,
 					),
 					'minItems'    => 1,
-					'maxItems'    => 2,
+					'maxItems'    => count( Store::SECTIONS ),
 					'uniqueItems' => true,
 					'default'     => Store::SECTIONS,
 				),
@@ -154,7 +154,8 @@ class Topic_Overview extends Abstract_Ability {
 	protected function execute_callback( $input ) {
 		$term_id  = absint( $input['term_id'] );
 		$sections = $input['sections'] ?? Store::SECTIONS;
-		$term     = ( new Sources() )->term( $term_id );
+		$selector = new Sources();
+		$term     = $selector->eligible_term( $term_id );
 
 		if ( is_wp_error( $term ) ) {
 			return $term;
@@ -168,7 +169,7 @@ class Topic_Overview extends Abstract_Ability {
 				return new WP_Error( 'topic_invalid_section', __( 'Choose Summary or Overview.', 'ai' ) );
 			}
 
-			$sources = ( new Sources() )->collect( $term_id, $section );
+			$sources = $selector->collect_for_term( $term, $section );
 
 			if ( is_wp_error( $sources ) ) {
 				return $sources;
@@ -226,8 +227,8 @@ class Topic_Overview extends Abstract_Ability {
 		foreach ( $sections as $section ) {
 			$properties[ $section ] = array(
 				'type'     => 'array',
-				'minItems' => 'summary' === $section ? 1 : 2,
-				'maxItems' => 'summary' === $section ? 1 : 2,
+				'minItems' => Store::SUMMARY === $section ? 1 : 2,
+				'maxItems' => Store::SUMMARY === $section ? 1 : 2,
 				'items'    => array(
 					'type'                 => 'object',
 					'properties'           => array(
@@ -302,7 +303,7 @@ class Topic_Overview extends Abstract_Ability {
 			$versions[ $section ] = array(
 				'content'      => $content,
 				'source_ids'   => array_keys( $by_id ),
-				'fingerprint'  => hash( 'sha256', (string) wp_json_encode( $sources ) ),
+				'fingerprint'  => Sources::fingerprint( $sources ),
 				'generated_at' => gmdate( 'c' ),
 			);
 		}
