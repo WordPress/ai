@@ -4,72 +4,89 @@
 import { select, type SelectFunction } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { store as editorStore } from '@wordpress/editor';
-import { decodeEntities } from '@wordpress/html-entities';
 
 /**
  * Internal dependencies
  */
 import {
-	flattenBlocks,
 	getBlockHTML,
 	getPostContentBlockContext,
 	getRichTextHTML,
 } from '../../utils/blocks';
+import type { TableAttributes, TableData, TableSnapshot } from './types';
 
-export interface TableAttributes {
-	head?: { cells: { content: unknown }[] }[];
-	body?: { cells: { content: unknown }[] }[];
-	foot?: { cells: { content: unknown }[] }[];
-	caption?: unknown;
+/**
+ * Escapes plain text for the caption attribute.
+ *
+ * @param text Plain text.
+ * @return HTML-escaped text.
+ */
+export function escapeCaption( text: string ): string {
+	return text
+		.replaceAll( '&', '&amp;' )
+		.replaceAll( '<', '&lt;' )
+		.replaceAll( '>', '&gt;' );
 }
 
 /**
- * Preserves table sections, row boundaries, and empty cells in the prompt.
+ * Serializes table cells without including the existing caption.
  *
- * @param attributes Table block attributes.
- * @return Serialized table cells, without the existing caption.
+ * @param attributes Table attributes.
+ * @return Serialized table data.
  */
 export function getTableContent( attributes: TableAttributes ): string {
-	return JSON.stringify( {
-		head: ( attributes.head ?? [] ).map( ( row ) =>
-			row.cells.map( ( cell ) => getRichTextHTML( cell.content ) )
-		),
-		body: ( attributes.body ?? [] ).map( ( row ) =>
-			row.cells.map( ( cell ) => getRichTextHTML( cell.content ) )
-		),
-		foot: ( attributes.foot ?? [] ).map( ( row ) =>
-			row.cells.map( ( cell ) => getRichTextHTML( cell.content ) )
-		),
-	} );
+	const table: TableData = { head: [], body: [], foot: [] };
+	for ( const section of [ 'head', 'body', 'foot' ] as const ) {
+		table[ section ] = ( attributes[ section ] ?? [] ).map( ( row ) =>
+			row.cells.map( ( cell ) => ( {
+				content: getRichTextHTML( cell.content ),
+				tag: cell.tag ?? 'td',
+				...( cell.scope ? { scope: cell.scope } : {} ),
+				...( Number( cell.colspan ) > 1
+					? { colspan: Number( cell.colspan ) }
+					: {} ),
+				...( Number( cell.rowspan ) > 1
+					? { rowspan: Number( cell.rowspan ) }
+					: {} ),
+			} ) )
+		);
+	}
+	return JSON.stringify( table );
 }
 
 /**
- * Reads current post context and confirms the table is editable post content.
+ * Reads the selected table and its nearby post content.
  *
  * @param clientId Table client ID.
- * @param selectFn Registry selector used by reactive controls.
- * @return A generation snapshot, or null for unsupported/removed blocks.
+ * @param selectFn Registry selector.
+ * @return Current source, or null if the table is not editable post content.
  */
 export function getSnapshot(
 	clientId: string,
 	selectFn: SelectFunction = select
-) {
+): TableSnapshot | null {
 	const editor = selectFn( blockEditorStore );
 	const block = editor.getBlock( clientId );
 	const { getBlockEditingMode } = editor as unknown as {
 		getBlockEditingMode: ( id: string ) => string;
 	};
-	const context = getPostContentBlockContext( selectFn );
 	if (
 		! block ||
 		block.name !== 'core/table' ||
 		getBlockEditingMode( clientId ) !== 'default' ||
-		context.isMissingPostContent ||
-		editor.getBlockParentsByBlockName( clientId, 'core/block' ).length >
-			0 ||
-		! flattenBlocks( context.allBlocks ).some(
-			( item ) => item.clientId === clientId
-		)
+		editor.getBlockParentsByBlockName( clientId, [
+			'core/block',
+			'core/template-part',
+			'core/query',
+		] ).length > 0
+	) {
+		return null;
+	}
+	const post = getPostContentBlockContext( selectFn );
+	if (
+		post.isMissingPostContent ||
+		( post.rootClientId &&
+			! editor.getBlockParents( clientId ).includes( post.rootClientId ) )
 	) {
 		return null;
 	}
@@ -77,30 +94,43 @@ export function getSnapshot(
 	const siblings = editor.getBlocks(
 		editor.getBlockRootClientId( clientId ) ?? undefined
 	);
-	const index = siblings.findIndex( ( item ) => item.clientId === clientId );
-	const nearby = [ siblings[ index - 1 ], siblings[ index + 1 ] ]
-		.map( ( sibling ) => {
-			const html = sibling ? getBlockHTML( sibling ) : '';
-			// Strip markup before decoding so entity-encoded literal text survives.
-			return Array.from(
-				decodeEntities( html.replace( /<[^>]*>/g, ' ' ) )
-			)
-				.slice( 0, 900 )
-				.join( '' );
-		} )
+	const index = siblings.findIndex(
+		( sibling ) => sibling.clientId === clientId
+	);
+	const context = [ siblings[ index - 1 ], siblings[ index + 1 ] ]
+		.map( ( sibling ) => ( sibling ? getBlockHTML( sibling ) : '' ) )
 		.filter( Boolean )
 		.join( '\n' );
+	const postEditor = selectFn( editorStore );
+	const title = escapeCaption(
+		String( postEditor.getEditedPostAttribute( 'title' ) ?? '' )
+	);
 	return {
-		postId: selectFn( editorStore ).getCurrentPostId() as number,
+		postId: postEditor.getCurrentPostId() as number,
 		table: getTableContent( attributes ),
 		caption: getRichTextHTML( attributes.caption ),
-		title: Array.from(
-			String(
-				selectFn( editorStore ).getEditedPostAttribute( 'title' ) ?? ''
-			)
-		)
-			.slice( 0, 300 )
-			.join( '' ),
-		context: nearby,
+		title,
+		context,
 	};
+}
+
+/**
+ * Checks whether a suggestion still matches the current source.
+ *
+ * @param current Current source.
+ * @param source  Source used for generation.
+ * @return Whether the source is unchanged.
+ */
+export function isSameSource(
+	current: TableSnapshot | null,
+	source: TableSnapshot
+): boolean {
+	return (
+		current !== null &&
+		current.postId === source.postId &&
+		current.table === source.table &&
+		current.caption === source.caption &&
+		current.title === source.title &&
+		current.context === source.context
+	);
 }

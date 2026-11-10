@@ -1,6 +1,6 @@
 <?php
 /**
- * Table caption generation proof of concept.
+ * Table caption generation experiment.
  *
  * @package WordPress\AI
  */
@@ -44,9 +44,8 @@ class Table_Caption_Generation extends Abstract_Feature {
 			'usage'       => array(
 				'trigger'  => 'on_demand',
 				'runs'     => __( 'When you click Generate caption in a Table block’s settings', 'ai' ),
-				'sends'    => __( 'Table headers and cells, the current post title, and text from the preceding and following blocks, plus configured site/copy guidelines', 'ai' ),
-				'requests' => __( 'One request per click', 'ai' ),
-				'details'  => __( 'Review and apply the suggestion before saving the post normally.', 'ai' ),
+				'sends'    => __( 'Table headers and cells, the current post title, and text from the preceding and following blocks', 'ai' ),
+				'requests' => __( 'One request per click when the table contains eligible text', 'ai' ),
 			),
 		);
 	}
@@ -72,6 +71,7 @@ class Table_Caption_Generation extends Abstract_Feature {
 			array(
 				'label'         => $this->get_label(),
 				'description'   => $this->get_description(),
+				'category'      => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'ability_class' => Ability::class,
 			)
 		);
@@ -89,7 +89,18 @@ class Table_Caption_Generation extends Abstract_Feature {
 		if ( ! in_array( $hook_suffix, array( 'post.php', 'post-new.php' ), true ) || ! $screen || ! $screen->is_block_editor() ) {
 			return;
 		}
+		$post_type = get_post_type_object( $screen->post_type );
+		if ( ! $post_type || ! $post_type->show_in_rest || ! post_type_supports( $screen->post_type, 'editor' ) ) {
+			return;
+		}
 		Asset_Loader::enqueue_script( 'table-caption-generation', 'experiments/table-caption-generation', array( 'include_core_abilities' => true ) );
-		Asset_Loader::localize_script( 'table-caption-generation', 'TableCaptionGenerationData', array( 'enabled' => $this->is_enabled() ) );
+		Asset_Loader::enqueue_style( 'table-caption-generation', 'experiments/table-caption-generation' );
+		Asset_Loader::localize_script(
+			'table-caption-generation',
+			'TableCaptionGenerationData',
+			array(
+				'enabled' => $this->is_enabled(),
+			)
+		);
 	}
 }

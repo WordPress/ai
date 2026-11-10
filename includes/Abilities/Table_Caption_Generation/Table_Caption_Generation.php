@@ -37,27 +37,64 @@ class Table_Caption_Generation extends Abstract_Ability {
 	 * @since x.x.x
 	 */
 	protected function input_schema(): array {
+		$cell_schema = array(
+			'type'                 => 'object',
+			'required'             => array( 'content' ),
+			'additionalProperties' => false,
+			'properties'           => array(
+				'content' => array(
+					'type' => 'string',
+				),
+				'tag'     => array(
+					'type' => 'string',
+					'enum' => array( 'td', 'th' ),
+				),
+				'scope'   => array(
+					'type' => 'string',
+					'enum' => array( 'row', 'col', 'rowgroup', 'colgroup' ),
+				),
+				'colspan' => array(
+					'type'    => 'integer',
+					'minimum' => 1,
+				),
+				'rowspan' => array(
+					'type'    => 'integer',
+					'minimum' => 1,
+				),
+			),
+		);
+		$rows_schema = array(
+			'type'  => 'array',
+			'items' => array(
+				'type'  => 'array',
+				'items' => $cell_schema,
+			),
+		);
+
 		return array(
 			'type'                 => 'object',
 			'required'             => array( 'post_id', 'table' ),
 			'additionalProperties' => false,
 			'properties'           => array(
 				'post_id' => array(
-					'type'    => 'integer',
-					'minimum' => 1,
+					'type'        => 'integer',
+					'minimum'     => 1,
+					'description' => __( 'The post containing the table.', 'ai' ),
 				),
 				'table'   => array(
-					'type'        => 'string',
-					'maxLength'   => 20000,
-					'description' => __( 'JSON containing head, body, and foot arrays of rows of cell text.', 'ai' ),
+					'type'                 => 'object',
+					'required'             => array( 'head', 'body', 'foot' ),
+					'additionalProperties' => false,
+					'properties'           => array_fill_keys( array( 'head', 'body', 'foot' ), $rows_schema ),
+					'description'          => __( 'Header, body, and footer rows, each containing cells with text and optional header/scope/span information.', 'ai' ),
 				),
 				'title'   => array(
-					'type'      => 'string',
-					'maxLength' => 300,
+					'type'        => 'string',
+					'description' => __( 'The current post title, including unsaved edits. Defaults to the saved title.', 'ai' ),
 				),
 				'context' => array(
-					'type'      => 'string',
-					'maxLength' => 2000,
+					'type'        => 'string',
+					'description' => __( 'Text immediately before and after the table.', 'ai' ),
 				),
 			),
 		);
@@ -70,8 +107,9 @@ class Table_Caption_Generation extends Abstract_Ability {
 	 */
 	protected function output_schema(): array {
 		return array(
-			'type'      => 'string',
-			'minLength' => 1,
+			'type'        => 'string',
+			'minLength'   => 1,
+			'description' => __( 'A plain-text caption for editorial review.', 'ai' ),
 		);
 	}
 
@@ -91,11 +129,17 @@ class Table_Caption_Generation extends Abstract_Ability {
 	 */
 	protected function permission_callback( $input ) {
 		$post = get_post( $input['post_id'] );
-		if ( ! $post || ! current_user_can( 'edit_post', $post->ID ) ) {
+		if ( ! $post ) {
+			return new WP_Error( 'post_not_found', __( 'The post could not be found.', 'ai' ) );
+		}
+		if ( ! current_user_can( 'edit_post', $post->ID ) ) {
 			return new WP_Error( 'insufficient_permissions', __( 'You do not have permission to generate a caption for this post.', 'ai' ) );
 		}
 		$post_type = get_post_type_object( $post->post_type );
-		return $post_type && $post_type->show_in_rest;
+		if ( ! $post_type || ! $post_type->show_in_rest || ! post_type_supports( $post->post_type, 'editor' ) ) {
+			return new WP_Error( 'unsupported_post_type', __( 'This post type does not support table caption generation.', 'ai' ) );
+		}
+		return true;
 	}
 
 	/**
@@ -104,36 +148,18 @@ class Table_Caption_Generation extends Abstract_Ability {
 	 * @since x.x.x
 	 */
 	protected function execute_callback( $input ) {
-		$table       = json_decode( $input['table'], true );
-		$rows_schema = array(
-			'type'     => 'array',
-			'maxItems' => 50,
-			'items'    => array(
-				'type'     => 'array',
-				'maxItems' => 20,
-				'items'    => array( 'type' => 'string' ),
-			),
-		);
-		$valid       = rest_validate_value_from_schema(
-			$table,
-			array(
-				'type'                 => 'object',
-				'required'             => array( 'head', 'body', 'foot' ),
-				'additionalProperties' => false,
-				'properties'           => array_fill_keys( array( 'head', 'body', 'foot' ), $rows_schema ),
-			),
-			'table'
-		);
-		if ( is_wp_error( $valid ) ) {
-			return new WP_Error( 'invalid_table', __( 'Use a table with at most 50 rows per section and 20 columns.', 'ai' ) );
+		$post = get_post( $input['post_id'] );
+		if ( ! $post ) {
+			return new WP_Error( 'post_not_found', __( 'The post no longer exists.', 'ai' ) );
 		}
+		$table = $input['table'];
 
 		$has_text = false;
 		foreach ( $table as &$rows ) {
 			foreach ( $rows as &$cells ) {
 				foreach ( $cells as &$cell ) {
-					$cell     = normalize_content( $cell );
-					$has_text = $has_text || '' !== trim( $cell );
+					$cell['content'] = normalize_content( $cell['content'] );
+					$has_text        = $has_text || '' !== trim( $cell['content'] );
 				}
 				unset( $cell );
 			}
@@ -144,30 +170,44 @@ class Table_Caption_Generation extends Abstract_Ability {
 			return new WP_Error( 'empty_table', __( 'Add text to the table before generating a caption.', 'ai' ) );
 		}
 
-		$post = get_post( $input['post_id'] );
-		if ( ! $post ) {
-			return new WP_Error( 'post_not_found', __( 'The post no longer exists.', 'ai' ) );
-		}
-		$data    = array(
+		$data   = array(
 			'table'   => $table,
-			'title'   => normalize_content( $input['title'] ?? mb_substr( $post->post_title, 0, 300 ) ),
+			'title'   => normalize_content( $input['title'] ?? $post->post_title ),
 			'context' => normalize_content( $input['context'] ?? '' ),
 		);
-		$prompt  = $this->filter_prompt( "Write a caption for the table in this reference data:\n" . wp_json_encode( $data ), $data );
+		$prompt = sprintf(
+			"<table-data>\n%s\n</table-data>\n<post-title>%s</post-title>\n<surrounding-text>\n%s\n</surrounding-text>",
+			htmlspecialchars( (string) wp_json_encode( $table ), ENT_XML1 | ENT_QUOTES, 'UTF-8' ),
+			htmlspecialchars( $data['title'], ENT_XML1 | ENT_QUOTES, 'UTF-8' ),
+			htmlspecialchars( $data['context'], ENT_XML1 | ENT_QUOTES, 'UTF-8' )
+		);
+		$prompt = $this->filter_prompt( $prompt, $data );
+		$result = $this->generate_caption( $prompt );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		$caption = trim( sanitize_plain_text( html_entity_decode( $result, ENT_QUOTES | ENT_HTML5, 'UTF-8' ) ), " \t\n\r\0\x0B\"'" );
+		if ( '' === $caption ) {
+			return new WP_Error( 'no_results', __( 'No caption was generated. Please try again.', 'ai' ) );
+		}
+		return $caption;
+	}
+
+	/**
+	 * Generates one caption with the configured text provider.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $prompt Assembled user prompt.
+	 * @return string|\WP_Error Generated caption or provider error.
+	 */
+	protected function generate_caption( string $prompt ) {
 		$builder = wp_ai_client_prompt( $prompt )->using_system_instruction( $this->get_system_instruction() );
 		$builder = $this->filter_prompt_builder( $builder, Experiment::class, array(), $prompt );
 		$builder = $this->ensure_text_generation_supported( $builder, __( 'Connect a provider that supports text generation in Settings → Connectors.', 'ai' ) );
 		if ( is_wp_error( $builder ) ) {
 			return $builder;
 		}
-		$result = $builder->generate_text();
-		if ( is_wp_error( $result ) ) {
-			return $result;
-		}
-		$caption = trim( sanitize_plain_text( $result ), " \t\n\r\0\x0B\"'" );
-		if ( '' === $caption ) {
-			return new WP_Error( 'no_results', __( 'No caption was generated. Please try again.', 'ai' ) );
-		}
-		return $caption;
+		return $builder->generate_text();
 	}
 }
