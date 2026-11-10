@@ -13,6 +13,7 @@ use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Experiments\Editorial_Updates\Editorial_Updates as Editorial_Updates_Experiment;
 
+use function WordPress\AI\kses_post_keep_rgb_colors;
 use function WordPress\AI\normalize_content;
 use function WordPress\AI\sanitize_plain_text;
 
@@ -131,7 +132,7 @@ class Editorial_Updates extends Abstract_Ability {
 			return $result;
 		}
 
-		return wp_kses_post( $result );
+		return kses_post_keep_rgb_colors( $result );
 	}
 
 	/**

@@ -468,6 +468,41 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that execute_callback() keeps rgb() and rgba() colors in the refined content.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_keeps_rgb_colors() {
+		$refined = 'Save <mark style="background-color:rgba(0, 0, 0, 0);color:#cf2e2e" class="has-inline-color">hours</mark> with <a href="https://example.com">our guide</a>.';
+
+		$mock = $this->getMockBuilder( Editorial_Updates::class )
+			->setConstructorArgs(
+				array(
+					'ai/editorial-updates',
+					array(
+						'label'       => 'Editorial Updates',
+						'description' => 'Test',
+					),
+				)
+			)
+			->onlyMethods( array( 'generate_refinement' ) )
+			->getMock();
+
+		$mock->method( 'generate_refinement' )->willReturn( $refined );
+
+		$method = ( new \ReflectionClass( $mock ) )->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$input = array(
+			'block_type'    => 'core/paragraph',
+			'block_content' => 'Save time with our guide.',
+			'notes'         => array( 'Change "time" to "hours".' ),
+		);
+
+		$this->assertSame( $refined, $method->invoke( $mock, $input ) );
+	}
+
+	/**
 	 * Tests that execute_callback() propagates WP_Error from generate_refinement.
 	 *
 	 * @since 0.8.0
