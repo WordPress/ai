@@ -20,6 +20,7 @@ import { store as noticesStore } from '@wordpress/notices';
 import {
 	flattenBlocks,
 	getBlockText,
+	getPostContentBlockContext,
 	replaceBlockWithPlaceholder,
 	getEditableTextAttribute,
 } from '../../../utils/blocks';
@@ -76,7 +77,8 @@ export function useEditorialUpdates(): {
 			// Collect Note IDs linked from block metadata, then check whether any are
 			// still pending. This avoids showing the action for stale Notes left behind
 			// after refreshing before the generated Note metadata was explicitly saved.
-			const allBlocks = sel( blockEditorStore ).getBlocks() as Block[];
+			const allBlocks = getPostContentBlockContext( sel )
+				.allBlocks as Block[];
 			const linkedNoteIds = Array.from(
 				new Set(
 					flattenBlocks( allBlocks )
@@ -128,7 +130,7 @@ export function useEditorialUpdates(): {
 			).getEditedPostContent() as string;
 
 			// Get all blocks and flatten the tree.
-			const allBlocks = select( blockEditorStore ).getBlocks() as Block[];
+			const allBlocks = getPostContentBlockContext().allBlocks as Block[];
 			const flatBlocks = flattenBlocks( allBlocks );
 
 			// Fetch pending Notes for this post.
