@@ -2,7 +2,7 @@
 
 Use a test site with a block theme, a connected AI provider, and Topic Pages enabled.
 
-1. **First guide:** Create a category with five public posts. Visit the archive: the timeline should appear without an AI request. Open the category’s Edit screen, Regenerate each text section, then Save to publish it.
+1. **First guide:** Create a category with five public posts. Visit the archive: the timeline should appear without an AI request. Open the category’s Edit screen, Generate each text section, then Save to publish it. The button should say Regenerate once a preview or published version exists; discarding the first preview should return it to Generate.
 2. **Preview:** Open Posts → Categories → Edit → Topic guide. Regenerate Summary. The preview should change; the public archive should keep its old text.
 3. **Discard:** Discard the preview. The published text should remain unchanged, including after reloading.
 4. **Save:** Regenerate again, then Save. Reload the archive. It should show the replacement. Repeat for Narrative overview.

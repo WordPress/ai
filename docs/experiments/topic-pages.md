@@ -1,6 +1,6 @@
 # Topic Pages
 
-Topic Pages adds a guide to existing category archives in block themes. Enable the experiment in **Settings → AI** after connecting a text-generation provider. Generation runs only when an editor clicks Regenerate; provider charges may apply.
+Topic Pages adds a guide to existing category archives in block themes. Enable the experiment in **Settings → AI** after connecting a text-generation provider. Generation runs only when an editor clicks Generate or Regenerate; provider charges may apply.
 
 Categories qualify with **at least five public, password-free posts**, including posts in child categories. Enabling the experiment makes no AI requests.
 
@@ -8,7 +8,7 @@ Categories qualify with **at least five public, password-free posts**, including
 
 - **Type:** Experiment; may change or be removed. Try it on a staging site first.
 - **Runs without a user action:** No AI requests. Eligible archives show a database-generated timeline automatically.
-- **When it runs:** When an editor clicks Regenerate on the Category edit screen.
+- **When it runs:** When an editor clicks Generate or Regenerate on the Category edit screen.
 - **Sent to your AI provider:** The category name and selected public post IDs, titles, dates, and excerpts. Site and copy guidelines are included when configured.
 - **Requests and data:** One request per section, using at most 20 posts and 60 KB of article text.
 - **Good to know:** Save is required to publish a preview. Discard keeps the published text. Provider charges may apply.
@@ -28,7 +28,7 @@ Each AI request receives at most 60 KB of post text. Sampling includes the first
 
 Open **Posts → Categories → Edit → Topic guide**. Use WordPress’s existing Edit and Edit Category links to reach this screen.
 
-- **Regenerate** creates a private replacement for one section.
+- **Generate** creates the first private preview. **Regenerate** creates a replacement when a preview or published version already exists.
 - **Save** publishes that preview immediately. The Category form's Update button is separate.
 - **Discard** removes the preview and keeps the published text.
 

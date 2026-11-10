@@ -156,7 +156,7 @@ function TopicReview( { settings }: { settings: Settings } ) {
 		<div className="ai-topic-review">
 			<p>
 				{ __(
-					'Regenerate a section to preview a replacement. Visitors see the current text until you choose Save.',
+					'Generate a section to preview it. Visitors see the current text until you choose Save.',
 					'ai'
 				) }
 			</p>
@@ -196,7 +196,21 @@ function TopicReview( { settings }: { settings: Settings } ) {
 			{ ( Object.keys( labels ) as Section[] ).map( ( section ) => {
 				const item = state.sections[ section ];
 				const version = item.draft ?? item.approved;
+				const generationText = version
+					? __( 'Regenerate', 'ai' )
+					: __( 'Generate', 'ai' );
+				const generationLabel = version
+					? /* translators: %s: section name. */ __(
+							'Regenerate %s',
+							'ai'
+					  )
+					: /* translators: %s: section name. */ __(
+							'Generate %s',
+							'ai'
+					  );
+
 				let status: string = __( 'Not generated yet', 'ai' );
+
 				if ( item.draft ) {
 					status = __( 'Unsaved preview', 'ai' );
 				} else if ( state.hidden.includes( section ) ) {
@@ -270,16 +284,13 @@ function TopicReview( { settings }: { settings: Settings } ) {
 								} }
 								onClick={ () => act( 'generate', section ) }
 								aria-label={ sprintf(
-									/* translators: %s: section name. */ __(
-										'Regenerate %s',
-										'ai'
-									),
+									generationLabel,
 									labels[ section ]
 								) }
 							>
 								{ busy === `generate-${ section }`
 									? __( 'Generating…', 'ai' )
-									: __( 'Regenerate', 'ai' ) }
+									: generationText }
 							</Button>
 							{ item.draft && (
 								<>

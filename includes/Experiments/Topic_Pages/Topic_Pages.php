@@ -44,7 +44,7 @@ class Topic_Pages extends Abstract_Feature {
 			'category'    => Experiment_Category::ADMIN,
 			'usage'       => array(
 				'trigger'  => 'on_demand',
-				'runs'     => __( 'Runs when an editor clicks Regenerate on the Category edit screen.', 'ai' ),
+				'runs'     => __( 'Runs when an editor clicks Generate or Regenerate on the Category edit screen.', 'ai' ),
 				'sends'    => __( 'Selected public post excerpts from eligible categories, including child categories', 'ai' ),
 				'requests' => __( 'One text-generation request per regenerated section', 'ai' ),
 				'details'  => __( 'Generated text stays private until an editor chooses Save. Provider charges may apply when generating.', 'ai' ),

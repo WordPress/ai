@@ -82,7 +82,7 @@ test.describe( 'Topic Pages Experiment', () => {
 		);
 		await expect(
 			page.getByRole( 'button', {
-				name: 'Regenerate Summary',
+				name: 'Generate Summary',
 				exact: true,
 			} )
 		).toBeVisible();
@@ -121,7 +121,31 @@ test.describe( 'Topic Pages Experiment', () => {
 			0
 		);
 		await summary
-			.getByRole( 'button', { name: 'Regenerate Summary', exact: true } )
+			.getByRole( 'button', { name: 'Generate Summary', exact: true } )
+			.click();
+		await expect(
+			summary.getByText( 'Unsaved preview', { exact: true } )
+		).toBeVisible();
+		await expect(
+			summary.getByRole( 'button', {
+				name: 'Regenerate Summary',
+				exact: true,
+			} )
+		).toHaveText( 'Regenerate' );
+		await summary
+			.getByRole( 'button', {
+				name: 'Discard Summary preview',
+				exact: true,
+			} )
+			.click();
+		await expect(
+			summary.getByRole( 'button', {
+				name: 'Generate Summary',
+				exact: true,
+			} )
+		).toHaveText( 'Generate' );
+		await summary
+			.getByRole( 'button', { name: 'Generate Summary', exact: true } )
 			.click();
 		await expect(
 			summary.getByText( 'Unsaved preview', { exact: true } )
@@ -174,7 +198,7 @@ test.describe( 'Topic Pages Experiment', () => {
 
 		await overview
 			.getByRole( 'button', {
-				name: 'Regenerate Narrative overview',
+				name: 'Generate Narrative overview',
 				exact: true,
 			} )
 			.click();
