@@ -186,7 +186,7 @@ class Table_Caption_Generation extends Abstract_Ability {
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
-		$caption = trim( sanitize_plain_text( html_entity_decode( $result, ENT_QUOTES | ENT_HTML5, 'UTF-8' ) ), " \t\n\r\0\x0B\"'" );
+		$caption = trim( html_entity_decode( sanitize_plain_text( $result ), ENT_QUOTES | ENT_HTML5, 'UTF-8' ), " \t\n\r\0\x0B\"'" );
 		if ( '' === $caption ) {
 			return new WP_Error( 'no_results', __( 'No caption was generated. Please try again.', 'ai' ) );
 		}
