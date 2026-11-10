@@ -23,7 +23,11 @@ use WP_Term;
 final class Sources {
 
 	/**
-	 * @return string[] Eligible taxonomies.
+	 * Returns eligible taxonomies.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return list<string> Eligible taxonomies.
 	 */
 	public static function taxonomies(): array {
 		/**
@@ -31,7 +35,7 @@ final class Sources {
 		 *
 		 * @since x.x.x
 		 *
-		 * @param string[] $taxonomies Taxonomy names. Defaults to categories.
+		 * @param list<string> $taxonomies Taxonomy names. Defaults to categories.
 		 */
 		$taxonomies = apply_filters( 'wpai_topic_pages_taxonomies', array( 'category' ) );
 
@@ -39,7 +43,11 @@ final class Sources {
 	}
 
 	/**
-	 * @return string[] Public post types.
+	 * Returns public post types.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return list<string> Public post types.
 	 */
 	public static function post_types(): array {
 		/**
@@ -47,7 +55,7 @@ final class Sources {
 		 *
 		 * @since x.x.x
 		 *
-		 * @param string[] $post_types Post type names. Nonpublic types are excluded.
+		 * @param list<string> $post_types Post type names. Nonpublic types are excluded.
 		 */
 		$post_types = apply_filters( 'wpai_topic_pages_post_types', array( 'post' ) );
 
@@ -62,7 +70,11 @@ final class Sources {
 	}
 
 	/**
-	 * Minimum number of public sources.
+	 * Returns the minimum number of public sources.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return int Minimum source count.
 	 */
 	public static function minimum(): int {
 		/**
@@ -78,7 +90,27 @@ final class Sources {
 	}
 
 	/**
-	 * @return \WP_Term|\WP_Error Eligible term.
+	 * Checks whether the current user can manage and edit a term.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Term $term Target term.
+	 * @return bool True if the user can manage the term, false otherwise.
+	 */
+	public function can_manage_term( WP_Term $term ): bool {
+		$taxonomy = get_taxonomy( $term->taxonomy );
+
+		// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- WordPress supplies the registered taxonomy capability mapping.
+		return $taxonomy && current_user_can( $taxonomy->cap->manage_terms ) && current_user_can( 'edit_term', $term->term_id );
+	}
+
+	/**
+	 * Returns an eligible term or an error.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $term_id Topic term ID.
+	 * @return \WP_Term|\WP_Error Eligible term or error.
 	 */
 	public function term( int $term_id ) {
 		$term = get_term( $term_id );
@@ -95,7 +127,9 @@ final class Sources {
 	}
 
 	/**
-	 * Query category membership, including descendants.
+	 * Queries category membership, including descendants.
+	 *
+	 * @since x.x.x
 	 *
 	 * @param \WP_Term $term Category.
 	 * @param int $limit Maximum number of posts.
@@ -132,15 +166,23 @@ final class Sources {
 	}
 
 	/**
-	 * Check the threshold with a limited ID query, not a full count.
+	 * Checks the threshold with a limited ID query, not a full count.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $term_id Topic term ID.
+	 * @return bool True if eligible, false otherwise.
 	 */
 	public function eligible( int $term_id ): bool {
 		return ! is_wp_error( $this->eligible_term( $term_id ) );
 	}
 
 	/**
-	 * Validate a category and its source threshold together.
+	 * Validates a category and its source threshold together.
 	 *
+	 * @since x.x.x
+	 *
+	 * @param int $term_id Topic term ID.
 	 * @return \WP_Term|\WP_Error Eligible category or the reason it cannot generate content.
 	 */
 	public function eligible_term( int $term_id ) {
@@ -153,14 +195,27 @@ final class Sources {
 		$minimum = self::minimum();
 
 		if ( count( $this->ids( $term, $minimum ) ) < $minimum ) {
-			return new WP_Error( 'topic_below_minimum', __( 'This category needs at least five public posts before a topic guide can be generated.', 'ai' ) );
+			return new WP_Error(
+				'topic_below_minimum',
+				sprintf(
+					/* translators: %s: Minimum number of public posts. */
+					_n( 'This category needs at least %s public post before a topic guide can be generated.', 'This category needs at least %s public posts before a topic guide can be generated.', $minimum, 'ai' ),
+					number_format_i18n( $minimum )
+				)
+			);
 		}
 
 		return $term;
 	}
 
 	/**
-	 * Recheck visibility and category membership before displaying a source.
+	 * Rechecks visibility and category membership before displaying a source.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $post_id Post ID.
+	 * @param \WP_Term $term Target category.
+	 * @return bool True if public source, false otherwise.
 	 */
 	public function is_public_source( int $post_id, WP_Term $term ): bool {
 		$post = get_post( $post_id );
@@ -194,7 +249,13 @@ final class Sources {
 	}
 
 	/**
-	 * @return int[] At most $limit IDs, distributed across publication dates.
+	 * Returns sampled post IDs distributed across publication dates.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $term_id Topic term ID.
+	 * @param int $limit Maximum number of posts to sample.
+	 * @return list<int> At most $limit IDs, distributed across publication dates.
 	 */
 	public function sample( int $term_id, int $limit = 20 ): array {
 		$term = $this->term( $term_id );
@@ -207,9 +268,13 @@ final class Sources {
 	}
 
 	/**
-	 * Sample a category already validated by the caller.
+	 * Samples a category already validated by the caller.
 	 *
-	 * @return int[] Posts distributed across publication dates.
+	 * @since x.x.x
+	 *
+	 * @param \WP_Term $term Category.
+	 * @param int $limit Maximum number of posts to sample.
+	 * @return list<int> Posts distributed across publication dates.
 	 */
 	private function sample_for_term( WP_Term $term, int $limit = 20 ): array {
 		$limit  = max( 2, min( 20, $limit ) );
@@ -225,7 +290,7 @@ final class Sources {
 				)
 			) === count( $cached )
 		) {
-			return $cached;
+			return array_values( array_map( 'intval', $cached ) );
 		}
 
 		$first = $this->ids( $term, $limit + 1 );
@@ -284,7 +349,13 @@ final class Sources {
 	}
 
 	/**
-	 * @return array<int,array<string,mixed>>|\WP_Error A bounded set of text excerpts.
+	 * Collects a bounded set of text excerpts.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $term_id Topic term ID.
+	 * @param string $section Topic section name.
+	 * @return list<array<string,mixed>>|\WP_Error A bounded set of text excerpts.
 	 */
 	public function collect( int $term_id, string $section = Store::OVERVIEW ) {
 		$term = $this->eligible_term( $term_id );
@@ -297,12 +368,14 @@ final class Sources {
 	}
 
 	/**
-	 * Collect excerpts after the caller has checked category eligibility.
+	 * Collects excerpts after the caller has checked category eligibility.
 	 *
+	 * @since x.x.x
 	 * @internal
+	 *
 	 * @param \WP_Term $term Validated, eligible category.
 	 * @param string $section Requested section.
-	 * @return array<int,array<string,mixed>>|\WP_Error Bounded text excerpts.
+	 * @return list<array<string,mixed>>|\WP_Error Bounded text excerpts.
 	 */
 	public function collect_for_term( WP_Term $term, string $section ) {
 		$ids     = Store::SUMMARY === $section ? array_reverse(
@@ -345,9 +418,11 @@ final class Sources {
 	}
 
 	/**
-	 * Fingerprint the exact source records used for generation or freshness checks.
+	 * Fingerprints the exact source records used for generation or freshness checks.
 	 *
-	 * @param array<int,array<string,mixed>> $sources Bounded source records.
+	 * @since x.x.x
+	 *
+	 * @param list<array<string,mixed>> $sources Bounded source records.
 	 * @return string Source fingerprint.
 	 */
 	public static function fingerprint( array $sources ): string {
@@ -355,9 +430,11 @@ final class Sources {
 	}
 
 	/**
-	 * Invalidate selections for a category and its parents.
+	 * Invalidates selections for a category and its parents.
 	 *
-	 * @param int[] $term_ids Changed categories.
+	 * @since x.x.x
+	 *
+	 * @param list<int> $term_ids Changed categories.
 	 * @param string $taxonomy Taxonomy name.
 	 */
 	public static function invalidate( array $term_ids, string $taxonomy ): void {
@@ -374,7 +451,11 @@ final class Sources {
 	}
 
 	/**
-	 * Invalidate dates and text changed without a taxonomy change.
+	 * Invalidates dates and text changed without a taxonomy change.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $post_id Post ID.
 	 */
 	public static function post_changed( int $post_id ): void {
 		foreach ( self::taxonomies() as $taxonomy ) {
@@ -384,12 +465,17 @@ final class Sources {
 				continue;
 			}
 
-			self::invalidate( $ids, $taxonomy );
+			self::invalidate( array_values( array_map( 'intval', $ids ) ), $taxonomy );
 		}
 	}
 
 	/**
-	 * Return a date safely if a post is deleted between queries.
+	 * Returns a date safely if a post is deleted between queries.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $post_id Post ID.
+	 * @return string Post date or empty string.
 	 */
 	private function date( int $post_id ): string {
 		$post = get_post( $post_id );
@@ -398,29 +484,33 @@ final class Sources {
 	}
 
 	/**
-	 * Query only IDs, without totals or unnecessary metadata.
+	 * Queries only IDs, without totals or unnecessary metadata.
+	 *
+	 * @since x.x.x
 	 *
 	 * @param \WP_Term $term Category.
 	 * @param int $limit Maximum number of posts.
 	 * @param array<string,mixed> $extra Query overrides.
-	 * @return int[] Source IDs.
+	 * @return list<int> Source IDs.
 	 */
 	private function ids( WP_Term $term, int $limit, array $extra = array() ): array {
-		return array_map(
-			static fn( $post ) => $post instanceof WP_Post ? $post->ID : $post,
-			$this->query(
-				$term,
-				$limit,
-				array_merge(
-					array(
-						'fields'                 => 'ids',
-						'no_found_rows'          => true,
-						'update_post_meta_cache' => false,
-						'update_post_term_cache' => false,
-					),
-					$extra
-				)
-			)->posts
+		return array_values(
+			array_map(
+				static fn( $post ) => (int) ( $post instanceof WP_Post ? $post->ID : $post ),
+				$this->query(
+					$term,
+					$limit,
+					array_merge(
+						array(
+							'fields'                 => 'ids',
+							'no_found_rows'          => true,
+							'update_post_meta_cache' => false,
+							'update_post_term_cache' => false,
+						),
+						$extra
+					)
+				)->posts
+			)
 		);
 	}
 }
