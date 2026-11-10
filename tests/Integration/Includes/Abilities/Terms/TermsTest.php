@@ -489,7 +489,15 @@ class TermsTest extends WP_UnitTestCase {
 
 		$this->assertSame(
 			array( $term_id ),
-			$this->collection_ids( $this->execute_as( 'subscriber', array( 'taxonomy' => self::OPT_IN_TAXONOMY ) ) )
+			$this->collection_ids(
+				$this->execute_as(
+					'subscriber',
+					array(
+						'taxonomy'   => self::OPT_IN_TAXONOMY,
+						'hide_empty' => false,
+					)
+				)
+			)
 		);
 
 		$result = $this->execute_as( 'subscriber', array( 'id' => $term_id ) );
@@ -504,9 +512,10 @@ class TermsTest extends WP_UnitTestCase {
 	 */
 	public function test_collection_pagination_totals(): void {
 		$input = array(
-			'taxonomy' => 'post_tag',
-			'search'   => 'Terms Ability',
-			'per_page' => 2,
+			'taxonomy'   => 'post_tag',
+			'search'     => 'Terms Ability',
+			'per_page'   => 2,
+			'hide_empty' => false,
 		);
 
 		$first = $this->execute_as( 'subscriber', $input );
@@ -540,6 +549,55 @@ class TermsTest extends WP_UnitTestCase {
 		);
 
 		$this->assertSame( array( self::$fixture_ids['tag_alpha'] ), $this->collection_ids( $result ), 'Only the tag on a published post is non-empty.' );
+	}
+
+	/**
+	 * Collections hide empty terms unless asked not to.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_collection_hides_empty_terms_by_default(): void {
+		$input = array(
+			'taxonomy' => 'post_tag',
+			'search'   => 'Terms Ability',
+		);
+
+		$this->assertSame(
+			array( self::$fixture_ids['tag_alpha'] ),
+			$this->collection_ids( $this->execute_as( 'subscriber', $input ) ),
+			'Only the tag on a published post should be listed by default.'
+		);
+
+		$this->assertSame(
+			array( self::$fixture_ids['tag_alpha'], self::$fixture_ids['tag_beta'], self::$fixture_ids['tag_gamma'] ),
+			$this->collection_ids( $this->execute_as( 'subscriber', $input + array( 'hide_empty' => false ) ) ),
+			'Empty tags should be listed when hide_empty is false.'
+		);
+	}
+
+	/**
+	 * A post's own terms are listed even when their count is zero.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_collection_post_terms_keep_empty_terms_by_default(): void {
+		$post_id = self::factory()->post->create( array( 'post_status' => 'draft' ) );
+		$term_id = self::factory()->tag->create( array( 'name' => 'Terms Ability Draft Tag' ) );
+		wp_set_object_terms( $post_id, array( $term_id ), 'post_tag' );
+
+		$this->assertSame( 0, (int) get_term( $term_id )->count, 'A draft post should not count toward the tag.' );
+		$this->assertSame(
+			array( $term_id ),
+			$this->collection_ids(
+				$this->execute_as(
+					'administrator',
+					array(
+						'taxonomy' => 'post_tag',
+						'post'     => $post_id,
+					)
+				)
+			)
+		);
 	}
 
 	/**
@@ -657,8 +715,9 @@ class TermsTest extends WP_UnitTestCase {
 	 */
 	public function test_collection_exclude(): void {
 		$input = array(
-			'taxonomy' => 'post_tag',
-			'search'   => 'Terms Ability',
+			'taxonomy'   => 'post_tag',
+			'search'     => 'Terms Ability',
+			'hide_empty' => false,
 		);
 
 		$this->assertSame(
@@ -756,13 +815,14 @@ class TermsTest extends WP_UnitTestCase {
 
 		$result = ( new Terms() )->execute_terms_query(
 			array(
-				'taxonomy' => 'post_tag',
-				'include'  => self::$fixture_ids['tag_gamma'] . ',' . self::$fixture_ids['tag_alpha'],
-				'fields'   => 'id,name',
-				'orderby'  => 'unsupported',
-				'order'    => 'DESC',
-				'per_page' => '500',
-				'page'     => '1',
+				'taxonomy'   => 'post_tag',
+				'include'    => self::$fixture_ids['tag_gamma'] . ',' . self::$fixture_ids['tag_alpha'],
+				'fields'     => 'id,name',
+				'orderby'    => 'unsupported',
+				'order'      => 'DESC',
+				'per_page'   => '500',
+				'page'       => '1',
+				'hide_empty' => 'false',
 			)
 		);
 

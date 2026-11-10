@@ -266,8 +266,10 @@ final class Terms {
 		$page     = isset( $input['page'] ) ? max( 1, $this->input_int( $input['page'] ) ) : 1;
 
 		/*
-		 * Defaults match the REST terms controller: ordered by name, ascending, and
-		 * empty terms included.
+		 * Ordered by name, ascending, as in the REST terms controller. Unlike REST, empty
+		 * terms are hidden by default, since a listing is usually wanted for terms in use.
+		 * A post's own terms are all kept by default: they can have a zero count while the
+		 * post is unpublished.
 		 */
 		$query_args = array(
 			'taxonomy'   => $taxonomy->name,
@@ -275,7 +277,7 @@ final class Terms {
 			'offset'     => ( $page - 1 ) * $per_page,
 			'orderby'    => $this->normalize_orderby( $input ),
 			'order'      => $this->normalize_order( $input ),
-			'hide_empty' => $this->normalize_bool( $input['hide_empty'] ?? false ),
+			'hide_empty' => $this->normalize_bool( $input['hide_empty'] ?? ( 0 === $post_id ) ),
 		);
 
 		$include = $this->normalize_id_list( $input, 'include' );
@@ -443,7 +445,7 @@ final class Terms {
 		}
 
 		$taxonomy = get_taxonomy( $input['taxonomy'] );
-		if ( ! $taxonomy instanceof WP_Taxonomy || empty( $taxonomy->show_in_abilities ) ) {
+		if ( ! $taxonomy instanceof WP_Taxonomy || true !== ( $taxonomy->show_in_abilities ?? false ) ) {
 			return null;
 		}
 
@@ -506,14 +508,23 @@ final class Terms {
 	 * Returns the taxonomies exposed to abilities via `show_in_abilities`.
 	 *
 	 * Resolved on every call rather than cached, since taxonomies can be registered or
-	 * unregistered after the ability is registered.
+	 * unregistered after the ability is registered. Only `true` exposes a taxonomy.
 	 *
 	 * @since x.x.x
 	 *
 	 * @return string[] Exposed taxonomy names.
 	 */
 	private function get_exposed_taxonomies(): array {
-		return array_values( get_taxonomies( array( 'show_in_abilities' => true ) ) );
+		$exposed = array();
+		foreach ( get_taxonomies( array(), 'objects' ) as $taxonomy ) {
+			if ( true !== ( $taxonomy->show_in_abilities ?? false ) ) {
+				continue;
+			}
+
+			$exposed[] = $taxonomy->name;
+		}
+
+		return $exposed;
 	}
 
 	/**
@@ -791,7 +802,7 @@ final class Terms {
 						),
 						'hide_empty' => array(
 							'type'        => 'boolean',
-							'description' => __( 'Whether to hide terms not assigned to any published post. Defaults to false.', 'ai' ),
+							'description' => __( 'Whether to hide terms not assigned to any published post. Defaults to true, or to false when post is set.', 'ai' ),
 						),
 						'include'    => array(
 							'type'        => 'array',
