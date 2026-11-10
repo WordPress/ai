@@ -34,16 +34,16 @@ Open **Posts → Categories → Edit → Topic guide**. Use WordPress’s existi
 
 Previews survive a page reload. Provider failures leave saved content unchanged. If another editor changes the guide, load the latest version before continuing.
 
-The preset archive template keeps the theme's header, footer, and post list. Category-specific templates take priority. Blocks can also be placed manually. Classic themes require a separate block placement; the preset applies only to block themes.
+The preset archive template keeps the theme's header, footer, and post list. Category-specific templates take priority. Blocks can also be placed manually in archive templates. They inherit the current archive’s term and render nothing outside a supported term archive. There is no category selector or search endpoint. Classic themes require a separate block placement; the preset applies only to block themes. Some pattern-only archive layouts still require placing the blocks manually.
 
 ## Developer notes
 
 `Sources` selects bounded public excerpts. `Topic_Overview` makes and validates provider requests. `Store` keeps approved text and private previews in `_wpai_topic_page` term metadata. `Controller` provides authenticated REST actions. `Template` registers the preset through WordPress's template API.
 
-`GET /ai/v1/topic-pages/<id>` returns review state. `POST` accepts `action` (`generate`, `save`, `discard`), `section` (`summary`, `overview`, `all`), and `revision`. Writes require category-management permission; browser requests use REST nonces. Old stored formats remain readable. Regenerate and Save to apply the new paragraph format to earlier text. Retired AI timeline text stays in storage.
+`GET /ai/v1/topic-pages/<id>` returns review state. `POST` accepts `action` (`generate`, `save`, `discard`), `section` (`summary`, `overview`), and `revision`. Writes require category-management permission; browser requests use REST nonces.
 
-Every generation creates a private preview, including the first one. Save is always required to publish AI text. Public rendering makes no provider requests. The timeline appears immediately for eligible categories and needs no AI generation. Cached samples contain only post IDs and are invalidated when sources change. Withdrawn sources hide affected text without deleting it.
+Every generation creates a private preview, including the first one. Save is always required to publish AI text. Public rendering makes no provider requests. The timeline appears immediately for eligible categories and needs no AI generation. Cached samples contain only post IDs and are invalidated when sources change. Every post supplied to the provider remains tracked, including uncited context. Withdrawn sources hide affected text without deleting it.
 
-Embeddings, editable AI prose, and automatic generation are outside this first version.
+Explicit topic selection and search, embeddings, editable AI prose, and automatic generation are outside this first version.
 
 See the [short testing guide](topic-pages-testing.md).

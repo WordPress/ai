@@ -13,6 +13,8 @@ Use a test site with a block theme, a connected AI provider, and Topic Pages ena
 | Enable the experiment or publish a post | No AI requests or background jobs start |
 | Four public posts, then a fifth | Normal archive at four; first guide becomes eligible at five |
 | Posts only in a child category | They count toward the parent category |
+| Visit different category archives | The same blocks show the guide for the category being viewed |
+| Place a Topic block on an ordinary post or page | No guide is rendered outside a supported term archive |
 | More than 20 posts | Generation still works; timeline has at most ten entries |
 | Untitled posts or non-English text | Links stay readable; generation does not fail on cut-off characters |
 | Several posts on the same date | No duplicate timeline entries; first and latest remain included |
