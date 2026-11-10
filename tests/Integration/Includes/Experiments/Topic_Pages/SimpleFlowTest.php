@@ -46,6 +46,53 @@ class SimpleFlowTest extends WP_UnitTestCase {
 		$this->assertSame( array_slice( $this->posts, -5 ), array_column( $records, 'id' ) );
 	}
 
+	public function test_empty_editor_state_does_not_load_article_text(): void {
+		global $wpdb;
+
+		foreach ( $this->posts as $id ) {
+			wp_cache_delete( $id, 'posts' );
+		}
+
+		$reads = array();
+		$track = static function ( string $query ) use ( &$reads, $wpdb ): string {
+			if ( preg_match( '/SELECT\s+(?:\*|' . preg_quote( $wpdb->posts, '/' ) . '\.\*)\s+FROM\s+' . preg_quote( $wpdb->posts, '/' ) . '\b/i', $query ) ) {
+				$reads[] = $query;
+			}
+
+			return $query;
+		};
+		add_filter( 'query', $track );
+
+		try {
+			$state = ( new Store() )->state( $this->term_id );
+		} finally {
+			remove_filter( 'query', $track );
+		}
+
+		$this->assertSame( '', $state['generationError'] );
+		$this->assertSame( array(), $reads, 'An empty editor only needs a limited eligibility query.' );
+	}
+
+	public function test_summary_preview_does_not_collect_unused_overview_sources(): void {
+		$store = new Store();
+		$store->save_generated( $this->term_id, array( 'summary' => $this->version() ), '' );
+		$key = 'wpai_topic_sample_' . $this->term_id . '_20';
+		delete_transient( $key );
+
+		$state = $store->state( $this->term_id );
+
+		$this->assertNotEmpty( $state['sections']['summary']['draft']['preview_html'] );
+		$this->assertSame( array(), $state['stale'] );
+		$this->assertFalse( get_transient( $key ) );
+	}
+
+	public function test_empty_ineligible_editor_state_reports_generation_error(): void {
+		$state = ( new Store() )->state( self::factory()->category->create() );
+
+		$this->assertNotEmpty( $state['generationError'] );
+		$this->assertSame( array(), $state['stale'] );
+	}
+
 	public function test_large_overview_uses_bounded_text_instead_of_rejecting_the_category(): void {
 		$records = ( new Sources() )->collect( $this->term_id, 'overview' );
 		$this->assertIsArray( $records );
