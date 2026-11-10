@@ -1218,7 +1218,13 @@ final class Turn_Runner {
 	}
 
 	/**
-	 * Returns the plain text of the last assistant message.
+	 * Returns the plain text of the last assistant reply.
+	 *
+	 * A reply can span several model messages in a row, as when the OpenAI
+	 * connector returns a sentence and then a tool call, so the text is read
+	 * from the whole run of model messages that ends the conversation's last
+	 * reply. Reading only the last message would find the tool call and show
+	 * the person nothing.
 	 *
 	 * @since x.x.x
 	 *
@@ -1226,13 +1232,24 @@ final class Turn_Runner {
 	 * @return string The assistant's text, or an empty string.
 	 */
 	private function last_assistant_text( array $messages ): string {
+		$reply = array();
+
 		for ( $index = count( $messages ) - 1; $index >= 0; $index-- ) {
 			$message = $messages[ $index ];
 
-			if ( ! $message->getRole()->isModel() ) {
+			if ( $message->getRole()->isModel() ) {
+				array_unshift( $reply, $message );
 				continue;
 			}
 
+			if ( array() !== $reply ) {
+				break;
+			}
+		}
+
+		$texts = array();
+
+		foreach ( $reply as $message ) {
 			$text = '';
 
 			foreach ( $message->getParts() as $part ) {
@@ -1255,10 +1272,14 @@ final class Turn_Runner {
 				$text .= $part_text;
 			}
 
-			return $text;
+			if ( '' === $text ) {
+				continue;
+			}
+
+			$texts[] = $text;
 		}
 
-		return '';
+		return implode( "\n\n", $texts );
 	}
 
 	/**
