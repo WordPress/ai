@@ -681,6 +681,8 @@ function ai_e2e_markdown_conflicting_plugins( array $plugins ): array {
 /**
  * Builds a topic response using the actual source IDs from the request.
  *
+ * @since x.x.x
+ *
  * @param string $body Provider request JSON.
  * @param string $format Provider endpoint format.
  * @return string Provider response JSON.

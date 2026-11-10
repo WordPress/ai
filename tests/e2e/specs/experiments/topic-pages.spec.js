@@ -18,6 +18,8 @@ test.describe( 'Topic Pages Experiment', () => {
 	let stylesheet;
 
 	test.beforeEach( async ( { admin, page, requestUtils } ) => {
+		await requestUtils.activatePlugin( 'ai' );
+		await requestUtils.activatePlugin( 'ai-provider-for-openai' );
 		await seedCredentials( requestUtils );
 		await disableExperiment( admin, page, 'Connector Approval' );
 		const themes = await requestUtils.rest( {
@@ -234,6 +236,65 @@ test.describe( 'Topic Pages Experiment', () => {
 					( element ) => window.getComputedStyle( element ).fontSize
 				)
 		);
+	} );
+
+	test( 'Blocks follow the current category archive and stay hidden on ordinary posts', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const other = await requestUtils.rest( {
+			method: 'POST',
+			path: '/wp/v2/categories',
+			data: { name: 'Space' },
+		} );
+		try {
+			for ( let index = 1; index <= 5; index++ ) {
+				posts.push(
+					await requestUtils.createPost( {
+						title: `Space report ${ index }`,
+						content: 'A report about space.',
+						status: 'publish',
+						categories: [ other.id ],
+					} )
+				);
+			}
+			await page.goto( category.link );
+			await expect( page.locator( '.wpai-topic-events a' ) ).toHaveCount(
+				5
+			);
+			await expect( page.locator( '.wpai-topic-events' ) ).toContainText(
+				'Garden report'
+			);
+			await expect(
+				page.locator( '.wpai-topic-events' )
+			).not.toContainText( 'Space report' );
+			await page.goto( other.link );
+			await expect( page.locator( '.wpai-topic-events a' ) ).toHaveCount(
+				5
+			);
+			await expect( page.locator( '.wpai-topic-events' ) ).toContainText(
+				'Space report'
+			);
+			await expect(
+				page.locator( '.wpai-topic-events' )
+			).not.toContainText( 'Garden report' );
+			const post = await requestUtils.createPost( {
+				title: 'An ordinary post with a Topic block',
+				status: 'publish',
+				content: `<!-- wp:ai/topic-timeline {"termId":${ category.id }} /-->`,
+			} );
+			posts.push( post );
+			await page.goto( post.link );
+			await expect( page.locator( '.wpai-topic-block' ) ).toHaveCount(
+				0
+			);
+		} finally {
+			await requestUtils.rest( {
+				method: 'DELETE',
+				path: `/wp/v2/categories/${ other.id }`,
+				params: { force: true },
+			} );
+		}
 	} );
 
 	test( 'Requires five public posts and keeps timeline sampling separate from archive pagination', async ( {
