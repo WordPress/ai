@@ -19,6 +19,7 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import {
 	flattenBlocks,
+	getBlockHTML,
 	getBlockText,
 	replaceBlockWithPlaceholder,
 	getEditableTextAttribute,
@@ -200,7 +201,11 @@ export function useEditorialUpdates(): {
 					batch.map( async ( block ) => {
 						const pendingNoteIds = getRefinableNoteIds( block );
 
-						const blockText = getBlockText( block );
+						// Keep inline formatting; images are refined through their plain-text alt.
+						const blockContent =
+							block.name === 'core/image'
+								? getBlockText( block )
+								: getBlockHTML( block );
 
 						// Collect notes logic
 						const existingNoteTexts = collectThreadTexts(
@@ -228,7 +233,7 @@ export function useEditorialUpdates(): {
 								'ai/editorial-updates',
 								{
 									block_type: block.name,
-									block_content: blockText,
+									block_content: blockContent,
 									context: refinementContext,
 									post_id: postId,
 									notes: existingNoteTexts,
@@ -237,7 +242,7 @@ export function useEditorialUpdates(): {
 
 							if (
 								refinedContent &&
-								refinedContent !== blockText
+								refinedContent !== blockContent
 							) {
 								const attributeToUpdate =
 									getEditableTextAttribute( block );

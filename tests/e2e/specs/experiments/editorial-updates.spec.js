@@ -43,7 +43,8 @@ test.describe( 'Editorial Updates Experiment', () => {
 		await editor.insertBlock( {
 			name: 'core/paragraph',
 			attributes: {
-				content: 'This paragraph needs refinement.',
+				content:
+					'This <a href="https://example.com">paragraph</a> needs <strong>refinement</strong>.',
 			},
 		} );
 		await editor.saveDraft();
@@ -188,8 +189,11 @@ test.describe( 'Editorial Updates Experiment', () => {
 			page.getByRole( 'button', { name: /Refining block/ } )
 		).toBeVisible( { timeout: 5000 } );
 
-		// Verify the ability endpoint was called.
-		await abilityRequestPromise;
+		// Verify the ability endpoint was called with the block's inline formatting.
+		const abilityRequest = await abilityRequestPromise;
+		expect( abilityRequest.postDataJSON().input.block_content ).toBe(
+			'This <a href="https://example.com">paragraph</a> needs <strong>refinement</strong>.'
+		);
 
 		// Verify the block content was updated by the refinement.
 		// waitForFunction polls until the update lands (the response is async).
