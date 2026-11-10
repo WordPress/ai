@@ -499,7 +499,13 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 			'notes'         => array( 'Change "time" to "hours".' ),
 		);
 
-		$this->assertSame( $refined, $method->invoke( $mock, $input ) );
+		$processor = new \WP_HTML_Tag_Processor( $method->invoke( $mock, $input ) );
+
+		$processor->next_tag( 'mark' );
+		$this->assertSame( 'background-color:rgba(0, 0, 0, 0);color:#cf2e2e', $processor->get_attribute( 'style' ) );
+
+		$processor->next_tag( 'a' );
+		$this->assertSame( 'https://example.com', $processor->get_attribute( 'href' ) );
 	}
 
 	/**
