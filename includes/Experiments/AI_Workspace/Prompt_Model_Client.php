@@ -33,6 +33,19 @@ defined( 'ABSPATH' ) || exit;
 class Prompt_Model_Client implements Model_Client_Interface {
 
 	/**
+	 * The shortest time, in seconds, a workspace round waits for the model.
+	 *
+	 * Core's AI client waits 30 seconds by default. A round that writes a full
+	 * proposal, such as twenty drafts, can take longer than that, and the
+	 * request was cut off before any reply arrived.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var float
+	 */
+	public const REQUEST_TIMEOUT = 120.0;
+
+	/**
 	 * The streaming driver, when one was supplied.
 	 *
 	 * @since x.x.x
@@ -154,6 +167,35 @@ class Prompt_Model_Client implements Model_Client_Interface {
 	}
 
 	/**
+	 * Returns the timeout a workspace round's request uses.
+	 *
+	 * Hooked to `wp_ai_client_default_request_timeout` while the round's
+	 * request is built. It only ever raises the wait, so a longer default a
+	 * site set is kept.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $default_timeout The timeout core would use, in seconds.
+	 * @return mixed The timeout to use, in seconds, or the value given when it is not a number.
+	 */
+	public static function request_timeout( $default_timeout ) {
+		if ( ! is_numeric( $default_timeout ) ) {
+			return $default_timeout;
+		}
+
+		/**
+		 * Filters the shortest time, in seconds, a workspace round waits for the model.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param float $timeout The timeout in seconds. Default 120.
+		 */
+		$timeout = (float) apply_filters( 'wpai_workspace_request_timeout', self::REQUEST_TIMEOUT );
+
+		return max( (float) $default_timeout, $timeout );
+	}
+
+	/**
 	 * Runs a buffered model round through the core prompt builder.
 	 *
 	 * @since x.x.x
@@ -172,9 +214,22 @@ class Prompt_Model_Client implements Model_Client_Interface {
 			);
 		}
 
+		$raise = array( self::class, 'request_timeout' );
+
 		try {
-			$builder = wp_ai_client_prompt( $messages )
-				->using_system_instruction( $system_instruction );
+			/*
+			 * Core reads the timeout when the builder is made, so the raise is
+			 * scoped to that, and a model call an ability makes keeps its own.
+			 */
+			add_filter( 'wp_ai_client_default_request_timeout', $raise, PHP_INT_MAX );
+
+			try {
+				$builder = wp_ai_client_prompt( $messages );
+			} finally {
+				remove_filter( 'wp_ai_client_default_request_timeout', $raise, PHP_INT_MAX );
+			}
+
+			$builder = $builder->using_system_instruction( $system_instruction );
 
 			if ( array() !== $ability_names ) {
 				$builder = $builder->using_abilities( ...$ability_names );
