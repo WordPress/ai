@@ -158,7 +158,7 @@ class Topic_Pages extends Abstract_Feature {
 		$classes = 'wpai-topic-block wpai-topic-' . $section;
 
 		if ( Store::OVERVIEW === $section ) {
-			$content .= '<p class="wpai-topic-note">' . esc_html__( 'Based on selected article excerpts, rather than every post in this category.', 'ai' ) . '</p>';
+			$content .= '<p class="wpai-topic-note">' . esc_html__( 'Based on selected article excerpts.', 'ai' ) . '</p>';
 		}
 
 		return '<section ' . get_block_wrapper_attributes( array( 'class' => $classes ) ) . '>' .
