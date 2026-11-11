@@ -30,6 +30,14 @@ if ( false !== getenv( 'WP_TESTS_DIR' ) ) {
 	$_test_root = '/tmp/wordpress-tests-lib';
 }
 
+/*
+ * The Secrets API needs WP_SECRETS_KEY, which wp-tests-config.php does not define, so
+ * give the suite a fixed test key. Core's own test bootstrap does the same from 7.2.
+ */
+if ( ! defined( 'WP_SECRETS_KEY' ) ) {
+	define( 'WP_SECRETS_KEY', base64_encode( str_repeat( 'k', 32 ) ) );
+}
+
 // Give access to tests_add_filter() function.
 require_once $_test_root . '/includes/functions.php';
 
