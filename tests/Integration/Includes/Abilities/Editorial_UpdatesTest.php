@@ -648,7 +648,7 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 		$content = 'Save <mark style="background-color:rgba(0, 0, 0, 0);color:#cf2e2e" class="has-inline-color">time</mark> with <a href="https://example.com"><strong>our guide</strong></a>.';
 		$prompt  = $method->invoke( $this->ability, 'core/paragraph', $content, array( 'Make it shorter.' ), '' );
 
-		$this->assertSame( 1, preg_match( '#<block-content>(.*)</block-content>#s', $prompt, $matches ) );
+		$this->assertSame( 1, preg_match( '#<block-content>(.*)</block-content>#s', $prompt, $matches ), 'Prompt should contain the block-content section' );
 
 		$processor = new \WP_HTML_Tag_Processor( $matches[1] );
 
@@ -657,7 +657,7 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 
 		$processor->next_tag( 'a' );
 		$this->assertSame( 'https://example.com', $processor->get_attribute( 'href' ) );
-		$this->assertNotFalse( strpos( $matches[1], '<strong>our guide</strong>' ) );
+		$this->assertStringContainsString( '<strong>our guide</strong>', $matches[1], 'Formatting tags should be kept in the prompt content' );
 	}
 
 	/**
