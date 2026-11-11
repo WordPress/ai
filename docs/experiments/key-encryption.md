@@ -52,7 +52,8 @@ Secrets are stored under the `ai/` namespace (e.g. `ai/openai_api_key`).
   as they would be without the experiment).
 - **`WP_SECRETS_KEY` in `wp-config.php` (required).** The Secrets API encrypts everything under
   this key and has no fallback. Without a usable key, nothing can be encrypted, so the experiment
-  leaves API keys in plaintext, as they would be without it. Empty values, the
+  leaves API keys in plaintext, as they would be without it, and shows administrators a notice.
+  Once the key is added, the keys are encrypted on the next page load. Empty values, the
   `wp-config-sample.php` placeholder and copies of an authentication key or salt are rejected.
   WordPress 7.2 adds the key to `wp-config.php` for new installs. Existing sites must add it by
   hand, below the salts.
@@ -86,21 +87,35 @@ wp eval '( new WP_Secrets_Key_Manager() )->rotate_site_key( new WP_Secrets_Confi
 
 No stored secret is rewritten. On multisite, one run covers the network.
 
+### Keys stored without `WP_SECRETS_KEY`
+
+Before `WP_SECRETS_KEY` was required, the Secrets API encrypted its root key under
+`LOGGED_IN_KEY . LOGGED_IN_SALT` on sites that did not define it. Neither the bundled copy nor
+WordPress 7.2 can read those keys any more, so while the experiment is enabled it recovers them
+on the next request:
+
+- **`WP_SECRETS_KEY` is defined:** the root key is re-encrypted under it. Every stored secret is
+  readable again, including those of other plugins.
+- **`WP_SECRETS_KEY` is not defined:** this site's API keys are moved back to their options in
+  plaintext, so they keep working. They are encrypted again once the key is added.
+
+Turning the experiment off, deactivating or uninstalling the plugin recovers them the same way
+before restoring plaintext keys. This needs the salts the keys were stored with: if they have
+been changed since, the keys cannot be recovered and must be entered again.
+
 ## How it works
 
 While enabled, the experiment registers two transparent option filters per connector:
 
-- `pre_update_option_{setting_name}` — encrypts the value via `Secrets::set()` and forces the
-  `wp_options` row to remain empty.
-- `option_{setting_name}` — decrypts and returns the secret on read via `Secrets::get()`; passes
-  through to the stored value if no secret exists (handles partially-migrated state).
+- `pre_update_option_{setting_name}` — stores the value with `wp_set_secret()` and forces the
+  `wp_options` row to remain empty. If the secret cannot be stored, the value is written in
+  plaintext instead, so the key is never lost.
+- `option_{setting_name}` — returns the secret from `wp_get_secret()` on read; passes through to
+  the stored value if no secret exists (handles partially-migrated state).
 
-Each call passes an explicit `[ 'plugin' => 'ai' ]` context. The bundled secrets manager runs a
-namespace check on every operation, granting "self-namespace" access when the caller's plugin slug
-matches the key's namespace. Passing the context explicitly guarantees that match — these filters
-run in unauthenticated request contexts (cron, front-end, REST) where no user holds the
-`manage_secrets` capability and backtrace-based caller detection is unreliable. That check is a
-collision guard, not an isolation boundary; see [Threat model](#threat-model).
+The Secrets API checks no capabilities: these filters run in cron, front-end and REST requests.
+The `ai/` namespace only avoids name collisions with other plugins; it is not an isolation
+boundary. See [Threat model](#threat-model).
 
 All existing callers — `Connector_Key_Index`, REST dispatch, the AI client registry — keep
 working because `get_option()` transparently returns the decrypted value through the read
