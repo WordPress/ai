@@ -206,10 +206,10 @@ class Editorial_Updates extends Abstract_Ability {
 	 * @since 0.8.0
 	 *
 	 * @param string $block_type The block type identifier.
-	 * @param string $block_content The plain-text block content.
+	 * @param string $block_content The block content, which may contain inline HTML.
 	 * @param list<string> $notes Editorial feedback notes to apply.
 	 * @param string $context Optional context to improve refinement relevance.
-	 * @return string|\WP_Error Refined text or WP_Error.
+	 * @return string|\WP_Error Refined content (may contain inline HTML) or WP_Error.
 	 */
 	protected function generate_refinement(
 		string $block_type,
@@ -265,7 +265,7 @@ class Editorial_Updates extends Abstract_Ability {
 	 * @since 0.8.0
 	 *
 	 * @param string $block_type The block type identifier.
-	 * @param string $block_content The plain-text block content.
+	 * @param string $block_content The block content, which may contain inline HTML.
 	 * @param list<string> $notes Feedback notes.
 	 * @param string $context Optional context.
 	 * @return string The generated prompt.
