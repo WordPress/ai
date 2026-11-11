@@ -274,7 +274,7 @@ class Editorial_Updates extends Abstract_Ability {
 		$prompt_parts = array();
 
 		$prompt_parts[] = '<block-type>' . sanitize_text_field( $block_type ) . '</block-type>';
-		$prompt_parts[] = '<block-content>' . wp_kses_post( $block_content ) . '</block-content>';
+		$prompt_parts[] = '<block-content>' . kses_post_keep_rgb_colors( $block_content ) . '</block-content>';
 
 		if ( ! empty( $notes ) ) {
 			$prompt_parts[] = '<notes>' . implode( "\n\n", array_map( static fn( string $note ): string => sanitize_plain_text( $note ), $notes ) ) . '</notes>';

@@ -509,6 +509,38 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that the prompt sent to the model keeps links, formatting and rgba() colors.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_prompt_keeps_inline_html_and_rgb_colors() {
+		$ability = new Editorial_Updates(
+			'ai/editorial-updates',
+			array(
+				'label'       => 'Editorial Updates',
+				'description' => 'Test',
+			)
+		);
+
+		$method = ( new \ReflectionClass( $ability ) )->getMethod( 'create_prompt' );
+		$method->setAccessible( true );
+
+		$content = 'Save <mark style="background-color:rgba(0, 0, 0, 0);color:#cf2e2e" class="has-inline-color">time</mark> with <a href="https://example.com"><strong>our guide</strong></a>.';
+		$prompt  = $method->invoke( $ability, 'core/paragraph', $content, array( 'Make it shorter.' ), '' );
+
+		$this->assertSame( 1, preg_match( '#<block-content>(.*)</block-content>#s', $prompt, $matches ) );
+
+		$processor = new \WP_HTML_Tag_Processor( $matches[1] );
+
+		$processor->next_tag( 'mark' );
+		$this->assertSame( 'background-color:rgba(0, 0, 0, 0);color:#cf2e2e', $processor->get_attribute( 'style' ) );
+
+		$processor->next_tag( 'a' );
+		$this->assertSame( 'https://example.com', $processor->get_attribute( 'href' ) );
+		$this->assertNotFalse( strpos( $matches[1], '<strong>our guide</strong>' ) );
+	}
+
+	/**
 	 * Tests that execute_callback() propagates WP_Error from generate_refinement.
 	 *
 	 * @since 0.8.0
