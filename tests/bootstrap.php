@@ -33,8 +33,11 @@ if ( false !== getenv( 'WP_TESTS_DIR' ) ) {
 /*
  * The Secrets API needs WP_SECRETS_KEY, which wp-tests-config.php does not define, so
  * give the suite a fixed test key. Core's own test bootstrap does the same from 7.2.
+ *
+ * Not in a process-isolated test: PHPUnit sets $GLOBALS['__PHPUNIT_BOOTSTRAP'] while it
+ * loads this file in a child process, and those tests run isolated to go without the key.
  */
-if ( ! defined( 'WP_SECRETS_KEY' ) ) {
+if ( ! defined( 'WP_SECRETS_KEY' ) && ! isset( $GLOBALS['__PHPUNIT_BOOTSTRAP'] ) ) {
 	define( 'WP_SECRETS_KEY', base64_encode( str_repeat( 'k', 32 ) ) );
 }
 
