@@ -82,25 +82,21 @@ class Topic_Overview extends Abstract_Ability {
 			$properties[ $section ] = array(
 				'type'                 => 'object',
 				'properties'           => array(
-					'content'      => array(
+					'content'     => array(
 						'type'        => 'string',
 						'description' => __( 'Generated block markup for the section.', 'ai' ),
 					),
-					'fingerprint'  => array(
+					'fingerprint' => array(
 						'type'        => 'string',
 						'description' => __( 'Hash of the source records used during generation.', 'ai' ),
 					),
-					'generated_at' => array(
-						'type'        => 'string',
-						'description' => __( 'ISO 8601 timestamp when the section was generated.', 'ai' ),
-					),
-					'source_ids'   => array(
+					'source_ids'  => array(
 						'type'        => 'array',
 						'description' => __( 'IDs of the posts used as sources for the section.', 'ai' ),
 						'items'       => array( 'type' => 'integer' ),
 					),
 				),
-				'required'             => array( 'content', 'source_ids', 'fingerprint', 'generated_at' ),
+				'required'             => array( 'content', 'source_ids', 'fingerprint' ),
 				'additionalProperties' => false,
 			);
 		}
@@ -305,10 +301,9 @@ class Topic_Overview extends Abstract_Ability {
 
 			// Uncited inputs can still influence the text and must remain tracked.
 			$versions[ $section ] = array(
-				'content'      => $content,
-				'source_ids'   => array_values( array_map( 'intval', array_column( $sources, 'id' ) ) ),
-				'fingerprint'  => Sources::fingerprint( $sources ),
-				'generated_at' => gmdate( 'c' ),
+				'content'     => $content,
+				'source_ids'  => array_values( array_map( 'intval', array_column( $sources, 'id' ) ) ),
+				'fingerprint' => Sources::fingerprint( $sources ),
 			);
 		}
 

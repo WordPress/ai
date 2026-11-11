@@ -143,7 +143,10 @@ class SimpleFlowTest extends WP_UnitTestCase {
 		$state = $store->change( $this->term_id, 'save', 'summary', $state['revision'] );
 		$this->assertStringContainsString( 'First version', $store->render( $this->term_id, 'summary' ) );
 		$state = $store->save_generated( $this->term_id, 'summary', $this->version( 'Replacement' ), $state['revision'] );
-		$this->assertStringNotContainsString( 'Replacement', $store->render( $this->term_id, 'summary' ) );
+
+		$published = $store->render( $this->term_id, 'summary' );
+		$this->assertStringContainsString( 'First version', $published );
+		$this->assertStringNotContainsString( 'Replacement', $published );
 		$state = $store->change( $this->term_id, 'save', 'summary', $state['revision'] );
 		$this->assertNull( $state['sections']['summary']['draft'] );
 		$this->assertStringContainsString( 'Replacement', $store->render( $this->term_id, 'summary' ) );

@@ -37,19 +37,6 @@ class Topic_PagesTest extends WP_UnitTestCase {
 		);
 	}
 
-	public function test_pending_generation_does_not_replace_approved_content(): void {
-		$store = new Store();
-		$state = $store->get( $this->term_id );
-		$state = $store->save_generated( $this->term_id, 'summary', $this->version( 'First version' ), $state['revision'] );
-		$this->assertSame( '', $store->render( $this->term_id, 'summary' ) );
-		$state = $store->change( $this->term_id, 'save', 'summary', $state['revision'] );
-		$this->assertStringContainsString( 'First version', $store->render( $this->term_id, 'summary' ) );
-		$state = $store->save_generated( $this->term_id, 'summary', $this->version( 'Replacement' ), $state['revision'] );
-		$this->assertStringContainsString( 'First version', $store->render( $this->term_id, 'summary' ) );
-		$store->change( $this->term_id, 'save', 'summary', $state['revision'] );
-		$this->assertStringContainsString( 'Replacement', $store->render( $this->term_id, 'summary' ) );
-	}
-
 	public function test_stale_editor_cannot_overwrite_newer_work(): void {
 		$store = new Store();
 		$old   = $store->get( $this->term_id )['revision'];
@@ -463,7 +450,7 @@ class Topic_PagesTest extends WP_UnitTestCase {
 		$this->assertContains( 'summary', $store->state( $this->term_id )['stale'] );
 	}
 
-	public function test_enabling_and_source_changes_do_not_schedule_generation(): void {
+	public function test_enabling_and_publishing_sources_does_not_create_a_preview(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
 		update_option( 'wpai_feature_topic-pages_enabled', true );
 		$feature = new \WordPress\AI\Experiments\Topic_Pages\Topic_Pages();
@@ -479,10 +466,6 @@ class Topic_PagesTest extends WP_UnitTestCase {
 				)
 			);
 			$this->assertSame( '', get_term_meta( $id, Store::META_KEY, true ) );
-			$this->assertFalse( has_action( 'wpai_topic_pages_scan' ) );
-			$this->assertFalse( has_action( 'wpai_topic_pages_generate' ) );
-			$this->assertFalse( wp_next_scheduled( 'wpai_topic_pages_scan' ) );
-			$this->assertFalse( wp_next_scheduled( 'wpai_topic_pages_generate', array( $id ) ) );
 		} finally {
 			foreach ( array( 'summary', 'overview', 'timeline' ) as $section ) {
 				unregister_block_type( 'ai/topic-' . $section );

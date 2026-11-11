@@ -147,7 +147,7 @@ final class Store {
 	}
 
 	/**
-	 * Validates a transition and serializes competing writes.
+	 * Checks the expected revision before applying a section change.
 	 *
 	 * @since x.x.x
 	 *
