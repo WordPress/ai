@@ -31,16 +31,6 @@ defined( 'ABSPATH' ) || exit;
 class Settings_Page {
 
 	/**
-	 * Legacy settings page slug.
-	 * TODO: either once [0.6.0 is less than 10% of installs](https://wordpress.org/plugins/ai/advanced/) or we're in October 2026 let's remove this section in case other plugin(s) are attempting to use the `ai` page.
-	 *
-	 * @since 0.8.0
-	 *
-	 * @var string
-	 */
-	private const LEGACY_PAGE_SLUG = 'ai';
-
-	/**
 	 * The settings page slug.
 	 *
 	 * @since 0.7.0
@@ -58,8 +48,6 @@ class Settings_Page {
 	 * @return void
 	 */
 	public static function init( Registry $registry ): void {
-		add_action( 'admin_init', array( self::class, 'maybe_redirect_legacy_page' ), 1 );
-		add_action( 'admin_page_access_denied', array( self::class, 'maybe_redirect_legacy_page' ) );
 		add_action( 'ai-wp-admin_init', array( self::class, 'register_route_script_module_translations' ) );
 
 		if ( function_exists( 'ai_ai_wp_admin_render_page' ) ) {
@@ -124,34 +112,6 @@ class Settings_Page {
 		wp_set_script_module_translations( 'ai/routes/ai-home/content', 'ai' );
 	}
 
-
-	/**
-	 * Redirects legacy settings page slug to the current settings route.
-	 *
-	 * @since 0.8.0
-	 */
-	public static function maybe_redirect_legacy_page(): void {
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading query param for admin page detection only, no data processing.
-		if ( ! isset( $_GET['page'] ) ) {
-			return;
-		}
-
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading query param for admin page detection only, no data processing.
-		$page = sanitize_key( wp_unslash( (string) $_GET['page'] ) );
-		if ( self::LEGACY_PAGE_SLUG !== $page ) {
-			return;
-		}
-
-		$redirect_url = add_query_arg(
-			'page',
-			self::PAGE_SLUG,
-			admin_url( 'options-general.php' )
-		);
-
-		if ( wp_safe_redirect( $redirect_url, 301, 'WordPress AI plugin' ) ) {
-			exit;
-		}
-	}
 
 	/**
 	 * Gets feature group metadata for the settings UI.
