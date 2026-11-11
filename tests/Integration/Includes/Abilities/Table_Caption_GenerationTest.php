@@ -278,14 +278,26 @@ class Table_Caption_GenerationTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_rejects_unsupported_post_type(): void {
-		remove_post_type_support( 'post', 'editor' );
+		register_post_type(
+			'caption_no_editor',
+			array(
+				'show_in_rest' => true,
+				'supports'     => array( 'title' ),
+			)
+		);
 		try {
-			$result = $this->ability->check_permissions( $this->input );
+			$this->input['post_id'] = self::factory()->post->create(
+				array(
+					'post_type'   => 'caption_no_editor',
+					'post_author' => get_current_user_id(),
+				)
+			);
+			$result                 = $this->ability->check_permissions( $this->input );
 
 			$this->assertWPError( $result );
 			$this->assertSame( 'unsupported_post_type', $result->get_error_code() );
 		} finally {
-			add_post_type_support( 'post', 'editor' );
+			unregister_post_type( 'caption_no_editor' );
 		}
 	}
 
