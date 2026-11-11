@@ -296,7 +296,7 @@ class HelpersTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		// Clean up the post utility abilities registered in setUp(), plus any alias test abilities.
-		foreach ( array( 'ai/get-post-terms', 'ai/get-post-details', 'ai/alias-target', 'ai/alias-old' ) as $ability_name ) {
+		foreach ( array( 'ai/get-post-terms', 'ai/alias-target', 'ai/alias-old' ) as $ability_name ) {
 			if ( ! wp_has_ability( $ability_name ) ) {
 				continue;
 			}
@@ -2604,39 +2604,6 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->register_alias_fixture( false );
 
 		$this->assertFalse( wp_has_ability( 'ai/alias-old' ), 'The alias should not be registered without its target.' );
-	}
-
-	/**
-	 * The deprecated ai/get-post-details ability still works and triggers a notice.
-	 *
-	 * @since 1.4.0
-	 */
-	public function test_deprecated_get_post_details_ability_still_executes(): void {
-		$this->setExpectedDeprecated( 'ai/get-post-details' );
-
-		$post_id = $this->factory->post->create( array( 'post_title' => 'Deprecated Title' ) );
-
-		$ability = wp_get_ability( 'ai/get-post-details' );
-
-		$this->assertNotNull( $ability, 'The deprecated ability should still be registered.' );
-		$this->assertSame( 'Get post details (deprecated)', $ability->get_label(), 'The label should mark the ability as deprecated.' );
-		$this->assertSame(
-			array(
-				'since'       => '1.4.0',
-				'replacement' => 'core/content-query',
-			),
-			$ability->get_meta_item( 'deprecated' ),
-			'The meta should describe the deprecation.'
-		);
-
-		$result = $ability->execute(
-			array(
-				'post_id' => $post_id,
-				'fields'  => array( 'title' ),
-			)
-		);
-
-		$this->assertSame( array( 'title' => 'Deprecated Title' ), $result, 'The deprecated ability should still return post details.' );
 	}
 
 	/**
