@@ -279,16 +279,6 @@ add_filter( 'wpai_meta_description_prompt', function( $prompt, $content, $title 
 }, 10, 3 );
 ```
 
-### Filtering the Result Temperature
-
-You can adjust the AI temperature for more creative or more consistent results:
-
-```php
-add_filter( 'wpai_meta_description_result_temperature', function( $temperature ) {
-    return 0.3; // Lower temperature for more consistent output
-} );
-```
-
 ### Registering Additional SEO Plugins
 
 You can add support for additional SEO plugins:
@@ -438,7 +428,6 @@ npm run test:php
 
 - The ability uses `get_preferred_models_for_text_generation()` to determine which AI models to use
 - Models are tried in order until one succeeds
-- Temperature defaults to 0.7 for balanced creativity and consistency (filterable via `wpai_meta_description_result_temperature`)
 
 ### System Instruction
 
