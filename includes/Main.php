@@ -93,9 +93,6 @@ final class Main {
 		// Handle any pending upgrades.
 		( new Upgrades() )->init();
 
-		// Handle deprecated code.
-		( new Deprecated() )->init();
-
 		// Keep the detected SEO plugin cache fresh regardless of experiment state.
 		SEO_Integration::register_cache_invalidation();
 
