@@ -17,19 +17,17 @@ class Plugin_InstallerTest extends WP_UnitTestCase {
 	/**
 	 * Creates a user allowed to install and activate plugins.
 	 *
-	 * On multisite those capabilities belong to super admins, not site
-	 * administrators.
+	 * Multisite never installs automatically, so tests that need an attempt
+	 * are single-site only.
 	 *
 	 * @return int The user id.
 	 */
 	private function create_installer_user(): int {
-		$user_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
-
 		if ( is_multisite() ) {
-			grant_super_admin( $user_id );
+			$this->markTestSkipped( 'Multisite never installs automatically.' );
 		}
 
-		return $user_id;
+		return self::factory()->user->create( array( 'role' => 'administrator' ) );
 	}
 
 	/**
@@ -101,6 +99,7 @@ class Plugin_InstallerTest extends WP_UnitTestCase {
 	 * Tests that users without install capability never trigger or consume an attempt.
 	 */
 	public function test_no_attempt_without_capability() {
+		$installer_id = $this->create_installer_user();
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
 		$attempts = $this->count_attempts( true );
 
@@ -110,7 +109,7 @@ class Plugin_InstallerTest extends WP_UnitTestCase {
 		$this->assertFalse( get_option( Plugin_Installer::HANDLED_OPTION ), 'An incapable visit must not consume the enable-cycle attempt.' );
 
 		// A capable user afterwards still gets the attempt.
-		wp_set_current_user( $this->create_installer_user() );
+		wp_set_current_user( $installer_id );
 		( new Plugin_Installer() )->maybe_install_and_activate();
 		$this->assertSame( 1, $attempts() );
 	}
@@ -236,6 +235,25 @@ class Plugin_InstallerTest extends WP_UnitTestCase {
 
 		$this->assertSame( 0, $attempts(), 'Network admin requests must not trigger a site-level install.' );
 		$this->assertFalse( get_option( Plugin_Installer::HANDLED_OPTION ) );
+	}
+
+	/**
+	 * Tests that a super admin's site-level visit never installs on Multisite.
+	 */
+	public function test_no_attempt_on_multisite() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'Multisite only.' );
+		}
+
+		$user_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		grant_super_admin( $user_id );
+		wp_set_current_user( $user_id );
+		$attempts = $this->count_attempts( true );
+
+		( new Plugin_Installer() )->maybe_install_and_activate();
+
+		$this->assertSame( 0, $attempts(), 'A site administrator\'s enable must not install in a super admin\'s session.' );
+		$this->assertNotNull( Plugin_Installer::get_state()['autoinstall_error'], 'The screen should explain why nothing was installed.' );
 	}
 
 	/**
