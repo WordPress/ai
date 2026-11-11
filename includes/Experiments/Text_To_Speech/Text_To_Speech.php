@@ -66,7 +66,7 @@ class Text_To_Speech extends Abstract_Feature {
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_frontend_assets' ) );
 		add_action( Job_Manager::CRON_HOOK, array( $this, 'process_chunk' ) );
 		add_filter( 'the_content', array( $this, 'render_audio_player' ) );
-		add_action( 'post_updated', array( $this, 'sync_audio_visibility' ), 10, 3 );
+		add_action( 'wp_after_insert_post', array( $this, 'sync_audio_visibility' ) );
 	}
 
 	/**
@@ -165,24 +165,14 @@ class Text_To_Speech extends Abstract_Feature {
 	}
 
 	/**
-	 * Keeps a post's audio hidden from visitors while the post has a password.
+	 * Keeps a post's audio out of the Media Library until anyone may read the post.
 	 *
 	 * @since 1.5.0
+	 * @since x.x.x Runs on `wp_after_insert_post` and follows the post status too.
 	 *
-	 * @param int      $post_id     The post ID.
-	 * @param \WP_Post $post_after  The post after the update.
-	 * @param \WP_Post $post_before The post before the update.
+	 * @param int $post_id The post ID.
 	 */
-	public function sync_audio_visibility( $post_id, $post_after, $post_before ): void {
-		if ( ! $post_after instanceof \WP_Post || ! $post_before instanceof \WP_Post ) {
-			return;
-		}
-
-		// Only a password being added or removed changes who may see the audio.
-		if ( ( '' === $post_after->post_password ) === ( '' === $post_before->post_password ) ) {
-			return;
-		}
-
+	public function sync_audio_visibility( $post_id ): void {
 		( new Job_Manager() )->sync_audio_visibility( (int) $post_id );
 	}
 
