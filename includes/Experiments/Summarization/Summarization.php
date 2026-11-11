@@ -179,32 +179,8 @@ class Summarization extends Abstract_Feature {
 			'SummarizationData',
 			array(
 				'enabled'          => $this->is_enabled(),
-				'minContentLength' => $this->get_min_content_length(),
+				'minContentLength' => get_min_content_length( 'summarization', 250 ),
 			)
-		);
-	}
-
-	/**
-	 * Gets the minimum content length required to enable summarization.
-	 *
-	 * @since 1.2.0
-	 *
-	 * @return int The minimum number of characters required.
-	 */
-	protected function get_min_content_length(): int {
-		/**
-		 * Filters the minimum content length required to enable summarization.
-		 *
-		 * @since 1.0.0
-		 * @deprecated 1.1.0 Use {@see 'wpai_min_content_length'} instead.
-		 *
-		 * @param int $min_content_length The minimum number of characters required. Default 250.
-		 */
-		return (int) apply_filters_deprecated(
-			'wpai_summarization_min_content_length',
-			array( get_min_content_length( 'summarization', 250 ) ),
-			'1.1.0',
-			'wpai_min_content_length'
 		);
 	}
 
@@ -326,7 +302,7 @@ class Summarization extends Abstract_Feature {
 			array(
 				'postIds'          => $ids,
 				'restRoute'        => rest_get_route_for_post_type_items( $post_type ),
-				'minContentLength' => $this->get_min_content_length(),
+				'minContentLength' => get_min_content_length( 'summarization', 250 ),
 				'truncatedCount'   => $truncated_count,
 			)
 		);
