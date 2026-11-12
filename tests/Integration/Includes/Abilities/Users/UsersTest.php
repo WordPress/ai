@@ -2195,9 +2195,9 @@ class UsersTest extends WP_UnitTestCase {
 
 		/*
 		 * IDs that are distinct as strings but equal as integers ('7' vs '07')
-		 * pass schema validation. Since WordPress 7.2, WP_Ability::coerce_input()
-		 * casts them before execution and rejects the collision; before that, they
-		 * must still collapse to one filtered ID.
+		 * pass schema validation. Since WordPress 7.2, WP_Ability::prepare_input()
+		 * (named coerce_input() in early 7.2 builds) casts them before execution and
+		 * rejects the collision; before that, they must still collapse to one filtered ID.
 		 */
 		$result = $ability->execute(
 			array(
@@ -2206,7 +2206,7 @@ class UsersTest extends WP_UnitTestCase {
 			)
 		);
 
-		if ( method_exists( $ability, 'coerce_input' ) ) {
+		if ( method_exists( $ability, 'prepare_input' ) || method_exists( $ability, 'coerce_input' ) ) {
 			$this->assertWPError( $result, 'String-duplicate IDs should be rejected once coerced to integers.' );
 			$this->assertSame( 'ability_invalid_input', $result->get_error_code(), 'String-duplicate IDs should fail as invalid input.' );
 		} else {
