@@ -356,7 +356,6 @@ async function addTermToPost(
 	const { editPost } = dispatch( editorStore );
 	const { getEditedPostAttribute } = select( editorStore );
 
-	const currentTerms: number[] = getEditedPostAttribute( restBase ) ?? [];
 	const termId = await findOrCreateTerm(
 		taxonomy,
 		restBase,
@@ -365,6 +364,8 @@ async function addTermToPost(
 	);
 
 	if ( termId ) {
+		// Read after the await so concurrent accepts don't overwrite each other.
+		const currentTerms: number[] = getEditedPostAttribute( restBase ) ?? [];
 		if ( ! currentTerms.includes( termId ) ) {
 			editPost( {
 				[ restBase ]: [ ...currentTerms, termId ],

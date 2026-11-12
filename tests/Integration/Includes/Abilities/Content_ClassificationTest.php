@@ -772,6 +772,69 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that parse_suggestions() matches existing terms and drops case variants under both strategies.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_strategies
+	 *
+	 * @param string $strategy The suggestion strategy.
+	 */
+	public function test_parse_suggestions_matches_existing_term_and_dedupes_case_variants( string $strategy ) {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'Tech' ) );
+
+		$response = '{"suggestions": [{"term": "tech", "confidence": 0.8}, {"term": "Tech", "confidence": 0.9}]}';
+
+		$result = $method->invoke( $this->ability, $response, $strategy, array(), 'post_tag', 10 );
+
+		$this->assertSame(
+			array(
+				array(
+					'term'       => 'Tech',
+					'confidence' => 0.9,
+					'is_new'     => false,
+				),
+			),
+			$result
+		);
+	}
+
+	/**
+	 * Test that parse_suggestions() drops case variants of a new term.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_parse_suggestions_dedupes_case_variants_of_new_term() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		$response = '{"suggestions": [{"term": "machine learning", "confidence": 0.7}, {"term": "Machine Learning", "confidence": 0.9}]}';
+
+		$result = $method->invoke( $this->ability, $response, 'allow_new', array(), 'post_tag', 10 );
+
+		$this->assertCount( 1, $result );
+		$this->assertSame( 'Machine Learning', $result[0]['term'] );
+		$this->assertTrue( $result[0]['is_new'] );
+	}
+
+	/**
+	 * Data provider for the suggestion strategies.
+	 *
+	 * @return array<string, array{0: string}>
+	 */
+	public function data_strategies(): array {
+		return array(
+			'allow_new'     => array( 'allow_new' ),
+			'existing_only' => array( 'existing_only' ),
+		);
+	}
+
+	/**
 	 * Test that parse_suggestions() filters out assigned terms.
 	 *
 	 * @since 0.7.0
@@ -1009,7 +1072,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that get_existing_terms() returns term names for a valid taxonomy.
+	 * Test that get_existing_terms() returns the names of the requested terms that exist.
 	 *
 	 * @since 0.7.0
 	 */
@@ -1021,12 +1084,15 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		// Create some terms.
 		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'PHP' ) );
 		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'JavaScript' ) );
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'Python' ) );
 
-		$result = $method->invoke( $this->ability, 'post_tag' );
+		$result = $method->invoke( $this->ability, 'post_tag', array( 'php', 'JavaScript', 'Ruby' ) );
 
 		$this->assertIsArray( $result );
 		$this->assertContains( 'PHP', $result );
 		$this->assertContains( 'JavaScript', $result );
+		$this->assertNotContains( 'Python', $result, 'Terms that were not requested should not be loaded' );
+		$this->assertSame( array(), $method->invoke( $this->ability, 'post_tag', array() ), 'No names should load no terms' );
 	}
 
 	/**
@@ -1039,7 +1105,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		$method     = $reflection->getMethod( 'get_existing_terms' );
 		$method->setAccessible( true );
 
-		$result = $method->invoke( $this->ability, 'nonexistent_taxonomy' );
+		$result = $method->invoke( $this->ability, 'nonexistent_taxonomy', array( 'PHP' ) );
 
 		$this->assertIsArray( $result );
 		$this->assertEmpty( $result );

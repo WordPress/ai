@@ -19,7 +19,9 @@ import {
 	hasNoteIdList,
 } from '../../../utils/notes';
 import {
+	getBlockContent,
 	getBlockText,
+	isBlockStale,
 	replaceBlockWithPlaceholder,
 } from '../../../utils/blocks';
 
@@ -34,7 +36,7 @@ const BLOCK_PLACEHOLDER = '[[BLOCK_GOES_HERE]]';
  * @param resolvedNoteIds Set of AI Note IDs that have been resolved (approved).
  * @param noteContentById Map of Note ID → rendered Note content (pending only).
  * @param pendingNotes    All pending Notes for the post (for reply lookup).
- * @return The number of suggestions created, or 0 if the block was skipped.
+ * @return The number of suggestions created, 0 if the block was skipped, or null if it went stale.
  */
 export async function reviewSingleBlock(
 	block: Block,
@@ -43,7 +45,7 @@ export async function reviewSingleBlock(
 	resolvedNoteIds: Set< number >,
 	noteContentById: Map< number, string >,
 	pendingNotes: ExistingNote[]
-): Promise< number > {
+): Promise< number | null > {
 	const noteIds = getNoteIds( block.attributes.metadata );
 	const isSingleThread = ! hasNoteIdList( block.attributes.metadata );
 
@@ -99,8 +101,13 @@ export async function reviewSingleBlock(
 		existing_notes: existingNoteTexts,
 	} );
 
+	// The block may have been removed or edited while its request was in flight.
+	if ( isBlockStale( block.clientId, getBlockContent( block ) ) ) {
+		return null;
+	}
+
 	if ( result?.suggestions && result.suggestions.length > 0 ) {
-		await createNote(
+		const isCreated = await createNote(
 			block,
 			postId,
 			result.suggestions,
@@ -108,7 +115,7 @@ export async function reviewSingleBlock(
 				? noteIds[ 0 ] ?? null
 				: findAiThreadId( noteIds, pendingNotes )
 		);
-		return result.suggestions.length;
+		return isCreated ? result.suggestions.length : null;
 	}
 
 	return 0;
@@ -125,13 +132,14 @@ export async function reviewSingleBlock(
  * @param postId         The current post ID.
  * @param suggestions    The suggestions to include in the Note.
  * @param existingNoteId The ID of an existing Note thread, or null for a new thread.
+ * @return False if the block went stale and the Note was deleted, true otherwise.
  */
 async function createNote(
 	block: Block,
 	postId: number,
 	suggestions: Suggestion[],
 	existingNoteId: number | null
-): Promise< void > {
+): Promise< boolean > {
 	const noteContent = suggestions
 		.map( ( s ) => `[${ s.review_type.toUpperCase() }] ${ s.text }` )
 		.join( '\n\n' );
@@ -153,6 +161,19 @@ async function createNote(
 
 	// Only update block metadata when creating a new thread (not a reply).
 	if ( ! existingNoteId && note?.id ) {
+		// The block may have been removed or re-created while the Note was saved.
+		if ( ! select( blockEditorStore ).getBlock( block.clientId ) ) {
+			await dispatch( coreStore ).deleteEntityRecord(
+				'root',
+				'comment',
+				note.id,
+				undefined,
+				// Reject on a failed delete so the caller reports the error.
+				{ throwOnError: true }
+			);
+			return false;
+		}
+
 		const existingMeta =
 			( select( blockEditorStore ) as any ).getBlockAttributes(
 				block.clientId
@@ -162,6 +183,8 @@ async function createNote(
 			metadata: addNoteId( existingMeta, note.id ),
 		} );
 	}
+
+	return true;
 }
 
 /**

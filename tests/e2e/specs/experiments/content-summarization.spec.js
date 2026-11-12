@@ -65,10 +65,10 @@ test.describe( 'Content Summarization Experiment', () => {
 		await expect( summaryBlock ).toContainClass( 'wp-block-group' );
 
 		await expect(
-			summaryBlock.locator( 'p', {
-				hasText:
-					'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure',
-			} )
+			summaryBlock.getByText(
+				'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure',
+				{ exact: true }
+			)
 		).toBeVisible();
 
 		// Ensure the sidebar is visible and on the Post tab.
@@ -264,10 +264,10 @@ test.describe( 'Content Summarization Experiment', () => {
 
 		// Ensure the specific summary block's content was updated with the mock response.
 		await expect(
-			summaryBlock.locator( 'p', {
-				hasText:
-					'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure',
-			} )
+			summaryBlock.getByText(
+				'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure',
+				{ exact: true }
+			)
 		).toBeVisible();
 
 		// Ensure only 1 Content Summary block exists on the page (verifying no duplicate was created).

@@ -21,7 +21,7 @@ type AltTextDisabledNoticeProps = {
  *
  * @param {AltTextDisabledNoticeProps}              props                 The component props.
  * @param {RefCallback< HTMLButtonElement | null >} props.actionButtonRef The ref to the action button.
- * @param {Function}                                props.onEnable        The function to enable alt text generation.
+ * @param {AltTextDisabledNoticeProps['onEnable']}  props.onEnable        The function to enable alt text generation.
  * @return {React.JSX.Element} The rendered component.
  */
 export function AltTextDisabledNotice( {

@@ -54,7 +54,6 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 		delete_option( 'wpai_feature_alt-text-generation_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
-		remove_all_filters( 'ai_experiments_experiment_alt-text-generation_enabled' );
 		unset( $_GET['wpai_bulk_alt_text'], $_GET['wpai_attachment_ids'], $_GET['_wpai_bulk_nonce'] );
 		wp_dequeue_script( 'ai_alt_text_generation_bulk' );
 		wp_deregister_script( 'ai_alt_text_generation_bulk' );
