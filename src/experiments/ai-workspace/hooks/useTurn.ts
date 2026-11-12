@@ -224,18 +224,21 @@ export function useTurn( data: LocalizedData ) {
 	}, [] );
 
 	/**
-	 * Waits for a turn whose connection dropped, by reading the saved chat.
+	 * Waits for a turn whose connection dropped, then reads it from the saved chat.
 	 *
 	 * The browser can lose a turn's response while WordPress is still running
 	 * it: WordPress Playground gives up on any request after 25 seconds, and a
-	 * proxy in front of a site may give up sooner than PHP does. The turn's
-	 * entry is saved when it ends, under the ID the client sent, so the reply
-	 * is read from there instead.
+	 * proxy in front of a site may give up sooner than PHP does. The server
+	 * says whether the turn is running or done, and saves its entry under the
+	 * ID the client sent, so the reply is read from there instead.
+	 *
+	 * A turn the server never received is reported as the failure it was,
+	 * after two checks that find no sign of it, rather than waited on.
 	 *
 	 * @param chatId  The chat the turn runs in.
 	 * @param turnId  The turn's ID.
 	 * @param signal  Aborts the wait, as Stop does.
-	 * @param failure The failure to report if the turn never turns up.
+	 * @param failure The failure to report if the turn's reply cannot be found.
 	 * @return The outcome.
 	 */
 	const recoverTurn = useCallback(
@@ -245,75 +248,99 @@ export function useTurn( data: LocalizedData ) {
 			signal: AbortSignal,
 			failure: { code: string; message: string }
 		): Promise< TurnOutcome > => {
+			const lost: TurnOutcome = {
+				response: null,
+				streamed: false,
+				aborted: false,
+				error: failure,
+			};
 			const deadline = Date.now() + RECOVERY_WINDOW;
+			const headers = { 'X-WP-Nonce': data.rest.nonce };
+			let seen = false;
+			let unseen = 0;
 
 			while ( ! signal.aborted && Date.now() < deadline ) {
-				await pause( RECOVERY_INTERVAL, signal );
-
-				if ( signal.aborted ) {
-					break;
-				}
-
-				let payload: unknown = null;
+				let state = '';
 
 				try {
 					const response = await window.fetch(
-						endpoint( 'conversations' ) +
+						endpoint( 'messages' ) +
 							'/' +
-							encodeURIComponent( chatId ),
-						{
-							credentials: 'same-origin',
-							signal,
-							headers: { 'X-WP-Nonce': data.rest.nonce },
-						}
+							encodeURIComponent( turnId ),
+						{ credentials: 'same-origin', signal, headers }
 					);
 
-					// A new chat is not saved until its first turn ends.
-					if ( ! response.ok ) {
-						continue;
+					state = readString( await response.json(), 'state' );
+				} catch {
+					state = '';
+				}
+
+				if ( 'running' === state || 'done' === state ) {
+					seen = true;
+				} else if ( ! seen ) {
+					// No sign the server ever received this turn.
+					unseen += 1;
+
+					if ( unseen >= 2 ) {
+						return lost;
+					}
+				}
+
+				let chat = null;
+				let read = false;
+
+				if ( 'done' === state ) {
+					try {
+						const response = await window.fetch(
+							endpoint( 'conversations' ) +
+								'/' +
+								encodeURIComponent( chatId ),
+							{ credentials: 'same-origin', signal, headers }
+						);
+
+						read = true;
+						chat = response.ok
+							? toStoredChat( await response.json() )
+							: null;
+					} catch {
+						// Read again on the next check.
+						read = false;
+					}
+				}
+
+				if ( read ) {
+					const saved = chat ? findSavedTurn( chat, turnId ) : null;
+
+					if ( saved?.response ) {
+						return {
+							response: saved.response,
+							streamed: false,
+							aborted: false,
+							error: null,
+						};
 					}
 
-					payload = await response.json();
-				} catch {
-					continue;
+					if ( saved ) {
+						return {
+							...lost,
+							error: {
+								code: saved.errorCode,
+								message: __(
+									'The assistant could not complete this turn.',
+									'ai'
+								),
+							},
+						};
+					}
+
+					// Done, but nothing was saved under this turn.
+					return lost;
 				}
 
-				const chat = toStoredChat( payload );
-				const saved = chat ? findSavedTurn( chat, turnId ) : null;
-
-				if ( ! saved ) {
-					continue;
-				}
-
-				if ( saved.response ) {
-					return {
-						response: saved.response,
-						streamed: false,
-						aborted: false,
-						error: null,
-					};
-				}
-
-				return {
-					response: null,
-					streamed: false,
-					aborted: false,
-					error: {
-						code: saved.errorCode,
-						message: __(
-							'The assistant could not complete this turn.',
-							'ai'
-						),
-					},
-				};
+				await pause( RECOVERY_INTERVAL, signal );
 			}
 
-			return {
-				response: null,
-				streamed: false,
-				aborted: signal.aborted,
-				error: failure,
-			};
+			return { ...lost, aborted: signal.aborted };
 		},
 		[ data.rest.nonce, endpoint ]
 	);
