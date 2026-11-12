@@ -80,32 +80,31 @@ function WorkspaceFrame( {
 /**
  * Returns the explanatory message for a workspace that cannot operate.
  *
+ * The wording and notice type follow the AI settings screen, so a site with no
+ * usable connector reads the same problem the same way on both screens.
+ *
  * @param availability Availability reported by the server.
- * @param settingsUrl  URL of the plugin settings screen.
  * @return The explanation, or null when the workspace is ready.
  */
 function getUnavailableMessage(
-	availability: Availability,
-	settingsUrl: string
-): { title: string; body: string; actionUrl: string } | null {
+	availability: Availability
+): { status: 'error' | 'warning'; body: string } | null {
 	switch ( availability.status ) {
 		case 'no-credentials':
 			return {
-				title: __( 'No AI credentials configured', 'ai' ),
+				status: 'error',
 				body: __(
-					'The AI Workspace needs valid AI provider credentials before it can hold a conversation. Add a provider connection to continue.',
+					'The AI Workspace requires a valid AI Connector to function properly. Verify you have one or more AI Connectors configured.',
 					'ai'
 				),
-				actionUrl: settingsUrl,
 			};
 		case 'no-function-calling':
 			return {
-				title: __( 'No compatible model available', 'ai' ),
+				status: 'warning',
 				body: __(
-					'The AI Workspace needs a model that supports function calling so the assistant can read your content and propose changes. None of the configured providers offer one.',
+					"Your configured AI Connectors don't offer a model that supports function calling, which the AI Workspace needs to read your content and propose changes.",
 					'ai'
 				),
-				actionUrl: settingsUrl,
 			};
 		case 'ready':
 		default:
@@ -116,33 +115,40 @@ function getUnavailableMessage(
 /**
  * Renders the explanatory state shown when the workspace cannot operate.
  *
- * @param props              Component props.
- * @param props.availability Availability reported by the server.
- * @param props.settingsUrl  URL of the plugin settings screen.
+ * @param props               Component props.
+ * @param props.availability  Availability reported by the server.
+ * @param props.connectorsUrl URL of the Connectors screen.
  * @return The unavailable state, or null when the workspace is ready.
  */
 function UnavailableState( {
 	availability,
-	settingsUrl,
+	connectorsUrl,
 }: {
 	availability: Availability;
-	settingsUrl: string;
+	connectorsUrl: string;
 } ) {
-	const message = getUnavailableMessage( availability, settingsUrl );
+	const message = getUnavailableMessage( availability );
 
 	if ( ! message ) {
 		return null;
 	}
 
 	return (
-		<Notice status="warning" isDismissible={ false }>
-			<h2>{ message.title }</h2>
+		<Notice
+			status={ message.status }
+			isDismissible={ false }
+			actions={
+				connectorsUrl
+					? [
+							{
+								label: __( 'Manage Connectors', 'ai' ),
+								url: connectorsUrl,
+							},
+					  ]
+					: []
+			}
+		>
 			<p>{ message.body }</p>
-			<p>
-				<a href={ message.actionUrl }>
-					{ __( 'Open AI settings', 'ai' ) }
-				</a>
-			</p>
 		</Notice>
 	);
 }
@@ -365,7 +371,7 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 				<div className="ai-workspace__app">
 					<UnavailableState
 						availability={ data.availability }
-						settingsUrl={ data.settingsUrl }
+						connectorsUrl={ data.connectorsUrl }
 					/>
 				</div>
 			</WorkspaceFrame>
