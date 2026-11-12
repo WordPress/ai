@@ -612,6 +612,86 @@ test.describe( 'Content Classification Experiment', () => {
 		}
 	} );
 
+	test( 'Keeps every tag when suggestions are accepted in quick succession', async ( {
+		admin,
+		editor,
+		page,
+		requestUtils,
+	} ) => {
+		const names = [ 'Quick Accept Alpha', 'Quick Accept Beta' ];
+		const tags = await Promise.all(
+			names.map( ( name ) =>
+				requestUtils.rest( {
+					method: 'POST',
+					path: '/wp/v2/tags',
+					data: { name },
+				} )
+			)
+		);
+
+		try {
+			await admin.createNewPost();
+			await editor.insertBlock( {
+				name: 'core/paragraph',
+				attributes: { content: LONG_CONTENT },
+			} );
+
+			await page.route(
+				/abilities(\/|%2F)ai(\/|%2F)content-classification(\/|%2F)run/,
+				( route ) =>
+					route.fulfill( {
+						json: {
+							suggestions: names.map( ( term ) => ( {
+								term,
+								confidence: 0.9,
+								is_new: false,
+							} ) ),
+						},
+					} )
+			);
+
+			await openTaxonomyPanel( editor, page, 'Tags' );
+			await page.getByRole( 'button', { name: 'Suggest Tags' } ).click();
+
+			// Hold the term lookups so both accepts are in flight at once.
+			let release;
+			const held = new Promise( ( resolve ) => {
+				release = resolve;
+			} );
+			await page.route( /\/wp\/v2\/tags/, async ( route ) => {
+				await held;
+				await route.continue();
+			} );
+
+			for ( const name of names ) {
+				await page
+					.getByRole( 'button', { name: `Add "${ name }"` } )
+					.click();
+			}
+			release();
+
+			await expect
+				.poll( () =>
+					page.evaluate( () =>
+						window.wp.data
+							.select( 'core/editor' )
+							.getEditedPostAttribute( 'tags' )
+					)
+				)
+				.toEqual( expect.arrayContaining( tags.map( ( t ) => t.id ) ) );
+		} finally {
+			await Promise.all(
+				tags.map( ( tag ) =>
+					requestUtils.rest( {
+						method: 'DELETE',
+						path: `/wp/v2/tags/${ tag.id }`,
+						params: { force: true },
+					} )
+				)
+			);
+		}
+	} );
+
 	test( 'Matches an existing tag when new terms are allowed', async ( {
 		admin,
 		editor,

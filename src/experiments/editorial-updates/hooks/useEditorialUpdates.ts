@@ -19,11 +19,12 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import {
 	flattenBlocks,
-	getBlockHTML,
 	getBlockText,
 	getPostContentBlockContext,
 	replaceBlockWithPlaceholder,
 	getEditableTextAttribute,
+	getBlockContent,
+	isBlockStale,
 } from '../../../utils/blocks';
 import {
 	REVIEWABLE_BLOCK_TYPES,
@@ -39,6 +40,7 @@ import { getRevisionReviewAction, resolveNote } from '../utils';
 
 const BLOCK_PLACEHOLDER = '[[BLOCK_GOES_HERE]]';
 const NOTICE_ID = 'wpai_editorial_updates_error';
+const STALE_NOTICE_ID = 'wpai_editorial_updates_stale';
 
 /**
  * Hook for refining blocks based on existing notes with AI.
@@ -124,6 +126,7 @@ export function useEditorialUpdates(): {
 		setTotal( 0 );
 
 		dispatch( noticesStore ).removeNotice( NOTICE_ID );
+		dispatch( noticesStore ).removeNotice( STALE_NOTICE_ID );
 
 		try {
 			const content = select(
@@ -184,6 +187,7 @@ export function useEditorialUpdates(): {
 			let refinedBlocksCount = 0;
 			let processedBlocksCount = 0;
 			let failedBlocksCount = 0;
+			let staleBlocks = 0;
 			let firstErrorMessage: string | null = null;
 			const notesToResolve: number[] = [];
 
@@ -194,20 +198,34 @@ export function useEditorialUpdates(): {
 				batchStart < refineableBlocks.length;
 				batchStart += BATCH_SIZE
 			) {
-				const batch = refineableBlocks.slice(
-					batchStart,
-					batchStart + BATCH_SIZE
-				);
+				const batch = refineableBlocks
+					.slice( batchStart, batchStart + BATCH_SIZE )
+					.filter( ( block ) => {
+						if (
+							! isBlockStale(
+								block.clientId,
+								getBlockContent( block )
+							)
+						) {
+							return true;
+						}
+
+						// Count the block as stale and decrement the total to refine.
+						staleBlocks++;
+						setTotal( ( currentTotal ) => currentTotal - 1 );
+						return false;
+					} );
+
+				if ( batch.length === 0 ) {
+					continue;
+				}
 
 				await Promise.all(
 					batch.map( async ( block ) => {
 						const pendingNoteIds = getRefinableNoteIds( block );
 
 						// Keep inline formatting; images are refined through their plain-text alt.
-						const blockContent =
-							block.name === 'core/image'
-								? getBlockText( block )
-								: getBlockHTML( block );
+						const blockContent = getBlockContent( block );
 
 						// Collect notes logic
 						const existingNoteTexts = collectThreadTexts(
@@ -229,6 +247,8 @@ export function useEditorialUpdates(): {
 							BLOCK_PLACEHOLDER
 						);
 
+						let isStale = false;
+
 						// Execute refinement
 						try {
 							const refinedContent = await runAbility< string >(
@@ -241,6 +261,18 @@ export function useEditorialUpdates(): {
 									notes: existingNoteTexts,
 								}
 							);
+
+							// The block may have been removed or edited while its request was in flight.
+							if (
+								isBlockStale( block.clientId, blockContent )
+							) {
+								isStale = true;
+								staleBlocks++;
+								setTotal(
+									( currentTotal ) => currentTotal - 1
+								);
+								return;
+							}
 
 							if (
 								refinedContent &&
@@ -288,8 +320,11 @@ export function useEditorialUpdates(): {
 							}
 							failedBlocksCount++;
 						} finally {
-							processedBlocksCount++;
-							setProgress( processedBlocksCount );
+							// Stale blocks were removed from the total, so they don't count as progress.
+							if ( ! isStale ) {
+								processedBlocksCount++;
+								setProgress( processedBlocksCount );
+							}
 						}
 					} )
 				);
@@ -305,6 +340,25 @@ export function useEditorialUpdates(): {
 
 				dispatch( coreStore ).invalidateResolutionForStoreSelector(
 					'getEntityRecords'
+				);
+			}
+
+			if ( staleBlocks > 0 ) {
+				dispatch( noticesStore ).createWarningNotice(
+					sprintf(
+						/* translators: %d: number of blocks removed, replaced, or edited in the editor while refining. */
+						_n(
+							'%d block was not updated because the editor changed while refining.',
+							'%d blocks were not updated because the editor changed while refining.',
+							staleBlocks,
+							'ai'
+						),
+						staleBlocks
+					),
+					{
+						id: STALE_NOTICE_ID,
+						isDismissible: true,
+					}
 				);
 			}
 
@@ -380,7 +434,7 @@ export function useEditorialUpdates(): {
 						actions: noticeActions,
 					}
 				);
-			} else {
+			} else if ( staleBlocks === 0 ) {
 				dispatch( noticesStore ).createNotice(
 					'info',
 					__(
