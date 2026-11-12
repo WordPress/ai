@@ -14,6 +14,7 @@ use WordPress\AI\Background\Lock;
 use WordPress\AI\Background\Scheduler;
 
 use function WordPress\AI\get_default_request_timeout;
+use function WordPress\AI\is_post_publicly_readable;
 use function WordPress\AI\normalize_content;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -669,7 +670,7 @@ class Job_Manager {
 	}
 
 	/**
-	 * Updates the post's audio attachment to match the post's password state.
+	 * Updates the post's audio attachment to match whether anyone may read the post.
 	 *
 	 * @since 1.5.0
 	 *
@@ -703,12 +704,12 @@ class Job_Manager {
 	 * @since 1.5.0
 	 *
 	 * @param int $post_id The post the audio belongs to.
-	 * @return string 'private' while the post has a password, otherwise 'inherit'.
+	 * @return string 'inherit' while anyone may read the post, otherwise 'private'.
 	 */
 	private function get_audio_post_status( int $post_id ): string {
 		$post = get_post( $post_id );
 
-		return $post && '' !== $post->post_password ? 'private' : 'inherit';
+		return $post && is_post_publicly_readable( $post ) ? 'inherit' : 'private';
 	}
 
 	/**

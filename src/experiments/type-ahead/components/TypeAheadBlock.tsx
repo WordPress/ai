@@ -35,11 +35,11 @@ type TypeAheadBlockProps = {
 /**
  * Block wrapper that adds type-ahead behavior to supported blocks.
  *
- * @param {Object}               props               Block wrapper props.
- * @param {ComponentType< any >} props.BlockEdit     Block edit component.
- * @param {any}                  props.blockProps    Block wrapper props.
- * @param {TypeAheadSettings}    props.settings      Type-ahead settings.
- * @param {Set< string >}        props.allowedBlocks Allowed blocks.
+ * @param {Object}                            props               Block wrapper props.
+ * @param {TypeAheadBlockProps['BlockEdit']}  props.BlockEdit     Block edit component.
+ * @param {TypeAheadBlockProps['blockProps']} props.blockProps    Block wrapper props.
+ * @param {TypeAheadSettings}                 props.settings      Type-ahead settings.
+ * @param {Set< string >}                     props.allowedBlocks Allowed blocks.
  * @return {React.JSX.Element} Wrapped block edit UI plus ghost text overlay.
  */
 const TypeAheadBlock = ( {
