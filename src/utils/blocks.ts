@@ -254,7 +254,7 @@ export function getEditableTextAttribute(
  * In template mode, post blocks live inside `core/post-content` block.
  * In standard mode, the root blocks on the canvas are the post blocks directly.
  *
- * @param {SelectFunction} [selectFn] The WordPress data select function (defaults to @wordpress/data select).
+ * @param {SelectFunction} [selectFn] The WordPress data select function (defaults to `@wordpress/data` select).
  * @return An object containing rootClientId, allBlocks, and isMissingPostContent.
  */
 export const getPostContentBlockContext = (
