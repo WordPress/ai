@@ -8,7 +8,7 @@
 			"index": 0,
 			"message": {
 				"role": "assistant",
-				"content": "{\"suggestions\":[{\"title\":\"How to Start a Vegetable Garden: A Beginner's Guide\",\"outline\":\"- Choose a sunny location\\n- Prepare and amend your soil\\n- Pick easy vegetables for beginners\\n- Set up a watering schedule\"}]}",
+				"content": "{\"suggestions\":[{\"title\":\"How to Start a Vegetable Garden: A Beginner's Guide\",\"outline\":\"- Choose a sunny location\\n- Mix %20 compost into your soil\\n- Pick easy vegetables for beginners\\n- Set up a watering schedule\"}]}",
 				"refusal": null,
 				"annotations": []
 			},

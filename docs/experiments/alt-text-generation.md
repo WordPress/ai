@@ -89,7 +89,7 @@ The ability can be called directly via REST API for automation, bulk processing,
    - `src/experiments/alt-text-generation/bulk.ts` reads `window.aiAltTextGenerationBulkData.attachmentIds`, creates a dismissible admin notice, and iterates over each ID sequentially. For each ID it calls `runAbility( 'ai/alt-text-generation', { attachment_id } )` and then updates the attachment via `apiFetch( { path: '/wp/v2/media/{id}', method: 'POST', data: { alt_text } } )`. Failed IDs are tracked and reported in the final notice. When `truncatedCount` is non-zero the script also shows a warning notice naming how many images the batch cap dropped. After processing, `window.history.replaceState()` strips the query args (including `_wpai_bulk_nonce`) from the URL to prevent re-triggering on page refresh or browser navigation.
 
 5. **Ability execution flow:**
-   - **Resolve image:** If `attachment_id` is set, load the attachment file or image URL and convert to a data URI. If `image_url` is set, accept data URIs as-is, map local upload URLs to the filesystem when possible, or download the URL to a temp file and convert to a data URI.
+   - **Resolve image:** If `attachment_id` is set, load the attachment file or image URL and convert to a data URI. If `image_url` is set, accept data URIs as-is, read local upload URLs from the filesystem only when they belong to an attachment the user can edit, otherwise download the URL to a temp file and convert to a data URI.
    - **Generate:** Build a short prompt (e.g. "Generate alt text for this image." plus optional "Context: …"). Call the AI client with the system instruction from `alt-text-system-instruction.php`, the image as a file reference, and preferred vision models. Trim and strip surrounding quotes and trailing periods.
    - **Return:** `array( 'alt_text' => sanitize_text_field( $result ) )`.
 
@@ -147,7 +147,7 @@ array(
 ### Permissions
 
 - **With `attachment_id`:** User must be able to edit the attachment (`current_user_can( 'edit_post', $attachment_id )`). If the attachment is not found, returns an error.
-- **With `image_url` only:** User must have `upload_files` capability.
+- **With `image_url` only:** User must have `upload_files` capability. An uploads URL is read from disk only when it belongs to an attachment the user can edit; any other URL is fetched over HTTP, so web server access rules still apply.
 
 ## Using the Abilities via REST API
 

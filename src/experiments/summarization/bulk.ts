@@ -25,7 +25,7 @@ import { parse, serialize } from '@wordpress/blocks';
 
 type BulkData = {
 	postIds: number[];
-	restBase: string;
+	restRoute: string;
 	minContentLength: number;
 	truncatedCount?: number | string;
 };
@@ -105,7 +105,7 @@ async function processBulkSummary(): Promise< void > {
 	registerSummaryBlockAttribute();
 	registerCoreBlocks();
 
-	const { postIds, restBase, minContentLength } = data;
+	const { postIds, restRoute, minContentLength } = data;
 	const total = postIds.length;
 
 	// wp_localize_script() stringifies scalar values, so coerce before comparing.
@@ -144,7 +144,7 @@ async function processBulkSummary(): Promise< void > {
 		try {
 			// Fetch the current raw post content so we can update the summary block within it.
 			const post = await apiFetch< PostResponse >( {
-				path: `/wp/v2/${ restBase }/${ id }?context=edit`,
+				path: `${ restRoute }/${ id }?context=edit`,
 				method: 'GET',
 			} );
 
@@ -184,7 +184,7 @@ async function processBulkSummary(): Promise< void > {
 
 			// Persist: save to both post content and post meta in a single request.
 			await apiFetch( {
-				path: `/wp/v2/${ restBase }/${ id }`,
+				path: `${ restRoute }/${ id }`,
 				method: 'POST',
 				data: {
 					content: newContent,

@@ -52,6 +52,24 @@ test.describe( 'Content Gap Suggestions Experiment', () => {
 		).toBeVisible();
 	} );
 
+	test( 'Keeps percentages in the suggested outline', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.visitAdminPage( 'index.php' );
+
+		await page
+			.getByRole( 'button', { name: 'Generate suggestions' } )
+			.click();
+
+		// The mocked outline contains "- Mix %20 compost into your soil".
+		await expect(
+			page.locator( '.ai-content-gap-suggestions__outline' )
+		).toContainText( 'Mix %20 compost into your soil', {
+			timeout: 15000,
+		} );
+	} );
+
 	test( 'Shows the error message when generation fails', async ( {
 		admin,
 		page,
