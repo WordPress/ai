@@ -67,6 +67,26 @@ final class Turn_Controller {
 	public const CANCEL_ROUTE = 'ai/v1/workspace/messages/cancel';
 
 	/**
+	 * Transient name prefix for the marker that says a turn is running or done.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const TURN_STATE_PREFIX = 'wpai_workspace_turn_';
+
+	/**
+	 * How long a turn's running or done marker survives, in seconds.
+	 *
+	 * Longer than any turn runs, so a marker outlives the turn it describes.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var int
+	 */
+	public const TURN_STATE_TTL = HOUR_IN_SECONDS;
+
+	/**
 	 * Capability required to use the workspace, matching the admin screen.
 	 *
 	 * The check itself passes the literal so the capability sniff can verify it;
@@ -211,6 +231,23 @@ final class Turn_Controller {
 							'default' => Tool_Selector::SCOPE_SITE,
 						),
 					),
+				),
+			)
+		);
+
+		/*
+		 * Reports whether a turn is running or done, for a client whose
+		 * connection dropped. A turn the server never received is unknown,
+		 * so that client can report the failure instead of waiting.
+		 */
+		register_rest_route(
+			self::API_NAMESPACE,
+			'/workspace/messages/(?P<turn_id>[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})',
+			array(
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => array( $this, 'get_turn_state' ),
+					'permission_callback' => array( $this, 'check_permission' ),
 				),
 			)
 		);
@@ -372,7 +409,13 @@ final class Turn_Controller {
 		 */
 		$emitter = apply_filters( 'wpai_workspace_stream_emitter', null, $request );
 
-		$result = $runner->run( $conversation, $message, is_callable( $emitter ) ? $emitter : null, $follow_up, $turn_id );
+		$this->set_turn_state( $turn_id, $user_id, 'running' );
+
+		try {
+			$result = $runner->run( $conversation, $message, is_callable( $emitter ) ? $emitter : null, $follow_up, $turn_id );
+		} finally {
+			$this->set_turn_state( $turn_id, $user_id, 'done' );
+		}
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -403,6 +446,53 @@ final class Turn_Controller {
 			),
 			200
 		);
+	}
+
+	/**
+	 * Reports whether one of the current user's turns is running or done.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_REST_Request $request The REST request.
+	 * @return \WP_REST_Response The state: `running`, `done`, or `unknown` for a turn this user never sent.
+	 */
+	public function get_turn_state( WP_REST_Request $request ): WP_REST_Response {
+		$state = get_transient( $this->turn_state_name( (string) $request->get_param( 'turn_id' ), get_current_user_id() ) );
+
+		return new WP_REST_Response(
+			array( 'state' => in_array( $state, array( 'running', 'done' ), true ) ? $state : 'unknown' ),
+			200
+		);
+	}
+
+	/**
+	 * Records that a turn is running or done, when the client named the turn.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $turn_id The client's ID for the turn, or an empty string.
+	 * @param int    $user_id The user running the turn.
+	 * @param string $state   `running` or `done`.
+	 */
+	private function set_turn_state( string $turn_id, int $user_id, string $state ): void {
+		if ( '' === $turn_id ) {
+			return;
+		}
+
+		set_transient( $this->turn_state_name( $turn_id, $user_id ), $state, self::TURN_STATE_TTL );
+	}
+
+	/**
+	 * Builds the transient name holding a turn's state, scoped to its user.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $turn_id The turn ID.
+	 * @param int    $user_id The user ID.
+	 * @return string The transient name.
+	 */
+	private function turn_state_name( string $turn_id, int $user_id ): string {
+		return self::TURN_STATE_PREFIX . md5( $user_id . ':' . $turn_id );
 	}
 
 	/**
