@@ -658,6 +658,147 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Reads a turn's state through the state route.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $turn_id The turn ID.
+	 * @return \WP_REST_Response The response.
+	 */
+	private function turn_state( string $turn_id ) {
+		$this->fresh_rest_server();
+		( new Turn_Controller( new Conversation_Store(), new Tool_Selector(), new Scripted_Model_Client( array() ) ) )->register_routes();
+
+		return rest_get_server()->dispatch( new WP_REST_Request( 'GET', '/ai/v1/workspace/messages/' . $turn_id ) );
+	}
+
+	/**
+	 * A turn the server never received is unknown, and one it ran is done,
+	 * for its own user only.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_the_state_route_reports_a_turn_as_unknown_or_done(): void {
+		$this->login_as( 'administrator' );
+		$turn_id = wp_generate_uuid4();
+
+		$this->assertSame( array( 'state' => 'unknown' ), $this->turn_state( $turn_id )->get_data() );
+
+		$this->dispatch_turn(
+			new Scripted_Model_Client( array( new WP_Error( 'provider_down', 'The provider is down.' ) ) ),
+			array(
+				'message' => 'Hello',
+				'turn_id' => $turn_id,
+			)
+		);
+
+		$this->assertSame( array( 'state' => 'done' ), $this->turn_state( $turn_id )->get_data(), 'A turn that failed is done too.' );
+
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+
+		$this->assertSame( array( 'state' => 'unknown' ), $this->turn_state( $turn_id )->get_data(), "Another user cannot see this user's turn." );
+	}
+
+	/**
+	 * A turn is marked running while it runs.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_turn_is_running_while_the_model_answers(): void {
+		$this->login_as( 'administrator' );
+		$turn_id = wp_generate_uuid4();
+		$seen    = '';
+
+		$client = new class( $turn_id, $seen ) implements Model_Client_Interface {
+			/**
+			 * The turn ID.
+			 *
+			 * @var string
+			 */
+			private $turn_id;
+
+			/**
+			 * The state seen during the round.
+			 *
+			 * @var string
+			 */
+			public $seen;
+
+			/**
+			 * Constructor.
+			 *
+			 * @param string $turn_id The turn ID.
+			 * @param string $seen    The state seen.
+			 */
+			public function __construct( string $turn_id, string &$seen ) {
+				$this->turn_id = $turn_id;
+				$this->seen    = &$seen;
+			}
+
+			/**
+			 * {@inheritDoc}
+			 */
+			public function supports_text_generation(): bool {
+				return true;
+			}
+
+			/**
+			 * {@inheritDoc}
+			 */
+			public function supports_function_calling(): bool {
+				return true;
+			}
+
+			/**
+			 * {@inheritDoc}
+			 *
+			 * @param list<\WordPress\AiClient\Messages\DTO\Message> $messages           The conversation so far.
+			 * @param list<string>                                   $ability_names      Abilities to declare as tools.
+			 * @param string                                         $system_instruction The system instruction.
+			 * @param callable|null                                  $on_text            Optional. Receives text deltas.
+			 * @return \WordPress\AiClient\Messages\DTO\Message The reply.
+			 */
+			public function generate( array $messages, array $ability_names, string $system_instruction, ?callable $on_text = null ) {
+				$this->seen = (string) get_transient( Turn_Controller::TURN_STATE_PREFIX . md5( get_current_user_id() . ':' . $this->turn_id ) );
+
+				return new Message( MessageRoleEnum::model(), array( new MessagePart( 'All done.' ) ) );
+			}
+		};
+
+		$this->dispatch_turn(
+			$client,
+			array(
+				'message' => 'Hello',
+				'turn_id' => $turn_id,
+			)
+		);
+
+		$this->assertSame( 'running', $seen );
+	}
+
+	/**
+	 * The state route only answers for a version 4 UUID.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_the_state_route_needs_a_uuid(): void {
+		$this->login_as( 'administrator' );
+
+		$this->assertSame( 404, $this->turn_state( 'not-a-uuid' )->get_status() );
+	}
+
+	/**
+	 * The state route needs the workspace capability.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_the_state_route_refuses_a_subscriber(): void {
+		$this->login_as( 'subscriber' );
+
+		$this->assertSame( 403, $this->turn_state( wp_generate_uuid4() )->get_status() );
+	}
+
+	/**
 	 * A subscriber cannot reach the turn endpoint at all.
 	 *
 	 * @since x.x.x
