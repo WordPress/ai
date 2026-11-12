@@ -246,7 +246,7 @@ class AI_Workspace extends Abstract_Feature {
 			Command_Palette_AI_Search::ABILITY,
 			array(
 				'label'         => __( 'Command Palette AI Search', 'ai' ),
-				'description'   => __( 'Suggests admin screens when the command palette (Cmd/Ctrl+K) has no results for a search, by choosing from the commands the palette sent.', 'ai' ),
+				'description'   => __( 'Suggests admin screens when the Command Palette (Cmd/Ctrl+K) has no results for a search, by choosing from the commands the palette sent.', 'ai' ),
 				'category'      => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'ability_class' => Command_Palette_AI_Search::class,
 				/*
