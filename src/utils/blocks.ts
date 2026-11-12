@@ -284,3 +284,32 @@ export const getPostContentBlockContext = (
 		isMissingPostContent: isShowingTemplate && ! rootClientId,
 	};
 };
+
+/**
+ * Returns a block's content: the plain-text alt and caption for images, the HTML otherwise.
+ *
+ * @param {BlockWithContent} block The block to extract content from.
+ * @return {string} The content of the block.
+ */
+export function getBlockContent( block: BlockWithContent ): string {
+	return block.name === 'core/image'
+		? getBlockText( block )
+		: getBlockHTML( block );
+}
+
+/**
+ * Checks whether a block is no longer safe to update: it was removed, or its
+ * content changed since it was captured.
+ *
+ * @param {string} clientId        The client ID of the block to check.
+ * @param {string} originalContent The block's content, as returned by `getBlockContent()` when captured.
+ * @return {boolean} True if the block is missing or its content changed, false otherwise.
+ */
+export function isBlockStale(
+	clientId: string,
+	originalContent: string
+): boolean {
+	const block = select( blockEditorStore ).getBlock( clientId );
+
+	return ! block || getBlockContent( block ) !== originalContent;
+}
