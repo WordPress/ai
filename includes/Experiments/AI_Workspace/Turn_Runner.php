@@ -104,7 +104,7 @@ final class Turn_Runner {
 	 *
 	 * @var list<string>
 	 */
-	public const TURN_ENDING_ABILITIES = array( Propose_Drafts::ABILITY, Propose_Template::ABILITY, Ask_User::ABILITY ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
+	public const TURN_ENDING_ABILITIES = array( Propose_Drafts::ABILITY, Propose_Template::ABILITY, Ask_User::ABILITY, Show_Screen::ABILITY ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
 
 	/**
 	 * Abilities that propose a write, withheld from a follow-up turn.
@@ -1353,6 +1353,10 @@ final class Turn_Runner {
 				$instruction .= ' ' . ( array() !== array_intersect( self::PROPOSAL_ABILITIES, $tools )
 					? __( 'Do not ask and propose in the same response. End every reply with a next step, even when you have answered in full: a proposal, or a question through the question tool offering what you can do next. Never end with only text, and never with steps for the person to carry out themselves.', 'ai' )
 					: __( 'End every reply with a next step, even when you have answered in full: a question through the question tool offering what you can do next. Never end with only text, and never with steps for the person to carry out themselves.', 'ai' ) );
+			}
+
+			if ( in_array( Show_Screen::ABILITY, $tools, true ) ) {
+				$instruction .= "\n\n" . Show_Screen::get_instructions();
 			}
 		} else {
 			$instruction .= ' ' . __( 'You have no access to this site\'s content in this conversation. Answer from general knowledge, and say so when a question would need site data.', 'ai' );

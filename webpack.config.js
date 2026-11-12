@@ -197,6 +197,33 @@ module.exports = {
 		),
 	},
 
+	module: {
+		...defaultConfig.module,
+		rules: [
+			...defaultConfig.module.rules,
+			/*
+			 * Experimental (AI Workspace screens). The A2UI renderer maps icon
+			 * names onto `@wordpress/icons` 17 or later, newer than the plugin's
+			 * own copy, so inside that package only the import resolves to a
+			 * separate, newer copy.
+			 */
+			{
+				include: path.resolve(
+					__dirname,
+					'node_modules/@swissspidy/a2ui-wp'
+				),
+				resolve: {
+					alias: {
+						'@wordpress/icons': path.resolve(
+							__dirname,
+							'node_modules/wp-icons-for-a2ui'
+						),
+					},
+				},
+			},
+		],
+	},
+
 	plugins: [
 		...defaultConfig.plugins,
 

@@ -141,6 +141,12 @@ class AI_Workspace extends Abstract_Feature {
 		( new Ask_User() )->init();
 
 		/*
+		 * Experimental: shows the person an A2UI screen, which also ends the
+		 * turn. It writes nothing and is withheld from REST and MCP.
+		 */
+		( new Show_Screen() )->init();
+
+		/*
 		 * The turn endpoint is the only route through which the workspace reaches
 		 * site content, and it is capability checked on every request.
 		 */

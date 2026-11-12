@@ -216,6 +216,8 @@ final class Tool_Selector {
 		 * capability the turn endpoint already checks.
 		 */
 		Ask_User::ABILITY     => '',
+		// Experimental. Showing a screen writes nothing, like asking.
+		Show_Screen::ABILITY  => '',
 	);
 
 	/**
