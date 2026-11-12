@@ -2,7 +2,7 @@
  * Browser coverage for "Ask AI" from the command palette into the AI Workspace.
  *
  * When the palette finds nothing for a search, a workspace user is offered an
- * "Ask AI: <query>" row after any AI suggestions. Choosing it opens the
+ * "Ask in AI Workspace: <query>" row after any AI suggestions. Choosing it opens the
  * workspace with the query in the composer, unsent, and the query is removed
  * from the URL so a reload does not bring it back.
  */
@@ -130,11 +130,11 @@ test.describe( 'AI Workspace handoff from the command palette', () => {
 		await searchPaletteAndWait( page, query );
 
 		const row = page.locator( ASK_AI_ROW );
-		await expect( row ).toHaveText( `Ask AI: ${ query }`, {
+		await expect( row ).toHaveText( `Ask in AI Workspace: ${ query }`, {
 			useInnerText: true,
 		} );
 		await expect( page.locator( AI_RESULT ).last() ).toHaveText(
-			`Ask AI: ${ query }`,
+			`Ask in AI Workspace: ${ query }`,
 			{
 				useInnerText: true,
 			}
@@ -177,7 +177,7 @@ test.describe( 'AI Workspace handoff from the command palette', () => {
 		await expect( rows ).toHaveCount( 2 );
 		await expect( rows.first() ).toContainText( 'Settings > Reading' );
 		await expect( rows.last() ).toHaveText(
-			'Ask AI: how do I hide my site from google',
+			'Ask in AI Workspace: how do I hide my site from google',
 			{
 				useInnerText: true,
 			}
@@ -305,7 +305,7 @@ test.describe( 'AI Workspace handoff from the command palette', () => {
 		const rows = page.locator( AI_RESULT );
 		await expect( rows ).toHaveCount( 1 );
 		await expect( rows ).toHaveText(
-			'Ask AI: how do I hide my site from google',
+			'Ask in AI Workspace: how do I hide my site from google',
 			{
 				useInnerText: true,
 			}
