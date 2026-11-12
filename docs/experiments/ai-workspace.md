@@ -24,7 +24,7 @@ Enable the experiment at `Settings → AI` and open `Tools → AI Workspace`. Th
 - A Wapuu beside the status while a turn runs, finishes or fails, still when reduced motion is on
 - Every tool call and proposal event recorded in the AI Request Log while AI Request Logging is on, with a hook for audit plugins either way, and chats included in personal-data export and erase (see [Auditing with the AI Request Log](#auditing-with-the-ai-request-log))
 - An action in the block editor that opens the workspace seeded with the current post's identity
-- An AI fallback in the command palette (Cmd/Ctrl+K): a plain-language search the palette finds nothing for suggests the screens that answer it, and an "Ask AI" row carries the search into the workspace (see [The command palette](#the-command-palette))
+- An AI fallback in the command palette (Cmd/Ctrl+K): a plain-language search the palette finds nothing for suggests the screens that answer it, and an "Ask in AI Workspace" row carries the search into the workspace (see [The command palette](#the-command-palette))
 
 The screen degrades with an explanatory state rather than failing when the plugin has no valid AI credentials, or when no configured connector exposes a model that supports function calling.
 
@@ -33,7 +33,7 @@ The screen degrades with an explanatory state rather than failing when the plugi
 AI Workspace is the plugin's one agent surface. Two proposals that were heading for separate experiments are part of it instead ([#1287](https://github.com/WordPress/ai/issues/1287)):
 
 - **Site Agent** ([#1214](https://github.com/WordPress/ai/pull/1214)) proposed an agent that reads site information and changes posts and settings after approval. Its site-information read and its post, site title and tagline writes are here as `ai/get-site-info`, `ai/propose-post-changes` and `ai/propose-site-identity`; its plugin-list and environment reads are not, since the workspace withholds them. The writes are proposal types rather than registered write abilities, so no MCP client can call them without a person approving in the workspace.
-- **Command Palette AI Search** ([#1250](https://github.com/WordPress/ai/pull/1250)) proposed an AI fallback for the command palette. It is here as the palette's AI suggestions and its "Ask AI" row, enabled with this experiment rather than with a toggle of its own (see [The command palette](#the-command-palette)).
+- **Command Palette AI Search** ([#1250](https://github.com/WordPress/ai/pull/1250)) proposed an AI fallback for the command palette. It is here as the palette's AI suggestions and its "Ask in AI Workspace" row, enabled with this experiment rather than with a toggle of its own (see [The command palette](#the-command-palette)).
 
 The name, menu entry, URL and every identifier are unchanged: the experiment ID stays `ai-workspace`, so a site that had it on keeps it on.
 
@@ -378,7 +378,7 @@ With the experiment on, the command palette gets an AI fallback on every admin s
 - **Not an agent tool.** `ai/command-palette-ai-search` makes its own model call over a list only the browser can send, so it is registered with `meta.mcp.public = false` and annotated open-world, and the tool policy never offers it to the assistant. It is not marked read-only although it writes nothing, because the REST run route accepts only GET for a read-only ability and the command list does not fit in a URL.
 - **What leaves the site.** The search and the labels and keywords of the commands the user can run are sent to the configured provider. No site content is.
 
-### Ask AI
+### Ask in AI Workspace
 
 For users who can open the workspace (`manage_options`), the loader adds an "Ask in AI Workspace: <query>" row under the same conditions as the suggestions: the palette found nothing, the search has at least three characters, and the debounce has settled. It comes after any suggestions, and it stays when the AI request fails, so a failed request leaves only that row. The server tells the loader whether to offer it; nobody else is told where the workspace is.
 
@@ -396,7 +396,7 @@ Choosing it opens the workspace with the search in the `wpai-prompt` query argum
 - Registers `REST\Turn_Controller`, `REST\Stream_Responder` and `REST\Proposal_Controller`.
 - Registers the `wpai_chat` post type and `wpai_archived` status (`Conversation_Store::register_post_type()`) and `REST\Conversation_Controller`. The chat ownership filter and user-removal cleanup (`Conversation_Store::register_lifecycle_hooks()`), and the personal-data exporter and eraser (`Conversation_Privacy::register()`), are hooked by the plugin's `Main` class instead, so they hold while the experiment is off.
 - Hooks `admin_enqueue_scripts` to add the block editor handoff action on `post.php` and `post-new.php`, for users who can open the workspace. The handoff carries the post's identity and a flattened, clamped title, and nothing else — the workspace reads any body through the same permission-checked tool path.
-- Registers `ai/command-palette-ai-search` and hooks `admin_enqueue_scripts` (priority 20, after the palette) to add the command palette loader for users who can `edit_posts`, on screens where `wp-commands` is enqueued. The loader is told the workspace URL only for users who can `manage_options`, who get the Ask AI row.
+- Registers `ai/command-palette-ai-search` and hooks `admin_enqueue_scripts` (priority 20, after the palette) to add the command palette loader for users who can `edit_posts`, on screens where `wp-commands` is enqueued. The loader is told the workspace URL only for users who can `manage_options`, who get the "Ask in AI Workspace" row.
 
 ### The turn loop
 
