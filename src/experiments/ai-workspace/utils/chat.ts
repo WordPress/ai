@@ -15,6 +15,8 @@ import type {
 	StoredChat,
 	ToolCallRecord,
 	TranscriptEntry,
+	TurnResponse,
+	TurnStatus,
 } from '../types';
 
 /**
@@ -253,4 +255,87 @@ export function urlForChat( href: string, id: string ): string {
 	}
 
 	return url.toString();
+}
+
+/**
+ * Makes a version 4 UUID, for a turn or a new chat.
+ *
+ * @return The UUID.
+ */
+export function newUuid(): string {
+	if ( typeof globalThis.crypto?.randomUUID === 'function' ) {
+		return globalThis.crypto.randomUUID();
+	}
+
+	// randomUUID needs a secure context; wp-admin may be served over HTTP.
+	const hex = Array.from(
+		globalThis.crypto.getRandomValues( new Uint8Array( 32 ) ),
+		( byte ) => ( byte % 16 ).toString( 16 )
+	);
+	hex[ 12 ] = '4';
+	hex[ 16 ] = '89ab'.charAt( parseInt( hex[ 16 ] ?? '0', 16 ) % 4 );
+
+	return [
+		hex.slice( 0, 8 ).join( '' ),
+		hex.slice( 8, 12 ).join( '' ),
+		hex.slice( 12, 16 ).join( '' ),
+		hex.slice( 16, 20 ).join( '' ),
+		hex.slice( 20 ).join( '' ),
+	].join( '-' );
+}
+
+/**
+ * What a saved chat says about one turn, found by the ID the client gave it.
+ */
+export type SavedTurn =
+	| { response: TurnResponse; errorCode: null }
+	| { response: null; errorCode: string };
+
+/**
+ * Finds a turn's entry in a saved chat, by the ID the client sent with it.
+ *
+ * A turn's entry is saved when the turn ends, so finding it means the turn is
+ * over. It is what a client whose connection dropped reads instead of the
+ * response it never received.
+ *
+ * @param chat   The saved chat.
+ * @param turnId The turn's ID.
+ * @return The turn, or null when it has not ended yet.
+ */
+export function findSavedTurn(
+	chat: StoredChat,
+	turnId: string
+): SavedTurn | null {
+	for ( const value of chat.entries ) {
+		const record = toRecord( value );
+
+		if ( ! record || readString( record, 'turn_id' ) !== turnId ) {
+			continue;
+		}
+
+		const stored = readString( record, 'status' ) as EntryStatus;
+
+		if ( 'error' === stored || ! STORED_STATUSES.includes( stored ) ) {
+			return {
+				response: null,
+				errorCode: readString( record, 'error_code' ) || 'turn_failed',
+			};
+		}
+
+		return {
+			response: {
+				conversation_id: chat.id,
+				scope: chat.scope,
+				status: stored as TurnStatus,
+				rounds: readNumber( record, 'rounds' ),
+				tools: [],
+				tool_calls: listOf( record, 'tool_calls' ) as ToolCallRecord[],
+				messages: [],
+				text: readString( record, 'text' ),
+			},
+			errorCode: null,
+		};
+	}
+
+	return null;
 }

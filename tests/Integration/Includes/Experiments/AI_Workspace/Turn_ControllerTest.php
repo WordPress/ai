@@ -484,6 +484,180 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A first turn can name the chat it creates, so a client whose connection
+	 * drops before the reply arrives can still find the chat.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_first_turn_is_saved_under_the_id_the_client_chose(): void {
+		$user_id = $this->login_as( 'administrator' );
+		$chat_id = wp_generate_uuid4();
+
+		$response = $this->dispatch_turn(
+			new Scripted_Model_Client( array( $this->text_message( 'All done.' ) ) ),
+			array(
+				'message'             => 'Hello',
+				'new_conversation_id' => $chat_id,
+			)
+		);
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( $chat_id, $response->get_data()['conversation_id'] );
+		$this->assertIsArray( ( new Conversation_Store() )->get( $chat_id, $user_id ), 'The chat is saved under the chosen ID.' );
+	}
+
+	/**
+	 * A turn's entry keeps the ID the client gave the turn, including a turn
+	 * that ends in an error.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_turn_entry_keeps_the_turn_id(): void {
+		$user_id = $this->login_as( 'administrator' );
+		$chat_id = wp_generate_uuid4();
+		$first   = wp_generate_uuid4();
+		$second  = wp_generate_uuid4();
+
+		$this->dispatch_turn(
+			new Scripted_Model_Client( array( $this->text_message( 'All done.' ) ) ),
+			array(
+				'message'             => 'Hello',
+				'new_conversation_id' => $chat_id,
+				'turn_id'             => $first,
+			)
+		);
+		$this->dispatch_turn(
+			new Scripted_Model_Client( array( new WP_Error( 'provider_down', 'The provider is down.' ) ) ),
+			array(
+				'message'         => 'Again',
+				'conversation_id' => $chat_id,
+				'turn_id'         => $second,
+			)
+		);
+
+		$chat = ( new Conversation_Store() )->get( $chat_id, $user_id );
+
+		$this->assertIsArray( $chat );
+		$this->assertSame( $first, $chat['entries'][0]['turn_id'] );
+		$this->assertSame( $second, $chat['entries'][1]['turn_id'] );
+		$this->assertSame( Turn_Runner::STATUS_ERROR, $chat['entries'][1]['status'] );
+	}
+
+	/**
+	 * A turn sent without an ID saves an entry without one, as before.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_turn_without_an_id_saves_no_turn_id(): void {
+		$user_id  = $this->login_as( 'administrator' );
+		$response = $this->dispatch_turn(
+			new Scripted_Model_Client( array( $this->text_message( 'All done.' ) ) ),
+			array( 'message' => 'Hello' )
+		);
+		$chat     = ( new Conversation_Store() )->get( $response->get_data()['conversation_id'], $user_id );
+
+		$this->assertIsArray( $chat );
+		$this->assertArrayNotHasKey( 'turn_id', $chat['entries'][0] );
+	}
+
+	/**
+	 * Turn and chat IDs must be version 4 UUIDs.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_ids_that_are_not_uuids_are_refused(): void {
+		$this->login_as( 'administrator' );
+
+		foreach ( array( 'new_conversation_id', 'turn_id' ) as $param ) {
+			$response = $this->dispatch_turn(
+				new Scripted_Model_Client( array( $this->text_message( 'All done.' ) ) ),
+				array(
+					'message' => 'Hello',
+					$param    => 'not-a-uuid',
+				)
+			);
+
+			$this->assertSame( 400, $response->get_status(), $param . ' must be a UUID.' );
+			$this->assertSame( 'rest_invalid_param', $response->get_data()['code'] );
+		}
+	}
+
+	/**
+	 * A new chat ID is only for a first turn.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_new_chat_id_with_an_existing_chat_is_refused(): void {
+		$user_id = $this->login_as( 'administrator' );
+		$store   = new Conversation_Store();
+		$chat    = $store->create( $user_id, Tool_Selector::SCOPE_SITE );
+		$store->save( $chat );
+
+		$response = $this->dispatch_turn(
+			new Scripted_Model_Client( array( $this->text_message( 'All done.' ) ) ),
+			array(
+				'message'             => 'Hello',
+				'conversation_id'     => $chat['id'],
+				'new_conversation_id' => wp_generate_uuid4(),
+			)
+		);
+
+		$this->assertSame( 400, $response->get_status() );
+		$this->assertSame( 'workspace_new_conversation_id_conflict', $response->get_data()['code'] );
+	}
+
+	/**
+	 * A new chat ID that is already one of the person's chats is refused, so
+	 * a repeated first turn cannot overwrite that chat.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_new_chat_id_already_in_use_is_refused(): void {
+		$user_id = $this->login_as( 'administrator' );
+		$store   = new Conversation_Store();
+		$chat    = $store->create( $user_id, Tool_Selector::SCOPE_SITE );
+		$store->save( $chat );
+
+		$response = $this->dispatch_turn(
+			new Scripted_Model_Client( array( $this->text_message( 'All done.' ) ) ),
+			array(
+				'message'             => 'Hello',
+				'new_conversation_id' => $chat['id'],
+			)
+		);
+
+		$this->assertSame( 409, $response->get_status() );
+		$this->assertSame( 'workspace_conversation_exists', $response->get_data()['code'] );
+	}
+
+	/**
+	 * Another user's chat ID cannot be claimed for a new chat: the turn runs,
+	 * but nothing is written over the other chat.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_new_chat_id_owned_by_someone_else_is_not_written(): void {
+		$store = new Conversation_Store();
+		$other = $store->create( self::$user_ids['editor'], Tool_Selector::SCOPE_SITE );
+		$store->save( $other );
+
+		$user_id = $this->login_as( 'administrator' );
+
+		$this->dispatch_turn(
+			new Scripted_Model_Client( array( $this->text_message( 'All done.' ) ) ),
+			array(
+				'message'             => 'Hello',
+				'new_conversation_id' => $other['id'],
+			)
+		);
+
+		$this->assertNull( $store->get( $other['id'], $user_id ), 'The administrator gets no chat under that ID.' );
+		$kept = $store->get( $other['id'], self::$user_ids['editor'] );
+		$this->assertIsArray( $kept );
+		$this->assertSame( array(), $kept['entries'], "The editor's chat is unchanged." );
+	}
+
+	/**
 	 * A subscriber cannot reach the turn endpoint at all.
 	 *
 	 * @since x.x.x

@@ -302,13 +302,14 @@ final class Conversation_Store {
 	 *
 	 * @param int    $user_id The owning user ID.
 	 * @param string $scope   The conversation scope.
+	 * @param string $id      Optional. The ID to store it under, a version 4 UUID. Default a new one.
 	 * @return array{id: string, user_id: int, scope: string, created: int, updated: int, messages: list<array<string, mixed>>, entries: list<array<string, mixed>>} The conversation.
 	 */
-	public function create( int $user_id, string $scope ): array {
+	public function create( int $user_id, string $scope, string $id = '' ): array {
 		$now = time();
 
 		return array(
-			'id'       => wp_generate_uuid4(),
+			'id'       => wp_is_uuid( $id, 4 ) ? $id : wp_generate_uuid4(),
 			'user_id'  => $user_id,
 			'scope'    => $scope,
 			'created'  => $now,
