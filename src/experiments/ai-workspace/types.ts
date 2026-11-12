@@ -57,7 +57,8 @@ export interface WorkspaceSeed {
 export interface LocalizedData {
 	rest: RestData;
 	availability: Availability;
-	settingsUrl: string;
+	/** URL of the Connectors screen, where a provider is set up. */
+	connectorsUrl: string;
 	/** The seeded post, or null when the workspace was opened directly. */
 	seed: WorkspaceSeed | null;
 }
