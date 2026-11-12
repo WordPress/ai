@@ -16,10 +16,10 @@ import type { UploadedImage } from '../types';
  * For `core/gallery`, a new inner `core/image` block is appended. For all
  * other supported blocks the relevant attributes are set directly.
  *
- * @param {string}        blockName     The name of the target block.
- * @param {string}        clientId      The client ID of the target block.
- * @param {Function}      setAttributes The block's setAttributes callback.
- * @param {UploadedImage} uploadedImage The image returned by uploadImage.
+ * @param {string}                                     blockName     The name of the target block.
+ * @param {string}                                     clientId      The client ID of the target block.
+ * @param {( attrs: Record<string, unknown> ) => void} setAttributes The block's setAttributes callback.
+ * @param {UploadedImage}                              uploadedImage The image returned by uploadImage.
  */
 export function insertIntoBlock(
 	blockName: string,

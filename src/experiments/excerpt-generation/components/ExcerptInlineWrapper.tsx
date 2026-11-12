@@ -15,11 +15,11 @@ import ExcerptInlineButton from './ExcerptInlineButton';
 /**
  * Creates a retry function that will attempt to execute a callback when a condition is met.
  *
- * @param {Function} checkFn    Function that returns true when condition is met.
- * @param {Function} callback   Function to execute when condition is met.
- * @param {number}   maxRetries Maximum number of retry attempts.
- * @param {number}   delay      Delay in milliseconds between retries.
- * @return {Function} A function that starts the retry process.
+ * @param {() => boolean} checkFn    Function that returns true when condition is met.
+ * @param {() => void}    callback   Function to execute when condition is met.
+ * @param {number}        maxRetries Maximum number of retry attempts.
+ * @param {number}        delay      Delay in milliseconds between retries.
+ * @return {() => void} A function that starts the retry process.
  */
 function createRetry(
 	checkFn: () => boolean,
