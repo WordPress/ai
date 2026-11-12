@@ -22,6 +22,9 @@ const {
 	disableAdvancedSettings,
 	enableModelSelection,
 	disableModelSelection,
+	enableAccessControls,
+	disableAccessControls,
+	resetFeatureAccessSettings,
 } = require( '../../utils/helpers' );
 
 const EXPERIMENT_GROUPS = {
@@ -679,5 +682,105 @@ test.describe( 'Plugin settings', () => {
 
 		// Restore state.
 		await disableModelSelection( page );
+	} );
+
+	test( 'Access controls: saved roles persist and stay visible when the view is off', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		try {
+			await enableExperiment( admin, page, 'Title Generation' );
+			await visitSettingsPage( admin );
+			await enableAccessControls( page );
+
+			const section = page
+				.locator( '.dataforms-layouts-regular__field', {
+					has: page.getByText( 'Title Generation', { exact: true } ),
+				} )
+				.first();
+			const form = section.locator( '.ai-access-control-mode-fields' );
+
+			const toggle = form.getByRole( 'checkbox', {
+				name: 'Enable access control',
+			} );
+
+			// Turning the toggle on and off again on a fresh feature leaves nothing to save.
+			await toggle.check();
+			await toggle.uncheck();
+			await expect(
+				form.getByRole( 'button', { name: 'Save' } )
+			).toBeHidden();
+
+			await toggle.check();
+
+			// Before saving, nothing is persisted: roles are still unset (today's access).
+			const settingsBeforeSave = await requestUtils.rest( {
+				path: '/wp/v2/settings',
+			} );
+			expect(
+				settingsBeforeSave[ 'wpai_feature_title-generation_roles' ]
+			).toBeNull();
+
+			// Administrator and Editor are pre-checked, and saving them untouched persists them.
+			await expect(
+				form.getByRole( 'checkbox', { name: 'Administrator' } )
+			).toBeChecked();
+			await expect(
+				form.getByRole( 'checkbox', { name: 'Editor' } )
+			).toBeChecked();
+			await expect(
+				form.getByRole( 'checkbox', { name: 'Author' } )
+			).not.toBeChecked();
+			await form.getByRole( 'button', { name: 'Save' } ).click();
+			await expect(
+				page
+					.getByTestId( 'snackbar' )
+					.filter( { hasText: 'Access control settings saved.' } )
+			).toBeVisible();
+			const settingsAfterSave = await requestUtils.rest( {
+				path: '/wp/v2/settings',
+			} );
+			expect(
+				[
+					...settingsAfterSave[
+						'wpai_feature_title-generation_roles'
+					],
+				].sort()
+			).toEqual( [ 'administrator', 'editor' ] );
+
+			await form.getByRole( 'checkbox', { name: 'Editor' } ).uncheck();
+			await form.getByRole( 'checkbox', { name: 'Author' } ).check();
+			await form.getByRole( 'button', { name: 'Save' } ).click();
+			await expect(
+				page
+					.getByTestId( 'snackbar' )
+					.filter( { hasText: 'Access control settings saved.' } )
+			).toBeVisible();
+
+			await page.reload();
+			await expect(
+				form.getByRole( 'checkbox', { name: 'Enable access control' } )
+			).toBeChecked();
+			await expect(
+				form.getByRole( 'checkbox', { name: 'Author' } )
+			).toBeChecked();
+			await expect(
+				form.getByRole( 'checkbox', { name: 'Editor' } )
+			).not.toBeChecked();
+
+			await disableAccessControls( page );
+			await expect(
+				section.getByText(
+					'Access restricted to selected roles and users.'
+				)
+			).toBeVisible();
+		} finally {
+			await resetFeatureAccessSettings(
+				requestUtils,
+				'title-generation'
+			);
+			await disableExperiment( admin, page, 'Title Generation' );
+		}
 	} );
 } );

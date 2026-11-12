@@ -10,6 +10,8 @@ declare( strict_types=1 );
 namespace WordPress\AI\Abstracts;
 
 use InvalidArgumentException;
+use WP_Ability;
+use WordPress\AI\Access_Control\Feature_Access;
 use WordPress\AI\Contracts\Feature;
 use WordPress\AI\Features\Feature_Category;
 
@@ -92,6 +94,14 @@ abstract class Abstract_Feature implements Feature {
 	private array $usage;
 
 	/**
+	 * Whether per-feature access control applies to this feature.
+	 *
+	 * @since x.x.x
+	 * @var bool
+	 */
+	private bool $access_control;
+
+	/**
 	 * Constructor.
 	 *
 	 * Loads feature metadata and initializes properties.
@@ -132,6 +142,8 @@ abstract class Abstract_Feature implements Feature {
 		$this->image       = $metadata['image'] ?? '';
 		$this->capability  = $metadata['capability'] ?? 'text_generation';
 		$this->usage       = self::normalize_usage( $metadata['usage'] ?? array() );
+
+		$this->access_control = (bool) ( $metadata['access_control'] ?? false );
 	}
 
 	/**
@@ -165,7 +177,7 @@ abstract class Abstract_Feature implements Feature {
 	 * Loads feature metadata.
 	 *
 	 * Must return an array with keys: label, description.
-	 * Optionally includes: category, stability, image, capability, usage.
+	 * Optionally includes: category, stability, image, capability, usage, access_control.
 	 *
 	 * The `usage` key summarizes, in short user-facing phrases, when the
 	 * feature runs, what it sends to the AI provider, and how many requests
@@ -175,8 +187,14 @@ abstract class Abstract_Feature implements Feature {
 	 * Features that make no AI requests can set `details` instead of
 	 * `requests` to describe what they store or change.
 	 *
+	 * The `access_control` key opts the feature in to per-feature role/user
+	 * access control. It is opt-in and defaults to false. A feature should
+	 * opt in only once it registers its abilities with
+	 * register_feature_ability() and its UI hooks in register_ui().
+	 *
 	 * @since 0.6.0
 	 * @since 1.5.0 Added the `usage` key.
+	 * @since x.x.x Added the `access_control` key.
 	 *
 	 * @return array{
 	 *  label: string,
@@ -185,6 +203,7 @@ abstract class Abstract_Feature implements Feature {
 	 *  stability?: 'deprecated'|'experimental'|'stable',
 	 *  image?: string,
 	 *  capability?: string,
+	 *  access_control?: bool,
 	 *  usage?: array{
 	 *    trigger?: 'automatic'|'on_demand'|'none',
 	 *    runs?: string,
@@ -397,6 +416,47 @@ abstract class Abstract_Feature implements Feature {
 	 */
 	final public static function get_field_option_name( string $option_name ): string {
 		return 'wpai_feature_' . static::get_id() . '_field_' . $option_name;
+	}
+
+	/**
+	 * Checks whether per-feature access control applies to this feature.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True if admins can restrict this feature to roles and users.
+	 */
+	public function supports_access_control(): bool {
+		return $this->access_control;
+	}
+
+	/**
+	 * Registers user-facing hooks: asset enqueues, list table columns, row and
+	 * bulk actions, admin menu items.
+	 *
+	 * @since x.x.x
+	 */
+	public function register_ui(): void {
+		// No-op by default.
+	}
+
+	/**
+	 * Registers an ability owned by this feature.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param lowercase-string&non-falsy-string $name The ability name, with namespace.
+	 * @param array<string, mixed>              $args The ability registration args.
+	 * @return \WP_Ability|null The registered ability, or null on failure.
+	 */
+	protected function register_feature_ability( string $name, array $args ): ?WP_Ability {
+		if ( $this->supports_access_control() ) {
+			$meta = isset( $args['meta'] ) && is_array( $args['meta'] ) ? $args['meta'] : array();
+
+			$meta[ Feature_Access::ABILITY_META_KEY ] = static::get_id();
+			$args['meta']                             = $meta;
+		}
+
+		return wp_register_ability( $name, $args );
 	}
 
 	/**

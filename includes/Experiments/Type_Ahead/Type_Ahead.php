@@ -56,10 +56,11 @@ class Type_Ahead extends Abstract_Feature {
 	 */
 	protected function load_metadata(): array {
 		return array(
-			'label'       => __( 'Type-ahead Text', 'ai' ),
-			'description' => __( 'Ghost text suggestions while writing paragraphs in the block editor. Requires an AI connector that includes support for text generation models.', 'ai' ),
-			'category'    => Experiment_Category::EDITOR,
-			'usage'       => array(
+			'label'          => __( 'Type-ahead Text', 'ai' ),
+			'description'    => __( 'Ghost text suggestions while writing paragraphs in the block editor. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'category'       => Experiment_Category::EDITOR,
+			'access_control' => true,
+			'usage'          => array(
 				'trigger'  => 'automatic',
 				'runs'     => __( 'Automatically, when you pause typing at the end of a paragraph. You can also press Cmd/Ctrl + Space to ask for a suggestion anywhere in a paragraph', 'ai' ),
 				'sends'    => __( 'The current paragraph and the blocks around it', 'ai' ),
@@ -75,6 +76,14 @@ class Type_Ahead extends Abstract_Feature {
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function register_ui(): void {
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ) );
 		add_action( 'enqueue_block_assets', array( $this, 'enqueue_block_assets' ) );
 	}
@@ -85,7 +94,7 @@ class Type_Ahead extends Abstract_Feature {
 	 * @since 1.1.0
 	 */
 	public function register_abilities(): void {
-		wp_register_ability(
+		$this->register_feature_ability(
 			'ai/' . $this->get_id(),
 			array(
 				'label'         => $this->get_label(),
