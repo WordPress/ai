@@ -19,7 +19,9 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import {
 	flattenBlocks,
+	getBlockContent,
 	getPostContentBlockContext,
+	isBlockStale,
 } from '../../../utils/blocks';
 import {
 	REVIEWABLE_BLOCK_TYPES,
@@ -31,6 +33,7 @@ import { reviewSingleBlock } from '../utils';
 
 const BATCH_SIZE = 4;
 const NOTICE_ID = 'ai_editorial_notes_error';
+const STALE_NOTICE_ID = 'ai_editorial_notes_stale';
 const NOTES_SIDEBAR_ID = 'edit-post/collab-sidebar';
 const MINIMUM_CONTENT_COUNT_DEFAULT = 75;
 
@@ -95,6 +98,7 @@ export function useEditorialNotes(): {
 		setLastRunCount( null );
 
 		dispatch( noticesStore ).removeNotice( NOTICE_ID );
+		dispatch( noticesStore ).removeNotice( STALE_NOTICE_ID );
 
 		try {
 			const postId = select( editorStore ).getCurrentPostId() as number;
@@ -154,6 +158,8 @@ export function useEditorialNotes(): {
 
 			let totalSuggestions = 0;
 			let failedBlocks = 0;
+			let staleBlocks = 0;
+			let reviewedBlocks = 0;
 			let firstError: any = null;
 
 			// Process blocks in batches.
@@ -162,10 +168,27 @@ export function useEditorialNotes(): {
 				batchStart < reviewableBlocks.length;
 				batchStart += BATCH_SIZE
 			) {
-				const batch = reviewableBlocks.slice(
-					batchStart,
-					batchStart + BATCH_SIZE
-				);
+				const batch = reviewableBlocks
+					.slice( batchStart, batchStart + BATCH_SIZE )
+					.filter( ( block ) => {
+						if (
+							! isBlockStale(
+								block.clientId,
+								getBlockContent( block )
+							)
+						) {
+							return true;
+						}
+
+						// Count the block as stale and decrement the total to review.
+						staleBlocks++;
+						setTotal( ( currentTotal ) => currentTotal - 1 );
+						return false;
+					} );
+
+				if ( batch.length === 0 ) {
+					continue;
+				}
 
 				// A block that fails must not discard the blocks that succeed.
 				const results = await Promise.allSettled(
@@ -182,22 +205,28 @@ export function useEditorialNotes(): {
 				);
 
 				for ( const result of results ) {
-					if ( result.status === 'fulfilled' ) {
-						totalSuggestions += result.value;
-					} else {
+					if ( result.status === 'rejected' ) {
 						failedBlocks++;
 						firstError = firstError ?? result.reason;
+					} else if ( result.value === null ) {
+						// The block was removed or edited while its request was in flight.
+						staleBlocks++;
+						setTotal( ( currentTotal ) => currentTotal - 1 );
+						continue;
+					} else {
+						totalSuggestions += result.value;
 					}
+
+					reviewedBlocks++;
 				}
 
-				setProgress(
-					Math.min( batchStart + BATCH_SIZE, reviewableBlocks.length )
-				);
+				setProgress( reviewedBlocks );
 			}
 
-			// "No new suggestions found." would be wrong when blocks failed.
+			// "No new suggestions found." would be wrong when blocks failed or went stale.
 			setLastRunCount(
-				failedBlocks > 0 && totalSuggestions === 0
+				( failedBlocks > 0 || staleBlocks > 0 ) &&
+					totalSuggestions === 0
 					? null
 					: totalSuggestions
 			);
@@ -237,6 +266,25 @@ export function useEditorialNotes(): {
 					),
 					{
 						id: NOTICE_ID,
+						isDismissible: true,
+					}
+				);
+			}
+
+			if ( staleBlocks > 0 ) {
+				dispatch( noticesStore ).createWarningNotice(
+					sprintf(
+						/* translators: %d: number of blocks removed, replaced, or edited in the editor while reviewing. */
+						_n(
+							'%d block was not reviewed because the editor changed while reviewing.',
+							'%d blocks were not reviewed because the editor changed while reviewing.',
+							staleBlocks,
+							'ai'
+						),
+						staleBlocks
+					),
+					{
+						id: STALE_NOTICE_ID,
 						isDismissible: true,
 					}
 				);
@@ -312,6 +360,16 @@ export function useEditorialBlock(): {
 					.map( ( n ) => n.id )
 			);
 
+			const staleMessage = __(
+				'The block was not reviewed because the editor changed while reviewing.',
+				'ai'
+			);
+
+			// The block may have been removed or edited while Notes were fetched.
+			if ( isBlockStale( clientId, getBlockContent( block ) ) ) {
+				throw new Error( staleMessage );
+			}
+
 			const noteContentById = new Map< number, string >();
 			for ( const note of pendingNotes ) {
 				noteContentById.set( note.id, note.content?.rendered ?? '' );
@@ -325,6 +383,11 @@ export function useEditorialBlock(): {
 				noteContentById,
 				pendingNotes
 			);
+
+			// The block was removed or edited while its request was in flight.
+			if ( suggestionCount === null ) {
+				throw new Error( staleMessage );
+			}
 
 			if ( suggestionCount > 0 ) {
 				dispatch( coreStore ).invalidateResolutionForStoreSelector(
