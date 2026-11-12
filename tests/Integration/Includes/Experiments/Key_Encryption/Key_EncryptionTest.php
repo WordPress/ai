@@ -761,8 +761,8 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that, without WP_SECRETS_KEY, keys stored under the salts are restored to plaintext
-	 * and kept flagged for encryption until the key is added.
+	 * Tests that, without a usable WP_SECRETS_KEY, keys stored under the salts are restored to
+	 * plaintext and kept flagged for encryption until the key is added.
 	 *
 	 * @since x.x.x
 	 *
@@ -770,7 +770,7 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	 * @preserveGlobalState disabled
 	 */
 	public function test_recover_restores_plaintext_without_wp_secrets_key(): void {
-		$this->assertFalse( defined( 'WP_SECRETS_KEY' ), 'This test needs a process without WP_SECRETS_KEY.' );
+		$this->assertSame( '', WP_SECRETS_KEY, 'This test needs a process without a usable WP_SECRETS_KEY.' );
 
 		update_option( self::TOGGLE, true );
 		$this->store_secret_under_salts( 'sk-salt-wrapped' );
