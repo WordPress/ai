@@ -286,6 +286,7 @@ final class Turn_Runner {
 	 * @param string               $message      The person's message. Ignored for a follow-up.
 	 * @param callable|null        $on_text      Optional. Receives assistant text deltas as they stream.
 	 * @param bool                 $follow_up    Optional. Whether this turn follows up a proposal outcome.
+	 * @param string               $turn_id      Optional. The client's ID for this turn, saved on its entry. Default empty.
 	 * @return array<string, mixed>|\WP_Error The turn result, or an error.
 	 *
 	 * @phpstan-return array{
@@ -299,7 +300,7 @@ final class Turn_Runner {
 	 *   text: string
 	 * }|\WP_Error
 	 */
-	public function run( array $conversation, string $message, ?callable $on_text = null, bool $follow_up = false ) {
+	public function run( array $conversation, string $message, ?callable $on_text = null, bool $follow_up = false, string $turn_id = '' ) {
 		$conversation_id = isset( $conversation['id'] ) && is_string( $conversation['id'] ) ? $conversation['id'] : '';
 		$user_id         = isset( $conversation['user_id'] ) ? (int) $conversation['user_id'] : 0;
 		$scope           = isset( $conversation['scope'] ) && is_string( $conversation['scope'] )
@@ -369,13 +370,13 @@ final class Turn_Runner {
 		$conversation['messages'] = array_merge( $stored, $new_messages );
 
 		if ( null !== $loop['error'] ) {
-			$conversation['entries'] = array_merge( $entries, array( $this->entry( $message, '', self::STATUS_ERROR, $rounds, $tool_calls, $follow_up, $loop['error']->get_error_code() ) ) );
+			$conversation['entries'] = array_merge( $entries, array( $this->entry( $message, '', self::STATUS_ERROR, $rounds, $tool_calls, $follow_up, $loop['error']->get_error_code(), $turn_id ) ) );
 			$this->store->save( $this->keep_recorded_outcomes( $conversation, $stored_count ) );
 
 			return $loop['error'];
 		}
 
-		$conversation['entries'] = array_merge( $entries, array( $this->entry( $message, $this->last_assistant_text( $history ), $status, $rounds, $tool_calls, $follow_up ) ) );
+		$conversation['entries'] = array_merge( $entries, array( $this->entry( $message, $this->last_assistant_text( $history ), $status, $rounds, $tool_calls, $follow_up, '', $turn_id ) ) );
 		$conversation['scope']   = $scope;
 		$this->store->save( $this->keep_recorded_outcomes( $conversation, $stored_count ) );
 		$this->store->clear_cancellation( $conversation_id, $user_id );
@@ -1039,10 +1040,12 @@ final class Turn_Runner {
 	 * @param list<array<string, mixed>> $tool_calls The tool-call records.
 	 * @param bool                       $follow_up  Whether the turn followed up a proposal outcome, with no message of the person's.
 	 * @param string|int                 $error_code Optional. The error that ended the turn. Default empty.
+	 * @param string                     $turn_id    Optional. The client's ID for this turn, kept so a client
+	 *                                               whose connection dropped can find the entry. Default empty.
 	 * @return array<string, mixed> The entry record.
 	 */
-	private function entry( string $prompt, string $text, string $status, int $rounds, array $tool_calls, bool $follow_up, $error_code = '' ): array {
-		return array(
+	private function entry( string $prompt, string $text, string $status, int $rounds, array $tool_calls, bool $follow_up, $error_code = '', string $turn_id = '' ): array {
+		$entry = array(
 			'prompt'     => $prompt,
 			'text'       => $text,
 			'status'     => $status,
@@ -1052,6 +1055,12 @@ final class Turn_Runner {
 			'follow_up'  => $follow_up,
 			'created'    => time(),
 		);
+
+		if ( '' !== $turn_id ) {
+			$entry['turn_id'] = $turn_id;
+		}
+
+		return $entry;
 	}
 
 	/**

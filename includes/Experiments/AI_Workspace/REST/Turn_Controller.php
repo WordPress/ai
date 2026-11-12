@@ -166,7 +166,7 @@ final class Turn_Controller {
 					'callback'            => array( $this, 'run_turn' ),
 					'permission_callback' => array( $this, 'check_permission' ),
 					'args'                => array(
-						'message'         => array(
+						'message'             => array(
 							'type'    => 'string',
 							'default' => '',
 						),
@@ -175,16 +175,37 @@ final class Turn_Controller {
 						 * carries no message: the outcome is already the last
 						 * message in the conversation.
 						 */
-						'follow_up'       => array(
+						'follow_up'           => array(
 							'type'    => 'boolean',
 							'default' => false,
 						),
-						'conversation_id' => array(
+						'conversation_id'     => array(
 							'type'              => 'string',
 							'default'           => '',
 							'sanitize_callback' => 'sanitize_text_field',
 						),
-						'scope'           => array(
+						/*
+						 * The ID a new chat is stored under, chosen by the
+						 * client, so it can find the chat if the connection
+						 * drops before the reply arrives. Only for a first
+						 * turn; the server mints one when it is left out.
+						 */
+						'new_conversation_id' => array(
+							'type'              => 'string',
+							'default'           => '',
+							'validate_callback' => array( self::class, 'validate_optional_uuid' ),
+						),
+						/*
+						 * Names this turn's transcript entry, so a client whose
+						 * connection dropped can tell when the turn has finished
+						 * by reading the saved chat.
+						 */
+						'turn_id'             => array(
+							'type'              => 'string',
+							'default'           => '',
+							'validate_callback' => array( self::class, 'validate_optional_uuid' ),
+						),
+						'scope'               => array(
 							'type'    => 'string',
 							'enum'    => array( Tool_Selector::SCOPE_SITE, Tool_Selector::SCOPE_GENERAL ),
 							'default' => Tool_Selector::SCOPE_SITE,
@@ -211,6 +232,26 @@ final class Turn_Controller {
 					),
 				),
 			)
+		);
+	}
+
+	/**
+	 * Validates an optional UUID parameter: empty, or a version 4 UUID.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $value The parameter value.
+	 * @return true|\WP_Error True when valid, WP_Error otherwise.
+	 */
+	public static function validate_optional_uuid( $value ) {
+		if ( '' === $value || ( is_string( $value ) && wp_is_uuid( $value, 4 ) ) ) {
+			return true;
+		}
+
+		return new WP_Error(
+			'rest_invalid_param',
+			__( 'Expected an empty string or a version 4 UUID.', 'ai' ),
+			array( 'status' => 400 )
 		);
 	}
 
@@ -247,6 +288,8 @@ final class Turn_Controller {
 		$scope           = (string) $request->get_param( 'scope' );
 		$follow_up       = (bool) $request->get_param( 'follow_up' );
 		$conversation_id = (string) $request->get_param( 'conversation_id' );
+		$new_id          = (string) $request->get_param( 'new_conversation_id' );
+		$turn_id         = (string) $request->get_param( 'turn_id' );
 
 		if ( ! $follow_up && '' === trim( $message ) ) {
 			return new WP_Error(
@@ -264,7 +307,15 @@ final class Turn_Controller {
 			);
 		}
 
-		$conversation = $this->resolve_conversation( $conversation_id, $user_id, $scope );
+		if ( '' !== $new_id && '' !== $conversation_id ) {
+			return new WP_Error(
+				'workspace_new_conversation_id_conflict',
+				__( 'A new chat ID is only for a chat that does not exist yet.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		$conversation = $this->resolve_conversation( $conversation_id, $user_id, $scope, $new_id );
 
 		if ( is_wp_error( $conversation ) ) {
 			return $conversation;
@@ -321,7 +372,7 @@ final class Turn_Controller {
 		 */
 		$emitter = apply_filters( 'wpai_workspace_stream_emitter', null, $request );
 
-		$result = $runner->run( $conversation, $message, is_callable( $emitter ) ? $emitter : null, $follow_up );
+		$result = $runner->run( $conversation, $message, is_callable( $emitter ) ? $emitter : null, $follow_up, $turn_id );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -397,11 +448,20 @@ final class Turn_Controller {
 	 * @param string $conversation_id The requested conversation ID, or an empty string.
 	 * @param int    $user_id         The requesting user ID.
 	 * @param string $scope           The requested scope.
+	 * @param string $new_id          Optional. The ID the client chose for a new chat.
 	 * @return array<string, mixed>|\WP_Error The conversation, or an error.
 	 */
-	private function resolve_conversation( string $conversation_id, int $user_id, string $scope ) {
+	private function resolve_conversation( string $conversation_id, int $user_id, string $scope, string $new_id = '' ) {
 		if ( '' === $conversation_id ) {
-			return $this->store->create( $user_id, $scope );
+			if ( '' !== $new_id && null !== $this->store->get( $new_id, $user_id ) ) {
+				return new WP_Error(
+					'workspace_conversation_exists',
+					__( 'A chat with that ID already exists.', 'ai' ),
+					array( 'status' => 409 )
+				);
+			}
+
+			return $this->store->create( $user_id, $scope, $new_id );
 		}
 
 		$conversation = $this->store->get( $conversation_id, $user_id );

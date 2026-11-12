@@ -11,7 +11,13 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 /**
  * Internal dependencies
  */
-import { toEntries, toOutcomes, toStoredChat } from '../utils/chat';
+import {
+	findSavedTurn,
+	newUuid,
+	toEntries,
+	toOutcomes,
+	toStoredChat,
+} from '../utils/chat';
 import type {
 	ContextScope,
 	LocalizedData,
@@ -40,6 +46,46 @@ interface TurnOutcome {
 }
 
 const SENTENCE_BOUNDARY = /[.!?…](\s|$)|\n\n/;
+
+/**
+ * How often, in milliseconds, a turn whose connection dropped checks the saved
+ * chat for its reply.
+ */
+const RECOVERY_INTERVAL = 3000;
+
+/**
+ * How long, in milliseconds, a turn whose connection dropped keeps checking
+ * before it reports the failure. A turn runs several rounds, and each round
+ * may wait two minutes for the model.
+ */
+const RECOVERY_WINDOW = 10 * 60 * 1000;
+
+/**
+ * HTTP statuses a proxy in front of WordPress answers with when it stops
+ * waiting for a slow request. WordPress itself keeps running the turn.
+ */
+const GATEWAY_TIMEOUTS = [ 502, 503, 504, 524 ];
+
+/**
+ * Waits, ending early when the signal aborts.
+ *
+ * @param ms     The time to wait, in milliseconds.
+ * @param signal The abort signal.
+ * @return Resolves when the time is up or the signal aborts.
+ */
+function pause( ms: number, signal: AbortSignal ): Promise< void > {
+	return new Promise( ( resolve ) => {
+		const timer = setTimeout( resolve, ms );
+		signal.addEventListener(
+			'abort',
+			() => {
+				clearTimeout( timer );
+				resolve();
+			},
+			{ once: true }
+		);
+	} );
+}
 
 /**
  * Monotonic counter used to key transcript entries.
@@ -178,6 +224,101 @@ export function useTurn( data: LocalizedData ) {
 	}, [] );
 
 	/**
+	 * Waits for a turn whose connection dropped, by reading the saved chat.
+	 *
+	 * The browser can lose a turn's response while WordPress is still running
+	 * it: WordPress Playground gives up on any request after 25 seconds, and a
+	 * proxy in front of a site may give up sooner than PHP does. The turn's
+	 * entry is saved when it ends, under the ID the client sent, so the reply
+	 * is read from there instead.
+	 *
+	 * @param chatId  The chat the turn runs in.
+	 * @param turnId  The turn's ID.
+	 * @param signal  Aborts the wait, as Stop does.
+	 * @param failure The failure to report if the turn never turns up.
+	 * @return The outcome.
+	 */
+	const recoverTurn = useCallback(
+		async (
+			chatId: string,
+			turnId: string,
+			signal: AbortSignal,
+			failure: { code: string; message: string }
+		): Promise< TurnOutcome > => {
+			const deadline = Date.now() + RECOVERY_WINDOW;
+
+			while ( ! signal.aborted && Date.now() < deadline ) {
+				await pause( RECOVERY_INTERVAL, signal );
+
+				if ( signal.aborted ) {
+					break;
+				}
+
+				let payload: unknown = null;
+
+				try {
+					const response = await window.fetch(
+						endpoint( 'conversations' ) +
+							'/' +
+							encodeURIComponent( chatId ),
+						{
+							credentials: 'same-origin',
+							signal,
+							headers: { 'X-WP-Nonce': data.rest.nonce },
+						}
+					);
+
+					// A new chat is not saved until its first turn ends.
+					if ( ! response.ok ) {
+						continue;
+					}
+
+					payload = await response.json();
+				} catch {
+					continue;
+				}
+
+				const chat = toStoredChat( payload );
+				const saved = chat ? findSavedTurn( chat, turnId ) : null;
+
+				if ( ! saved ) {
+					continue;
+				}
+
+				if ( saved.response ) {
+					return {
+						response: saved.response,
+						streamed: false,
+						aborted: false,
+						error: null,
+					};
+				}
+
+				return {
+					response: null,
+					streamed: false,
+					aborted: false,
+					error: {
+						code: saved.errorCode,
+						message: __(
+							'The assistant could not complete this turn.',
+							'ai'
+						),
+					},
+				};
+			}
+
+			return {
+				response: null,
+				streamed: false,
+				aborted: signal.aborted,
+				error: failure,
+			};
+		},
+		[ data.rest.nonce, endpoint ]
+	);
+
+	/**
 	 * Runs one turn against the transport, streaming when the host allows it.
 	 *
 	 * @param entryId   The transcript entry to update.
@@ -195,6 +336,15 @@ export function useTurn( data: LocalizedData ) {
 		): Promise< TurnOutcome > => {
 			const abort = new AbortController();
 			controller.current = abort;
+
+			/*
+			 * The turn's ID, and for a first turn the new chat's, are chosen
+			 * here so the turn can be found in the saved chat if its response
+			 * is lost on the way back.
+			 */
+			const turnId = newUuid();
+			const newChatId = '' === conversationId.current ? newUuid() : '';
+			const chatId = conversationId.current || newChatId;
 
 			let response: Response;
 
@@ -214,23 +364,33 @@ export function useTurn( data: LocalizedData ) {
 					body: JSON.stringify( {
 						message,
 						conversation_id: conversationId.current,
+						...( newChatId
+							? { new_conversation_id: newChatId }
+							: {} ),
+						turn_id: turnId,
 						scope: turnScope,
 						follow_up: followUp,
 					} ),
 				} );
 			} catch ( error ) {
-				return {
-					response: null,
-					streamed: false,
-					aborted: abort.signal.aborted,
-					error: {
-						code: 'transport_failed',
-						message:
-							error instanceof Error
-								? error.message
-								: __( 'The request could not be sent.', 'ai' ),
-					},
+				const failure = {
+					code: 'transport_failed',
+					message:
+						error instanceof Error
+							? error.message
+							: __( 'The request could not be sent.', 'ai' ),
 				};
+
+				if ( abort.signal.aborted ) {
+					return {
+						response: null,
+						streamed: false,
+						aborted: true,
+						error: failure,
+					};
+				}
+
+				return recoverTurn( chatId, turnId, abort.signal, failure );
 			}
 
 			const contentType = response.headers.get( 'content-type' ) ?? '';
@@ -250,20 +410,35 @@ export function useTurn( data: LocalizedData ) {
 				}
 
 				if ( ! response.ok ) {
+					const failure = {
+						code: readString( payload, 'code' ) || 'turn_failed',
+						message:
+							readString( payload, 'message' ) ||
+							__(
+								'The assistant could not complete this turn.',
+								'ai'
+							),
+					};
+
+					// A proxy stopped waiting; WordPress may still finish.
+					if (
+						GATEWAY_TIMEOUTS.includes( response.status ) &&
+						'' === readString( payload, 'code' ) &&
+						! abort.signal.aborted
+					) {
+						return recoverTurn(
+							chatId,
+							turnId,
+							abort.signal,
+							failure
+						);
+					}
+
 					return {
 						response: null,
 						streamed: false,
 						aborted: abort.signal.aborted,
-						error: {
-							code:
-								readString( payload, 'code' ) || 'turn_failed',
-							message:
-								readString( payload, 'message' ) ||
-								__(
-									'The assistant could not complete this turn.',
-									'ai'
-								),
-						},
+						error: failure,
 					};
 				}
 
@@ -383,6 +558,11 @@ export function useTurn( data: LocalizedData ) {
 				}
 			}
 
+			// The stream broke before the turn's result arrived.
+			if ( ! result && failure && ! abort.signal.aborted ) {
+				return recoverTurn( chatId, turnId, abort.signal, failure );
+			}
+
 			return {
 				response: result,
 				streamed: true,
@@ -390,7 +570,7 @@ export function useTurn( data: LocalizedData ) {
 				error: failure,
 			};
 		},
-		[ announceProgress, data.rest.nonce, endpoint ]
+		[ announceProgress, data.rest.nonce, endpoint, recoverTurn ]
 	);
 
 	/**
