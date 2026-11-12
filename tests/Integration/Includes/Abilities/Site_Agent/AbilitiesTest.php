@@ -221,6 +221,19 @@ class AbilitiesTest extends WP_UnitTestCase {
 		$this->assertTrue( ( new Read_Site() )->check_permission( array() ) );
 	}
 
+	public function test_update_post_coarse_check_accepts_an_editor(): void {
+		$editor = self::factory()->user->create( array( 'role' => 'editor' ) );
+		wp_set_current_user( $editor );
+
+		$this->assertTrue( ( new Update_Post() )->check_permission() );
+	}
+
+	public function test_update_post_coarse_check_rejects_a_subscriber(): void {
+		wp_set_current_user( $this->subscriber_id );
+
+		$this->assertWPError( ( new Update_Post() )->check_permission() );
+	}
+
 	public function test_update_published_post_cannot_be_moved_to_draft(): void {
 		$post_id = self::factory()->post->create(
 			array(

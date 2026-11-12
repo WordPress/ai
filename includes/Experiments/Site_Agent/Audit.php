@@ -23,7 +23,8 @@ defined( 'ABSPATH' ) || exit;
  *
  * Rows never contain full post bodies, setting values, package URLs, or
  * credentials. They carry the ability name, the phase, the proposal ID, the
- * conversation ID, and an error code when there is one.
+ * conversation ID, and an error code when there is one. Phases are execute,
+ * proposal, edit, approval, and decline.
  *
  * @since x.x.x
  */

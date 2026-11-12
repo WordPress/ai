@@ -76,7 +76,7 @@ class Site_Agent extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Site Agent', 'ai' ),
-			'description' => __( 'Adds a conversational Site Agent under Tools that answers questions about your site and proposes site changes. Every change is reviewed and approved before it runs, and every action decision is logged.', 'ai' ),
+			'description' => __( 'Adds a conversational Site Agent under Tools that answers questions about your site and proposes site changes. Every change is reviewed and approved before it runs, every action decision is logged, and conversations are saved so you can return to them.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'text_generation',
 		);
@@ -195,9 +195,10 @@ class Site_Agent extends Abstract_Feature {
 
 		$instruction = (string) $builder(
 			array(
-				'tools'     => $tools,
-				'site_name' => (string) get_bloginfo( 'name' ),
-				'site_url'  => (string) home_url( '/' ),
+				'tools'           => $tools,
+				'site_name'       => (string) get_bloginfo( 'name' ),
+				'site_url'        => (string) home_url( '/' ),
+				'site_health_url' => admin_url( 'site-health.php' ),
 			)
 		);
 

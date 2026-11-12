@@ -11,11 +11,18 @@ The experiment and its write gate are both disabled by default.
 1. The model receives only the abilities in the reviewed catalog.
 2. An ability annotated `readonly => true` runs immediately.
 3. Any other ability is a write. The exact ability name and arguments are stored as a proposal; the model never runs it.
-4. The transcript shows the exact stored values and waits.
-5. Approval re-checks the ability's own permission callback and calls `$ability->execute( $stored_args )` as the current user. WordPress validates, sanitizes, and checks permissions again.
-6. The proposal is marked used, a result note is appended to the conversation, and an audit row is written.
+4. The proposal card shows the current value and the proposed value side by side, renders post content, and lets the person edit the values before deciding.
+5. Editing saves the changed arguments on the server only after the ability schema and permission callback accept them again. The browser still cannot supply arguments at approval time.
+6. Approval re-checks the ability's own permission callback and calls `$ability->execute( $stored_args )` as the current user. WordPress validates, sanitizes, and checks permissions again.
+7. The proposal is marked used, a result note with a link to the changed item is appended to the conversation, and an audit row is written.
 
 Declining deletes the proposal and appends a note. Nothing runs.
+
+## Conversations
+
+Conversations are stored per user in user meta, not in short-lived transients. Each one has an editable title, a transcript, a created and updated time, and an archived flag. The sidebar lists past conversations and can rename, archive, unarchive, or delete them. Opening a conversation restores its transcript and any proposal that is still pending.
+
+Assistant replies render as Markdown, including headings, lists, code blocks, and links. The system instruction asks the model to end every reply with a concrete next step, such as a link to the right admin screen, a proposed action, or a follow-up question.
 
 ## Abilities
 
@@ -56,15 +63,15 @@ A gate only decides whether a surface may be proposed. Every ability still runs 
 - **Allowlist, not discovery.** The model cannot name an ability that is not in the catalog.
 - **Abilities are the action layer.** WordPress validates the input, checks the permission callback, and fires the execution hook.
 - **Current-user authority.** Everything runs as the signed-in user. The model cannot choose another user.
-- **Approval is separate.** The browser sends only the proposal ID and conversation ID. The server executes the stored ability name and arguments, not a browser-supplied request.
+- **Approval is separate.** The browser sends only the proposal ID and conversation ID. The server executes the stored ability name and arguments, not a browser-supplied request. Edits are a separate request that re-validates the schema and permissions before the stored arguments change.
 - **Server-side transcript.** The browser cannot supply the history the model sees.
-- **Storage is bounded.** Proposals are user-scoped, conversation-bound, single-use, and expire after 30 minutes. Conversations expire after two hours.
+- **Storage is bounded.** Proposals are user-scoped, conversation-bound, single-use, and expire after 30 minutes. Conversations are user-scoped and remain until the person archives or deletes them.
 - **No arbitrary code.** There is no code-execution route, file editor, SQL runner, or shell.
 - **No publishing.** Write abilities can create drafts and move items between draft and pending. They cannot publish, change authors, upload media, or delete content.
 
 ## Audit
 
-Every executed ability and every proposal decision writes an AI request log row with type `site_agent`. The operation is the ability name. The context carries the phase (`execute`, `proposal`, `approval`, or `decline`), the proposal ID, the conversation ID, and an error code when there is one. It never contains full content bodies, setting values, or credentials.
+Every executed ability and every proposal decision writes an AI request log row with type `site_agent`. The operation is the ability name. The context carries the phase (`execute`, `proposal`, `edit`, `approval`, or `decline`), the proposal ID, the conversation ID, and an error code when there is one. It never contains full content bodies, setting values, or credentials.
 
 External audit plugins can listen to `wpai_site_agent_action`.
 
@@ -84,7 +91,7 @@ External audit plugins can listen to `wpai_site_agent_action`.
 
 - Write abilities create drafts and edit drafts. Publishing, trash, media uploads, user writes, plugin installation, core/plugin/theme updates, theme switching, and export are not exposed. Each can be added as a reviewed ability later.
 - The agent needs a model that supports function calling.
-- Conversations are not listed in a history browser. A reload starts a new topic.
+- Conversations are stored in user meta for this iteration. A private post type or custom table would be the next step if history grows large or needs personal-data export and erase integration.
 
 ## Testing
 
@@ -92,17 +99,18 @@ External audit plugins can listen to `wpai_site_agent_action`.
 
 1. Open **Settings → AI**. Open the settings menu and turn on **Advanced settings** so feature configuration options are visible.
 2. Enable **Site Agent**. Leave **Allow write proposals** off.
-3. Open **Tools → Site Agent**.
-4. Ask: “What version of WordPress and PHP am I running?” Confirm the assistant calls `ai/site-agent-read-site` with `section=environment` and returns real values.
-5. Ask: “Show my latest draft posts.” Confirm `section=posts` and that the list contains only items you can read.
-6. Ask: “Create a draft titled ‘Site Agent test’.” Confirm the assistant says it cannot, because write proposals are off.
-7. Return to **Settings → AI** and enable **Allow write proposals** under Site Agent. Reload the Site Agent.
-8. Ask: “Create a draft titled ‘Site Agent test’ with a short summary.” Confirm a proposal card shows the exact ability, title, content, type, and status. Confirm no post exists yet.
-9. Click **Decline**. Confirm nothing was created and the transcript says nothing changed.
-10. Ask again, then click **Approve**. Confirm the draft exists under **Posts → Drafts**, and the transcript shows the result.
-11. Ask: “Change the site tagline to ‘Built with WordPress’.” Confirm the proposal shows the exact setting and value. Approve it, then verify under **Settings → General**.
-12. Ask for a publish, a trash, a media upload, or a plugin install. Confirm the assistant says it cannot.
-13. Open **Tools → AI Request Logs** and filter by type `site_agent`. Confirm rows exist for the proposal, execution, approval, and decline, and that no full content or secret is present.
+3. Open **Tools → Site Agent**. Confirm the screen fills the admin frame, the footer is hidden, and the **New topic** button is not shown until a conversation exists.
+4. Ask: “What version of WordPress and PHP am I running?” Confirm the assistant calls `ai/site-agent-read-site` with `section=environment`, returns real values, renders the answer as Markdown, and ends with a Site Health link or another next step.
+5. Ask: “Create a draft titled ‘Site Agent test’.” Confirm the assistant says it cannot, because write proposals are off.
+6. Return to **Settings → AI** and enable **Allow write proposals** under Site Agent. Reload the Site Agent.
+7. Ask: “Create a draft post about the history of WordPress.” Confirm a proposal card shows the type, title, rendered content, excerpt, and status, with the current value and proposed value columns. Confirm no post exists yet.
+8. Edit the title or content in the proposal card, click **Decline**, and confirm nothing was created.
+9. Ask again, edit the title, and click **Approve and run**. Confirm the draft exists under **Posts → Drafts**, the edited title is used, and the transcript links to the draft.
+10. Ask: “Change the site tagline to ‘Built with WordPress’.” Confirm the proposal shows the current tagline and the proposed tagline. Approve it, then verify under **Settings → General**.
+11. Start a **New topic**, send another question, then reopen the first conversation from the sidebar. Confirm the transcript and pending proposal are restored.
+12. Rename the conversation, archive it, turn on **Show archived**, unarchive it, then delete it. Confirm the list and storage update.
+13. Ask for a publish, a trash, a media upload, or a plugin install. Confirm the assistant says it cannot.
+14. Open **Tools → AI Request Logs** and filter by type `site_agent`. Confirm rows exist for the proposal, edit, execution, approval, and decline, and that no full content or secret is present.
 
 ### Automated testing
 

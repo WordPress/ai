@@ -1,38 +1,34 @@
 /**
- * Proposal approval card.
+ * Proposal review and editing card.
  */
 
 /**
  * WordPress dependencies
  */
-import { Button } from '@wordpress/components';
+import {
+	Button,
+	SelectControl,
+	TextareaControl,
+	TextControl,
+} from '@wordpress/components';
+import { useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
  */
 import type { Proposal } from '../types';
-
-const FIELD_LABELS: Record< string, string > = {
-	title: __( 'Title', 'ai' ),
-	content: __( 'Content', 'ai' ),
-	excerpt: __( 'Excerpt', 'ai' ),
-	status: __( 'Status', 'ai' ),
-	post_type: __( 'Type', 'ai' ),
-	name: __( 'Setting', 'ai' ),
-	value: __( 'New value', 'ai' ),
-	id: __( 'Item ID', 'ai' ),
-	section: __( 'Section', 'ai' ),
-	search: __( 'Search', 'ai' ),
-	limit: __( 'Limit', 'ai' ),
-};
+import SafeHtml from './SafeHtml';
 
 /**
- * Formats an argument value for display.
+ * Returns a string value from proposal arguments.
  *
- * @param value Argument value.
+ * @param args  Proposal arguments.
+ * @param field Field name.
  */
-function formatValue( value: unknown ): string {
+function stringValue( args: Record< string, unknown >, field: string ): string {
+	const value = args[ field ];
+
 	if ( typeof value === 'string' ) {
 		return value;
 	}
@@ -41,26 +37,72 @@ function formatValue( value: unknown ): string {
 		return '';
 	}
 
-	try {
-		const json = JSON.stringify( value, null, 2 );
+	return String( value );
+}
 
-		return typeof json === 'string' ? json : String( value );
-	} catch {
-		return String( value );
+/**
+ * Returns a display label for an editable value.
+ *
+ * @param field The field name.
+ * @param value The raw value.
+ */
+function displayValue( field: string, value: string ): string {
+	if ( 'post_type' === field ) {
+		return 'page' === value ? __( 'Page', 'ai' ) : __( 'Post', 'ai' );
 	}
+
+	if ( 'status' === field ) {
+		return 'pending' === value
+			? __( 'Pending review', 'ai' )
+			: __( 'Draft', 'ai' );
+	}
+
+	return value;
+}
+
+/**
+ * Renders one proposed or current value.
+ *
+ * @param props        Component props.
+ * @param props.value  The value.
+ * @param props.format The value format.
+ */
+function ValuePreview( {
+	value,
+	format,
+}: {
+	value: string | null;
+	format: 'text' | 'html';
+} ): React.JSX.Element {
+	if ( value === null || '' === value ) {
+		return <span className="ai-site-agent__proposal-empty">—</span>;
+	}
+
+	if ( 'html' === format ) {
+		return (
+			<SafeHtml html={ value } className="ai-site-agent__proposal-html" />
+		);
+	}
+
+	return <span className="ai-site-agent__proposal-text">{ value }</span>;
 }
 
 interface ProposalCardProps {
 	proposal: Proposal;
 	busy: boolean;
-	onApprove: () => void;
+	onApprove: ( args: Record< string, unknown > ) => void;
 	onDecline: () => void;
 }
 
 /**
- * Renders the exact stored values and the two decisions.
+ * Renders the exact stored values, lets the person edit them, and handles the
+ * two decisions.
  *
- * @param props Component props.
+ * @param props           Component props.
+ * @param props.proposal  The pending proposal.
+ * @param props.busy      Whether a decision is in progress.
+ * @param props.onApprove Called with the edited arguments.
+ * @param props.onDecline Called when the proposal is declined.
  */
 export default function ProposalCard( {
 	proposal,
@@ -68,7 +110,23 @@ export default function ProposalCard( {
 	onApprove,
 	onDecline,
 }: ProposalCardProps ): React.JSX.Element {
-	const args = Object.entries( proposal.args ?? {} );
+	const [ values, setValues ] = useState< Record< string, unknown > >(
+		proposal.args ?? {}
+	);
+
+	useEffect( () => {
+		setValues( proposal.args ?? {} );
+	}, [ proposal ] );
+
+	const setValue = ( field: string, value: unknown ) => {
+		setValues( ( current ) => ( { ...current, [ field ]: value } ) );
+	};
+
+	const changes = proposal.changes ?? [];
+	const canEdit =
+		'ai/site-agent-create-draft' === proposal.ability ||
+		'ai/site-agent-update-post' === proposal.ability ||
+		'ai/site-agent-update-setting' === proposal.ability;
 
 	return (
 		<section
@@ -88,31 +146,138 @@ export default function ProposalCard( {
 				</p>
 			) }
 
-			<dl className="ai-site-agent__proposal-values">
-				{ args.map( ( [ key, value ] ) => {
-					const text = formatValue( value );
+			<table className="ai-site-agent__proposal-table">
+				<thead>
+					<tr>
+						<th scope="col">{ __( 'Field', 'ai' ) }</th>
+						<th scope="col">{ __( 'Current', 'ai' ) }</th>
+						<th scope="col">{ __( 'Proposed', 'ai' ) }</th>
+					</tr>
+				</thead>
+				<tbody>
+					{ changes.map( ( change ) => {
+						const proposed =
+							change.field in values
+								? displayValue(
+										change.field,
+										stringValue( values, change.field )
+								  )
+								: change.to;
 
-					return (
-						<div
-							key={ key }
-							className="ai-site-agent__proposal-row"
-						>
-							<dt>{ FIELD_LABELS[ key ] ?? key }</dt>
-							<dd>
-								{ text.includes( '\n' ) ? (
-									<pre>{ text }</pre>
-								) : (
-									text
+						return (
+							<tr key={ change.field }>
+								<th scope="row">{ change.label }</th>
+								<td>
+									<ValuePreview
+										value={ change.from }
+										format={ change.format }
+									/>
+								</td>
+								<td>
+									<ValuePreview
+										value={ proposed }
+										format={ change.format }
+									/>
+								</td>
+							</tr>
+						);
+					} ) }
+				</tbody>
+			</table>
+
+			{ canEdit && (
+				<div className="ai-site-agent__proposal-editor">
+					<h4>{ __( 'Edit before approving', 'ai' ) }</h4>
+
+					{ 'ai/site-agent-create-draft' === proposal.ability && (
+						<SelectControl
+							__nextHasNoMarginBottom
+							label={ __( 'Type', 'ai' ) }
+							value={
+								( stringValue( values, 'post_type' ) ||
+									'post' ) as 'post' | 'page'
+							}
+							options={ [
+								{ label: __( 'Post', 'ai' ), value: 'post' },
+								{ label: __( 'Page', 'ai' ), value: 'page' },
+							] }
+							onChange={ ( value ) =>
+								setValue( 'post_type', value )
+							}
+						/>
+					) }
+
+					{ ( 'ai/site-agent-create-draft' === proposal.ability ||
+						'ai/site-agent-update-post' === proposal.ability ) && (
+						<>
+							<TextControl
+								__nextHasNoMarginBottom
+								label={ __( 'Title', 'ai' ) }
+								value={ stringValue( values, 'title' ) }
+								onChange={ ( value ) =>
+									setValue( 'title', value )
+								}
+							/>
+							<TextareaControl
+								__nextHasNoMarginBottom
+								label={ __( 'Content', 'ai' ) }
+								help={ __(
+									'HTML is allowed. The rendered preview is shown above.',
+									'ai'
 								) }
-							</dd>
-						</div>
-					);
-				} ) }
-			</dl>
+								rows={ 8 }
+								value={ stringValue( values, 'content' ) }
+								onChange={ ( value ) =>
+									setValue( 'content', value )
+								}
+							/>
+							<TextareaControl
+								__nextHasNoMarginBottom
+								label={ __( 'Excerpt', 'ai' ) }
+								rows={ 3 }
+								value={ stringValue( values, 'excerpt' ) }
+								onChange={ ( value ) =>
+									setValue( 'excerpt', value )
+								}
+							/>
+						</>
+					) }
+
+					{ 'ai/site-agent-update-post' === proposal.ability && (
+						<SelectControl
+							__nextHasNoMarginBottom
+							label={ __( 'Status', 'ai' ) }
+							value={
+								( stringValue( values, 'status' ) ||
+									'draft' ) as 'draft' | 'pending'
+							}
+							options={ [
+								{ label: __( 'Draft', 'ai' ), value: 'draft' },
+								{
+									label: __( 'Pending review', 'ai' ),
+									value: 'pending',
+								},
+							] }
+							onChange={ ( value ) =>
+								setValue( 'status', value )
+							}
+						/>
+					) }
+
+					{ 'ai/site-agent-update-setting' === proposal.ability && (
+						<TextControl
+							__nextHasNoMarginBottom
+							label={ __( 'New value', 'ai' ) }
+							value={ stringValue( values, 'value' ) }
+							onChange={ ( value ) => setValue( 'value', value ) }
+						/>
+					) }
+				</div>
+			) }
 
 			<p className="ai-site-agent__proposal-note">
 				{ __(
-					'Approve only if these exact values are right. Nothing has been written yet, and this proposal expires after 30 minutes.',
+					'Nothing has been written yet. Approving runs the values shown here, and this proposal expires after 30 minutes.',
 					'ai'
 				) }
 			</p>
@@ -121,11 +286,11 @@ export default function ProposalCard( {
 				<Button
 					__next40pxDefaultSize
 					variant="primary"
-					onClick={ onApprove }
+					onClick={ () => onApprove( values ) }
 					disabled={ busy }
 					isBusy={ busy }
 				>
-					{ __( 'Approve', 'ai' ) }
+					{ __( 'Approve and run', 'ai' ) }
 				</Button>
 				<Button
 					__next40pxDefaultSize

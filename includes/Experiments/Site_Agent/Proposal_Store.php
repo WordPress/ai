@@ -190,6 +190,28 @@ final class Proposal_Store {
 	}
 
 	/**
+	 * Replaces a pending proposal's arguments with edited values.
+	 *
+	 * The caller is responsible for validating the edited arguments against
+	 * the ability schema and re-checking its permissions before calling this.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $proposal The proposal.
+	 * @param array<string, mixed> $args     The edited arguments.
+	 * @return bool True when it was written.
+	 */
+	public function update_args( array $proposal, array $args ): bool {
+		if ( 'pending' !== ( $proposal['status'] ?? '' ) ) {
+			return false;
+		}
+
+		$proposal['args'] = $args;
+
+		return $this->save( $proposal );
+	}
+
+	/**
 	 * Deletes a proposal.
 	 *
 	 * @since x.x.x

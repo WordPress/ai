@@ -140,6 +140,14 @@ class Site_AgentTest extends WP_UnitTestCase {
 
 		$this->assertContains( Read_Site::ABILITY, Catalog::available_names() );
 
+		update_option( 'wpai_feature_site-agent_enabled', true );
+		update_option( 'wpai_feature_site-agent_field_allow_writes', true );
+
+		$this->assertContains( Read_Site::ABILITY, Catalog::available_names() );
+		$this->assertContains( Create_Draft::ABILITY, Catalog::available_names() );
+		$this->assertContains( Update_Post::ABILITY, Catalog::available_names() );
+		$this->assertContains( Update_Setting::ABILITY, Catalog::available_names() );
+
 		$subscriber = self::factory()->user->create( array( 'role' => 'subscriber' ) );
 		wp_set_current_user( $subscriber );
 

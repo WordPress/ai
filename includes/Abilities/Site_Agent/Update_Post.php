@@ -106,6 +106,23 @@ final class Update_Post {
 			);
 		}
 
+		/*
+		 * An input-free check is the agent's coarse pre-filter. It passes when
+		 * the user can edit at least one post or page; the exact item is
+		 * checked below when the ability actually executes.
+		 */
+		if ( null === $input ) {
+			if ( current_user_can( 'edit_posts' ) || current_user_can( 'edit_pages' ) ) {
+				return true;
+			}
+
+			return new WP_Error(
+				'site_agent_update_denied',
+				__( 'You do not have permission to edit content.', 'ai' ),
+				array( 'status' => 403 )
+			);
+		}
+
 		$id = is_array( $input ) && isset( $input['id'] ) ? absint( $input['id'] ) : 0;
 
 		if ( $id <= 0 ) {

@@ -71,15 +71,6 @@ final class Agent {
 	public const DEFAULT_MAX_ROUNDS = 4;
 
 	/**
-	 * Longest approval result echoed into the conversation, in characters.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var int
-	 */
-	private const MAX_RESULT_NOTE_LENGTH = 4000;
-
-	/**
 	 * The model client.
 	 *
 	 * @since x.x.x
@@ -163,6 +154,21 @@ final class Agent {
 			return $conversation;
 		}
 
+		if ( '' === (string) ( $conversation['title'] ?? '' ) ) {
+			$conversation['title'] = $this->conversations->title_for_prompt( $prompt );
+		}
+
+		/*
+		 * A new message means the person has moved on from the previous
+		 * proposal. Remove it so only one proposal is live per conversation.
+		 */
+		if ( ! empty( $conversation['pending_proposal_id'] ) ) {
+			$this->proposals->delete( (string) $conversation['pending_proposal_id'], $user_id );
+			unset( $conversation['pending_proposal_id'] );
+		}
+
+		$this->append_transcript( $conversation, 'user', $prompt );
+
 		$tools      = Catalog::available_names();
 		$messages   = $this->hydrate( $conversation['messages'] ?? array() );
 		$messages[] = new UserMessage( array( new MessagePart( $prompt ) ) );
@@ -230,14 +236,7 @@ final class Agent {
 							)
 						);
 
-						$proposal = array(
-							'id'          => $created['id'],
-							'ability'     => $ability_name,
-							'label'       => $ability->get_label(),
-							'description' => $ability->get_description(),
-							'args'        => $args,
-							'expires'     => $created['expires'],
-						);
+						$proposal = self::describe_proposal( $created );
 
 						/*
 						 * Answer the call so the stored history stays well formed
@@ -268,7 +267,27 @@ final class Agent {
 			Audit::leave();
 		}
 
+		$text                     = $this->text( $messages );
 		$conversation['messages'] = $this->dehydrate( $messages );
+
+		if ( '' !== $text ) {
+			$this->append_transcript( $conversation, 'assistant', $text );
+		}
+
+		if ( is_array( $proposal ) ) {
+			if ( '' === $text ) {
+				$this->append_transcript(
+					$conversation,
+					'assistant',
+					__( 'I prepared this change. Review the exact values, then approve or edit them. Nothing has been written yet.', 'ai' )
+				);
+			}
+
+			$conversation['pending_proposal_id'] = (string) $proposal['id'];
+		} else {
+			unset( $conversation['pending_proposal_id'] );
+		}
+
 		$this->conversations->save( $conversation );
 
 		return array(
@@ -276,8 +295,9 @@ final class Agent {
 			'status'          => $status,
 			'rounds'          => $rounds,
 			'tools'           => $tools,
-			'text'            => $this->text( $messages ),
+			'text'            => $text,
 			'proposal'        => $proposal,
+			'transcript'      => $conversation['transcript'],
 		);
 	}
 
@@ -321,6 +341,12 @@ final class Agent {
 
 		$args = is_array( $stored['args'] ?? null ) ? $stored['args'] : array();
 
+		$valid = $ability->validate_input( $args );
+
+		if ( is_wp_error( $valid ) ) {
+			return $valid;
+		}
+
 		// Re-check before doing anything; execute() checks again with the same input.
 		if ( true !== $ability->check_permissions( $args ) ) {
 			Audit::decision(
@@ -347,6 +373,7 @@ final class Agent {
 		}
 
 		$this->proposals->mark_used( $stored );
+		unset( $conversation['pending_proposal_id'] );
 
 		Audit::decision(
 			$ability_name,
@@ -358,23 +385,101 @@ final class Agent {
 			is_wp_error( $result ) ? $result->get_error_message() : ''
 		);
 
-		$this->append_result_note(
+		$error = is_wp_error( $result ) ? $result->get_error_message() : '';
+
+		$conversation = $this->append_result_note(
 			$conversation,
-			sprintf(
-				/* translators: 1: proposal ID, 2: ability name, 3: result or error. */
-				__( '[Site Agent] Proposal %1$s was approved. Ability: %2$s. Result: %3$s', 'ai' ),
-				$proposal_id,
-				$ability_name,
-				$this->result_note( $result )
-			)
+			Proposal_Preview::result_summary( $ability_name, $result, $error )
 		);
 
 		return array(
-			'proposal_id' => $proposal_id,
-			'ability'     => $ability_name,
-			'result'      => is_wp_error( $result ) ? null : $result,
-			'error'       => is_wp_error( $result ) ? $result->get_error_message() : '',
+			'conversation_id' => $conversation_id,
+			'proposal_id'     => $proposal_id,
+			'ability'         => $ability_name,
+			'result'          => is_wp_error( $result ) ? null : $result,
+			'error'           => $error,
+			'transcript'      => $conversation['transcript'],
 		);
+	}
+
+	/**
+	 * Replaces a pending proposal's arguments with edited values.
+	 *
+	 * The ability schema and permission callback run again against the edited
+	 * arguments before the values are stored. Approval still executes the
+	 * stored arguments and never accepts arguments from the browser.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string               $proposal_id     The proposal ID.
+	 * @param string               $conversation_id The conversation the person is looking at.
+	 * @param array<string, mixed> $args            The edited arguments.
+	 * @return array<string, mixed>|\WP_Error The updated proposal, or an error.
+	 */
+	public function update_proposal( string $proposal_id, string $conversation_id, array $args ) {
+		$user_id = get_current_user_id();
+		$stored  = $this->proposals->get( $proposal_id, $user_id );
+
+		if ( null === $stored ) {
+			return new WP_Error( 'site_agent_proposal_not_found', __( 'That proposal was not found or has expired.', 'ai' ), array( 'status' => 404 ) );
+		}
+
+		if ( 'pending' !== ( $stored['status'] ?? '' ) ) {
+			return new WP_Error( 'site_agent_proposal_used', __( 'That proposal has already been handled.', 'ai' ), array( 'status' => 409 ) );
+		}
+
+		if ( (string) ( $stored['conversation_id'] ?? '' ) !== $conversation_id ) {
+			return new WP_Error( 'site_agent_proposal_wrong_conversation', __( 'That proposal belongs to another conversation.', 'ai' ), array( 'status' => 403 ) );
+		}
+
+		$ability_name = (string) ( $stored['ability'] ?? '' );
+		$ability      = wp_get_ability( $ability_name );
+
+		if ( ! $ability instanceof WP_Ability || ! in_array( $ability_name, Catalog::names(), true ) || ! Catalog::is_write( $ability ) ) {
+			return new WP_Error( 'site_agent_ability_not_available', __( 'That ability is not available to you.', 'ai' ), array( 'status' => 403 ) );
+		}
+
+		$valid = $ability->validate_input( $args );
+
+		if ( is_wp_error( $valid ) ) {
+			return $valid;
+		}
+
+		if ( true !== $ability->check_permissions( $args ) ) {
+			Audit::decision(
+				$ability_name,
+				'denied',
+				array(
+					'phase'       => 'edit',
+					'proposal_id' => $proposal_id,
+				),
+				__( 'The current user no longer has permission for this action.', 'ai' )
+			);
+
+			return new WP_Error( 'site_agent_ability_denied', __( 'You do not have permission to perform that action.', 'ai' ), array( 'status' => 403 ) );
+		}
+
+		if ( ! $this->proposals->update_args( $stored, $args ) ) {
+			return new WP_Error( 'site_agent_proposal_not_updated', __( 'The proposal could not be updated.', 'ai' ), array( 'status' => 500 ) );
+		}
+
+		Audit::decision(
+			$ability_name,
+			'success',
+			array(
+				'phase'       => 'edit',
+				'proposal_id' => $proposal_id,
+			)
+		);
+
+		$stored['args'] = $args;
+		$proposal       = self::describe_proposal( $stored );
+
+		if ( null === $proposal ) {
+			return new WP_Error( 'site_agent_proposal_not_described', __( 'The proposal could not be updated.', 'ai' ), array( 'status' => 500 ) );
+		}
+
+		return $proposal;
 	}
 
 	/**
@@ -416,9 +521,10 @@ final class Agent {
 		$conversation = $this->conversations->get( $conversation_id, $user_id );
 
 		if ( null !== $conversation ) {
+			unset( $conversation['pending_proposal_id'] );
 			$this->append_result_note(
 				$conversation,
-				__( '[Site Agent] The person declined the proposal. Nothing was changed.', 'ai' )
+				__( 'Declined. Nothing was changed.', 'ai' )
 			);
 		}
 
@@ -458,39 +564,68 @@ final class Agent {
 	 *
 	 * @param array<string, mixed> $conversation The conversation.
 	 * @param string               $text         The note.
+	 * @return array<string, mixed> The updated conversation.
 	 */
-	private function append_result_note( array $conversation, string $text ): void {
+	private function append_result_note( array $conversation, string $text ): array {
 		$messages   = $this->hydrate( $conversation['messages'] ?? array() );
 		$messages[] = new UserMessage( array( new MessagePart( $text ) ) );
 
 		$conversation['messages'] = $this->dehydrate( $messages );
+
+		$this->append_transcript( $conversation, 'system', $text );
 		$this->conversations->save( $conversation );
+
+		return $conversation;
 	}
 
 	/**
-	 * Serializes a result for the conversation note.
+	 * Appends one entry to the human-readable conversation transcript.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param mixed $result The result or error.
-	 * @return string The truncated note value.
+	 * @param array<string, mixed> $conversation The conversation, by reference.
+	 * @param string               $role         One of user, assistant, or system.
+	 * @param string               $text         The entry text.
 	 */
-	private function result_note( $result ): string {
-		if ( is_wp_error( $result ) ) {
-			return $result->get_error_message();
+	private function append_transcript( array &$conversation, string $role, string $text ): void {
+		if ( ! isset( $conversation['transcript'] ) || ! is_array( $conversation['transcript'] ) ) {
+			$conversation['transcript'] = array();
 		}
 
-		$encoded = wp_json_encode( $result );
+		$conversation['transcript'][] = array(
+			'id'   => wp_generate_uuid4(),
+			'role' => $role,
+			'text' => $text,
+		);
+	}
 
-		if ( ! is_string( $encoded ) ) {
-			return '';
+	/**
+	 * Describes a stored proposal for the browser.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $stored The stored proposal.
+	 * @return array<string, mixed>|null The proposal payload, or null.
+	 */
+	public static function describe_proposal( array $stored ): ?array {
+		$ability_name = (string) ( $stored['ability'] ?? '' );
+		$ability      = wp_get_ability( $ability_name );
+
+		if ( ! $ability instanceof WP_Ability ) {
+			return null;
 		}
 
-		if ( mb_strlen( $encoded ) > self::MAX_RESULT_NOTE_LENGTH ) {
-			return mb_substr( $encoded, 0, self::MAX_RESULT_NOTE_LENGTH ) . '…';
-		}
+		$args = is_array( $stored['args'] ?? null ) ? $stored['args'] : array();
 
-		return $encoded;
+		return array(
+			'id'          => (string) ( $stored['id'] ?? '' ),
+			'ability'     => $ability_name,
+			'label'       => $ability->get_label(),
+			'description' => $ability->get_description(),
+			'args'        => $args,
+			'changes'     => Proposal_Preview::changes( $ability_name, $args ),
+			'expires'     => (int) ( $stored['expires'] ?? 0 ),
+		);
 	}
 
 	/**

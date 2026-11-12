@@ -140,9 +140,11 @@ final class Admin_Page {
 					'nonce'  => wp_create_nonce( 'wp_rest' ),
 					'root'   => esc_url_raw( rest_url() ),
 					'routes' => array(
-						'turn'    => Controller::TURN_ROUTE,
-						'approve' => Controller::APPROVE_ROUTE,
-						'decline' => Controller::DECLINE_ROUTE,
+						'turn'           => Controller::TURN_ROUTE,
+						'approve'        => Controller::APPROVE_ROUTE,
+						'decline'        => Controller::DECLINE_ROUTE,
+						'updateProposal' => Controller::UPDATE_PROPOSAL_ROUTE,
+						'conversations'  => Controller::CONVERSATIONS_ROUTE,
 					),
 				),
 				'availability'     => $this->get_availability(),
@@ -167,8 +169,6 @@ final class Admin_Page {
 		}
 
 		echo '<div class="wrap ai-site-agent">';
-		echo '<h1>' . esc_html__( 'Site Agent', 'ai' ) . '</h1>';
-		echo '<p class="ai-site-agent__intro">' . esc_html__( 'Ask about your site or request a change. The assistant proposes actions, and you review and approve the exact values before anything happens.', 'ai' ) . '</p>';
 		echo '<div id="ai-site-agent-root"></div>';
 		echo '</div>';
 	}

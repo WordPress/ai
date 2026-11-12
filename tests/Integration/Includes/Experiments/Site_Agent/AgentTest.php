@@ -290,6 +290,8 @@ class AgentTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result );
 		$this->assertCount( 1, self::$writes );
 		$this->assertSame( 'Approved', self::$writes[0]['title'] );
+		$this->assertStringContainsString( 'was approved', wp_json_encode( $result['transcript'] ) );
+		$this->assertSame( 'system', end( $result['transcript'] )['role'] );
 
 		$second = $agent->approve( $proposal['id'], $turn['conversation_id'] );
 		$this->assertWPError( $second );
@@ -403,6 +405,73 @@ class AgentTest extends WP_UnitTestCase {
 		$this->assertWPError( $result );
 		$this->assertSame( 'site_agent_proposal_used', $result->get_error_code() );
 		$this->assertCount( 1, self::$writes );
+	}
+
+	public function test_proposal_can_be_edited_before_approval(): void {
+		$agent = new Agent(
+			new Fake_Model_Client(
+				array( Fake_Model_Client::call( self::WRITE, array( 'title' => 'Original' ) ) )
+			)
+		);
+		$turn  = $agent->run( '', 'Create it.' );
+
+		$edited = $agent->update_proposal(
+			$turn['proposal']['id'],
+			$turn['conversation_id'],
+			array( 'title' => 'Edited' )
+		);
+
+		$this->assertIsArray( $edited );
+		$this->assertSame( array( 'title' => 'Edited' ), $edited['args'] );
+		$this->assertSame( 'Edited', $edited['changes'][0]['to'] );
+
+		$result = $agent->approve( $turn['proposal']['id'], $turn['conversation_id'] );
+
+		$this->assertIsArray( $result );
+		$this->assertCount( 1, self::$writes );
+		$this->assertSame( 'Edited', self::$writes[0]['title'] );
+	}
+
+	public function test_proposal_edit_validates_the_ability_schema(): void {
+		$agent = new Agent(
+			new Fake_Model_Client(
+				array( Fake_Model_Client::call( self::WRITE, array( 'title' => 'Original' ) ) )
+			)
+		);
+		$turn  = $agent->run( '', 'Create it.' );
+
+		$edited = $agent->update_proposal(
+			$turn['proposal']['id'],
+			$turn['conversation_id'],
+			array()
+		);
+
+		$this->assertWPError( $edited );
+
+		$result = $agent->approve( $turn['proposal']['id'], $turn['conversation_id'] );
+
+		$this->assertIsArray( $result );
+		$this->assertSame( 'Original', self::$writes[0]['title'] );
+	}
+
+	public function test_transcript_is_persisted_and_titled(): void {
+		$prompt = 'What is this site called and what should I do next?';
+		$agent  = new Agent( new Fake_Model_Client( array( Fake_Model_Client::text( 'It is Spike Site.' ) ) ) );
+
+		$turn = $agent->run( '', $prompt );
+
+		$this->assertIsArray( $turn );
+		$this->assertNull( $turn['proposal'] );
+
+		$conversation = ( new Conversation_Store() )->get( $turn['conversation_id'], $this->admin_id );
+
+		$this->assertIsArray( $conversation );
+		$this->assertSame( $prompt, $conversation['title'] );
+		$this->assertCount( 2, $conversation['transcript'] );
+		$this->assertSame( 'user', $conversation['transcript'][0]['role'] );
+		$this->assertSame( $prompt, $conversation['transcript'][0]['text'] );
+		$this->assertSame( 'assistant', $conversation['transcript'][1]['role'] );
+		$this->assertSame( 'It is Spike Site.', $conversation['transcript'][1]['text'] );
 	}
 
 	public function test_unknown_conversation_is_not_started(): void {
