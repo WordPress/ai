@@ -85,6 +85,14 @@ class OnboardingTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
+		/*
+		 * Start from a site with no tools turned on. Tests elsewhere in the suite
+		 * that force an implicit commit can leave a feature option behind, and a
+		 * delete in tearDown() is rolled back with the test's transaction.
+		 */
+		delete_option( 'wpai_feature_title-generation_enabled' );
+		delete_option( 'wpai_feature_type-ahead_enabled' );
+
 		$registry = new Registry();
 		$registry->register_feature( new Onboarding_Test_Title_Generation() );
 		$registry->register_feature( new Onboarding_Test_Type_Ahead() );
