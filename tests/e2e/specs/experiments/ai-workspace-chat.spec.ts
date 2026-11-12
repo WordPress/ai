@@ -15,6 +15,8 @@ import { expect, test } from '@playwright/test';
  */
 import {
 	chatFromUrl,
+	findSavedTurn,
+	newUuid,
 	toChatList,
 	toEntries,
 	toOutcomes,
@@ -153,5 +155,88 @@ test.describe( 'AI Workspace stored chats', () => {
 
 		expect( urlForChat( href, 'abc-123' ) ).toBe( href + '&chat=abc-123' );
 		expect( urlForChat( href + '&chat=abc-123', '' ) ).toBe( href );
+	} );
+	test( 'finds a saved turn by the ID the client gave it', () => {
+		const chat = stored( {
+			entries: [
+				{ prompt: 'Earlier', text: 'Before.', status: 'complete' },
+				{
+					turn_id: 'turn-1',
+					prompt: 'Plan it',
+					text: 'Here is a plan.',
+					status: 'awaiting_user',
+					rounds: 2,
+					tool_calls: [ { ability: 'ai/propose-drafts' } ],
+				},
+			],
+		} );
+
+		expect( chat ).not.toBeNull();
+		expect( findSavedTurn( chat!, 'turn-1' ) ).toEqual( {
+			response: {
+				conversation_id: 'abc-123',
+				scope: 'site',
+				status: 'awaiting_user',
+				rounds: 2,
+				tools: [],
+				tool_calls: [ { ability: 'ai/propose-drafts' } ],
+				messages: [],
+				text: 'Here is a plan.',
+			},
+			errorCode: null,
+		} );
+	} );
+
+	test( 'reports a saved turn that failed as an error, and a missing one as not ended', () => {
+		const chat = stored( {
+			entries: [
+				{
+					turn_id: 'turn-1',
+					prompt: 'Plan it',
+					status: 'error',
+					error_code: 'provider_down',
+				},
+				{ turn_id: 'turn-2', prompt: 'Odd', status: 'not-a-status' },
+			],
+		} );
+
+		expect( findSavedTurn( chat!, 'turn-1' ) ).toEqual( {
+			response: null,
+			errorCode: 'provider_down',
+		} );
+		expect( findSavedTurn( chat!, 'turn-2' ) ).toEqual( {
+			response: null,
+			errorCode: 'turn_failed',
+		} );
+		expect( findSavedTurn( chat!, 'turn-3' ) ).toBeNull();
+	} );
+
+	test( 'makes version 4 UUIDs, with or without randomUUID', () => {
+		const pattern =
+			/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+		expect( newUuid() ).toMatch( pattern );
+
+		const crypto = globalThis.crypto;
+		const randomUUID = crypto.randomUUID;
+
+		Object.defineProperty( crypto, 'randomUUID', {
+			value: undefined,
+			configurable: true,
+		} );
+
+		try {
+			const ids = new Set(
+				Array.from( { length: 50 }, () => newUuid() )
+			);
+
+			ids.forEach( ( id ) => expect( id ).toMatch( pattern ) );
+			expect( ids.size ).toBe( 50 );
+		} finally {
+			Object.defineProperty( crypto, 'randomUUID', {
+				value: randomUUID,
+				configurable: true,
+			} );
+		}
 	} );
 } );
