@@ -206,7 +206,7 @@ final class Admin_Page {
 			self::ASSET_HANDLE,
 			'Workspace',
 			array(
-				'rest'         => array(
+				'rest'          => array(
 					'nonce'  => wp_create_nonce( 'wp_rest' ),
 					'root'   => esc_url_raw( rest_url() ),
 					/*
@@ -221,15 +221,15 @@ final class Admin_Page {
 						'conversations' => Conversation_Controller::CONVERSATIONS_ROUTE,
 					),
 				),
-				'availability' => $this->get_availability(),
-				'settingsUrl'  => admin_url( 'options-general.php?page=ai-wp-admin' ),
+				'availability'  => $this->get_availability(),
+				'connectorsUrl' => admin_url( 'options-connectors.php' ),
 				/*
 				 * The block editor handoff carries a post identity and nothing
 				 * more. The workspace reads a body only through the
 				 * permission-checked tool path, so there is one enforcement
 				 * path and no trust is placed in a client-supplied body.
 				 */
-				'seed'         => $this->get_seed(),
+				'seed'          => $this->get_seed(),
 			)
 		);
 	}
