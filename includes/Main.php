@@ -25,6 +25,7 @@ use WordPress\AI\Embeddings\Sync\Embedding_Sync;
 use WordPress\AI\Experiments\Experiments;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
+use WordPress\AI\Onboarding\Onboarding;
 use WordPress\AI\Settings\Settings_Page;
 use WordPress\AI\Settings\Settings_Registration;
 
@@ -133,6 +134,9 @@ final class Main {
 
 			// Initialize settings registration.
 			( new Settings_Registration( $registry ) )->init();
+
+			// Register the Get started guide's settings, page data and notices.
+			( new Onboarding( $registry ) )->init();
 
 			// Register the AI settings page, dashboard widgets, and Tools card.
 			if ( is_admin() ) {

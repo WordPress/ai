@@ -33,6 +33,7 @@ import { store as noticesStore } from '@wordpress/notices';
 import AIIcon from './ai-icon';
 import { DeveloperSettings } from './components/DeveloperSettings';
 import { FeatureToggle } from './components/FeatureToggle';
+import { GetStarted } from './components/GetStarted';
 import {
 	FeatureToggleControl,
 	parseFeatureUsage,
@@ -50,6 +51,13 @@ import {
 	useDeveloperModeContext,
 } from './hooks/use-developer-mode';
 import { useSettingsImportExport } from './hooks/use-settings-import-export';
+import {
+	COMPLETED_SETTING,
+	USE_CASES_SETTING,
+	parseOnboardingData,
+	toStringList,
+} from './onboarding';
+import type { OnboardingData } from './onboarding';
 import './style.scss';
 
 type AISettings = Record< string, boolean >;
@@ -89,7 +97,10 @@ interface PageData {
 	connectorsUrl: string;
 	featureGroups: FeatureGroupData[];
 	features: FeatureData[];
+	onboarding: OnboardingData | null;
 }
+
+const ALL_SETTINGS_ID = 'ai-all-settings';
 
 const FEATURE_SETTING_PATTERN = /^wpai_feature_(.+)_enabled$/;
 
@@ -210,6 +221,7 @@ function getPageData(): PageData {
 		connectorsUrl: '',
 		featureGroups: [],
 		features: [],
+		onboarding: null,
 	};
 
 	try {
@@ -242,6 +254,7 @@ function getPageData(): PageData {
 			connectorsUrl: toStringValue( pageData.connectorsUrl ),
 			featureGroups,
 			features,
+			onboarding: parseOnboardingData( pageData.onboarding ),
 		};
 	} catch {
 		return fallback;
@@ -740,20 +753,29 @@ function AISettingsPage() {
 	}, [ aiSettingKeys, editedRecord ] );
 
 	const handleChange = useCallback(
-		async ( edits: Record< string, unknown > ) => {
+		async (
+			edits: Record< string, unknown >,
+			options?: { message?: string }
+		): Promise< boolean > => {
 			const keys = Object.keys( edits );
 
 			// Optimistic update — the UI reflects the new value immediately.
 			// @ts-expect-error -- core-data types don't expose editEntityRecord for 'root'/'site' args.
 			editEntityRecord( 'root', 'site', undefined, edits );
 
-			const message = buildToggleMessage( edits, featureDefinitions );
+			// The guide passes its own message, or an empty one to save quietly.
+			const message =
+				options?.message ??
+				buildToggleMessage( edits, featureDefinitions );
 
 			try {
 				await saveSpecifiedEdits( 'root', 'site', undefined, keys, {
 					throwOnError: true,
 				} );
-				createSuccessNotice( message, { type: 'snackbar' } );
+				if ( message ) {
+					createSuccessNotice( message, { type: 'snackbar' } );
+				}
+				return true;
 			} catch {
 				// Revert only the toggled keys to their server-side values.
 				const serverRecord = registry
@@ -770,6 +792,7 @@ function AISettingsPage() {
 				createErrorNotice( __( 'Failed to save settings.', 'ai' ), {
 					type: 'snackbar',
 				} );
+				return false;
 			}
 		},
 		[
@@ -781,6 +804,31 @@ function AISettingsPage() {
 			registry,
 		]
 	);
+
+	const onboarding = PAGE_DATA.onboarding;
+	const onboardingSelectedValue = editedRecord?.[ USE_CASES_SETTING ];
+	const onboardingSelected = useMemo(
+		() =>
+			Array.isArray( onboardingSelectedValue )
+				? toStringList( onboardingSelectedValue )
+				: onboarding?.selected ?? [],
+		[ onboarding, onboardingSelectedValue ]
+	);
+	const onboardingCompleted = Boolean(
+		editedRecord?.[ COMPLETED_SETTING ] ?? onboarding?.completed ?? false
+	);
+	const enabledFeatureCount = useMemo( () => {
+		if ( ! editedRecord ) {
+			return onboarding?.enabledCount ?? 0;
+		}
+		return Object.values( data ).filter( Boolean ).length;
+	}, [ data, editedRecord, onboarding ] );
+
+	const showAllSettings = useCallback( () => {
+		const allSettings = document.getElementById( ALL_SETTINGS_ID );
+		allSettings?.scrollIntoView( { behavior: 'smooth', block: 'start' } );
+		allSettings?.focus( { preventScroll: true } );
+	}, [] );
 
 	const fields = useMemo< Field< AISettings >[] >( () => {
 		const sectionActionsFields: Field< AISettings >[] = [];
@@ -944,6 +992,29 @@ function AISettingsPage() {
 		};
 	}, [ featureDefinitions, featureGroups ] );
 
+	const providerNotice = ! PAGE_DATA.hasValidCredentials ? (
+		<Notice.Root intent={ PAGE_DATA.hasCredentials ? 'warning' : 'error' }>
+			<Notice.Description>
+				{ ! PAGE_DATA.hasCredentials
+					? __(
+							'The AI plugin requires a valid AI Connector to function properly. Verify you have one or more AI Connectors configured.',
+							'ai'
+					  )
+					: __(
+							"Your configured AI Connectors don't support text generation, which most AI features require.",
+							'ai'
+					  ) }
+			</Notice.Description>
+			{ PAGE_DATA.connectorsUrl && (
+				<Notice.Actions>
+					<Notice.ActionLink href={ PAGE_DATA.connectorsUrl }>
+						{ __( 'Manage Connectors', 'ai' ) }
+					</Notice.ActionLink>
+				</Notice.Actions>
+			) }
+		</Notice.Root>
+	) : null;
+
 	return (
 		<AdvancedSettingsContext.Provider value={ advancedSettings }>
 			<DeveloperModeContext.Provider value={ isDeveloperMode }>
@@ -1090,35 +1161,23 @@ function AISettingsPage() {
 						direction="column"
 						gap="md"
 					>
-						{ ! PAGE_DATA.hasValidCredentials && (
-							<Notice.Root
-								intent={
-									PAGE_DATA.hasCredentials
-										? 'warning'
-										: 'error'
+						{ onboarding ? (
+							<GetStarted
+								onboarding={ onboarding }
+								hasCredentials={ PAGE_DATA.hasCredentials }
+								hasValidCredentials={
+									PAGE_DATA.hasValidCredentials
 								}
-							>
-								<Notice.Description>
-									{ ! PAGE_DATA.hasCredentials
-										? __(
-												'The AI plugin requires a valid AI Connector to function properly. Verify you have one or more AI Connectors configured.',
-												'ai'
-										  )
-										: __(
-												"Your configured AI Connectors don't support text generation, which most AI features require.",
-												'ai'
-										  ) }
-								</Notice.Description>
-								{ PAGE_DATA.connectorsUrl && (
-									<Notice.Actions>
-										<Notice.ActionLink
-											href={ PAGE_DATA.connectorsUrl }
-										>
-											{ __( 'Manage Connectors', 'ai' ) }
-										</Notice.ActionLink>
-									</Notice.Actions>
-								) }
-							</Notice.Root>
+								connectorsUrl={ PAGE_DATA.connectorsUrl }
+								selected={ onboardingSelected }
+								completed={ onboardingCompleted }
+								enabledCount={ enabledFeatureCount }
+								onSave={ handleChange }
+								onShowAllSettings={ showAllSettings }
+								collapsedNotice={ providerNotice }
+							/>
+						) : (
+							providerNotice
 						) }
 						{ isLoading ? (
 							<Stack
@@ -1129,12 +1188,18 @@ function AISettingsPage() {
 								<Spinner />
 							</Stack>
 						) : (
-							<DataForm< AISettings >
-								data={ data }
-								fields={ fields }
-								form={ form }
-								onChange={ handleChange }
-							/>
+							<div
+								id={ ALL_SETTINGS_ID }
+								className="ai-settings-page__all-settings"
+								tabIndex={ -1 }
+							>
+								<DataForm< AISettings >
+									data={ data }
+									fields={ fields }
+									form={ form }
+									onChange={ handleChange }
+								/>
+							</div>
 						) }
 					</Stack>
 				</Page>

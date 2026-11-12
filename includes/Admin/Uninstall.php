@@ -19,6 +19,7 @@ use WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation;
 use WordPress\AI\Experiments\Key_Encryption\Secrets_Bridge;
 use WordPress\AI\Experiments\Text_To_Speech\Job_Manager;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
+use WordPress\AI\Onboarding\Onboarding;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
@@ -273,17 +274,26 @@ final class Uninstall {
 	private static function delete_meta(): void {
 		global $wpdb;
 
-		// User meta: connector approval notice dismissal flag.
-		$user_ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-			$wpdb->prepare(
-				"SELECT user_id FROM {$wpdb->usermeta} WHERE meta_key = %s",
-				self::CONNECTOR_APPROVAL_NOTICE_META
-			)
+		// User meta: connector approval notice dismissal flag, and the Get
+		// started guide's hidden and welcome-dismissed flags.
+		$user_meta_keys = array(
+			self::CONNECTOR_APPROVAL_NOTICE_META,
+			Onboarding::META_HIDDEN,
+			Onboarding::META_WELCOME_DISMISSED,
 		);
 
-		/** @var list<string> $user_ids */
-		foreach ( $user_ids as $user_id ) {
-			delete_user_meta( (int) $user_id, self::CONNECTOR_APPROVAL_NOTICE_META );
+		foreach ( $user_meta_keys as $user_meta_key ) {
+			$user_ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$wpdb->prepare(
+					"SELECT user_id FROM {$wpdb->usermeta} WHERE meta_key = %s",
+					$user_meta_key
+				)
+			);
+
+			/** @var list<string> $user_ids */
+			foreach ( $user_ids as $user_id ) {
+				delete_user_meta( (int) $user_id, $user_meta_key );
+			}
 		}
 
 		// Post meta: the C2PA Monitor scan record and the sort helper key it
