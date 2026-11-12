@@ -62,10 +62,10 @@ export function getButtonLabel(
  * @param {AltTextControlsProps}                    props                   The component props.
  * @param {string}                                  props.clientId          The block client ID.
  * @param {ImageBlockAttributes}                    props.attributes        The block attributes.
- * @param {Function}                                props.setAttributes     The function to set the block attributes.
+ * @param {AltTextControlsProps['setAttributes']}   props.setAttributes     The function to set the block attributes.
  * @param {RefCallback< HTMLButtonElement | null >} props.generateButtonRef The ref to the generate button.
  * @param {RefCallback< HTMLButtonElement | null >} props.primaryButtonRef  The ref to the primary button.
- * @param {Function}                                props.requestFocus      The function to request focus.
+ * @param {AltTextControlsProps['requestFocus']}    props.requestFocus      The function to request focus.
  * @return {React.JSX.Element|null} The component.
  */
 export function AltTextControls( {

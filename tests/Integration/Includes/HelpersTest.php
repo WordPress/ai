@@ -296,7 +296,7 @@ class HelpersTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		// Clean up the post utility abilities registered in setUp(), plus any alias test abilities.
-		foreach ( array( 'ai/get-post-terms', 'ai/get-post-details', 'ai/alias-target', 'ai/alias-old' ) as $ability_name ) {
+		foreach ( array( 'ai/get-post-terms', 'ai/alias-target', 'ai/alias-old' ) as $ability_name ) {
 			if ( ! wp_has_ability( $ability_name ) ) {
 				continue;
 			}
@@ -452,6 +452,41 @@ class HelpersTest extends WP_UnitTestCase {
 
 		$this->assertStringNotContainsString( '<', $result );
 		$this->assertStringContainsString( 'Line 1  Line 2', $result );
+	}
+
+	/**
+	 * Test that normalize_content() keeps the text of adjacent elements apart.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_normalize_content_element_boundaries
+	 *
+	 * @param string $content  The content to normalize.
+	 * @param string $expected The expected normalized content.
+	 */
+	public function test_normalize_content_keeps_element_text_apart( string $content, string $expected ) {
+		$this->assertSame( $expected, \WordPress\AI\normalize_content( $content ) );
+	}
+
+	/**
+	 * Data provider for test_normalize_content_keeps_element_text_apart().
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{string, string}> Test cases.
+	 */
+	public function data_normalize_content_element_boundaries(): array {
+		return array(
+			'table cells'                => array( '<table><tr><th>Name</th><th>Month</th></tr><tr><td>Davis</td><td>January</td></tr></table>', 'Name Month Davis January' ),
+			'quote and citation'         => array( '<blockquote><p>Stay hungry</p><cite>Steve Jobs</cite></blockquote>', 'Stay hungry Steve Jobs' ),
+			'file link and button'       => array( '<a href="/report.pdf">Annual report 2026</a><a href="/report.pdf" class="wp-block-file__button" download>Download</a>', 'Annual report 2026 Download' ),
+			'comment between paragraphs' => array( '<p>One</p><!--more--><p>Two</p>', 'One Two' ),
+			'formatting inside a word'   => array( 'Word<strong>Press</strong> and H<sub>2</sub>O', 'WordPress and H2O' ),
+			'comment inside a word'      => array( 'Word<!-- note -->Press', 'WordPress' ),
+			'inline image'               => array( 'Thanks<img class="emoji" alt="smile" src="/smile.svg">!', 'Thanks!' ),
+			'link before punctuation'    => array( 'See <a href="/docs">the docs</a>.', 'See the docs.' ),
+			'newlines between blocks'    => array( "<p>One</p>\n\n<p>Two</p>", 'One  Two' ),
+		);
 	}
 
 	/**
@@ -1167,13 +1202,13 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result[4], 'Fifth model should be an array' );
 		$this->assertCount( 2, $result[4], 'Fifth model should have 2 elements' );
 		$this->assertEquals( 'openai', $result[4][0], 'Fifth model provider should be openai' );
-		$this->assertEquals( 'gpt-image-2.5-flare', $result[4][1], 'Fifth model name should be gpt-image-2.5-flare' );
+		$this->assertEquals( 'gpt-image-2.6-flare', $result[4][1], 'Fifth model name should be gpt-image-2.6-flare' );
 
 		// Check sixth model (openai).
 		$this->assertIsArray( $result[5], 'Sixth model should be an array' );
 		$this->assertCount( 2, $result[5], 'Sixth model should have 2 elements' );
 		$this->assertEquals( 'openai', $result[5][0], 'Sixth model provider should be openai' );
-		$this->assertEquals( 'gpt-image-2', $result[5][1], 'Sixth model name should be gpt-image-2' );
+		$this->assertEquals( 'gpt-image-2.5-flare', $result[5][1], 'Sixth model name should be gpt-image-2.5-flare' );
 	}
 
 	/**
@@ -2569,39 +2604,6 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->register_alias_fixture( false );
 
 		$this->assertFalse( wp_has_ability( 'ai/alias-old' ), 'The alias should not be registered without its target.' );
-	}
-
-	/**
-	 * The deprecated ai/get-post-details ability still works and triggers a notice.
-	 *
-	 * @since 1.4.0
-	 */
-	public function test_deprecated_get_post_details_ability_still_executes(): void {
-		$this->setExpectedDeprecated( 'ai/get-post-details' );
-
-		$post_id = $this->factory->post->create( array( 'post_title' => 'Deprecated Title' ) );
-
-		$ability = wp_get_ability( 'ai/get-post-details' );
-
-		$this->assertNotNull( $ability, 'The deprecated ability should still be registered.' );
-		$this->assertSame( 'Get post details (deprecated)', $ability->get_label(), 'The label should mark the ability as deprecated.' );
-		$this->assertSame(
-			array(
-				'since'       => '1.4.0',
-				'replacement' => 'core/content-query',
-			),
-			$ability->get_meta_item( 'deprecated' ),
-			'The meta should describe the deprecation.'
-		);
-
-		$result = $ability->execute(
-			array(
-				'post_id' => $post_id,
-				'fields'  => array( 'title' ),
-			)
-		);
-
-		$this->assertSame( array( 'title' => 'Deprecated Title' ), $result, 'The deprecated ability should still return post details.' );
 	}
 
 	/**
