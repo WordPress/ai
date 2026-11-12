@@ -380,7 +380,7 @@ With the experiment on, the command palette gets an AI fallback on every admin s
 
 ### Ask AI
 
-For users who can open the workspace (`manage_options`), the loader adds an "Ask AI: <query>" row under the same conditions as the suggestions: the palette found nothing, the search has at least three characters, and the debounce has settled. It comes after any suggestions, and it stays when the AI request fails, so a failed request leaves only that row. The server tells the loader whether to offer it; nobody else is told where the workspace is.
+For users who can open the workspace (`manage_options`), the loader adds an "Ask in AI Workspace: <query>" row under the same conditions as the suggestions: the palette found nothing, the search has at least three characters, and the debounce has settled. It comes after any suggestions, and it stays when the AI request fails, so a failed request leaves only that row. The server tells the loader whether to offer it; nobody else is told where the workspace is.
 
 Choosing it opens the workspace with the search in the `wpai-prompt` query argument. `Admin_Page` reads it once: tags are stripped, whitespace is flattened to one line, and it is cut to 500 characters. It lands in the composer, unsent, and takes precedence over a post from the block editor handoff. The screen removes `wpai-prompt` from the URL as soon as it has read it, so a reload opens an empty composer.
 

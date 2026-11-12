@@ -173,9 +173,12 @@ test.describe( 'Command Palette AI Search', () => {
 		// An administrator still gets the Ask AI row, and nothing else.
 		const rows = page.locator( AI_RESULT );
 		await expect( rows ).toHaveCount( 1 );
-		await expect( rows ).toHaveText( 'Ask AI: how do I bake a cake', {
-			useInnerText: true,
-		} );
+		await expect( rows ).toHaveText(
+			'Ask in AI Workspace: how do I bake a cake',
+			{
+				useInnerText: true,
+			}
+		);
 	} );
 
 	test( 'Does not search with AI when the palette has results', async ( {
@@ -300,7 +303,7 @@ test.describe( 'Command Palette AI Search', () => {
 			useInnerText: true,
 		} );
 		await expect( rows.last() ).toHaveText(
-			'Ask AI: how do I bake a pizza',
+			'Ask in AI Workspace: how do I bake a pizza',
 			{ useInnerText: true }
 		);
 
@@ -352,7 +355,7 @@ test.describe( 'Command Palette AI Search', () => {
 			useInnerText: true,
 		} );
 		await expect( rows.last() ).toHaveText(
-			'Ask AI: how do I hide my site from google',
+			'Ask in AI Workspace: how do I hide my site from google',
 			{ useInnerText: true }
 		);
 	} );
@@ -428,7 +431,7 @@ test.describe( 'Command Palette AI Search', () => {
 
 		const rows = page.locator( AI_RESULT );
 		await expect( rows ).toHaveCount( 1 );
-		await expect( rows ).toHaveText( `Ask AI: ${ search }`, {
+		await expect( rows ).toHaveText( `Ask in AI Workspace: ${ search }`, {
 			useInnerText: true,
 		} );
 		expect( requests ).toBe( 0 );

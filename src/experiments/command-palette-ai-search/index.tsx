@@ -96,7 +96,7 @@ function getAskAICommand(
 		name: `${ LOADER_NAME }/ask-ai`,
 		label: sprintf(
 			/* translators: %s: What the user typed into the command palette. */
-			__( 'Ask AI: %s', 'ai' ),
+			__( 'Ask in AI Workspace: %s', 'ai' ),
 			query
 		),
 		searchLabel: `${ ITEM_PREFIX }ask-ai ${ key }`,
