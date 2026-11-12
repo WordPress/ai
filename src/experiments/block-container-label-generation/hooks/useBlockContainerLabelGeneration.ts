@@ -14,6 +14,7 @@ import { __, sprintf } from '@wordpress/i18n';
 import { hasMinimumContent } from '../../../utils/character-count';
 import { ensureProvider } from '../../../utils/provider-status';
 import {
+	buildDocumentContext,
 	collectLabelCandidates,
 	generateLabel,
 	getSettings,
@@ -76,8 +77,15 @@ export function useBlockContainerLabelGeneration(): UseBlockContainerLabelGenera
 		for ( const candidate of candidates ) {
 			try {
 				setActiveClientId( candidate.clientId );
+				const documentContext = buildDocumentContext(
+					candidate.clientId
+				);
 				const label = (
-					await generateLabel( candidate.content, postId )
+					await generateLabel(
+						candidate.content,
+						postId,
+						documentContext
+					)
 				).trim();
 
 				if ( ! label ) {

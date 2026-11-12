@@ -4,6 +4,15 @@
 
 The AI Editorial Notes experiment adds a block-by-block AI editorial review to the WordPress post editor. Clicking "Generate Editorial Notes" in the post sidebar triggers the AI to examine each reviewable block and create WordPress Notes directly on the relevant blocks with concise, actionable suggestions across four categories: **Accessibility**, **Readability**, **Grammar**, and **SEO**.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** No, only when you ask
+- **When it runs:** When you click Generate Editorial Notes
+- **Sent to your AI provider:** Each block's text with surrounding content
+- **Requests and data:** One request per block
+- **Good to know:** Notes are saved as comments on the post as soon as they're generated.
+
 ## Overview
 
 ### For End Users
@@ -19,9 +28,10 @@ When enabled, a "Generate Editorial Notes" button appears in the post status inf
 
 - Block-level Notes with suggestions scoped to each block's content and type
 - Four review categories: Accessibility, Readability, Grammar, SEO
-- Accumulating history: subsequent review runs append replies to existing Note threads rather than creating duplicate threads
+- Accumulating history: subsequent review runs reply to the block's existing AI Note thread rather than creating duplicate threads
+- Works alongside human Notes: the AI keeps its own thread on each block, and Notes added through the Notes panel stay attached to the block
 - Prior suggestions are sent back to the AI as context so it avoids repeating itself
-- Blocks whose Note thread has been resolved (marked as approved) are skipped on re-run
+- Blocks whose AI Note thread has been resolved (marked as approved) are skipped on re-run
 - Works with common block types: paragraphs, headings, images, lists, tables, quotes, and more
 
 ### For Developers
@@ -117,10 +127,11 @@ In both cases, users without the required capability receive an `insufficient_ca
 
 Notes are `WP_Comment` objects with `comment_type = 'note'` and `status = 'hold'`. Block association is maintained via block metadata:
 
-- **New thread**: `POST /wp/v2/comments` with `parent: 0` → response `id` stored in `block.attributes.metadata.noteId` via `updateBlockAttributes`
-- **Reply**: `POST /wp/v2/comments` with `parent: existingNoteId` → block metadata unchanged (association already set)
+- **`noteId` format**: `metadata.noteId` is expected to be either a number (`12`) or an array of numbers (`[12, 34]`).
+- **New thread**: `POST /wp/v2/comments` with `parent: 0` → response `id` is added to `block.attributes.metadata.noteId` via `updateBlockAttributes`. Existing IDs are kept, and the block's current format is preserved: arrays are appended to, and a number is only set when the block has no Note yet.
+- **Reply**: `POST /wp/v2/comments` with `parent: <AI thread ID>` → block metadata unchanged. The AI thread is the block's root Note with `meta.wpai_note = true`. When `noteId` is a number, the AI replies to that thread.
 - **AI author**: All Notes created by this experiment include `meta: { wpai_note: true }`. The `rest_pre_insert_comment` filter intercepts this and sets the author to "WordPress AI" with no email, URL, or user ID, so Notes are not attributed to the authenticated user's account.
-- **Resolved Notes**: Notes with `status = 'approve'` (resolved) cause their associated block to be skipped entirely on the next review run.
+- **Resolved Notes**: A resolved (`status = 'approve'`) AI thread causes its block to be skipped entirely on the next review run. Resolved human threads do not, except when `noteId` is a number, in which case the block is skipped once that thread is no longer pending.
 
 ## Using the Ability via REST API
 
@@ -255,12 +266,20 @@ async function reviewBlock( blockType, blockContent, existingNotes = [] ) {
    - Run the review again
    - Verify the resolved block is skipped entirely
 
-5. **Note deletion cleanup:**
+5. **Multiple Note threads:**
+   - Add a Note to a paragraph block through the Notes panel
+   - Run the review
+   - Verify the AI's suggestions appear as a separate thread and the human Note is still attached
+   - In the Code Editor, verify the block's `metadata.noteId` contains both IDs (e.g. `[123, 124]`)
+   - Run the review again and verify the AI replies in its own thread
+   - Resolve the human Note, run again, and verify the block is still reviewed
+
+6. **Note deletion cleanup:**
    - Delete a Note from the Notes panel
    - Save the post
    - Verify the deleted block no longer has a `noteId` in its block metadata (inspect via the Code Editor)
 
-6. **Edge cases:**
+7. **Edge cases:**
    - Post with only very short blocks → button completes instantly with "No new suggestions found."
    - All blocks already have Notes → second run skips repeats
    - Disable experiment → button disappears from sidebar
@@ -282,14 +301,15 @@ async function reviewBlock( blockType, blockContent, existingNotes = [] ) {
 ### Note Storage
 
 - Notes are stored as WordPress comments with `comment_type = 'note'` and `comment_author = 'WordPress AI'`
-- Block association is stored in `block.attributes.metadata.noteId`
+- Block association is stored in `block.attributes.metadata.noteId`, as either a number or an array of numbers
 - Block metadata is saved as part of the post content when the editor saves
 - Note threads accumulate across review runs by design
-- Deleting or trashing a root Note automatically clears `metadata.noteId` from its associated block
+- Deleting or trashing a root Note automatically removes its ID from the associated block's `metadata.noteId`
 
 ### Limitations
 
 - Image block review is limited to alt text presence; it does not analyze the image itself
 - Block metadata (`noteId`) is only persisted after the post is saved
 - The 25-block cap means very long posts will have only the first 25 reviewable blocks analyzed per run
-- Resolved blocks (approved Notes) are skipped in full; they will not receive new suggestions until the Note is un-resolved or deleted
+- Blocks with a resolved AI thread are skipped in full; they will not receive new suggestions until the thread is un-resolved or deleted
+- When `noteId` is a number, the AI replies to that existing thread even if a human started it

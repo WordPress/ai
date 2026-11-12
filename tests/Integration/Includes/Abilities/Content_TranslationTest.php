@@ -561,4 +561,39 @@ class Content_TranslationTest extends WP_UnitTestCase {
 		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
 		$this->assertEquals( 'unsupported_model', $result->get_error_code(), 'Error code should be unsupported_model' );
 	}
+
+	/**
+	 * Test that execute_callback() keeps `rgb()` and `rgba()` colors in the translated content.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_keeps_rgb_colors(): void {
+		$ability = new class(
+			'ai/content-translation',
+			array(
+				'label'       => 'Content Translation',
+				'description' => 'Test',
+			)
+		) extends Content_Translation {
+			protected function generate_translated_content( string $prompt, string $language ) {
+				return '<mark style="background-color:rgba(0, 0, 0, 0)" class="has-inline-color has-vivid-red-color">tomates vermelhos</mark>';
+			}
+		};
+
+		$method = ( new \ReflectionClass( $ability ) )->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$processor = new \WP_HTML_Tag_Processor(
+			$method->invoke(
+				$ability,
+				array(
+					'content'         => '<mark style="background-color:rgba(0, 0, 0, 0)" class="has-inline-color has-vivid-red-color">red tomatoes</mark>',
+					'target_language' => 'pt-br',
+				)
+			)
+		);
+		$processor->next_tag();
+
+		$this->assertSame( 'background-color:rgba(0, 0, 0, 0)', $processor->get_attribute( 'style' ) );
+	}
 }

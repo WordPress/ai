@@ -14,6 +14,7 @@ use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Experiments\Type_Ahead\Type_Ahead as Type_Ahead_Experiment;
 
 use function WordPress\AI\normalize_content;
+use function WordPress\AI\sanitize_plain_text;
 
 /**
  * Generates inline completion suggestions for block content.
@@ -309,7 +310,7 @@ class Type_Ahead extends Abstract_Ability {
 			return new WP_Error( 'ai_type_ahead_invalid', esc_html__( 'Unable to parse the type-ahead suggestion response.', 'ai' ) );
 		}
 
-		$suggestion = sanitize_textarea_field( $decoded['suggestion'] );
+		$suggestion = sanitize_plain_text( $decoded['suggestion'], true );
 
 		if ( '' === $suggestion ) {
 			return new WP_Error( 'ai_type_ahead_blank', esc_html__( 'The suggestion returned was blank after sanitization.', 'ai' ) );

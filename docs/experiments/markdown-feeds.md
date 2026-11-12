@@ -4,6 +4,15 @@
 
 The Markdown Feeds experiment serves your site's content as `text/markdown` for AI agents and other machine readers. It adds a Markdown feed at `/feed/markdown/` (available in every feed context), serves Markdown versions of individual posts and pages via `?output_format=markdown`, emits autodiscovery link tags, and can optionally negotiate Markdown via the `Accept` request header. Post HTML is converted to Markdown with a vendored copy of the WordPress HTML API-based [dmsnell/html-to-md](https://github.com/dmsnell/html-to-md) renderer, so no separate plugin is required.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** Doesn't call your AI provider
+- **When it runs:** On front-end requests
+- **Sent to your AI provider:** Nothing
+- **Requests and data:** Renders Markdown versions of public posts, pages, and comments
+- **Good to know:** Adds Markdown discovery links to every front-end page. Only publicly viewable, non-password-protected content is served.
+
 ## Overview
 
 When enabled, the experiment exposes three request surfaces plus discovery link tags.
@@ -60,6 +69,12 @@ Enable the experiment under **Settings → AI**. The experiment adds one sub-tog
 
 Toggling the experiment on or off schedules a one-time rewrite-rules flush on the next request so the `/feed/markdown/` permalink is registered or removed. The rules are also rebuilt when the feed is registered but missing from them, for example after a flush that ran while the plugin was inactive, or when the experiment is enabled with the `wpai_feature_markdown-feeds_enabled` filter.
 
+## Conflicts with other Markdown plugins
+
+Other plugins can also serve Markdown to agents, for example Markdown for AI Agents, LLM Markdown, Mescio for Agents, and Roots' Post Content to Markdown. When one of them is active alongside this experiment, both may answer the same Markdown requests (whichever runs first on `template_redirect` wins), both print `<link rel="alternate" type="text/markdown">` tags, and two sets of `Accept` negotiation make the page-cache `Vary` behaviour harder to reason about.
+
+The experiment does not change its behaviour when it finds one of these plugins. Instead, the Markdown Feeds description in **Settings → AI** names the active plugin, so you can choose which one should serve Markdown. Add other plugins to the check with `wpai_markdown_feeds_conflicting_plugins`.
+
 ## Extending the Experiment
 
 Both the singular document and each feed item are assembled from an ordered, named array of Markdown sections (`title`, `meta`, `content`, plus `comments` for a singular document). Blocks are joined with blank lines in array order, so you can add, remove, or reorder entries. Three filters expose these arrays, and one more controls which comments a singular document lists.
@@ -114,6 +129,18 @@ Filters the `get_comments()` arguments used for the Comments section of a singul
  * @return array<string, mixed>
  */
 apply_filters( 'wpai_markdown_singular_comments_args', array $args, WP_Post $post );
+```
+
+### `wpai_markdown_feeds_conflicting_plugins`
+
+Filters the plugins that also serve Markdown. When one of them is active, the Markdown Feeds description in **Settings → AI** names it.
+
+```php
+/**
+ * @param array<string, string> $plugins Map of plugin file (as used by is_plugin_active()) to plugin name.
+ * @return array<string, string>
+ */
+apply_filters( 'wpai_markdown_feeds_conflicting_plugins', array $plugins );
 ```
 
 ### Example: inject a custom field into feed items

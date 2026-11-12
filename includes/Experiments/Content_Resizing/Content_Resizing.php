@@ -43,6 +43,12 @@ class Content_Resizing extends Abstract_Feature {
 			'label'       => __( 'Content Resizing', 'ai' ),
 			'description' => __( 'Shorten, expand, or rephrase selected block content. Requires an AI connector that includes support for text generation models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
+			'usage'       => array(
+				'trigger'  => 'on_demand',
+				'runs'     => __( 'When you choose Shorten, Expand, or Rephrase', 'ai' ),
+				'sends'    => __( 'The selected paragraph', 'ai' ),
+				'requests' => __( 'One request per click', 'ai' ),
+			),
 		);
 	}
 
@@ -65,6 +71,7 @@ class Content_Resizing extends Abstract_Feature {
 			array(
 				'label'         => $this->get_label(),
 				'description'   => $this->get_description(),
+				'category'      => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'ability_class' => Content_Resizing_Ability::class,
 			),
 		);

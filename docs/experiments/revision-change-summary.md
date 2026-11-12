@@ -4,6 +4,15 @@
 
 The Revision Change Summary experiment explains, in plain language, what changed between two revisions of a post. It adds a "Summarize changes" action to the visual revisions screen in the block editor and to the classic revisions screen. The summary is read-only: nothing in the post or its revisions is changed or saved. The experiment registers a WordPress Ability (`ai/revision-change-summary`) that can be used through the admin UI and directly via REST API requests.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** No, only when you ask
+- **When it runs:** When you click Summarize changes on a revisions screen
+- **Sent to your AI provider:** The changed lines of the title and content between the two revisions
+- **Requests and data:** One request per click
+- **Good to know:** The summary is read-only. Nothing in the post or its revisions is changed or saved.
+
 ## Overview
 
 ### For End Users

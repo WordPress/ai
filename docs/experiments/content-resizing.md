@@ -4,6 +4,14 @@
 
 The Content Resizing experiment lets editors transform the content of an individual block in three ways — **Shorten**, **Expand**, or **Rephrase** — directly from the block toolbar. The experiment registers a WordPress Ability (`ai/content-resizing`) that returns the transformed text while preserving inline HTML (links, emphasis, code, etc.). The ability can be called both through the in-editor UI and directly via REST API for automation.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** No, only when you ask
+- **When it runs:** When you choose Shorten, Expand, or Rephrase
+- **Sent to your AI provider:** The selected paragraph
+- **Requests and data:** One request per click
+
 ## Overview
 
 ### For End Users

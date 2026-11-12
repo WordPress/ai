@@ -16,18 +16,19 @@ use WordPress\AI\Experiments\Block_Container_Label_Generation\Block_Container_La
 use function WordPress\AI\count_characters_excluding_spaces;
 use function WordPress\AI\get_min_content_length;
 use function WordPress\AI\normalize_content;
+use function WordPress\AI\sanitize_plain_text;
 
 /**
  * Block Container Label Generation WordPress Ability.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Block_Container_Label_Generation extends Abstract_Ability {
 
 	/**
 	 * The default minimum content length in characters for the block container label generation.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var int
 	 */
@@ -36,7 +37,7 @@ class Block_Container_Label_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function meta(): array {
 		return array(
@@ -47,21 +48,25 @@ class Block_Container_Label_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function input_schema(): array {
 		return array(
 			'type'       => 'object',
 			'required'   => array( 'post_id', 'content' ),
 			'properties' => array(
-				'post_id' => array(
+				'post_id'          => array(
 					'type'              => 'integer',
 					'sanitize_callback' => 'absint',
 					'description'       => esc_html__( 'The ID of the post that contains the block to generate a label for.', 'ai' ),
 				),
-				'content' => array(
+				'content'          => array(
 					'type'        => 'string',
 					'description' => esc_html__( 'The content of the block to generate a label for.', 'ai' ),
+				),
+				'document_context' => array(
+					'type'        => 'string',
+					'description' => esc_html__( 'The outline or contextual overview of the entire document to provide structural context.', 'ai' ),
 				),
 			),
 		);
@@ -70,7 +75,7 @@ class Block_Container_Label_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function output_schema(): array {
 		return array(
@@ -82,7 +87,7 @@ class Block_Container_Label_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function permission_callback( $args ) {
 		if ( empty( $args['post_id'] ) ) {
@@ -122,7 +127,7 @@ class Block_Container_Label_Generation extends Abstract_Ability {
 	/**
 	 * Returns a prompt builder for Block Container Label Generation.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $prompt The prompt to build.
 	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error if there isn't a model that supports text generation.
@@ -154,14 +159,15 @@ class Block_Container_Label_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function execute_callback( $input ) {
 		$args = wp_parse_args(
 			$input,
 			array(
-				'post_id' => null,
-				'content' => null,
+				'post_id'          => null,
+				'content'          => null,
+				'document_context' => null,
 			)
 		);
 
@@ -189,10 +195,25 @@ class Block_Container_Label_Generation extends Abstract_Ability {
 			);
 		}
 
-		// Escape angle brackets so content cannot break out of the <content> tag.
+		$document_context = ! empty( $args['document_context'] )
+			? trim( (string) $args['document_context'] )
+			: '';
+
+		// Escape angle brackets so content cannot break out of the tags.
 		$escaped_content = str_replace( array( '<', '>' ), array( '&lt;', '&gt;' ), $content );
-		$prompt          = sprintf( '<content>%s</content>', $escaped_content );
-		$result          = $this->generate_label( $prompt );
+
+		if ( ! empty( $document_context ) ) {
+			$escaped_context = str_replace( array( '<', '>' ), array( '&lt;', '&gt;' ), $document_context );
+			$prompt          = sprintf(
+				"<document-context>\n%s\n</document-context>\n<content>%s</content>",
+				$escaped_context,
+				$escaped_content
+			);
+		} else {
+			$prompt = sprintf( '<content>%s</content>', $escaped_content );
+		}
+
+		$result = $this->generate_label( $prompt );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -205,13 +226,13 @@ class Block_Container_Label_Generation extends Abstract_Ability {
 			);
 		}
 
-		return sanitize_text_field( trim( $result, " \t\n\r\0\x0B\"'" ) );
+		return sanitize_plain_text( trim( $result, " \t\n\r\0\x0B\"'" ) );
 	}
 
 	/**
 	 * Generates a label for the given content using the AI client.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $prompt The prompt to use for the block container label generation.
 	 * @return string|\WP_Error The generated label, or a WP_Error if there was an error.

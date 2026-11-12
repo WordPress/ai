@@ -15,6 +15,12 @@ const {
 const LONG_CONTENT =
 	'Artificial intelligence is rapidly changing how content is created, edited, and published across the web today. Writers increasingly rely on automated tools to draft outlines, summarize research, and suggest improvements to their work. These systems analyze large amounts of text and surface patterns that would take a human many hours to find on their own. As the technology matures, editors are learning to combine their own judgment with machine generated suggestions to produce stronger results. This paragraph exists only to provide enough characters for the excerpt generation experiment to run, because the feature now requires a reasonable amount of content before it will offer to generate a brand new excerpt for the post.';
 
+// The excerpt popover opens from the "Add an excerpt" toggle of the legacy
+// excerpt panel (WordPress < 7.2) or from the "Edit Excerpt" button of the
+// excerpt field (WordPress 7.2+), and its textarea is labeled accordingly.
+const EXCERPT_POPOVER_TOGGLE = /Add an excerpt|Edit Excerpt/i;
+const EXCERPT_TEXTBOX = /Write an excerpt \(optional\)|^Excerpt$/;
+
 test.describe( 'Excerpt Generation Experiment', () => {
 	test( 'Can enable the excerpt generation experiment', async ( {
 		admin,
@@ -49,8 +55,10 @@ test.describe( 'Excerpt Generation Experiment', () => {
 			page.getByRole( 'button', { name: 'Generate excerpt' } ).first()
 		).toBeVisible();
 
-		// Click the Add excerpt button.
-		await page.getByRole( 'button', { name: /Add an excerpt/i } ).click();
+		// Open the excerpt popover.
+		await page
+			.getByRole( 'button', { name: EXCERPT_POPOVER_TOGGLE } )
+			.click();
 
 		// Ensure the generate excerpt button shows in the modal.
 		await expect(
@@ -65,7 +73,7 @@ test.describe( 'Excerpt Generation Experiment', () => {
 
 		// Ensure the excerpt is updated.
 		await expect(
-			page.getByRole( 'textbox', { name: 'Write an excerpt (optional)' } )
+			page.getByRole( 'textbox', { name: EXCERPT_TEXTBOX } )
 		).toHaveValue(
 			'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure'
 		);
@@ -76,9 +84,7 @@ test.describe( 'Excerpt Generation Experiment', () => {
 		).toBeVisible();
 
 		// Delete the excerpt.
-		await page
-			.getByRole( 'textbox', { name: 'Write an excerpt (optional)' } )
-			.fill( '' );
+		await page.getByRole( 'textbox', { name: EXCERPT_TEXTBOX } ).fill( '' );
 
 		// Close the modal.
 		await page
@@ -98,8 +104,73 @@ test.describe( 'Excerpt Generation Experiment', () => {
 			)
 		).toBeVisible();
 
+		// On the WordPress 7.2 inspector, clicking the excerpt itself opens the
+		// popover, as it does for core's excerpt summary. The click lands on
+		// the panel's edit button stretched over the row, so it is forced.
+		const excerptSummary = page.locator( '.ai-excerpt-field__summary' );
+		if ( await excerptSummary.count() ) {
+			await excerptSummary
+				.getByText(
+					'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure'
+				)
+				.click( { force: true } );
+			await expect(
+				page.getByRole( 'textbox', { name: EXCERPT_TEXTBOX } )
+			).toBeVisible();
+			await page
+				.getByRole( 'button', { name: 'Close', exact: true } )
+				.click();
+		}
+
 		// Save the post.
 		await editor.saveDraft();
+	} );
+
+	test( 'Keeps the excerpt and shows an error when no excerpt is generated', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await enableExperiment( admin, page, 'Excerpt Generation' );
+
+		await page.route( /excerpt-generation(\/|%2F)run/, ( route ) =>
+			route.fulfill( {
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify( '' ),
+			} )
+		);
+
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'Test Excerpt Generation Empty Response',
+			content: LONG_CONTENT,
+			excerpt: 'Hand written',
+		} );
+
+		await editor.openDocumentSettingsSidebar();
+
+		const getExcerpt = () =>
+			page.evaluate( () =>
+				window.wp.data
+					.select( 'core/editor' )
+					.getEditedPostAttribute( 'excerpt' )
+			);
+
+		expect( await getExcerpt() ).toBe( 'Hand written' );
+
+		await page
+			.getByRole( 'button', { name: 'Regenerate excerpt' } )
+			.first()
+			.click();
+
+		await expect(
+			page
+				.getByRole( 'region', { name: 'Editor content' } )
+				.getByText( 'No excerpt suggestion was generated.' )
+		).toBeVisible();
+
+		expect( await getExcerpt() ).toBe( 'Hand written' );
 	} );
 
 	test( 'Generate excerpt button is disabled when there is not enough content', async ( {
@@ -128,8 +199,10 @@ test.describe( 'Excerpt Generation Experiment', () => {
 		await expect( inlineButton ).toBeVisible();
 		await expect( inlineButton ).toBeDisabled();
 
-		// The panel button inside the excerpt dropdown is also disabled.
-		await page.getByRole( 'button', { name: /Add an excerpt/i } ).click();
+		// The panel button inside the excerpt popover is also disabled.
+		await page
+			.getByRole( 'button', { name: EXCERPT_POPOVER_TOGGLE } )
+			.click();
 		await expect(
 			page
 				.getByRole( 'button', {
@@ -166,8 +239,10 @@ test.describe( 'Excerpt Generation Experiment', () => {
 			page.getByRole( 'button', { name: 'Generate excerpt' } ).first()
 		).not.toBeVisible();
 
-		// Click the Add excerpt button.
-		await page.getByRole( 'button', { name: /Add an excerpt/i } ).click();
+		// Open the excerpt popover.
+		await page
+			.getByRole( 'button', { name: EXCERPT_POPOVER_TOGGLE } )
+			.click();
 
 		// Ensure the generate excerpt button doesn't show in the modal.
 		await expect(

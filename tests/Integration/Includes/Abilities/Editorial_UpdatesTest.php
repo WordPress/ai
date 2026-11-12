@@ -468,6 +468,47 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that execute_callback() keeps rgb() and rgba() colors in the refined content.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_keeps_rgb_colors() {
+		$refined = 'Save <mark style="background-color:rgba(0, 0, 0, 0);color:#cf2e2e" class="has-inline-color">hours</mark> with <a href="https://example.com">our guide</a>.';
+
+		$mock = $this->getMockBuilder( Editorial_Updates::class )
+			->setConstructorArgs(
+				array(
+					'ai/editorial-updates',
+					array(
+						'label'       => 'Editorial Updates',
+						'description' => 'Test',
+					),
+				)
+			)
+			->onlyMethods( array( 'generate_refinement' ) )
+			->getMock();
+
+		$mock->method( 'generate_refinement' )->willReturn( $refined );
+
+		$method = ( new \ReflectionClass( $mock ) )->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$input = array(
+			'block_type'    => 'core/paragraph',
+			'block_content' => 'Save time with our guide.',
+			'notes'         => array( 'Change "time" to "hours".' ),
+		);
+
+		$processor = new \WP_HTML_Tag_Processor( $method->invoke( $mock, $input ) );
+
+		$processor->next_tag( 'mark' );
+		$this->assertSame( 'background-color:rgba(0, 0, 0, 0);color:#cf2e2e', $processor->get_attribute( 'style' ) );
+
+		$processor->next_tag( 'a' );
+		$this->assertSame( 'https://example.com', $processor->get_attribute( 'href' ) );
+	}
+
+	/**
 	 * Tests that execute_callback() propagates WP_Error from generate_refinement.
 	 *
 	 * @since 0.8.0
@@ -592,6 +633,52 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 		$this->assertIsString( $prompt, 'Prompt should be a string' );
 		$this->assertStringContainsString( '<block-content>', $prompt, 'Prompt should contain the block-content section' );
 		$this->assertStringNotContainsString( '<script>', $prompt, 'Script tags should be removed from prompt content' );
+	}
+
+	/**
+	 * Tests that the prompt sent to the model keeps links, formatting and rgba() colors.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_prompt_keeps_inline_html_and_rgb_colors() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'create_prompt' );
+		$method->setAccessible( true );
+
+		$content = 'Save <mark style="background-color:rgba(0, 0, 0, 0);color:#cf2e2e" class="has-inline-color">time</mark> with <a href="https://example.com"><strong>our guide</strong></a>.';
+		$prompt  = $method->invoke( $this->ability, 'core/paragraph', $content, array( 'Make it shorter.' ), '' );
+
+		$this->assertSame( 1, preg_match( '#<block-content>(.*)</block-content>#s', $prompt, $matches ), 'Prompt should contain the block-content section' );
+
+		$processor = new \WP_HTML_Tag_Processor( $matches[1] );
+
+		$processor->next_tag( 'mark' );
+		$this->assertSame( 'background-color:rgba(0, 0, 0, 0);color:#cf2e2e', $processor->get_attribute( 'style' ) );
+
+		$processor->next_tag( 'a' );
+		$this->assertSame( 'https://example.com', $processor->get_attribute( 'href' ) );
+		$this->assertStringContainsString( '<strong>our guide</strong>', $matches[1], 'Formatting tags should be kept in the prompt content' );
+	}
+
+	/**
+	 * Tests that create_prompt() keeps percent signs in notes.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_prompt_keeps_percent_signs_in_notes() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'create_prompt' );
+		$method->setAccessible( true );
+
+		$prompt = $method->invoke(
+			$this->ability,
+			'core/paragraph',
+			'Tüm ürünlerde indirim.',
+			array( 'İndirim oranını <b>%50</b> olarak ekle.' ),
+			''
+		);
+
+		$this->assertStringContainsString( '<notes>İndirim oranını %50 olarak ekle.</notes>', $prompt );
 	}
 
 	/**

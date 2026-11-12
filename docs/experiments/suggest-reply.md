@@ -4,6 +4,14 @@
 
 The Suggest Reply experiment adds a "Suggest reply" action to the classic Comments admin screen and the Activity widget on the Dashboard. When activated, moderators can generate AI-suggested replies to comments and customize the tone. The ability also automatically applies any site-wide editorial guidelines. The experiment exposes one WordPress Ability (`ai/suggest-reply`) that can be used from the UI or via REST API.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** No, only when you ask
+- **When it runs:** When you click Suggest reply
+- **Sent to your AI provider:** Comment text, author name, post title, and excerpt
+- **Requests and data:** One request per click
+
 ## Overview
 
 When enabled, each comment in the Comments list and the Dashboard Activity widget gets an additional **Suggest reply** action link. Clicking it automatically opens the inline reply editor, generates a context-aware reply, and inserts it into the textarea.
@@ -13,6 +21,8 @@ When enabled, each comment in the Comments list and the Dashboard Activity widge
 - Adds a "Suggest reply" action to comments in the list table and the Dashboard Activity widget
 - Injects in-editor controls for regenerating replies with a different Tone (friendly, professional, casual)
 - Uses one shared ability (`ai/suggest-reply`) exposed via REST API
+
+The prompt includes the comment, its author, the requested tone, and, for context, the title and excerpt of the post the comment was left on. The post title and excerpt are only included for publicly readable posts. Password-protected posts, non-public statuses (drafts, private posts), and post types that are not publicly viewable are skipped, so gated editorial content is never sent to the provider.
 
 ### Input Schema
 
@@ -97,6 +107,21 @@ The ability may return:
 - `comment_not_found`: no comment exists for the given ID
 - `insufficient_capabilities`: current user lacks moderation permissions
 - `post_not_found`: post of the comment is not found
+
+## Extending the Experiment
+
+### Controlling which posts supply reply context
+
+By default a post's title and excerpt are only sent when the post is publicly readable and not password-protected. Use `wpai_suggest_reply_post_context_shareable` to widen or narrow that:
+
+```php
+add_filter( 'wpai_suggest_reply_post_context_shareable', function ( bool $shareable, WP_Post $post ): bool {
+    // Allow context from private posts on an intranet site.
+    return 'private' === $post->post_status ? true : $shareable;
+}, 10, 2 );
+```
+
+When no context is available a reply is still generated from the comment alone.
 
 ## Testing
 

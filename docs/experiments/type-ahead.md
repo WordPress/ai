@@ -4,6 +4,14 @@
 
 The Type Ahead experiment adds inline ghost-text completions to the block editor. When enabled, supported blocks show AI suggestions at the caret that can be accepted fully or incrementally with keyboard shortcuts.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** Yes, once enabled
+- **When it runs:** Automatically, when you pause typing at the end of a paragraph. You can also press Cmd/Ctrl + Space to ask for a suggestion anywhere in a paragraph
+- **Sent to your AI provider:** The current paragraph and the blocks around it
+- **Requests and data:** One request per typing pause
+
 ## Overview
 
 ### For End Users

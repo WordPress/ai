@@ -35,6 +35,7 @@ final class Experiments {
 		\WordPress\AI\Experiments\Key_Encryption\Key_Encryption::class,
 		\WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation::class,
 		\WordPress\AI\Experiments\Suggest_Reply\Suggest_Reply::class,
+		\WordPress\AI\Experiments\Content_Gap_Suggestions\Content_Gap_Suggestions::class,
 		\WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation::class,
 		\WordPress\AI\Experiments\Block_Container_Label_Generation\Block_Container_Label_Generation::class,
 		\WordPress\AI\Experiments\Content_Classification\Content_Classification::class,
@@ -48,12 +49,12 @@ final class Experiments {
 		\WordPress\AI\Experiments\Meta_Description\Meta_Description::class,
 		\WordPress\AI\Experiments\Revision_Change_Summary\Revision_Change_Summary::class,
 		\WordPress\AI\Experiments\Slug_Generation\Slug_Generation::class,
+		\WordPress\AI\Experiments\Text_To_Speech\Text_To_Speech::class,
 		\WordPress\AI\Experiments\Title_Generation\Title_Generation::class,
 		\WordPress\AI\Experiments\Type_Ahead\Type_Ahead::class,
-		\WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation::class,
-		\WordPress\AI\Experiments\Key_Encryption\Key_Encryption::class,
 		\WordPress\AI\Experiments\Markdown_Feeds\Markdown_Feeds::class,
 		\WordPress\AI\Experiments\Site_Agent\Site_Agent::class,
+		\WordPress\AI\Experiments\WebMCP\WebMCP::class,
 	);
 
 	/**

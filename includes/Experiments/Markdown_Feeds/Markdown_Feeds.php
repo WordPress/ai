@@ -14,6 +14,7 @@ namespace WordPress\AI\Experiments\Markdown_Feeds;
 use WP_Post;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Experiments\Experiment_Category;
+use WordPress\AI\Settings\Settings_Registration;
 
 
 // Exit if accessed directly.
@@ -71,7 +72,66 @@ class Markdown_Feeds extends Abstract_Feature {
 			'description' => __( 'Serves your content as Markdown for AI agents and other machine readers: adds a Markdown feed at /feed/markdown/ and Markdown versions of individual posts and pages via ?output_format=markdown, with optional Accept-header negotiation.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'none',
+			'usage'       => array(
+				'trigger' => 'none',
+				'runs'    => __( 'On front-end requests', 'ai' ),
+				'sends'   => __( 'Nothing', 'ai' ),
+				'details' => __( 'Renders Markdown versions of public posts, pages, and comments', 'ai' ),
+			),
 		);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * Names any active plugin that also serves Markdown.
+	 *
+	 * @since x.x.x
+	 */
+	public function get_description(): string {
+		$description  = parent::get_description();
+		$plugin_names = $this->get_active_markdown_plugin_names();
+
+		if ( empty( $plugin_names ) ) {
+			return $description;
+		}
+
+		return $description . ' ' . wp_sprintf(
+			/* translators: %l: List of active plugin names. */
+			__( 'Also active and serving Markdown: %l. More than one plugin may then answer the same Markdown requests and print duplicate Markdown alternate links.', 'ai' ),
+			$plugin_names
+		);
+	}
+
+	/**
+	 * Returns the names of active plugins that also serve Markdown.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return list<string> Plugin names.
+	 */
+	private function get_active_markdown_plugin_names(): array {
+		$plugins = array(
+			'markdown-for-ai-agents/markdown-for-ai-agents.php' => 'Markdown for AI Agents',
+			'llm-markdown/llm-markdown.php'           => 'LLM Markdown',
+			'mescio-for-agents/mescio-for-agents.php' => 'Mescio for Agents',
+			'post-content-to-markdown/post-content-to-markdown.php' => 'Post Content to Markdown',
+		);
+
+		/**
+		 * Filters the plugins that also serve Markdown and may overlap with Markdown Feeds.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param array<string, string> $plugins Map of plugin file to plugin name.
+		 */
+		$plugins = (array) apply_filters( 'wpai_markdown_feeds_conflicting_plugins', $plugins );
+
+		if ( ! function_exists( 'is_plugin_active' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		return array_values( array_filter( $plugins, 'is_plugin_active', ARRAY_FILTER_USE_KEY ) );
 	}
 
 	/**
@@ -101,7 +161,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function get_preloaded_options(): array {
 		return array( self::FLUSH_FLAG_OPTION );
@@ -110,12 +170,30 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * Registers the option-change listeners that schedule a rewrite-rules
-	 * flush. This runs for ALL registered features regardless of enablement
-	 * which is required so the flush also happens on the disable transition.
+	 * Registers the `accept_header` setting and the option-change listeners
+	 * that schedule a rewrite-rules flush. This runs for ALL registered features
+	 * regardless of enablement which is required so the flush also happens on
+	 * the disable transition.
+	 *
+	 * @since 1.5.0 Registers the `accept_header` setting.
 	 */
 	public function register_settings(): void {
 		parent::register_settings();
+
+		register_setting(
+			Settings_Registration::OPTION_GROUP,
+			static::get_field_option_name( 'accept_header' ),
+			array(
+				'type'              => 'boolean',
+				'default'           => false,
+				'sanitize_callback' => 'rest_sanitize_boolean',
+				'show_in_rest'      => array(
+					'schema' => array(
+						'type' => 'boolean',
+					),
+				),
+			)
+		);
 
 		$enabled_option = sprintf( 'wpai_feature_%s_enabled', static::get_id() );
 
@@ -143,7 +221,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Removes a previously queued HTTP header when headers have not already been sent.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $name Name of the header to remove.
 	 */
@@ -221,7 +299,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Checks whether the request is for the Markdown feed of a single post.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return bool Whether the request is a singular Markdown feed request.
 	 */
@@ -232,7 +310,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Turns the current request into a 404.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function send_not_found(): void {
 		global $wp_query;
@@ -405,7 +483,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	 */
 	private function is_markdown_requested(): bool {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Public, read-only format negotiation.
-		if ( isset( $_GET['output_format'] ) && 'markdown' === sanitize_key( wp_unslash( (string) $_GET['output_format'] ) ) ) {
+		if ( isset( $_GET['output_format'] ) && is_string( $_GET['output_format'] ) && 'markdown' === sanitize_key( wp_unslash( $_GET['output_format'] ) ) ) {
 			return true;
 		}
 
@@ -425,7 +503,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	 * when its match is more specific or listed first. Refusals and
 	 * wildcard-only headers keep HTML.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $accept Accept header value.
 	 * @return bool Whether Markdown is preferred.

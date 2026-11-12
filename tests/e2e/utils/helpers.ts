@@ -224,7 +224,7 @@ export const enableExperiment = async (
 ) => {
 	await visitSettingsPage( admin );
 
-	const toggle = page.getByLabel( experimentLabel );
+	const toggle = page.getByRole( 'checkbox', { name: experimentLabel } );
 	await expect( toggle ).toBeVisible( { timeout: 10000 } );
 	await expect( toggle ).toBeEnabled( { timeout: 10000 } );
 
@@ -257,7 +257,7 @@ export const disableExperiment = async (
 ) => {
 	await visitSettingsPage( admin );
 
-	const toggle = page.getByLabel( experimentLabel );
+	const toggle = page.getByRole( 'checkbox', { name: experimentLabel } );
 	await expect( toggle ).toBeVisible( { timeout: 10000 } );
 	await expect( toggle ).toBeEnabled( { timeout: 10000 } );
 
@@ -437,6 +437,25 @@ export const seedCredentials = async ( requestUtils: RequestUtils ) => {
 	await requestUtils.rest( {
 		path: '/ai-e2e/v1/credentials/seed',
 		method: 'POST',
+	} );
+};
+
+/**
+ * Overrides a feature's minimum content length, or restores the default.
+ *
+ * @param requestUtils The requestUtils fixture from the test context.
+ * @param feature      The feature ID passed to the `wpai_min_content_length` filter.
+ * @param length       The minimum length to use, or undefined to restore the default.
+ */
+export const setMinContentLength = async (
+	requestUtils: RequestUtils,
+	feature: string,
+	length?: number
+) => {
+	await requestUtils.rest( {
+		path: '/ai-e2e/v1/min-content-length',
+		method: 'POST',
+		data: { feature, length },
 	} );
 };
 

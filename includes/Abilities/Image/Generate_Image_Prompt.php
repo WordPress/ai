@@ -15,6 +15,7 @@ use WordPress\AI\Abstracts\Abstract_Ability;
 use function WordPress\AI\get_post_context;
 use function WordPress\AI\get_preferred_models_for_text_generation;
 use function WordPress\AI\normalize_content;
+use function WordPress\AI\sanitize_plain_text;
 
 /**
  * Image prompt generation WordPress Ability.
@@ -140,7 +141,7 @@ class Generate_Image_Prompt extends Abstract_Ability {
 		}
 
 		// Return the prompt in the format the Ability expects.
-		return sanitize_text_field( trim( $result ) );
+		return sanitize_plain_text( trim( $result ) );
 	}
 
 	/**
@@ -167,7 +168,7 @@ class Generate_Image_Prompt extends Abstract_Ability {
 			if ( ! current_user_can( 'edit_post', $post_id ) ) {
 				return new WP_Error(
 					'insufficient_capabilities',
-					esc_html__( 'You do not have permission to generate excerpts for this post.', 'ai' )
+					esc_html__( 'You do not have permission to generate image prompts for this post.', 'ai' )
 				);
 			}
 

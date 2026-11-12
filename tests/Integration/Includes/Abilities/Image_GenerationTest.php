@@ -11,6 +11,8 @@ use WP_Error;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Image\Generate_Image;
 use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Services\Guidelines;
+use WordPress\AI\Tests\Integration\Includes\Services\Guidelines_CPT_Helpers;
 
 /**
  * Test experiment for Image_Generation Ability tests.
@@ -49,6 +51,8 @@ class Test_Image_Generation_Experiment extends Abstract_Feature {
  * @since 0.2.0
  */
 class Image_GenerationTest extends WP_UnitTestCase {
+
+	use Guidelines_CPT_Helpers;
 
 	/**
 	 * Image_Generation ability instance.
@@ -164,6 +168,22 @@ class Image_GenerationTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		$result = $method->invoke( $this->ability, 'a prompt', 'not-valid-base64!!!!' );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertEquals( 'invalid_reference', $result->get_error_code() );
+	}
+
+	/**
+	 * Test that generate_image() rejects a local file path as the reference image.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_generate_image_edit_with_local_file_path(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_image' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $this->ability, 'a prompt', ABSPATH . 'wp-admin/images/wordpress-logo.png' );
 
 		$this->assertInstanceOf( WP_Error::class, $result );
 		$this->assertEquals( 'invalid_reference', $result->get_error_code() );
@@ -441,13 +461,70 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that get_prompt_builder() appends the guidelines to the prompt as plain text.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_prompt_builder_appends_guidelines_as_plain_text() {
+		$this->register_guidelines_cpt();
+		$this->create_guidelines_post(
+			array(
+				'site'   => 'Professional tone.',
+				'images' => 'Bright, natural light.',
+			)
+		);
+		Guidelines::reset_cache();
+
+		$reflection = new \ReflectionClass( Generate_Image::class );
+		$method     = $reflection->getMethod( 'get_prompt_builder' );
+		$method->setAccessible( true );
+
+		$testable_ability = new Testable_Generate_Image(
+			'ai/image-generation',
+			array(
+				'label'       => $this->experiment->get_label(),
+				'description' => $this->experiment->get_description(),
+			)
+		);
+
+		try {
+			$result = $method->invoke( $testable_ability, 'A beautiful sunset' );
+			$prompt = $this->get_prompt_text_from_prompt_builder( $result );
+
+			$this->assertStringContainsString( "represent the site's editorial standards", $prompt );
+			$this->assertStringContainsString( '<image-guidelines>Bright, natural light.</image-guidelines>', $prompt );
+		} finally {
+			Guidelines::reset_cache();
+		}
+	}
+
+	/**
+	 * Helper method to extract the prompt text from a WP_AI_Client_Prompt_Builder.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @param \WP_AI_Client_Prompt_Builder $builder The prompt builder.
+	 * @return string The text of all message parts.
+	 */
+	private function get_prompt_text_from_prompt_builder( $builder ): string {
+		$text = '';
+		foreach ( $this->get_property_value( $this->get_property_value( $builder, 'builder' ), 'messages' ) as $message ) {
+			foreach ( $message->getParts() as $part ) {
+				$text .= (string) $part->getText();
+			}
+		}
+
+		return $text;
+	}
+
+	/**
 	 * Helper method to extract the request options timeout value from a WP_AI_Client_Prompt_Builder.
 	 *
 	 * Since WordPress 7.2, the wrapped SDK builder is declared on the `WP_AI_Client_Builder`
 	 * base class, and the SDK builder keeps the request options on its model resolver.
 	 *
 	 * @since 1.2.0
-	 * @since x.x.x Supports the builder layout in WordPress 7.2.
+	 * @since 1.5.0 Supports the builder layout in WordPress 7.2.
 	 *
 	 * @param \WP_AI_Client_Prompt_Builder $builder The prompt builder.
 	 * @return float|null The timeout value, or null.
@@ -466,7 +543,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	 *
 	 * Private properties of a parent class are not visible through the child class reflection.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param object $instance The object.
 	 * @param string $name     The property name.
@@ -492,7 +569,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Reads a property value from an object, including private and inherited properties.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param object $instance The object.
 	 * @param string $name     The property name.

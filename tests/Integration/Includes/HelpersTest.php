@@ -23,6 +23,11 @@ use WordPress\AiClient\Providers\DTO\ProviderMetadata;
 use WordPress\AiClient\Providers\Models\Contracts\ModelInterface;
 use WordPress\AiClient\Providers\Models\DTO\ModelConfig;
 use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
+
+use function WordPress\AI\get_image_data_uri;
+use function WordPress\AI\get_preferred_speech_models;
+use function WordPress\AI\has_capability_support;
+use function WordPress\AI\has_text_to_speech_support;
 use function WordPress\AI\post_type_supports_bulk_action;
 use function WordPress\AI\register_deprecated_ability_alias;
 
@@ -291,7 +296,7 @@ class HelpersTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		// Clean up the post utility abilities registered in setUp(), plus any alias test abilities.
-		foreach ( array( 'ai/get-post-terms', 'ai/get-post-details', 'ai/alias-target', 'ai/alias-old' ) as $ability_name ) {
+		foreach ( array( 'ai/get-post-terms', 'ai/alias-target', 'ai/alias-old' ) as $ability_name ) {
 			if ( ! wp_has_ability( $ability_name ) ) {
 				continue;
 			}
@@ -450,6 +455,41 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that normalize_content() keeps the text of adjacent elements apart.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_normalize_content_element_boundaries
+	 *
+	 * @param string $content  The content to normalize.
+	 * @param string $expected The expected normalized content.
+	 */
+	public function test_normalize_content_keeps_element_text_apart( string $content, string $expected ) {
+		$this->assertSame( $expected, \WordPress\AI\normalize_content( $content ) );
+	}
+
+	/**
+	 * Data provider for test_normalize_content_keeps_element_text_apart().
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{string, string}> Test cases.
+	 */
+	public function data_normalize_content_element_boundaries(): array {
+		return array(
+			'table cells'                => array( '<table><tr><th>Name</th><th>Month</th></tr><tr><td>Davis</td><td>January</td></tr></table>', 'Name Month Davis January' ),
+			'quote and citation'         => array( '<blockquote><p>Stay hungry</p><cite>Steve Jobs</cite></blockquote>', 'Stay hungry Steve Jobs' ),
+			'file link and button'       => array( '<a href="/report.pdf">Annual report 2026</a><a href="/report.pdf" class="wp-block-file__button" download>Download</a>', 'Annual report 2026 Download' ),
+			'comment between paragraphs' => array( '<p>One</p><!--more--><p>Two</p>', 'One Two' ),
+			'formatting inside a word'   => array( 'Word<strong>Press</strong> and H<sub>2</sub>O', 'WordPress and H2O' ),
+			'comment inside a word'      => array( 'Word<!-- note -->Press', 'WordPress' ),
+			'inline image'               => array( 'Thanks<img class="emoji" alt="smile" src="/smile.svg">!', 'Thanks!' ),
+			'link before punctuation'    => array( 'See <a href="/docs">the docs</a>.', 'See the docs.' ),
+			'newlines between blocks'    => array( "<p>One</p>\n\n<p>Two</p>", 'One  Two' ),
+		);
+	}
+
+	/**
 	 * Test that normalize_content() replaces HTML linebreaks and removes linebreaks.
 	 *
 	 * @since 0.1.0
@@ -583,6 +623,164 @@ class HelpersTest extends WP_UnitTestCase {
 			'multiple html entities count individually' => array( '&copy; &reg; &trade;', 3 ),
 			'mixed unicode whitespace only'             => array( " \t\n\u{00A0}\u{202F}\u{3000}", 0 ),
 		);
+	}
+
+	/**
+	 * Test that sanitize_plain_text() keeps percent signs followed by two hexadecimal characters.
+	 *
+	 * @dataProvider data_sanitize_plain_text
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed  $text          The text to sanitize.
+	 * @param bool   $keep_newlines Whether to keep newlines.
+	 * @param string $expected      The expected sanitized text.
+	 */
+	public function test_sanitize_plain_text( $text, bool $keep_newlines, string $expected ) {
+		$this->assertSame( $expected, \WordPress\AI\sanitize_plain_text( $text, $keep_newlines ) );
+	}
+
+	/**
+	 * Data provider for sanitize_plain_text() test.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{mixed, bool, string}>
+	 */
+	public function data_sanitize_plain_text(): array {
+		return array(
+			'turkish percentages'    => array( 'Kumaş %100 pamuk, %20 indirim', false, 'Kumaş %100 pamuk, %20 indirim' ),
+			'percent-encoded octets' => array( 'a%20b %3Cscript%3E', false, 'a%20b %3Cscript%3E' ),
+			'html tags'              => array( '<p>Fiyat <strong>%50</strong> düştü</p>', false, 'Fiyat %50 düştü' ),
+			'script element'         => array( '<script>alert(1)</script>%50', false, '%50' ),
+			'lone less-than'         => array( '5 < %50', false, '5 &lt; %50' ),
+			'newlines collapsed'     => array( "Satır bir\n%20 iki\tüç", false, 'Satır bir %20 iki üç' ),
+			'newlines kept'          => array( "Satır bir\n%20 iki", true, "Satır bir\n%20 iki" ),
+			'less-than and newline'  => array( "a <\nb> %50", true, "a &lt;\nb> %50" ),
+			'surrounding whitespace' => array( "  %50 \n", false, '%50' ),
+			'invalid utf-8'          => array( "\xC3\x28 %50", false, '' ),
+			'integer'                => array( 50, false, '50' ),
+			'array'                  => array( array( '%50' ), false, '' ),
+			'object'                 => array( new \stdClass(), false, '' ),
+		);
+	}
+
+	/**
+	 * Test that sanitize_plain_text() matches the core functions for text without percent-encoded characters.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_sanitize_plain_text_matches_core_without_percent_encoding() {
+		$texts = array(
+			'Plain text',
+			"  Text with\ttabs\nand newlines\r\n  ",
+			'<p>Paragraph <a href="https://example.com">link</a></p>',
+			'<script>alert(1)</script>Text <style>p{}</style>',
+			'1 < 2 and 3 > 2',
+			"a <\nb>",
+			'100% cotton, 5 % off, %zz',
+			"\xC3\x28",
+		);
+
+		foreach ( $texts as $text ) {
+			$this->assertSame( sanitize_text_field( $text ), \WordPress\AI\sanitize_plain_text( $text ), $text );
+			$this->assertSame( sanitize_textarea_field( $text ), \WordPress\AI\sanitize_plain_text( $text, true ), $text );
+		}
+	}
+
+	/**
+	 * Test that sanitize_plain_text() runs the same filters as the core functions.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_sanitize_plain_text_applies_core_filters() {
+		$calls = array();
+
+		add_filter(
+			'sanitize_text_field',
+			static function ( $filtered, $text ) use ( &$calls ) {
+				$calls[] = array( 'sanitize_text_field', $filtered, $text );
+				return $filtered . '!';
+			},
+			10,
+			2
+		);
+		add_filter(
+			'sanitize_textarea_field',
+			static function ( $filtered, $text ) use ( &$calls ) {
+				$calls[] = array( 'sanitize_textarea_field', $filtered, $text );
+				return $filtered . '?';
+			},
+			10,
+			2
+		);
+
+		$this->assertSame( '%50 indirim!', \WordPress\AI\sanitize_plain_text( ' <b>%50</b> indirim ' ) );
+		$this->assertSame( "%50\nindirim?", \WordPress\AI\sanitize_plain_text( "%50\nindirim", true ) );
+		$this->assertSame( '!', \WordPress\AI\sanitize_plain_text( array( '%50' ) ) );
+		$this->assertSame(
+			array(
+				array( 'sanitize_text_field', '%50 indirim', ' <b>%50</b> indirim ' ),
+				array( 'sanitize_textarea_field', "%50\nindirim", "%50\nindirim" ),
+				array( 'sanitize_text_field', '', array( '%50' ) ),
+			),
+			$calls
+		);
+	}
+
+	/**
+	 * Test that kses_post_keep_rgb_colors() keeps `rgb()` and `rgba()` colors.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_markup_with_colors
+	 *
+	 * @param string $markup Markup with a color in its style attribute.
+	 * @param string $style  The style attribute that should be kept.
+	 */
+	public function test_kses_post_keep_rgb_colors_keeps_rgb_colors( string $markup, string $style ): void {
+		$processor = new \WP_HTML_Tag_Processor( \WordPress\AI\kses_post_keep_rgb_colors( $markup ) );
+		$processor->next_tag();
+
+		$this->assertSame( $style, $processor->get_attribute( 'style' ) );
+	}
+
+	/**
+	 * Data provider for test_kses_post_keep_rgb_colors_keeps_rgb_colors().
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{string, string}> Test cases.
+	 */
+	public function data_markup_with_colors(): array {
+		return array(
+			'text color without a background' => array( '<mark style="background-color:rgba(0, 0, 0, 0)" class="has-inline-color has-vivid-red-color">red tomatoes</mark>', 'background-color:rgba(0, 0, 0, 0)' ),
+			'space-separated rgb()'           => array( '<span style="color:rgb(207 46 46 / 50%)">red tomatoes</span>', 'color:rgb(207 46 46 / 50%)' ),
+			'hex color allowed by core'       => array( '<span style="color:#cf2e2e">red tomatoes</span>', 'color:#cf2e2e' ),
+		);
+	}
+
+	/**
+	 * Test that kses_post_keep_rgb_colors() still removes other CSS functions.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_kses_post_keep_rgb_colors_removes_other_css_functions(): void {
+		$this->assertSame( '<span>red tomatoes</span>', \WordPress\AI\kses_post_keep_rgb_colors( '<span style="color:expression(alert(1))">red tomatoes</span>' ) );
+		$this->assertSame( '<span>red tomatoes</span>', \WordPress\AI\kses_post_keep_rgb_colors( '<span style="color:rgb(207, 46, 46) attr(data-x)">red tomatoes</span>' ) );
+		$this->assertSame( '<span>red tomatoes</span>', \WordPress\AI\kses_post_keep_rgb_colors( '<span style="color:foo-rgb(207, 46, 46)">red tomatoes</span>' ) );
+		$this->assertFalse( has_filter( 'safecss_filter_attr_allow_css' ) );
+	}
+
+	/**
+	 * Test that a later `safecss_filter_attr_allow_css` filter can still reject the colors.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_kses_post_keep_rgb_colors_lets_later_filters_reject_colors(): void {
+		add_filter( 'safecss_filter_attr_allow_css', '__return_false' );
+
+		$this->assertSame( '<span>red tomatoes</span>', \WordPress\AI\kses_post_keep_rgb_colors( '<span style="color:rgb(207, 46, 46)">red tomatoes</span>' ) );
 	}
 
 	/**
@@ -1004,13 +1202,13 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result[4], 'Fifth model should be an array' );
 		$this->assertCount( 2, $result[4], 'Fifth model should have 2 elements' );
 		$this->assertEquals( 'openai', $result[4][0], 'Fifth model provider should be openai' );
-		$this->assertEquals( 'gpt-image-2.5-flare', $result[4][1], 'Fifth model name should be gpt-image-2.5-flare' );
+		$this->assertEquals( 'gpt-image-2.6-flare', $result[4][1], 'Fifth model name should be gpt-image-2.6-flare' );
 
 		// Check sixth model (openai).
 		$this->assertIsArray( $result[5], 'Sixth model should be an array' );
 		$this->assertCount( 2, $result[5], 'Sixth model should have 2 elements' );
 		$this->assertEquals( 'openai', $result[5][0], 'Sixth model provider should be openai' );
-		$this->assertEquals( 'gpt-image-2', $result[5][1], 'Sixth model name should be gpt-image-2' );
+		$this->assertEquals( 'gpt-image-2.5-flare', $result[5][1], 'Sixth model name should be gpt-image-2.5-flare' );
 	}
 
 	/**
@@ -2049,6 +2247,119 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that get_preferred_speech_models() returns provider/model tuples.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_get_preferred_speech_models_returns_tuples(): void {
+		$models = get_preferred_speech_models();
+
+		$this->assertNotEmpty( $models );
+
+		foreach ( $models as $model ) {
+			$this->assertIsArray( $model );
+			$this->assertCount( 2, $model );
+			$this->assertIsString( $model[0] );
+			$this->assertIsString( $model[1] );
+		}
+	}
+
+	/**
+	 * Test that the wpai_preferred_speech_models filter overrides the list.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_get_preferred_speech_models_is_filterable(): void {
+		$override = array( array( 'acme', 'acme-tts-1' ) );
+
+		add_filter(
+			'wpai_preferred_speech_models',
+			static function () use ( $override ) {
+				return $override;
+			}
+		);
+
+		$this->assertSame( $override, get_preferred_speech_models() );
+	}
+
+	/**
+	 * Test that has_capability_support() matches only the capability a
+	 * connector's models declare, and ignores the per-capability filters.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_has_capability_support_matches_declared_capability(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_test_image_provider();
+		$this->register_test_connector(
+			self::TEST_IMAGE_PROVIDER_ID,
+			array(
+				'name'           => 'Helper Test Image Provider',
+				'type'           => 'ai_provider',
+				'authentication' => array(
+					'method' => 'api_key',
+				),
+			)
+		);
+		$setting_name = 'connectors_ai_provider_' . self::TEST_IMAGE_PROVIDER_ID . '_api_key';
+		update_option( $setting_name, 'test-api-key' );
+
+		Image_Generation_Test_Model_Metadata::$supports_image_generation = true;
+		add_filter( 'wpai_has_text_to_speech_support', '__return_true' );
+
+		try {
+			$this->assertTrue( has_capability_support( CapabilityEnum::IMAGE_GENERATION ) );
+			$this->assertFalse( has_capability_support( CapabilityEnum::TEXT_TO_SPEECH_CONVERSION ) );
+		} finally {
+			remove_filter( 'wpai_has_text_to_speech_support', '__return_true' );
+			delete_option( $setting_name );
+		}
+	}
+
+	/**
+	 * Test that has_capability_support() skips connectors without credentials.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_has_capability_support_skips_connector_without_credentials(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_test_image_provider();
+		$this->register_test_connector(
+			self::TEST_IMAGE_PROVIDER_ID,
+			array(
+				'name'           => 'Helper Test Image Provider',
+				'type'           => 'ai_provider',
+				'authentication' => array(
+					'method' => 'none',
+				),
+			)
+		);
+		Image_Generation_Test_Model_Metadata::$supports_image_generation = true;
+
+		$this->assertFalse( has_capability_support( CapabilityEnum::IMAGE_GENERATION ) );
+	}
+
+	/**
+	 * Test that the wpai_has_text_to_speech_support filter can force support on.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_has_text_to_speech_support_is_filterable(): void {
+		add_filter( 'wpai_has_text_to_speech_support', '__return_true' );
+		$this->assertTrue( has_text_to_speech_support( true ) );
+
+		remove_filter( 'wpai_has_text_to_speech_support', '__return_true' );
+		add_filter( 'wpai_has_text_to_speech_support', '__return_false' );
+		$this->assertFalse( has_text_to_speech_support( true ) );
+	}
+
+	/**
 	 * Embeddings are supported wherever the base SDK is present, because the overlay supplies the
 	 * builder on environments whose bundled SDK predates it.
 	 */
@@ -2296,35 +2607,40 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The deprecated ai/get-post-details ability still works and triggers a notice.
+	 * Test that get_image_data_uri() accepts base64 image data.
 	 *
-	 * @since 1.4.0
+	 * @since 1.5.0
 	 */
-	public function test_deprecated_get_post_details_ability_still_executes(): void {
-		$this->setExpectedDeprecated( 'ai/get-post-details' );
+	public function test_get_image_data_uri_accepts_image_data(): void {
+		$this->assertSame( 'data:image/png;base64,iVBORw0KGgo=', get_image_data_uri( 'iVBORw0KGgo=', 'image/png' ) );
+		$this->assertSame( 'data:image/svg+xml;base64,PHN2Zz4=', get_image_data_uri( 'data:image/svg+xml;base64,PHN2Zz4=' ) );
+	}
 
-		$post_id = $this->factory->post->create( array( 'post_title' => 'Deprecated Title' ) );
+	/**
+	 * Test that get_image_data_uri() rejects anything that is not base64 image data.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_get_image_data_uri_rejects_non_image_data(): void {
+		$this->assertNull( get_image_data_uri( 'iVBORw0KGgo=' ), 'Plain base64 without a MIME type should be rejected.' );
+		$this->assertNull( get_image_data_uri( 'iVBORw0KGgo=', 'text/plain' ), 'Non-image MIME types should be rejected.' );
+		$this->assertNull( get_image_data_uri( 'data:text/plain;base64,QUJD' ), 'Non-image data URIs should be rejected.' );
+		$this->assertNull( get_image_data_uri( ABSPATH . 'wp-config.php', 'image/png' ), 'File paths with non-base64 characters should be rejected.' );
+		$this->assertNull( get_image_data_uri( 'https://example.com/image.png' ), 'URLs should be rejected.' );
+		$this->assertNull( get_image_data_uri( '', 'image/png' ), 'Empty data should be rejected.' );
+		$this->assertNull( get_image_data_uri( 'data:image/png;BASE64,iVBORw0KGgo=' ), 'An uppercase base64 marker should be rejected.' );
+		$this->assertNull( get_image_data_uri( "iVBORw0KGgo=\n", 'image/png' ), 'A trailing newline should be rejected.' );
+	}
 
-		$ability = wp_get_ability( 'ai/get-post-details' );
-
-		$this->assertNotNull( $ability, 'The deprecated ability should still be registered.' );
-		$this->assertSame( 'Get post details (deprecated)', $ability->get_label(), 'The label should mark the ability as deprecated.' );
-		$this->assertSame(
-			array(
-				'since'       => '1.4.0',
-				'replacement' => 'core/content-query',
-			),
-			$ability->get_meta_item( 'deprecated' ),
-			'The meta should describe the deprecation.'
-		);
-
-		$result = $ability->execute(
-			array(
-				'post_id' => $post_id,
-				'fields'  => array( 'title' ),
-			)
-		);
-
-		$this->assertSame( array( 'title' => 'Deprecated Title' ), $result, 'The deprecated ability should still return post details.' );
+	/**
+	 * Test that get_image_data_uri() never returns a bare file path.
+	 *
+	 * File paths can consist solely of base64 characters, so they must be
+	 * wrapped in a data URI rather than passed through.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_get_image_data_uri_wraps_base64_like_paths(): void {
+		$this->assertSame( 'data:image/png;base64,/etc/passwd', get_image_data_uri( '/etc/passwd', 'image/png' ) );
 	}
 }

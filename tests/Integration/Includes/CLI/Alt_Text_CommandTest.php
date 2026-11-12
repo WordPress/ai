@@ -506,13 +506,31 @@ class Alt_Text_CommandTest extends WP_UnitTestCase {
 	public function test_generate_errors_without_credentials(): void {
 		$this->factory->user->create( array( 'role' => 'administrator' ) );
 		$this->register_fake_ability( array( 'alt_text' => 'test' ) );
+		add_filter( 'wpai_has_ai_credentials', '__return_false' );
+
+		$this->expectException( \WP_CLI_Test_Error_Exception::class );
+		$this->expectExceptionMessageMatches( '/No AI credentials found/i' );
+
+		$this->command->generate( array(), array() );
+	}
+
+	/**
+	 * Test generate does not abort when credentials lack text generation support.
+	 *
+	 * Alt text needs vision support, which the ability checks against the real
+	 * prompt, so the command no longer pre-checks for text generation.
+	 */
+	public function test_generate_does_not_require_text_generation_support(): void {
+		$this->factory->user->create( array( 'role' => 'administrator' ) );
+		$this->register_fake_ability( array( 'alt_text' => 'test' ) );
 		add_filter( 'wpai_has_ai_credentials', '__return_true' );
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_false' );
 
-		$this->expectException( \WP_CLI_Test_Error_Exception::class );
-		$this->expectExceptionMessageMatches( '/credentials/i' );
-
 		$this->command->generate( array(), array() );
+
+		$success_messages = $this->get_cli_messages( 'success' );
+		$this->assertNotEmpty( $success_messages );
+		$this->assertStringContainsString( 'No images found', $success_messages[0] );
 	}
 
 	/**

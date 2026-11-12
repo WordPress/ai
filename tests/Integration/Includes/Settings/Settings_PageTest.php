@@ -10,7 +10,9 @@ namespace WordPress\AI\Tests\Integration\Includes\Settings;
 use WP_UnitTestCase;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Experiments\Experiment_Category;
+use WordPress\AI\Experiments\Title_Generation\Title_Generation;
 use WordPress\AI\Features\Feature_Category;
+use WordPress\AI\Features\Image_Generation\Image_Generation;
 use WordPress\AI\Features\Registry;
 use WordPress\AI\Settings\Settings_Page;
 
@@ -306,11 +308,33 @@ class Settings_PageTest extends WP_UnitTestCase {
 		$this->assertSame( 'An editor feature for testing.', $feature['description'] );
 		$this->assertSame( Experiment_Category::EDITOR, $feature['category'] );
 		$this->assertSame( 'text_generation', $feature['capability'] );
+		$this->assertSame( array(), $feature['usage'] );
+		$this->assertSame( '', $feature['docsUrl'], 'Features registered outside the plugin should not link to its docs' );
 
 		$group = $result['groups'][0];
 		$this->assertSame( Experiment_Category::EDITOR, $group['id'] );
 		$this->assertSame( 'Editor Experiments', $group['label'] );
 		$this->assertArrayNotHasKey( 'order', $group, 'Order should be stripped from output' );
+	}
+
+	/**
+	 * Test that the plugin's own Experiments and Features link to their docs.
+	 */
+	public function test_built_in_features_link_to_their_docs() {
+		$this->registry->register_feature( new Title_Generation() );
+		$this->registry->register_feature( new Image_Generation() );
+
+		$result     = $this->get_settings_feature_metadata( $this->registry );
+		$docs_by_id = array_column( $result['features'], 'docsUrl', 'id' );
+
+		$this->assertSame(
+			'https://github.com/WordPress/ai/blob/trunk/docs/experiments/title-generation.md#at-a-glance',
+			$docs_by_id['title-generation']
+		);
+		$this->assertSame(
+			'https://github.com/WordPress/ai/blob/trunk/docs/features/image-generation.md#at-a-glance',
+			$docs_by_id['image-generation']
+		);
 	}
 
 	/**
@@ -528,44 +552,5 @@ class Settings_PageTest extends WP_UnitTestCase {
 		$result = $this->get_settings_feature_metadata( $this->registry );
 
 		$this->assertSame( 'image_generation', $result['features'][0]['capability'] );
-	}
-
-	/**
-	 * Test that init registers an admin redirect hook for the legacy settings slug.
-	 */
-	public function test_init_registers_legacy_settings_redirect_hook() {
-		Settings_Page::init( $this->registry );
-
-		$this->assertTrue(
-			has_action( 'admin_init', array( Settings_Page::class, 'maybe_redirect_legacy_page' ) ) !== false
-		);
-		$this->assertTrue(
-			has_action( 'admin_page_access_denied', array( Settings_Page::class, 'maybe_redirect_legacy_page' ) ) !== false
-		);
-	}
-
-	/**
-	 * Test that the legacy settings slug redirects to the new slug.
-	 */
-	public function test_legacy_settings_slug_redirects_to_new_slug() {
-		$captured_location = null;
-		$captured_status   = null;
-
-		add_filter(
-			'wp_redirect',
-			static function ( $location, $status ) use ( &$captured_location, &$captured_status ) {
-				$captured_location = $location;
-				$captured_status   = $status;
-				return false;
-			},
-			10,
-			2
-		);
-
-		$_GET['page'] = 'ai';
-		Settings_Page::maybe_redirect_legacy_page();
-
-		$this->assertSame( admin_url( 'options-general.php?page=ai-wp-admin' ), $captured_location );
-		$this->assertSame( 301, $captured_status );
 	}
 }

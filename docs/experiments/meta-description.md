@@ -4,6 +4,14 @@
 
 The Meta Description experiment adds AI-powered meta description generation to the WordPress post editor. It provides a "Meta Description" sidebar panel with a modal workflow for generating, selecting, editing, and applying meta descriptions. The experiment automatically detects active SEO plugins (Yoast SEO, Rank Math, All in One SEO, SEOPress) and writes to the correct meta field. It registers a WordPress Ability (`ai/meta-description`) that can be used both through the admin UI and directly via REST API requests.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** No, only when you ask
+- **When it runs:** When you click Generate Meta Description
+- **Sent to your AI provider:** Post content, title, slug, author name, excerpt, content type, and assigned categories and tags
+- **Requests and data:** One request per click
+
 ## Overview
 
 ### For End Users
@@ -271,16 +279,6 @@ add_filter( 'wpai_meta_description_prompt', function( $prompt, $content, $title 
 }, 10, 3 );
 ```
 
-### Filtering the Result Temperature
-
-You can adjust the AI temperature for more creative or more consistent results:
-
-```php
-add_filter( 'wpai_meta_description_result_temperature', function( $temperature ) {
-    return 0.3; // Lower temperature for more consistent output
-} );
-```
-
 ### Registering Additional SEO Plugins
 
 You can add support for additional SEO plugins:
@@ -372,6 +370,7 @@ add_filter( 'wpai_normalize_content', function( $content ) {
 
 3. **Test SEO plugin integration:**
    - With Yoast SEO active, verify the description is saved to `_yoast_wpseo_metadesc`
+   - With Rank Math active, verify the description shows in Rank Math's Edit Snippet without a reload and is saved to `rank_math_description`
    - Without any SEO plugin, verify the description is saved to `wpai_meta_description`
    - Verify the correct meta key is displayed in the localized data
 
@@ -429,7 +428,6 @@ npm run test:php
 
 - The ability uses `get_preferred_models_for_text_generation()` to determine which AI models to use
 - Models are tried in order until one succeeds
-- Temperature defaults to 0.7 for balanced creativity and consistency (filterable via `wpai_meta_description_result_temperature`)
 
 ### System Instruction
 
