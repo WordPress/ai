@@ -78,7 +78,7 @@ test.describe( 'WebMCP experiment', () => {
 			title: 'Autumn opening hours',
 		} );
 		await expect(
-			editor.canvas.locator( '.editor-post-title__input' )
+			editor.canvas.getByRole( 'textbox', { name: /^Add title$/i } )
 		).toHaveText( 'Autumn opening hours' );
 
 		// A paragraph appears in the canvas.

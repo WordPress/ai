@@ -21,9 +21,9 @@ import type {
 /**
  * Generates an image for the given post ID and content.
  *
- * @param {string}   content            The content of the post to generate an image for.
- * @param {Object}   options            Optional settings.
- * @param {Function} options.onProgress Callback invoked with progress messages.
+ * @param {string}                content            The content of the post to generate an image for.
+ * @param {Object}                options            Optional settings.
+ * @param {ImageProgressCallback} options.onProgress Callback invoked with progress messages.
  * @return {Promise<GeneratedImageData>} A promise that resolves to the generated image data.
  */
 export async function generateImage(

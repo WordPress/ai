@@ -25,11 +25,11 @@ import type { MediaEditorAttachment } from '../types';
  *
  * Replaces the core `alt_text` field to add a generate/regenerate button.
  *
- * @param {DataFormControlProps<MediaEditorAttachment>} props                     The DataForm control props.
- * @param {MediaEditorAttachment}                       props.data                The attachment record.
- * @param {Object}                                      props.field               The normalized field definition.
- * @param {Function}                                    props.onChange            Callback to update the attachment record.
- * @param {boolean}                                     props.hideLabelFromVision Whether to visually hide the textarea label.
+ * @param {DataFormControlProps<MediaEditorAttachment>}             props                     The DataForm control props.
+ * @param {MediaEditorAttachment}                                   props.data                The attachment record.
+ * @param {Object}                                                  props.field               The normalized field definition.
+ * @param {DataFormControlProps<MediaEditorAttachment>['onChange']} props.onChange            Callback to update the attachment record.
+ * @param {boolean}                                                 props.hideLabelFromVision Whether to visually hide the textarea label.
  * @return {React.JSX.Element|null} The control.
  */
 export function MediaEditorAltTextControl( {
