@@ -46,6 +46,19 @@ class Prompt_Model_Client implements Model_Client_Interface {
 	public const REQUEST_TIMEOUT = 120.0;
 
 	/**
+	 * The most tokens a workspace round asks the model to write.
+	 *
+	 * Some connectors cap a reply when the caller sets nothing: the Anthropic
+	 * connector sends 4,096, and a proposal of twenty drafts stopped partway
+	 * with a token-limit error. This leaves room for a full proposal.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var int
+	 */
+	public const MAX_OUTPUT_TOKENS = 16384;
+
+	/**
 	 * The streaming driver, when one was supplied.
 	 *
 	 * @since x.x.x
@@ -196,6 +209,47 @@ class Prompt_Model_Client implements Model_Client_Interface {
 	}
 
 	/**
+	 * Returns the most tokens a workspace round asks the model to write.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return int The output token limit.
+	 */
+	public static function max_output_tokens(): int {
+		/**
+		 * Filters the most tokens a workspace round asks the model to write.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param int $max_tokens The output token limit. Default 16384.
+		 */
+		$max_tokens = (int) apply_filters( 'wpai_workspace_max_output_tokens', self::MAX_OUTPUT_TOKENS );
+
+		return $max_tokens > 0 ? $max_tokens : self::MAX_OUTPUT_TOKENS;
+	}
+
+	/**
+	 * Applies a round's settings to the prompt builder.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_AI_Client_Prompt_Builder $builder            The prompt builder.
+	 * @param list<string>                 $ability_names      Abilities to declare as tools.
+	 * @param string                       $system_instruction The system instruction.
+	 * @return \WP_AI_Client_Prompt_Builder The configured builder.
+	 */
+	protected function prepare_builder( $builder, array $ability_names, string $system_instruction ) {
+		$builder = $builder->using_system_instruction( $system_instruction );
+		$builder = $builder->using_max_tokens( self::max_output_tokens() );
+
+		if ( array() !== $ability_names ) {
+			$builder = $builder->using_abilities( ...$ability_names );
+		}
+
+		return $builder;
+	}
+
+	/**
 	 * Runs a buffered model round through the core prompt builder.
 	 *
 	 * @since x.x.x
@@ -229,13 +283,7 @@ class Prompt_Model_Client implements Model_Client_Interface {
 				remove_filter( 'wp_ai_client_default_request_timeout', $raise, PHP_INT_MAX );
 			}
 
-			$builder = $builder->using_system_instruction( $system_instruction );
-
-			if ( array() !== $ability_names ) {
-				$builder = $builder->using_abilities( ...$ability_names );
-			}
-
-			$result = $builder->generate_text_result();
+			$result = $this->prepare_builder( $builder, $ability_names, $system_instruction )->generate_text_result();
 		} catch ( Throwable $e ) {
 			return new WP_Error(
 				'workspace_generation_failed',
