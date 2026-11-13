@@ -93,7 +93,7 @@ export function GenerateImageStandalone() {
 	/**
 	 * Wraps generate() with an inline provider availability check.
 	 *
-	 * Outside the block editor the @wordpress/notices store has no renderer,
+	 * Outside the block editor the `@wordpress/notices` store has no renderer,
 	 * so ensureProvider()'s dispatched notice is invisible. This guard uses
 	 * isProviderAvailable() and sets component-level error state instead,
 	 * ensuring the user sees a Notice in the standalone UI.
