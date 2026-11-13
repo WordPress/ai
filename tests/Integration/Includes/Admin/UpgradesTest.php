@@ -34,6 +34,7 @@ class UpgradesTest extends WP_UnitTestCase {
 		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_enabled' );
 		delete_option( 'wpai_feature_excerpt-generation_enabled' );
+		delete_option( 'wpai_global_toggle_removed' );
 	}
 
 	/**
@@ -50,6 +51,7 @@ class UpgradesTest extends WP_UnitTestCase {
 		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_enabled' );
 		delete_option( 'wpai_feature_excerpt-generation_enabled' );
+		delete_option( 'wpai_global_toggle_removed' );
 
 		parent::tearDown();
 	}
@@ -94,13 +96,19 @@ class UpgradesTest extends WP_UnitTestCase {
 	 */
 	public function test_do_upgrades_migrates_legacy_global_experiments_option() {
 		update_option( 'ai_experiments_enabled', '1' );
+		update_option( 'ai_experiment_excerpt-generation_enabled', '1' );
 
 		Upgrades::do_upgrades();
 
-		$this->assertEquals(
-			'1',
+		// The migrated global value carries through to the removal of the
+		// global toggle, so the enabled feature must stay enabled.
+		$this->assertTrue(
+			(bool) get_option( 'wpai_feature_excerpt-generation_enabled' ),
+			'An enabled feature should stay enabled when the legacy global option was on'
+		);
+		$this->assertFalse(
 			get_option( 'wpai_features_enabled' ),
-			'Legacy global experiments option should migrate to the current global features option'
+			'The global features option should be removed'
 		);
 		$this->assertNull(
 			get_option( 'ai_experiments_enabled', null ),
@@ -116,13 +124,19 @@ class UpgradesTest extends WP_UnitTestCase {
 	public function test_do_upgrades_repairs_legacy_global_experiments_option_from_0_9_0() {
 		update_option( 'wpai_version', '0.9.0' );
 		update_option( 'ai_experiments_enabled', '1' );
+		update_option( 'wpai_feature_excerpt-generation_enabled', '1' );
 
 		Upgrades::do_upgrades();
 
-		$this->assertEquals(
-			'1',
+		// The migrated global value carries through to the removal of the
+		// global toggle, so the enabled feature must stay enabled.
+		$this->assertTrue(
+			(bool) get_option( 'wpai_feature_excerpt-generation_enabled' ),
+			'An enabled feature should stay enabled when the legacy global option was on'
+		);
+		$this->assertFalse(
 			get_option( 'wpai_features_enabled' ),
-			'Legacy global experiments option should migrate to the current global features option'
+			'The global features option should be removed'
 		);
 		$this->assertNull(
 			get_option( 'ai_experiments_enabled', null ),
@@ -138,13 +152,19 @@ class UpgradesTest extends WP_UnitTestCase {
 	public function test_do_upgrades_repairs_singular_global_feature_option() {
 		update_option( 'wpai_version', '0.9.0' );
 		update_option( 'wpai_feature_enabled', '1' );
+		update_option( 'wpai_feature_excerpt-generation_enabled', '1' );
 
 		Upgrades::do_upgrades();
 
-		$this->assertEquals(
-			'1',
+		// The migrated global value carries through to the removal of the
+		// global toggle, so the enabled feature must stay enabled.
+		$this->assertTrue(
+			(bool) get_option( 'wpai_feature_excerpt-generation_enabled' ),
+			'An enabled feature should stay enabled when the singular global option was on'
+		);
+		$this->assertFalse(
 			get_option( 'wpai_features_enabled' ),
-			'Singular global feature option should migrate to the current global features option'
+			'The global features option should be removed'
 		);
 		$this->assertNull(
 			get_option( 'wpai_feature_enabled', null ),

@@ -14,7 +14,6 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 const {
 	clearConnector,
 	enableExperiment,
-	enableExperiments,
 	visitAdminPage,
 	visitConnectorsPage,
 } = require( '../../utils/helpers' );
@@ -27,9 +26,6 @@ test.describe( 'Image Editing Feature', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Image Generation Feature (which contains editing).
 		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
@@ -59,9 +55,6 @@ test.describe( 'Image Editing Feature', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Image Generation Feature.
 		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
@@ -195,9 +188,6 @@ test.describe( 'Image Editing Feature', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Image Generation Feature.
 		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
@@ -304,9 +294,6 @@ test.describe( 'Image Editing Feature', () => {
 		page,
 		requestUtils,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Image Generation Feature.
 		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
@@ -436,9 +423,6 @@ test.describe( 'Image Editing Feature', () => {
 		page,
 		requestUtils,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Image Generation Feature.
 		await enableExperiment( admin, page, 'Image Generation and Editing' );
 

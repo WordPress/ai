@@ -130,6 +130,95 @@ class Mock_Custom_Capability_Experiment extends Test_Uncategorized_Experiment {
 }
 
 /**
+ * Mock experiment with usage metadata.
+ *
+ * @since 1.5.0
+ */
+class Mock_Usage_Experiment extends Test_Uncategorized_Experiment {
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'test-usage';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
+		return array(
+			'label'       => 'Test Usage',
+			'description' => 'Test description',
+			'usage'       => array(
+				'trigger'  => 'automatic',
+				'runs'     => 'On each new comment',
+				'sends'    => 'Comment text',
+				'requests' => 'One request per comment',
+			),
+		);
+	}
+}
+
+/**
+ * Mock experiment with usage details instead of requests.
+ *
+ * @since 1.5.0
+ */
+class Mock_Details_Usage_Experiment extends Test_Uncategorized_Experiment {
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'test-details-usage';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
+		return array(
+			'label'       => 'Test Details Usage',
+			'description' => 'Test description',
+			'usage'       => array(
+				'trigger' => 'none',
+				'runs'    => 'On each upload',
+				'sends'   => 'Nothing',
+				'details' => 'Stores data with each image',
+			),
+		);
+	}
+}
+
+/**
+ * Mock experiment with invalid usage metadata.
+ *
+ * @since 1.5.0
+ */
+class Mock_Invalid_Usage_Experiment extends Test_Uncategorized_Experiment {
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'test-invalid-usage';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
+		return array(
+			'label'       => 'Test Invalid Usage',
+			'description' => 'Test description',
+			'usage'       => array(
+				'trigger' => 'sometimes',
+				'runs'    => 'When you click Generate',
+				'sends'   => array( 'not a string' ),
+			),
+		);
+	}
+}
+
+/**
  * Test experiment with an empty string category.
  *
  * @since 0.4.0
@@ -238,7 +327,6 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
-		update_option( 'wpai_features_enabled', true );
 		update_option( 'wpai_feature_test-categorized_enabled', true );
 		update_option( 'wpai_feature_test-uncategorized_enabled', true );
 		update_option( 'wpai_feature_test-empty-category_enabled', true );
@@ -250,7 +338,6 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	 * @since 0.4.0
 	 */
 	public function tearDown(): void {
-		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_test-categorized_enabled' );
 		delete_option( 'wpai_feature_test-uncategorized_enabled' );
 		delete_option( 'wpai_feature_test-empty-category_enabled' );
@@ -347,17 +434,25 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that is_globally_enabled() returns the global enabled state.
+	 * Tests that no options are preloaded by default.
 	 *
-	 * @since 1.0.1
+	 * @since 1.5.0
 	 */
-	public function test_is_globally_enabled_returns_global_enabled_state(): void {
+	public function test_get_preloaded_options_defaults_to_empty(): void {
+		$experiment = new Test_Uncategorized_Experiment();
+		$this->assertSame( array(), $experiment->get_preloaded_options() );
+	}
+
+	/**
+	 * Tests that the deprecated is_globally_enabled() always returns true.
+	 *
+	 * @since 1.4.0
+	 */
+	public function test_is_globally_enabled_is_deprecated_and_returns_true(): void {
+		$this->setExpectedDeprecated( 'WordPress\\AI\\Abstracts\\Abstract_Feature::is_globally_enabled' );
+
 		$experiment = new Test_Categorized_Experiment();
 
-		update_option( 'wpai_features_enabled', false );
-		$this->assertFalse( $experiment->is_globally_enabled() );
-
-		update_option( 'wpai_features_enabled', true );
 		$this->assertTrue( $experiment->is_globally_enabled() );
 	}
 
@@ -376,18 +471,21 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that is_enabled() still requires the global enabled state.
+	 * Tests that is_enabled() follows the individual toggle only and ignores
+	 * a leftover legacy global option.
 	 *
-	 * @since 1.0.1
+	 * @since 1.4.0
 	 */
-	public function test_is_enabled_still_requires_global_enabled_state(): void {
+	public function test_is_enabled_ignores_legacy_global_option(): void {
 		update_option( 'wpai_features_enabled', false );
 		update_option( 'wpai_feature_test-categorized_enabled', true );
 
 		$experiment = new Test_Categorized_Experiment();
 
 		$this->assertTrue( $experiment->is_individually_enabled() );
-		$this->assertFalse( $experiment->is_enabled() );
+		$this->assertTrue( $experiment->is_enabled() );
+
+		delete_option( 'wpai_features_enabled' );
 	}
 
 	/**
@@ -417,6 +515,77 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 			'none',
 			$experiment->get_capability(),
 			'get_capability() should return the capability declared in load_metadata()'
+		);
+	}
+
+	/**
+	 * Tests that get_usage() returns an empty array when the usage key is absent from metadata.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_get_usage_defaults_to_empty_when_missing(): void {
+		$experiment = new Test_Uncategorized_Experiment();
+
+		$this->assertSame( array(), $experiment->get_usage() );
+	}
+
+	/**
+	 * Tests that get_usage() returns the values declared in metadata.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_get_usage_returns_metadata_values(): void {
+		$experiment = new Mock_Usage_Experiment();
+
+		$this->assertSame(
+			array(
+				'trigger'  => 'automatic',
+				'runs'     => 'On each new comment',
+				'sends'    => 'Comment text',
+				'requests' => 'One request per comment',
+				'details'  => '',
+			),
+			$experiment->get_usage()
+		);
+	}
+
+	/**
+	 * Tests that get_usage() normalizes an unknown trigger and non-string values.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_get_usage_normalizes_invalid_values(): void {
+		$experiment = new Mock_Invalid_Usage_Experiment();
+
+		$this->assertSame(
+			array(
+				'trigger'  => 'on_demand',
+				'runs'     => 'When you click Generate',
+				'sends'    => '',
+				'requests' => '',
+				'details'  => '',
+			),
+			$experiment->get_usage()
+		);
+	}
+
+	/**
+	 * Tests that get_usage() returns details for features that make no AI requests.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_get_usage_returns_details(): void {
+		$experiment = new Mock_Details_Usage_Experiment();
+
+		$this->assertSame(
+			array(
+				'trigger'  => 'none',
+				'runs'     => 'On each upload',
+				'sends'    => 'Nothing',
+				'requests' => '',
+				'details'  => 'Stores data with each image',
+			),
+			$experiment->get_usage()
 		);
 	}
 

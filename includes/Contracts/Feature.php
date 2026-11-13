@@ -81,15 +81,6 @@ interface Feature {
 	public function register(): void;
 
 	/**
-	 * Checks if features are globally enabled.
-	 *
-	 * @since 1.0.1
-	 *
-	 * @return bool True if globally enabled, false otherwise.
-	 */
-	public function is_globally_enabled(): bool;
-
-	/**
 	 * Checks if the feature is individually enabled.
 	 *
 	 * @since 1.0.1
@@ -139,7 +130,7 @@ interface Feature {
 	 *
 	 * @since 0.9.0
 	 *
-	 * @return string The capability type (e.g. 'text_generation', 'image_generation', 'vision').
+	 * @return string The capability type (e.g. 'text_generation', 'image_generation', 'vision', 'text_to_speech_conversion').
 	 */
 	public function get_capability(): string;
 }

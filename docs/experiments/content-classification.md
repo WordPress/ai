@@ -4,6 +4,15 @@
 
 The Content Classification experiment adds AI-powered tag and category suggestions to the WordPress post editor. It analyzes post content and suggests relevant taxonomy terms directly within the Tags and Categories sidebar panels. The experiment registers a WordPress Ability (`ai/content-classification`) that can be used both through the admin UI and directly via REST API requests.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** No, only when you ask
+- **When it runs:** When you click Suggest Tags or Suggest Categories
+- **Sent to your AI provider:** Post content, title, slug, author name, excerpt, content type, the terms already assigned, and up to 100 existing terms to choose from
+- **Requests and data:** One request per click
+- **Good to know:** Accepting a suggested new term creates that term on your site right away.
+
 ## Overview
 
 ### For End Users
@@ -293,7 +302,7 @@ A non-positive return falls back to the default so the pool always stays bounded
 You can filter which AI models are used for suggestion generation:
 
 ```php
-add_filter( 'wpai_experiments_preferred_models_for_text_generation', function( $models ) {
+add_filter( 'wpai_preferred_text_models', function( $models ) {
     return array(
         array( 'openai', 'gpt-4' ),
         array( 'anthropic', 'claude-haiku-4-5' ),
@@ -306,12 +315,12 @@ add_filter( 'wpai_experiments_preferred_models_for_text_generation', function( $
 The `normalize_content()` helper function processes content before sending it to the AI:
 
 ```php
-add_filter( 'wpai_experiments_pre_normalize_content', function( $content ) {
+add_filter( 'wpai_pre_normalize_content', function( $content ) {
     // Custom preprocessing.
     return $content;
 } );
 
-add_filter( 'wpai_experiments_normalize_content', function( $content ) {
+add_filter( 'wpai_normalize_content', function( $content ) {
     // Custom post-processing.
     return $content;
 } );
@@ -372,7 +381,7 @@ add_filter( 'wpai_experiments_normalize_content', function( $content ) {
 - Content is normalized before being sent to the AI (HTML stripped, shortcodes removed, etc.)
 - The `normalize_content()` function handles this processing
 - Additional context from post metadata (title, categories, tags) is included when using post ID
-- All existing terms for the taxonomy are included in the prompt to encourage consistency
+- With the `existing_only` strategy, the most-used existing terms (100 by default) are included in the prompt to encourage consistency
 
 ### Limitations
 
@@ -380,4 +389,4 @@ add_filter( 'wpai_experiments_normalize_content', function( $content ) {
 - The ability processes one taxonomy per request
 - Generated suggestions should be reviewed before publishing
 - The experiment requires JavaScript to be enabled in the admin
-- The `is_new` flag is determined server-side by comparing against existing terms, not from the AI response
+- The `is_new` flag is determined server-side by comparing against existing terms, not from the AI response. Names match case-insensitively, an existing term is returned with its stored name, and case variants of one name are returned once, keeping the highest confidence

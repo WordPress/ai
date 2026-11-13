@@ -15,6 +15,7 @@ use WordPress\AI\Experiments\Excerpt_Generation\Excerpt_Generation as Excerpt_Ge
 
 use function WordPress\AI\get_post_context;
 use function WordPress\AI\normalize_content;
+use function WordPress\AI\sanitize_plain_text;
 
 /**
  * Excerpt generation WordPress Ability.
@@ -124,8 +125,10 @@ class Excerpt_Generation extends Abstract_Ability {
 			return $result;
 		}
 
+		$excerpt = sanitize_plain_text( trim( $result, ' "\'' ), true );
+
 		// If we have no results, return an error.
-		if ( empty( $result ) ) {
+		if ( '' === $excerpt ) {
 			return new WP_Error(
 				'no_results',
 				esc_html__( 'No excerpt suggestion was generated.', 'ai' )
@@ -133,7 +136,7 @@ class Excerpt_Generation extends Abstract_Ability {
 		}
 
 		// Return the excerpts in the format the Ability expects.
-		return sanitize_textarea_field( trim( $result, ' "\'' ) );
+		return $excerpt;
 	}
 
 	/**

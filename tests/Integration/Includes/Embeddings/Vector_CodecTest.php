@@ -15,7 +15,7 @@ use WordPress\AI\Embeddings\Vector_Math;
 /**
  * Vector_Codec test case.
  *
- * @since x.x.x
+ * @since 1.4.0
  *
  * @covers \WordPress\AI\Embeddings\Vector_Codec
  */
@@ -24,7 +24,7 @@ class Vector_CodecTest extends WP_UnitTestCase {
 	/**
 	 * Tests that packing produces four bytes per component.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_pack_uses_four_bytes_per_component(): void {
 		$packed = Vector_Codec::pack( array( 0.1, -0.2, 0.3 ) );
@@ -35,7 +35,7 @@ class Vector_CodecTest extends WP_UnitTestCase {
 	/**
 	 * Tests that packing is little-endian float32, the layout MariaDB's VECTOR type uses.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_pack_is_little_endian_float32(): void {
 		$this->assertSame( "\x00\x00\x80\x3f", Vector_Codec::pack( array( 1.0 ) ) );
@@ -45,7 +45,7 @@ class Vector_CodecTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a vector survives a round trip within float32 precision.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_round_trip_preserves_values_within_float32_precision(): void {
 		$vector = array( 0.123456789, -0.987654321, 42.0, 1.0e-5, 0 );
@@ -62,7 +62,7 @@ class Vector_CodecTest extends WP_UnitTestCase {
 	/**
 	 * Tests that unpacking rejects a byte string of the wrong length.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_unpack_rejects_wrong_length(): void {
 		$this->expectException( InvalidArgumentException::class );
@@ -73,7 +73,7 @@ class Vector_CodecTest extends WP_UnitTestCase {
 	/**
 	 * Tests that unpacking rejects non-positive dimensions.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_unpack_rejects_zero_dimensions(): void {
 		$this->expectException( InvalidArgumentException::class );
@@ -84,7 +84,7 @@ class Vector_CodecTest extends WP_UnitTestCase {
 	/**
 	 * Tests that validation rejects values that are not usable vectors.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @dataProvider data_invalid_vectors
 	 *
@@ -99,7 +99,7 @@ class Vector_CodecTest extends WP_UnitTestCase {
 	/**
 	 * Provides values that are not usable vectors.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return array<string, array{0: mixed}> Test cases.
 	 */
@@ -124,7 +124,7 @@ class Vector_CodecTest extends WP_UnitTestCase {
 	/**
 	 * Tests that validation accepts integer and float components.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_validate_accepts_numeric_list(): void {
 		Vector_Codec::validate( array( 1, 2.5, -3 ) );
@@ -139,7 +139,7 @@ class Vector_CodecTest extends WP_UnitTestCase {
 	 * round to `INF` on the way into four bytes. The write used to report success and the row was
 	 * then unreadable on every subsequent read.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @dataProvider data_out_of_float32_range
 	 *
@@ -157,7 +157,7 @@ class Vector_CodecTest extends WP_UnitTestCase {
 	/**
 	 * Data provider for out-of-range components.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return array<string, array{int|float}> Test cases.
 	 */
@@ -173,7 +173,7 @@ class Vector_CodecTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the float32 boundary itself is still accepted and round-trips.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_float32_boundary_is_accepted_and_round_trips(): void {
 		$vector = array( Vector_Codec::MAX_MAGNITUDE, -Vector_Codec::MAX_MAGNITUDE );
@@ -187,7 +187,7 @@ class Vector_CodecTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a rejected vector never reaches the packed representation.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_pack_rejects_values_outside_float32_range(): void {
 		$this->expectException( \InvalidArgumentException::class );
@@ -198,7 +198,7 @@ class Vector_CodecTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a coarse code is one bit per component, most significant bit first.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_pack_coarse_uses_one_bit_per_component(): void {
 		// Signs positive, negative, positive, negative, zero, negative, negative, positive give
@@ -212,7 +212,7 @@ class Vector_CodecTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the tail of the final byte is zero-padded.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_pack_coarse_zero_pads_the_final_byte(): void {
 		// Three positive components fill the top three bits and pad the rest, giving 0xE0.
@@ -230,7 +230,7 @@ class Vector_CodecTest extends WP_UnitTestCase {
 	 * The 32x reduction against the float32 form is the entire reason the column exists, and the
 	 * result has to fit the column that keeps it inline in the clustered index.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @dataProvider data_realistic_dimensions
 	 *
@@ -248,7 +248,7 @@ class Vector_CodecTest extends WP_UnitTestCase {
 	/**
 	 * Data provider for realistic embedding dimensions.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return array<string, array{int, int}> Test cases.
 	 */
@@ -264,7 +264,7 @@ class Vector_CodecTest extends WP_UnitTestCase {
 	/**
 	 * Tests the Hamming distance between codes.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_hamming(): void {
 		$a = Vector_Codec::pack_coarse( array( 1.0, 1.0, 1.0, 1.0 ) );
@@ -283,7 +283,7 @@ class Vector_CodecTest extends WP_UnitTestCase {
 	 * `^` on two strings truncates to the shorter operand, so an unchecked mismatch would
 	 * understate the distance instead of failing.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_hamming_rejects_mismatched_lengths(): void {
 		$this->expectException( \InvalidArgumentException::class );
@@ -301,7 +301,7 @@ class Vector_CodecTest extends WP_UnitTestCase {
 	 * the nearest vectors. Packing the right number of bytes is worth nothing if the distances it
 	 * yields do not track the exact scores.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_hamming_ranking_tracks_cosine_ranking(): void {
 		$dimensions = 256;
@@ -358,7 +358,7 @@ class Vector_CodecTest extends WP_UnitTestCase {
 	 * The code is a disposable index rather than a second copy of the data, so it has to be
 	 * derivable from the blob — that is what makes it safe to add, drop or rebuild.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_coarse_code_is_derivable_from_the_packed_vector(): void {
 		$vector = array( 0.25, -0.75, 1.5, -0.001, 0.0, 3.0, -2.5, 0.125 );

@@ -30,7 +30,6 @@ class Type_AheadTest extends WP_UnitTestCase {
 		update_option( 'wp_ai_client_provider_credentials', array( 'openai' => 'test-api-key' ) );
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
-		update_option( 'wpai_features_enabled', true );
 		update_option( 'wpai_feature_type-ahead_enabled', true );
 
 		$registry = new Registry();
@@ -52,7 +51,6 @@ class Type_AheadTest extends WP_UnitTestCase {
 		wp_deregister_style( 'ai_type_ahead' );
 		wp_dequeue_script( 'ai_type_ahead' );
 		wp_deregister_script( 'ai_type_ahead' );
-		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_type-ahead_enabled' );
 		delete_option( 'wpai_feature_type-ahead_field_mode' );
 		delete_option( 'wpai_feature_type-ahead_field_delay' );

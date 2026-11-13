@@ -32,6 +32,7 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 		tooShortLabel,
 		ensureProviderAvailable,
 		generateDescription,
+		cancelGeneration,
 		applyDescription,
 		clearSuggestion,
 	} = useMetaDescription();
@@ -71,8 +72,6 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 			}
 			setIsModalOpen( true );
 			await generateDescription();
-
-			shouldFocusEditButton.current = true;
 			return;
 		}
 
@@ -169,13 +168,18 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 					onApply={ ( text ) => {
 						applyDescription( text );
 
-						// Restore focus to the generate button when applying an empty description.
+						// Restore focus to the generate button when applying an empty description,
+						// or focus the edit button when applying a new description.
 						if ( text.trim().length === 0 ) {
 							shouldFocusEditButton.current = false;
 							shouldFocusGenerateButton.current = true;
+						} else {
+							shouldFocusEditButton.current = true;
+							shouldFocusGenerateButton.current = false;
 						}
 					} }
 					onClose={ () => {
+						cancelGeneration();
 						clearSuggestion();
 						setIsModalOpen( false );
 					} }

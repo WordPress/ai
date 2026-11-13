@@ -280,11 +280,17 @@ class Log_Data_Extractor {
 			return 'image';
 		}
 
+		// Properly handle Google's generateContent/streamGenerateContent methods.
+		$is_generate_content_method = 1 === preg_match( '/:(?:stream)?generatecontent$/', $path_lower );
+
 		// Path-based detection.
 		if (
-			'models' === basename( $path_lower ) ||
-			false !== strpos( $path_lower, '/models?' ) ||
-			false !== strpos( $path_lower, '/models/' )
+			! $is_generate_content_method
+			&& (
+				'models' === basename( $path_lower ) ||
+				false !== strpos( $path_lower, '/models?' ) ||
+				false !== strpos( $path_lower, '/models/' )
+			)
 		) {
 			return 'metadata';
 		}

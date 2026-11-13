@@ -39,13 +39,13 @@ Promotion is expected to be one-way.  Reclassifying a Feature back to an Experim
 
 #### Proposing an Experiment to a Feature
 
-A single GitHub issue to propose moving an Experiment to a Feature should be utilized for discussion with [AI team leads](https://make.wordpress.org/updates/team-reps/) and [AI plugin maintainers](https://github.com/WordPress/ai/blob/develop/CREDITS.md#maintainers) including reference in an AI Contributor call and summary post so others are aware and can comment.  Final decision rests with the team leads and plugin maintainers base on criteria referenced in this doc.
+A single GitHub issue to propose moving an Experiment to a Feature should be utilized for discussion with [AI team leads](https://make.wordpress.org/updates/team-reps/) and [AI plugin maintainers](https://github.com/WordPress/ai/blob/develop/CREDITS.md#maintainers) including reference in an AI Contributor call and summary post so others are aware and can comment.  Final decision rests with the team leads and plugin maintainers based on criteria referenced in this doc.
 
 ## How Experiments are Evaluated for the Plugin
 
 Each Experiment is evaluated independently.  Inclusion in the AI plugin does not imply endorsement for core, nor a guarantee of long-term support.
 
-In practice, most Experiments follow a three-step path.
+In practice, most Experiments follow a four-step path.
 
 ### 1. Proposal via GitHub Issue
 
@@ -79,7 +79,8 @@ Expectations for Experiments at this stage:
 * The Experiment is isolated from unrelated functionality
 * Feature flags or Experiment toggles are used where appropriate
 * Failure modes are considered and handled safely
-* Minimal documentation is added to explain how the Experiment works (examples in `docs/experiments`)
+* Minimal documentation is added to explain how the Experiment works (examples in `docs/experiments`), including an "At a Glance" section
+* `load_metadata()` declares `usage` describing when the Experiment runs, what it sends to the AI provider, and how many requests it makes, so site owners can see this in Settings > AI before enabling it
 
 Experiments are expected to evolve.  Early implementations do not need to be production-ready, but they should be reviewable, testable, and understandable by others.
 

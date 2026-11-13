@@ -7,7 +7,7 @@ Welcome to the AI plugin! Here you'll find information on how to get started con
 ### Prerequisites
 
 - Composer
-- Node.js and npm (for asset building)
+- Node.js 24.18+ and npm 11.16+ (for asset building)
 
 ### Local Development Setup
 
@@ -84,6 +84,7 @@ The following naming conventions must be followed for consistency and autoloadin
 
 ### General rules
 
+- Keep docblocks short: a one-line summary and the required tags. Add a sentence only to explain a non-obvious reason, and don't restate what the code does.
 - All descriptions must end with a period.
 - Use `@since x.x.x` for new code (version will be updated on release).
 - Place `@since` tags below the description and above `@param` tags, with blank comment lines around it.

@@ -198,7 +198,7 @@ class EmbeddingBuilder
      * reference a provider class directly. The model is retrieved from the registry when the
      * embeddings are generated, so it receives any configuration set afterwards.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @param string $providerIdOrClassName The provider ID or class name.
      * @param string $modelId The model identifier.
@@ -376,7 +376,7 @@ class EmbeddingBuilder
     /**
      * Resolves the specified model and verifies it can fulfill the request.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @return ModelInterface&EmbeddingGenerationModelInterface The verified model.
      * @throws InvalidArgumentException If no model was specified, the model's provider is not
@@ -417,7 +417,7 @@ class EmbeddingBuilder
      * Unlike {@see self::prepareModel()}, this leaves a model instance provided by the caller
      * untouched, so that it can be inspected without altering it.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @return ModelInterface The located model.
      * @throws InvalidArgumentException If no model was specified, the model's provider is not
@@ -448,7 +448,7 @@ class EmbeddingBuilder
     /**
      * Prepares the specified model for use, without verifying that it can fulfill the request.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @return ModelInterface The prepared model, with its dependencies and configuration bound.
      * @throws InvalidArgumentException If no model was specified, the model's provider is not
@@ -480,7 +480,7 @@ class EmbeddingBuilder
      * here, when the model is used, rather than when the model is set, so that the configuration of
      * a model that was subsequently replaced is not applied to its replacement.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @param ModelInterface $model The model whose configuration to combine with the builder's.
      * @return ModelConfig The effective configuration for the given model.
@@ -496,7 +496,7 @@ class EmbeddingBuilder
     /**
      * Asserts that the given provider is configured and therefore usable.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @param string $providerIdOrClassName The provider ID or class name.
      * @return void
@@ -521,7 +521,7 @@ class EmbeddingBuilder
     /**
      * Describes the requirements of the current request that the given model does not meet.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @param ModelInterface $model The model to check.
      * @return string|null A description of the unmet requirements, or null if the model meets them all.
@@ -569,7 +569,7 @@ class EmbeddingBuilder
     /**
      * Describes an option value for use in an error message.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @param mixed $value The option value to describe.
      * @return string The human readable description.

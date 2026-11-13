@@ -13,7 +13,7 @@ const {
 const {
 	clearConnectors,
 	seedCredentials,
-	disableExperiments,
+	disableAllFeatures,
 	visitAdminPage,
 } = require( '../../utils/helpers' );
 
@@ -62,9 +62,10 @@ test.describe( 'Dashboard widgets', () => {
 	test( 'AI Status shows getting started checklist when setup is incomplete', async ( {
 		admin,
 		page,
+		requestUtils,
 	} ) => {
 		await clearConnectors( admin, page );
-		await disableExperiments( admin, page );
+		await disableAllFeatures( requestUtils );
 
 		await visitAdminPage( admin, 'index.php' );
 
@@ -76,9 +77,6 @@ test.describe( 'Dashboard widgets', () => {
 
 		await expect(
 			page.getByRole( 'link', { name: 'Configure an AI provider' } )
-		).toBeVisible();
-		await expect(
-			page.getByRole( 'link', { name: 'Globally enable AI Features' } )
 		).toBeVisible();
 		await expect(
 			page.getByRole( 'link', { name: 'Enable a feature or experiment' } )

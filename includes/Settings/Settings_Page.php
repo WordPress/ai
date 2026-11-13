@@ -11,6 +11,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Settings;
 
+use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Contracts\Feature;
 use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Features\Feature_Category;
 use WordPress\AI\Features\Registry;
@@ -27,16 +29,6 @@ defined( 'ABSPATH' ) || exit;
  * @since 0.1.0
  */
 class Settings_Page {
-
-	/**
-	 * Legacy settings page slug.
-	 * TODO: either once [0.6.0 is less than 10% of installs](https://wordpress.org/plugins/ai/advanced/) or we're in October 2026 let's remove this section in case other plugin(s) are attempting to use the `ai` page.
-	 *
-	 * @since 0.8.0
-	 *
-	 * @var string
-	 */
-	private const LEGACY_PAGE_SLUG = 'ai';
 
 	/**
 	 * The settings page slug.
@@ -56,8 +48,6 @@ class Settings_Page {
 	 * @return void
 	 */
 	public static function init( Registry $registry ): void {
-		add_action( 'admin_init', array( self::class, 'maybe_redirect_legacy_page' ), 1 );
-		add_action( 'admin_page_access_denied', array( self::class, 'maybe_redirect_legacy_page' ) );
 		add_action( 'ai-wp-admin_init', array( self::class, 'register_route_script_module_translations' ) );
 
 		if ( function_exists( 'ai_ai_wp_admin_render_page' ) ) {
@@ -124,34 +114,6 @@ class Settings_Page {
 
 
 	/**
-	 * Redirects legacy settings page slug to the current settings route.
-	 *
-	 * @since 0.8.0
-	 */
-	public static function maybe_redirect_legacy_page(): void {
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading query param for admin page detection only, no data processing.
-		if ( ! isset( $_GET['page'] ) ) {
-			return;
-		}
-
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading query param for admin page detection only, no data processing.
-		$page = sanitize_key( wp_unslash( (string) $_GET['page'] ) );
-		if ( self::LEGACY_PAGE_SLUG !== $page ) {
-			return;
-		}
-
-		$redirect_url = add_query_arg(
-			'page',
-			self::PAGE_SLUG,
-			admin_url( 'options-general.php' )
-		);
-
-		if ( wp_safe_redirect( $redirect_url, 301, 'WordPress AI plugin' ) ) {
-			exit;
-		}
-	}
-
-	/**
 	 * Gets feature group metadata for the settings UI.
 	 *
 	 * @since 0.8.0
@@ -166,12 +128,12 @@ class Settings_Page {
 		$default_groups = array(
 			Experiment_Category::EDITOR => array(
 				'label'       => __( 'Editor Experiments', 'ai' ),
-				'description' => __( 'AI-powered experiments for the block editor, including content generation and enhancement tools.', 'ai' ),
+				'description' => __( 'Early-stage AI tools for the block editor, including content generation and enhancement tools. Experiments may change or be removed in any release.', 'ai' ),
 				'order'       => 10,
 			),
 			Experiment_Category::ADMIN  => array(
 				'label'       => __( 'Admin Experiments', 'ai' ),
-				'description' => __( 'AI-powered experiments for the WordPress admin area, including exploration and testing tools.', 'ai' ),
+				'description' => __( 'Early-stage AI tools for the WordPress admin area, including exploration and testing tools. Experiments may change or be removed in any release.', 'ai' ),
 				'order'       => 20,
 			),
 			Feature_Category::OTHER     => array(
@@ -195,6 +157,29 @@ class Settings_Page {
 		$filtered_groups = apply_filters( 'wpai_settings_feature_groups', $default_groups );
 
 		return is_array( $filtered_groups ) ? $filtered_groups : $default_groups;
+	}
+
+	/**
+	 * Gets the documentation URL for one of the plugin's own features.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @param \WordPress\AI\Contracts\Feature $feature Feature instance.
+	 * @return string Documentation URL, or an empty string for features registered by other plugins.
+	 */
+	private static function get_feature_docs_url( Feature $feature ): string {
+		$class = get_class( $feature );
+		if ( 0 !== strpos( $class, 'WordPress\\AI\\Experiments\\' ) && 0 !== strpos( $class, 'WordPress\\AI\\Features\\' ) ) {
+			return '';
+		}
+
+		$folder = 'stable' === $feature->get_stability() ? 'features' : 'experiments';
+
+		return sprintf(
+			'https://github.com/WordPress/ai/blob/trunk/docs/%1$s/%2$s.md#at-a-glance',
+			$folder,
+			rawurlencode( $feature::get_id() )
+		);
 	}
 
 	/**
@@ -222,7 +207,9 @@ class Settings_Page {
 	*       default?: mixed,
 	*       elements?: list<array{value: string, label: string}>,
 	*       isValid?: array{min?: int, max?: int}
-	*     }>
+	*     }>,
+	*     usage: array{trigger: 'automatic'|'on_demand'|'none', runs: string, sends: string, requests: string, details: string}|array{},
+	*     docsUrl: string
 	*   }>
 	* }
 	 */
@@ -258,6 +245,8 @@ class Settings_Page {
 				'stability'      => $feature->get_stability(),
 				'image'          => esc_url( $feature->get_image() ),
 				'capability'     => $feature->get_capability(),
+				'usage'          => $feature instanceof Abstract_Feature ? $feature->get_usage() : array(),
+				'docsUrl'        => self::get_feature_docs_url( $feature ),
 			);
 		}
 
@@ -327,7 +316,9 @@ class Settings_Page {
 		 *       default?: mixed,
 		 *       elements?: list<array{value: string, label: string}>,
 		 *       isValid?: array{min?: int, max?: int}
-		 *     }>
+		 *     }>,
+		 *     usage: array{trigger: 'automatic'|'on_demand'|'none', runs: string, sends: string, requests: string, details: string}|array{},
+		 *     docsUrl: string
 		 *   }>
 		 * } $metadata Settings UI metadata.
 		 * @param \WordPress\AI\Features\Registry $registry Feature registry instance.

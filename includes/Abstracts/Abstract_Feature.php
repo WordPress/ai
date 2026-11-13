@@ -12,7 +12,6 @@ namespace WordPress\AI\Abstracts;
 use InvalidArgumentException;
 use WordPress\AI\Contracts\Feature;
 use WordPress\AI\Features\Feature_Category;
-use WordPress\AI\Settings\Settings_Registration;
 
 /**
  * Base implementation for features.
@@ -85,6 +84,14 @@ abstract class Abstract_Feature implements Feature {
 	protected string $capability;
 
 	/**
+	 * Summary of when the feature runs, what it sends, and how many requests it makes.
+	 *
+	 * @since 1.5.0
+	 * @var array{trigger: 'automatic'|'on_demand'|'none', runs: string, sends: string, requests: string, details: string}|array{}
+	 */
+	private array $usage;
+
+	/**
 	 * Constructor.
 	 *
 	 * Loads feature metadata and initializes properties.
@@ -124,15 +131,52 @@ abstract class Abstract_Feature implements Feature {
 		$this->stability   = $metadata['stability'] ?? 'experimental';
 		$this->image       = $metadata['image'] ?? '';
 		$this->capability  = $metadata['capability'] ?? 'text_generation';
+		$this->usage       = self::normalize_usage( $metadata['usage'] ?? array() );
+	}
+
+	/**
+	 * Normalizes usage metadata.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @param mixed $usage Raw usage metadata.
+	 * @return array{trigger: 'automatic'|'on_demand'|'none', runs: string, sends: string, requests: string, details: string}|array{} Normalized usage metadata, or an empty array if none was provided.
+	 */
+	private static function normalize_usage( $usage ): array {
+		if ( ! is_array( $usage ) || empty( $usage ) ) {
+			return array();
+		}
+
+		$trigger = $usage['trigger'] ?? 'on_demand';
+		if ( ! in_array( $trigger, array( 'automatic', 'on_demand', 'none' ), true ) ) {
+			$trigger = 'on_demand';
+		}
+
+		return array(
+			'trigger'  => $trigger,
+			'runs'     => is_string( $usage['runs'] ?? null ) ? $usage['runs'] : '',
+			'sends'    => is_string( $usage['sends'] ?? null ) ? $usage['sends'] : '',
+			'requests' => is_string( $usage['requests'] ?? null ) ? $usage['requests'] : '',
+			'details'  => is_string( $usage['details'] ?? null ) ? $usage['details'] : '',
+		);
 	}
 
 	/**
 	 * Loads feature metadata.
 	 *
 	 * Must return an array with keys: label, description.
-	 * Optionally includes: category, stability.
+	 * Optionally includes: category, stability, image, capability, usage.
+	 *
+	 * The `usage` key summarizes, in short user-facing phrases, when the
+	 * feature runs, what it sends to the AI provider, and how many requests
+	 * it makes. Set `trigger` to `automatic` when the feature can run
+	 * without a user action once enabled, `on_demand` when it only runs
+	 * when a user asks, or `none` when it never calls an AI provider.
+	 * Features that make no AI requests can set `details` instead of
+	 * `requests` to describe what they store or change.
 	 *
 	 * @since 0.6.0
+	 * @since 1.5.0 Added the `usage` key.
 	 *
 	 * @return array{
 	 *  label: string,
@@ -140,6 +184,14 @@ abstract class Abstract_Feature implements Feature {
 	 *  category?: string,
 	 *  stability?: 'deprecated'|'experimental'|'stable',
 	 *  image?: string,
+	 *  capability?: string,
+	 *  usage?: array{
+	 *    trigger?: 'automatic'|'on_demand'|'none',
+	 *    runs?: string,
+	 *    sends?: string,
+	 *    requests?: string,
+	 *    details?: string,
+	 *  },
 	 * } Feature metadata.
 	 */
 	abstract protected function load_metadata(): array;
@@ -166,10 +218,20 @@ abstract class Abstract_Feature implements Feature {
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * Checks if features are globally enabled.
+	 *
+	 * The global toggle has been removed; features are controlled solely by
+	 * their individual toggles, so this always returns true.
+	 *
+	 * @since 1.0.1
+	 * @deprecated 1.4.0 Use is_enabled() or is_individually_enabled() instead.
+	 *
+	 * @return bool Always true.
 	 */
 	final public function is_globally_enabled(): bool {
-		return (bool) get_option( Settings_Registration::GLOBAL_OPTION, false );
+		_deprecated_function( __METHOD__, '1.4.0', self::class . '::is_enabled()' );
+
+		return true;
 	}
 
 	/**
@@ -177,15 +239,6 @@ abstract class Abstract_Feature implements Feature {
 	 */
 	final public function is_individually_enabled(): bool {
 		$feature_enabled = (bool) get_option( "wpai_feature_{$this->id}_enabled", false );
-
-		// @todo remove in v1.0
-		$is_enabled = (bool) apply_filters_deprecated(
-			"ai_experiments_experiment_{$this->id}_enabled",
-			array( $feature_enabled ),
-			'0.6.0',
-			"wpai_feature_{$this->id}_enabled",
-			esc_html__( 'This will be removed in v1.0', 'ai' )
-		);
 
 		/**
 		 * Filters the enabled status for a specific feature.
@@ -196,15 +249,15 @@ abstract class Abstract_Feature implements Feature {
 		 *
 		 * @param bool $feature_enabled Whether the feature is enabled.
 		 */
-		return (bool) apply_filters( "wpai_feature_{$this->id}_enabled", $is_enabled );
+		return (bool) apply_filters( "wpai_feature_{$this->id}_enabled", $feature_enabled );
 	}
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * Features require both the global toggle and individual
-	 * feature toggle to be enabled. Results are cached per
-	 * instance to avoid redundant option lookups and filter calls.
+	 * Features are enabled by their individual toggle. Results are
+	 * cached per instance to avoid redundant option lookups and
+	 * filter calls.
 	 */
 	final public function is_enabled(): bool {
 		// Return cached result if available.
@@ -213,7 +266,7 @@ abstract class Abstract_Feature implements Feature {
 		}
 
 		// Cache the result.
-		$this->enabled_cache = $this->is_globally_enabled() && $this->is_individually_enabled();
+		$this->enabled_cache = $this->is_individually_enabled();
 
 		return $this->enabled_cache;
 	}
@@ -240,6 +293,17 @@ abstract class Abstract_Feature implements Feature {
 	}
 
 	/**
+	 * Gets a summary of when the feature runs, what it sends, and how many requests it makes.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @return array{trigger: 'automatic'|'on_demand'|'none', runs: string, sends: string, requests: string, details: string}|array{} Usage metadata, or an empty array if the feature doesn't provide any.
+	 */
+	public function get_usage(): array {
+		return $this->usage;
+	}
+
+	/**
 	 * Registers feature-specific settings.
 	 *
 	 * Override this method in child classes to register custom settings options
@@ -252,6 +316,20 @@ abstract class Abstract_Feature implements Feature {
 	public function register_settings(): void {
 		// Default implementation does nothing.
 		// Child classes can override to register custom settings.
+	}
+
+	/**
+	 * Gets the names of options the feature reads on every request.
+	 *
+	 * Override this method in child classes so these options are loaded
+	 * together with the feature toggles, in one query.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @return list<string> Option names.
+	 */
+	public function get_preloaded_options(): array {
+		return array();
 	}
 
 	/**
@@ -268,6 +346,7 @@ abstract class Abstract_Feature implements Feature {
 	 *   id: string,
 	 *   label: string,
 	 *   type: string,
+	 *   description?: string,
 	 *   default?: mixed,
 	 *   elements?: list<array{value: string, label: string}>,
 	 *   isValid?: array{min?: int, max?: int},
@@ -289,6 +368,7 @@ abstract class Abstract_Feature implements Feature {
 	 *   id: string,
 	 *   label: string,
 	 *   type: string,
+	 *   description?: string,
 	 *   default?: mixed,
 	 *   elements?: list<array{value: string, label: string}>,
 	 *   isValid?: array{min?: int, max?: int},

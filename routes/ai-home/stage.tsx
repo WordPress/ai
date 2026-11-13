@@ -2,22 +2,12 @@
  * WordPress dependencies
  */
 import { Page } from '@wordpress/admin-ui';
-import {
-	Button,
-	Card,
-	Icon,
-	Link,
-	Notice,
-	Popover,
-	Stack,
-	VisuallyHidden,
-} from '@wordpress/ui';
+import { Button, Card, Link, Notice, Stack } from '@wordpress/ui';
 import {
 	DropdownMenu,
 	MenuGroup,
 	MenuItem,
 	Spinner,
-	ToggleControl,
 } from '@wordpress/components';
 import { store as coreStore } from '@wordpress/core-data';
 import { useDispatch, useRegistry, useSelect } from '@wordpress/data';
@@ -32,7 +22,6 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 import {
 	check as checkIcon,
 	download as downloadIcon,
-	info as infoIcon,
 	tool as toolIcon,
 	upload as uploadIcon,
 } from '@wordpress/icons';
@@ -44,6 +33,11 @@ import { store as noticesStore } from '@wordpress/notices';
 import AIIcon from './ai-icon';
 import { DeveloperSettings } from './components/DeveloperSettings';
 import { FeatureToggle } from './components/FeatureToggle';
+import {
+	FeatureToggleControl,
+	parseFeatureUsage,
+} from './components/FeatureToggleText';
+import type { FeatureUsage } from './components/FeatureToggleText';
 import { ImportConfirmModal } from './components/ImportConfirmModal';
 import {
 	AdvancedSettingsContext,
@@ -85,6 +79,8 @@ interface FeatureData {
 	stability: string;
 	image: string;
 	capability: string;
+	usage: FeatureUsage | null;
+	docsUrl: string;
 }
 
 interface PageData {
@@ -96,8 +92,6 @@ interface PageData {
 }
 
 const FEATURE_SETTING_PATTERN = /^wpai_feature_(.+)_enabled$/;
-const GLOBAL_FIELD_ID = 'wpai_features_enabled';
-const noop = () => {};
 
 function isRecord( value: unknown ): value is Record< string, unknown > {
 	return typeof value === 'object' && value !== null;
@@ -167,6 +161,8 @@ function parseFeature( value: unknown ): FeatureData | null {
 		stability: toStringValue( feature.stability ) || 'experimental',
 		image: toStringValue( feature.image ),
 		capability: toStringValue( feature.capability ) || 'text_generation',
+		usage: parseFeatureUsage( feature.usage ),
+		docsUrl: toStringValue( feature.docsUrl ),
 	};
 }
 
@@ -270,40 +266,6 @@ const STABLE_FEATURE_DEFINITIONS: FeatureData[] = ( () => {
 	return unique;
 } )();
 
-interface InfoTipProps {
-	content: string;
-}
-
-function InfoTip( { content }: InfoTipProps ) {
-	const title = __( 'More information', 'ai' );
-
-	return (
-		<Popover.Root>
-			<Popover.Trigger
-				openOnHover
-				delay={ 200 }
-				closeDelay={ 200 }
-				aria-label={ title }
-				className="ai-settings-page__infotip-trigger"
-			>
-				<Icon icon={ infoIcon } size={ 20 } />
-			</Popover.Trigger>
-			<Popover.Popup
-				positioner={ <Popover.Positioner side="bottom" align="end" /> }
-				className="ai-settings-page__infotip-popover"
-			>
-				<Popover.Arrow />
-				<VisuallyHidden render={ <Popover.Title /> }>
-					{ title }
-				</VisuallyHidden>
-				<Popover.Description className="ai-settings-page__infotip-description">
-					{ content }
-				</Popover.Description>
-			</Popover.Popup>
-		</Popover.Root>
-	);
-}
-
 function buildToggleMessage(
 	edits: Record< string, unknown >,
 	featureDefinitions: FeatureData[]
@@ -362,11 +324,6 @@ function buildToggleMessage(
 		return __( 'Settings saved.', 'ai' );
 	}
 
-	if ( entry[ 0 ] === GLOBAL_FIELD_ID ) {
-		return entry[ 1 ]
-			? __( 'AI enabled.', 'ai' )
-			: __( 'AI disabled.', 'ai' );
-	}
 	const feature = featureDefinitions.find(
 		( f ) => f.settingName === entry[ 0 ]
 	);
@@ -378,29 +335,14 @@ function buildToggleMessage(
 		  sprintf( __( '%s disabled.', 'ai' ), label );
 }
 
-function DisabledToggle( { field, data }: DataFormControlProps< AISettings > ) {
-	return (
-		<ToggleControl
-			label={ field.label }
-			help={ field.description }
-			checked={ !! field.getValue( { item: data } ) }
-			// No-op handler required to satisfy React's controlled-component warning; the toggle is disabled.
-			onChange={ noop }
-			disabled
-		/>
-	);
-}
-
 interface SectionActionsProps extends DataFormControlProps< AISettings > {
 	experimentSettings: string[];
-	globalEnabled: boolean;
 	onBulkChange: ( edits: Record< string, boolean > ) => void;
 }
 
 function SectionActions( {
 	experimentSettings,
 	data,
-	globalEnabled,
 	onBulkChange,
 }: SectionActionsProps ) {
 	const allEnabled = useMemo( () => {
@@ -453,7 +395,7 @@ function SectionActions( {
 				variant="outline"
 				size="compact"
 				onClick={ handleEnableAll }
-				disabled={ ! globalEnabled || allEnabled }
+				disabled={ allEnabled }
 			>
 				{ __( 'Enable all', 'ai' ) }
 			</Button>
@@ -461,7 +403,7 @@ function SectionActions( {
 				variant="outline"
 				size="compact"
 				onClick={ handleDisableAll }
-				disabled={ ! globalEnabled || allDisabled }
+				disabled={ allDisabled }
 			>
 				{ __( 'Disable all', 'ai' ) }
 			</Button>
@@ -628,8 +570,10 @@ function FeatureToggleWithSettings( {
 
 	return (
 		<div className="ai-feature-toggle-with-settings">
-			<ToggleControl
+			<FeatureToggleControl
 				label={ field.label }
+				usage={ feature?.usage }
+				docsUrl={ feature?.docsUrl }
 				help={ field.description }
 				checked={ checked }
 				onChange={ ( value ) => {
@@ -661,16 +605,11 @@ function VisualCardToggle( {
 	onChange,
 }: DataFormControlProps< AISettings > ) {
 	const feature = VISUAL_CARD_FEATURES.get( field.id );
-	const globalEnabled = !! data[ GLOBAL_FIELD_ID ];
 	const checked = !! field.getValue( { item: data } );
 	const isDeveloperMode = useDeveloperModeContext();
 
 	return (
-		<Card.Root
-			className={ `${
-				! globalEnabled ? ' ai-showcase-card--disabled' : ''
-			}` }
-		>
+		<Card.Root className="ai-showcase-card">
 			{ feature?.image && (
 				<img
 					alt={ feature.label }
@@ -679,16 +618,17 @@ function VisualCardToggle( {
 				/>
 			) }
 			<Card.Content>
-				<ToggleControl
+				<FeatureToggleControl
 					label={ field.label }
+					usage={ feature?.usage }
+					docsUrl={ feature?.docsUrl }
 					checked={ checked }
 					onChange={ ( value ) =>
 						onChange( { [ field.id ]: value } )
 					}
-					disabled={ ! globalEnabled }
 					help={ field.description }
 				/>
-				{ globalEnabled && checked && isDeveloperMode && feature && (
+				{ checked && isDeveloperMode && feature && (
 					<DeveloperSettings
 						featureId={ feature.id }
 						capability={ feature.capability }
@@ -766,6 +706,8 @@ function AISettingsPage() {
 					stability: 'experimental',
 					image: '',
 					capability: 'text_generation',
+					usage: null,
+					docsUrl: '',
 				} );
 				return acc;
 			}, [] );
@@ -780,7 +722,7 @@ function AISettingsPage() {
 	);
 
 	const aiSettingKeys = useMemo( () => {
-		const settingKeys = new Set< string >( [ GLOBAL_FIELD_ID ] );
+		const settingKeys = new Set< string >();
 
 		for ( const feature of featureDefinitions ) {
 			settingKeys.add( feature.settingName );
@@ -796,12 +738,6 @@ function AISettingsPage() {
 		}
 		return aiSettings;
 	}, [ aiSettingKeys, editedRecord ] );
-
-	const globalEnabled = Boolean( data[ GLOBAL_FIELD_ID ] );
-	const globalToggleDescription = __(
-		'Control whether AI is enabled for your site. When disabled, all features and experiments will be inactive regardless of their individual settings.',
-		'ai'
-	);
 
 	const handleChange = useCallback(
 		async ( edits: Record< string, unknown > ) => {
@@ -874,7 +810,6 @@ function AISettingsPage() {
 					<SectionActions
 						{ ...props }
 						experimentSettings={ experimentSettings }
-						globalEnabled={ globalEnabled }
 						onBulkChange={ handleChange }
 					/>
 				),
@@ -892,18 +827,20 @@ function AISettingsPage() {
 
 			if ( VISUAL_CARD_FEATURES.has( feature.settingName ) ) {
 				baseField.Edit = VisualCardToggle;
-			} else if ( ! globalEnabled ) {
-				baseField.Edit = DisabledToggle;
 			} else if ( feature.settingsFields.length > 0 ) {
 				baseField.Edit = FeatureToggleWithSettings;
 			} else {
 				const featureId = feature.id;
 				const featureCapability = feature.capability;
+				const featureUsage = feature.usage;
+				const featureDocsUrl = feature.docsUrl;
 				baseField.Edit = ( props ) => (
 					<FeatureToggle
 						{ ...props }
 						featureId={ featureId }
 						capability={ featureCapability }
+						usage={ featureUsage }
+						docsUrl={ featureDocsUrl }
 					/>
 				);
 			}
@@ -912,7 +849,7 @@ function AISettingsPage() {
 		} );
 
 		return [ ...sectionActionsFields, ...featureFields ];
-	}, [ featureDefinitions, featureGroups, globalEnabled, handleChange ] );
+	}, [ featureDefinitions, featureGroups, handleChange ] );
 
 	const form = useMemo< Form >( () => {
 		const showcaseChildren: string[] = [];
@@ -1013,27 +950,24 @@ function AISettingsPage() {
 				<Page
 					visual={ <AIIcon /> }
 					title={ __( 'AI', 'ai' ) }
-					subTitle={ __(
-						'Configure AI features and experiments for your WordPress site.',
-						'ai'
-					) }
+					subTitle={
+						<span className="ai-settings-page__subtitle">
+							{ __(
+								'Turn on stable Features and early-stage Experiments. Experiments may change or be removed in any release, and some run automatically once enabled, so try them on a staging site first.',
+								'ai'
+							) }
+						</span>
+					}
 					actions={
 						<>
-							<Stack align="center" gap="xs">
-								<ToggleControl
-									label={ __( 'Enable AI', 'ai' ) }
-									checked={ globalEnabled }
-									onChange={ ( checked ) => {
-										void handleChange( {
-											[ GLOBAL_FIELD_ID ]: checked,
-										} );
-									} }
-									disabled={ isLoading }
-								/>
-								<InfoTip content={ globalToggleDescription } />
-							</Stack>
 							<Link
-								href="https://github.com/WordPress/ai/tree/develop/docs"
+								href="https://learn.wordpress.org/course/ai-powered-wordpress/"
+								openInNewTab
+							>
+								{ __( 'Learn', 'ai' ) }
+							</Link>
+							<Link
+								href="https://github.com/WordPress/ai/blob/trunk/docs/GETTING_STARTED.md"
 								openInNewTab
 							>
 								{ __( 'Docs', 'ai' ) }
@@ -1157,7 +1091,13 @@ function AISettingsPage() {
 						gap="md"
 					>
 						{ ! PAGE_DATA.hasValidCredentials && (
-							<Notice.Root intent="error">
+							<Notice.Root
+								intent={
+									PAGE_DATA.hasCredentials
+										? 'warning'
+										: 'error'
+								}
+							>
 								<Notice.Description>
 									{ ! PAGE_DATA.hasCredentials
 										? __(
@@ -1165,7 +1105,7 @@ function AISettingsPage() {
 												'ai'
 										  )
 										: __(
-												'The AI plugin requires a valid AI Connector to function properly. Please review the AI Connectors you have configured to ensure they are valid.',
+												"Your configured AI Connectors don't support text generation, which most AI features require.",
 												'ai'
 										  ) }
 								</Notice.Description>

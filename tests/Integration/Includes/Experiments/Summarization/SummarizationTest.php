@@ -34,8 +34,7 @@ class SummarizationTest extends WP_UnitTestCase {
 		// Mock has_valid_ai_credentials to return true for tests.
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
-		// Enable experiments globally and individually.
-		update_option( 'wpai_features_enabled', true );
+		// Enable the experiment.
 		update_option( 'wpai_feature_summarization_enabled', true );
 
 		$experiments = new Experiments();
@@ -56,7 +55,6 @@ class SummarizationTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
-		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_summarization_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
@@ -360,7 +358,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	 * unsigned request must not start one. Guards against CSRF where a victim is
 	 * lured into loading an attacker-supplied admin URL.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_maybe_enqueue_bulk_assets_skips_without_nonce(): void {
 		$original_get = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -386,7 +384,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that maybe_enqueue_bulk_assets() does nothing when the nonce is invalid.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_maybe_enqueue_bulk_assets_skips_with_invalid_nonce(): void {
 		$original_get = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -412,7 +410,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a nonce created for a different action does not unlock the bulk run.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_maybe_enqueue_bulk_assets_skips_with_nonce_for_other_action(): void {
 		$original_get = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -441,7 +439,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	 * Each post in a run costs one billed model call, so the batch is bounded and
 	 * the overflow count is handed to the script to report.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_maybe_enqueue_bulk_assets_caps_batch_size(): void {
 		$original_get = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -488,6 +486,90 @@ class SummarizationTest extends WP_UnitTestCase {
 			remove_filter( 'wpai_bulk_action_max_items', $cap );
 			$_GET = $original_get; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		}
+	}
+
+	/**
+	 * Tests that maybe_enqueue_bulk_assets() passes the REST route of the list table's post type.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_custom_post_type_rest_routes
+	 *
+	 * @param array<string, string> $rest_args      REST arguments for the post type.
+	 * @param string                $expected_route The expected REST route.
+	 */
+	public function test_maybe_enqueue_bulk_assets_uses_post_type_rest_route( array $rest_args, string $expected_route ): void {
+		$original_get = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		register_post_type(
+			'book',
+			array_merge(
+				array(
+					'public'       => true,
+					'show_in_rest' => true,
+					'show_ui'      => true,
+				),
+				$rest_args
+			)
+		);
+
+		// Asset_Loader::enqueue_script() bails when the .asset.php metadata file is absent.
+		$asset_path   = WPAI_PLUGIN_DIR . 'build-scripts/experiments/summarization-bulk.asset.php';
+		$stub_created = ! file_exists( $asset_path );
+		if ( $stub_created ) {
+			wp_mkdir_p( dirname( $asset_path ) );
+			file_put_contents( $asset_path, "<?php return array( 'dependencies' => array(), 'version' => '1.0.0' );" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+		}
+
+		try {
+			$editor_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+			wp_set_current_user( $editor_id );
+
+			$post_id = self::factory()->post->create( array( 'post_type' => 'book' ) );
+
+			$_GET['post_type']         = 'book';
+			$_GET['wpai_bulk_summary'] = '1';
+			$_GET['wpai_post_ids']     = (string) $post_id;
+			$_GET['_wpai_bulk_nonce']  = wp_create_nonce( 'wpai_bulk_summary' );
+
+			$experiment = new Summarization();
+			$experiment->maybe_enqueue_bulk_assets( 'edit.php' );
+
+			$data = wp_scripts()->get_data( 'ai_summarization_bulk', 'data' );
+
+			$this->assertIsString( $data );
+			// The data of earlier enqueues of the same handle stays in front of this one.
+			$this->assertGreaterThan( 0, preg_match_all( '/= (\{.*\});/', $data, $matches ) );
+
+			$localized_json = end( $matches[1] );
+			$localized      = json_decode( $localized_json, true );
+
+			$this->assertSame( $expected_route, $localized['restRoute'] ?? null, 'Localized data: ' . $localized_json );
+		} finally {
+			if ( $stub_created ) {
+				unlink( $asset_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
+			}
+			$_GET = $original_get; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			unregister_post_type( 'book' );
+		}
+	}
+
+	/**
+	 * Data provider for test_maybe_enqueue_bulk_assets_uses_post_type_rest_route().
+	 *
+	 * @return array<string, array{0: array<string, string>, 1: string}>
+	 */
+	public function data_custom_post_type_rest_routes(): array {
+		return array(
+			'no rest_base'                   => array( array(), '/wp/v2/book' ),
+			'custom rest_base and namespace' => array(
+				array(
+					'rest_base'      => 'books',
+					'rest_namespace' => 'library/v1',
+				),
+				'/library/v1/books',
+			),
+		);
 	}
 
 	/**

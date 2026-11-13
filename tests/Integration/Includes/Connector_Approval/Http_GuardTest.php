@@ -7,6 +7,7 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Connector_Approval;
 
+use ReflectionMethod;
 use ReflectionProperty;
 use WP_Connector_Registry;
 use WP_Error;
@@ -15,6 +16,7 @@ use WordPress\AI\Connector_Approval\Approvals_Store;
 use WordPress\AI\Connector_Approval\Caller_Identifier;
 use WordPress\AI\Connector_Approval\Connector_Key_Index;
 use WordPress\AI\Connector_Approval\Http_Guard;
+use WordPress\AiClient\AiClient;
 
 /**
  * Http_Guard test case.
@@ -123,6 +125,8 @@ class Http_GuardTest extends WP_UnitTestCase {
 			$registry->unregister( self::TEST_CONNECTOR_ID );
 		}
 
+		$this->set_test_provider_class( null );
+
 		delete_option( self::TEST_SETTING );
 		delete_option( Approvals_Store::OPTION_APPROVALS );
 		delete_option( Approvals_Store::OPTION_PENDING );
@@ -175,6 +179,66 @@ class Http_GuardTest extends WP_UnitTestCase {
 		$current   = (array) $property->getValue( $this->identifier );
 		$current[] = wp_normalize_path( WP_PLUGIN_DIR . '/ai/' );
 		$property->setValue( $this->identifier, $current );
+	}
+
+	/**
+	 * Points the test connector ID at a class in the AI Client registry.
+	 *
+	 * Writes the registry's ID map directly: registerProvider() would demand
+	 * full provider metadata, and only the class's file matters here.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @param string|null $class_name Class to register, or null to remove the entry.
+	 */
+	private function set_test_provider_class( ?string $class_name ): void {
+		$registry = AiClient::defaultRegistry();
+		$property = new ReflectionProperty( $registry, 'registeredIdsToClassNames' );
+		$property->setAccessible( true );
+
+		$map = (array) $property->getValue( $registry );
+		if ( null === $class_name ) {
+			unset( $map[ self::TEST_CONNECTOR_ID ] );
+		} else {
+			$map[ self::TEST_CONNECTOR_ID ] = $class_name;
+		}
+		$property->setValue( $registry, $map );
+	}
+
+	/**
+	 * Re-registers the test connector with a declared owning plugin file.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @param string $plugin_file Plugin basename, e.g. `my-plugin/my-plugin.php`.
+	 */
+	private function declare_test_connector_plugin( string $plugin_file ): void {
+		$registry = WP_Connector_Registry::get_instance();
+		if ( null === $registry ) {
+			$this->markTestSkipped( 'The connector registry is not available.' );
+		}
+
+		$connector = $registry->unregister( self::TEST_CONNECTOR_ID );
+		$this->assertIsArray( $connector );
+
+		$connector['plugin']['file'] = $plugin_file;
+		$registry->register( self::TEST_CONNECTOR_ID, $connector );
+	}
+
+	/**
+	 * Calls one of the guard's private methods.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @param string $method Method name.
+	 * @param mixed  ...$args Arguments to pass.
+	 * @return mixed The method's return value.
+	 */
+	private function invoke_guard( string $method, ...$args ) {
+		$reflection = new ReflectionMethod( Http_Guard::class, $method );
+		$reflection->setAccessible( true );
+
+		return $reflection->invoke( $this->guard(), ...$args );
 	}
 
 	/**
@@ -271,6 +335,216 @@ class Http_GuardTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey(
 			$this->store->pending_key( $basename, self::TEST_CONNECTOR_ID ),
 			$pending
+		);
+	}
+
+	/**
+	 * Test that registering the guard hooks both the HTTP and REST filters.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_register_adds_filters() {
+		$guard = $this->guard();
+		$guard->register();
+
+		$this->assertSame( 5, has_filter( 'pre_http_request', array( $guard, 'maybe_block_request' ) ) );
+		$this->assertSame( 10, has_filter( 'rest_request_after_callbacks', array( $guard, 'explain_blocked_rest_error' ) ) );
+
+		remove_filter( 'pre_http_request', array( $guard, 'maybe_block_request' ), 5 );
+		remove_filter( 'rest_request_after_callbacks', array( $guard, 'explain_blocked_rest_error' ) );
+	}
+
+	/**
+	 * Test that REST errors are left alone when nothing was blocked.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_explain_blocked_rest_error_ignores_errors_without_a_block() {
+		$error = new WP_Error( 'unsupported_model', 'Original message.' );
+
+		$this->assertSame( $error, $this->guard()->explain_blocked_rest_error( $error ) );
+	}
+
+	/**
+	 * Test that successful REST responses are left alone after a block.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_explain_blocked_rest_error_ignores_successful_responses() {
+		$guard = $this->guard();
+		$this->block_test_request( $guard );
+
+		$response = new \WP_REST_Response( array( 'ok' => true ) );
+
+		$this->assertSame( $response, $guard->explain_blocked_rest_error( $response ) );
+	}
+
+	/**
+	 * Test that an administrator is told to approve the blocked connector.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_explain_blocked_rest_error_tells_admins_to_approve() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+
+		$guard = $this->guard();
+		$this->block_test_request( $guard );
+
+		$result = $guard->explain_blocked_rest_error( new WP_Error( 'unsupported_model', 'Original message.' ) );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'wpai_connector_not_approved', $result->get_error_code() );
+		$this->assertSame(
+			'The Test Provider connector is pending approval. Please approve it under Tools > Connector Approvals.',
+			$result->get_error_message()
+		);
+		$this->assertSame(
+			array(
+				'status'       => 403,
+				'connector_id' => self::TEST_CONNECTOR_ID,
+			),
+			$result->get_error_data()
+		);
+	}
+
+	/**
+	 * Test that a user who can't approve connectors is told to ask an administrator.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_explain_blocked_rest_error_tells_others_to_ask_an_admin() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
+
+		$guard = $this->guard();
+		$this->block_test_request( $guard );
+
+		$result = $guard->explain_blocked_rest_error( new WP_Error( 'unsupported_model', 'Original message.' ) );
+
+		$this->assertSame(
+			'The Test Provider connector is pending approval. Please ask a site administrator to approve it.',
+			$result->get_error_message()
+		);
+	}
+
+	/**
+	 * Test that a block only explains the first REST error that follows it.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_explain_blocked_rest_error_only_applies_once() {
+		$guard = $this->guard();
+		$this->block_test_request( $guard );
+
+		$guard->explain_blocked_rest_error( new WP_Error( 'unsupported_model', 'First.' ) );
+
+		$later = new WP_Error( 'some_other_error', 'Second.' );
+		$this->assertSame( $later, $guard->explain_blocked_rest_error( $later ) );
+	}
+
+	/**
+	 * Sends a request carrying the test credential through the guard so it is blocked.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @param \WordPress\AI\Connector_Approval\Http_Guard $guard Guard to block with.
+	 */
+	private function block_test_request( Http_Guard $guard ): void {
+		$args = array(
+			'headers' => array(
+				'Authorization' => 'Bearer ' . self::TEST_CREDENTIAL,
+			),
+		);
+
+		$this->assertInstanceOf(
+			WP_Error::class,
+			$guard->maybe_block_request( false, $args, 'https://api.example.com/v1/models' )
+		);
+	}
+
+	/**
+	 * Test that a connector's declared plugin is exempted instead of wherever
+	 * its provider class happened to be loaded from.
+	 *
+	 * @since 1.4.0
+	 */
+	public function test_exempts_declared_plugin_over_provider_class_location() {
+		// The class file lives in the `ai` plugin, standing in for a copy of the
+		// provider package bundled by some other plugin.
+		$this->set_test_provider_class( self::class );
+		$this->declare_test_connector_plugin( 'ai-provider-for-test/plugin.php' );
+
+		$this->assertSame(
+			array( 'plugin:ai-provider-for-test' ),
+			$this->invoke_guard( 'provider_extension_keys', self::TEST_CONNECTOR_ID )
+		);
+	}
+
+	/**
+	 * Test that the provider class's plugin is exempted when no plugin is declared.
+	 *
+	 * @since 1.4.0
+	 */
+	public function test_exempts_provider_class_plugin_when_none_declared() {
+		$this->set_test_provider_class( self::class );
+
+		$this->assertSame(
+			array( 'plugin:ai' ),
+			$this->invoke_guard( 'provider_extension_keys', self::TEST_CONNECTOR_ID )
+		);
+	}
+
+	/**
+	 * Test that nothing is exempted for a connector without a registered provider.
+	 *
+	 * @since 1.4.0
+	 */
+	public function test_exempts_nothing_without_a_registered_provider() {
+		$this->assertSame(
+			array(),
+			$this->invoke_guard( 'provider_extension_keys', self::TEST_CONNECTOR_ID )
+		);
+	}
+
+	/**
+	 * Test that a provider class bundled in a plugin's vendor directory
+	 * exempts nothing, so the bundling plugin can't bypass approval.
+	 *
+	 * @since 1.4.0
+	 */
+	public function test_exempts_nothing_for_provider_class_in_vendor_directory() {
+		$this->assertSame(
+			array(),
+			$this->invoke_guard(
+				'provider_keys_for_file',
+				WP_PLUGIN_DIR . '/seo-plugin/vendor/acme/ai-provider/src/Provider.php'
+			)
+		);
+	}
+
+	/**
+	 * Test that a provider class in an mu-plugin exempts that mu-plugin.
+	 *
+	 * @since 1.4.0
+	 */
+	public function test_exempts_mu_plugin_provider() {
+		$this->assertSame(
+			array( 'mu-plugin:acme-provider.php' ),
+			$this->invoke_guard( 'provider_keys_for_file', WPMU_PLUGIN_DIR . '/acme-provider.php' )
+		);
+	}
+
+	/**
+	 * Test that a provider class in a theme exempts that theme.
+	 *
+	 * @since 1.4.0
+	 */
+	public function test_exempts_theme_provider() {
+		$this->assertSame(
+			array( 'theme:acme-theme' ),
+			$this->invoke_guard(
+				'provider_keys_for_file',
+				get_theme_root() . '/acme-theme/inc/class-acme-provider.php'
+			)
 		);
 	}
 }

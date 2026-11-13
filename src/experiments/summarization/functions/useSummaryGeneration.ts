@@ -6,7 +6,7 @@
  * WordPress dependencies
  */
 import { store as blockEditorStore } from '@wordpress/block-editor';
-import { dispatch, useDispatch, useSelect } from '@wordpress/data';
+import { dispatch, select, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
 import { useMemo, useSyncExternalStore } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
@@ -18,6 +18,7 @@ import { store as noticesStore } from '@wordpress/notices';
 import { generateSummary } from './generate-summary';
 import { ensureProvider } from '../../../utils/provider-status';
 import { hasMinimumContent } from '../../../utils/character-count';
+import { getPostContentBlockContext } from '../../../utils/blocks';
 import type { SummarizationData } from '../types';
 import {
 	createSummaryBlock,
@@ -83,15 +84,35 @@ const getSettings = (): SummarizationData => {
 };
 
 /**
+ * Returns the current post content block context, or throws if template mode
+ * has no post-content block to insert the summary into.
+ */
+const getInsertionContext = () => {
+	const context = getPostContentBlockContext();
+
+	if ( context.isMissingPostContent ) {
+		throw new Error(
+			__(
+				'The summary could not be inserted because the template has no Content block.',
+				'ai'
+			)
+		);
+	}
+
+	return context;
+};
+
+/**
  * Summary generation hook.
  */
 export function useSummaryGeneration() {
-	const { allBlocks, postId, content, meta } = useSelect( ( select ) => {
+	const { allBlocks, postId, content } = useSelect( ( selectFn ) => {
+		const editor = selectFn( editorStore );
+
 		return {
-			allBlocks: select( blockEditorStore )[ 'getBlocks' ](), // eslint-disable-line dot-notation
-			postId: select( editorStore ).getCurrentPostId(),
-			content: select( editorStore ).getEditedPostContent(),
-			meta: select( editorStore ).getEditedPostAttribute( 'meta' ),
+			...getPostContentBlockContext( selectFn ),
+			postId: editor.getCurrentPostId(),
+			content: editor.getEditedPostContent(),
 		};
 	}, [] );
 	const { editPost } = useDispatch( editorStore );
@@ -120,10 +141,21 @@ export function useSummaryGeneration() {
 		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
+			// Bail before making a request whose result could not be inserted.
+			getInsertionContext();
+
 			const generatedSummary = await generateSummary(
 				postId as number,
 				content
 			);
+
+			// Read fresh blocks and the insertion root, as the editor state may have changed
+			// while summary generation was in flight.
+			const { allBlocks: currentBlocks, rootClientId } =
+				getInsertionContext();
+
+			// Read fresh meta to preserve changes made while summary generation was in flight.
+			const meta = select( editorStore ).getEditedPostAttribute( 'meta' );
 
 			// Store the summary in post meta (will require a manual save).
 			editPost( {
@@ -134,7 +166,7 @@ export function useSummaryGeneration() {
 			} );
 
 			// Check if an existing Content Summary group block exists.
-			const existingSummaryBlock = findSummaryBlock( allBlocks );
+			const existingSummaryBlock = findSummaryBlock( currentBlocks );
 
 			if ( existingSummaryBlock ) {
 				const innerBlocks =
@@ -149,7 +181,11 @@ export function useSummaryGeneration() {
 				// Insert a new summary group block at the top.
 				const summaryBlock = createSummaryBlock( generatedSummary );
 
-				dispatch( blockEditorStore ).insertBlock( summaryBlock, 0 );
+				dispatch( blockEditorStore ).insertBlock(
+					summaryBlock,
+					0,
+					rootClientId
+				);
 			}
 		} catch ( error: any ) {
 			const message =

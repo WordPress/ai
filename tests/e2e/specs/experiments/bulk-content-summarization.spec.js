@@ -10,7 +10,6 @@ const {
 	clearCredentials,
 	disableExperiment,
 	enableExperiment,
-	enableExperiments,
 	seedCredentials,
 } = require( '../../utils/helpers' );
 
@@ -29,9 +28,6 @@ test.describe( 'Bulk Content Summarization', () => {
 		requestUtils,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Content Summarization Experiment.
 		await enableExperiment( admin, page, 'Content Summarization' );
 
@@ -58,9 +54,6 @@ test.describe( 'Bulk Content Summarization', () => {
 		requestUtils,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Content Summarization Experiment.
 		await enableExperiment( admin, page, 'Content Summarization' );
 
@@ -115,9 +108,6 @@ test.describe( 'Bulk Content Summarization', () => {
 		requestUtils,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Content Summarization Experiment.
 		await enableExperiment( admin, page, 'Content Summarization' );
 
@@ -172,9 +162,6 @@ test.describe( 'Bulk Content Summarization', () => {
 		await clearCredentials( requestUtils );
 
 		try {
-			// Globally turn on Experiments.
-			await enableExperiments( admin, page );
-
 			// Enable the Content Summarization Experiment.
 			await enableExperiment( admin, page, 'Content Summarization' );
 
@@ -214,14 +201,65 @@ test.describe( 'Bulk Content Summarization', () => {
 		}
 	} );
 
+	test( 'Bulk action generates summaries for a custom post type without a rest_base', async ( {
+		admin,
+		requestUtils,
+		page,
+	} ) => {
+		// Enable the Content Summarization Experiment.
+		await enableExperiment( admin, page, 'Content Summarization' );
+
+		// The e2e-testing plugin registers `ai_e2e_sample` without a `rest_base`,
+		// so its REST route is /wp/v2/ai_e2e_sample.
+		const samplePost = await requestUtils.rest( {
+			path: '/wp/v2/ai_e2e_sample',
+			method: 'POST',
+			data: {
+				title: 'Bulk Summary Custom Post Type Test',
+				content: LONG_CONTENT,
+				status: 'publish',
+			},
+		} );
+
+		try {
+			await admin.visitAdminPage( 'edit.php', 'post_type=ai_e2e_sample' );
+
+			await page
+				.getByRole( 'checkbox', {
+					name: 'Select Bulk Summary Custom Post Type Test',
+				} )
+				.check();
+			await page
+				.locator( '#bulk-action-selector-top' )
+				.selectOption( 'wpai_generate_summary' );
+			await page.locator( '#doaction' ).click();
+
+			await expect(
+				page.locator( '.notice p', {
+					hasText: 'Summary generated for 1 post.',
+				} )
+			).toBeVisible( { timeout: 60000 } );
+
+			const updatedPost = await requestUtils.rest( {
+				path: `/wp/v2/ai_e2e_sample/${ samplePost.id }?context=edit`,
+			} );
+			expect( updatedPost.content.raw ).toContain(
+				'ai-summarization-summary'
+			);
+		} finally {
+			await requestUtils.rest( {
+				path: `/wp/v2/ai_e2e_sample/${ samplePost.id }`,
+				method: 'DELETE',
+				params: { force: true },
+			} );
+		}
+	} );
+
 	test( 'Sorting and paginating after a bulk run does not re-trigger generation', async ( {
 		admin,
 		requestUtils,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Content Summarization Experiment.
 		await enableExperiment( admin, page, 'Content Summarization' );
 
@@ -276,9 +314,6 @@ test.describe( 'Bulk Content Summarization', () => {
 		requestUtils,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Disable the Content Summarization Experiment.
 		await disableExperiment( admin, page, 'Content Summarization' );
 

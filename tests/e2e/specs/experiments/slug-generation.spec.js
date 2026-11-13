@@ -8,9 +8,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
  */
 const {
 	disableExperiment,
-	disableExperiments,
 	enableExperiment,
-	enableExperiments,
 } = require( '../../utils/helpers' );
 
 const LONG_CONTENT =
@@ -64,9 +62,6 @@ test.describe( 'Slug Generation Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Slug Generation Experiment.
 		await enableExperiment( admin, page, 'Slug Generation' );
 	} );
@@ -76,9 +71,6 @@ test.describe( 'Slug Generation Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Slug Generation Experiment.
 		await enableExperiment( admin, page, 'Slug Generation' );
 
@@ -146,9 +138,6 @@ test.describe( 'Slug Generation Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Slug Generation Experiment.
 		await enableExperiment( admin, page, 'Slug Generation' );
 
@@ -175,44 +164,11 @@ test.describe( 'Slug Generation Experiment', () => {
 		await expect( generateButton.first() ).toBeDisabled();
 	} );
 
-	test( 'Ensure the Slug Generation Experiment UI is not visible when Experiments are globally disabled', async ( {
-		admin,
-		editor,
-		page,
-	} ) => {
-		// Enable the Slug Generation Experiment first.
-		await enableExperiment( admin, page, 'Slug Generation' );
-
-		// Globally turn off Experiments.
-		await disableExperiments( admin, page );
-
-		// Create a new post.
-		await admin.createNewPost( {
-			postType: 'post',
-			title: 'Test Slug Generation Globally Disabled',
-			content: LONG_CONTENT,
-		} );
-
-		// Save the post.
-		await editor.saveDraft();
-
-		// Open the permalink popover.
-		await openPermalinkPopover( editor, page );
-
-		// The slug generation container should not be present.
-		await expect(
-			page.locator( '.ai-slug-generation-container' )
-		).not.toBeVisible();
-	} );
-
 	test( 'Ensure the Slug Generation Experiment UI is not visible when the experiment is disabled', async ( {
 		admin,
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Disable the Slug Generation Experiment.
 		await disableExperiment( admin, page, 'Slug Generation' );
 
@@ -240,9 +196,6 @@ test.describe( 'Slug Generation Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Slug Generation Experiment.
 		await enableExperiment( admin, page, 'Slug Generation' );
 
@@ -302,9 +255,6 @@ test.describe( 'Slug Generation Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Slug Generation Experiment.
 		await enableExperiment( admin, page, 'Slug Generation' );
 
@@ -356,9 +306,6 @@ test.describe( 'Slug Generation Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Slug Generation Experiment.
 		await enableExperiment( admin, page, 'Slug Generation' );
 
@@ -414,5 +361,72 @@ test.describe( 'Slug Generation Experiment', () => {
 
 		// And the normalized form is what ended up on the post.
 		await expect( panel.getByText( 'my-custom-slug' ) ).toBeVisible();
+	} );
+
+	test( 'Non-Latin slug suggestions are shown and applied as written', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Enable the Slug Generation Experiment.
+		await enableExperiment( admin, page, 'Slug Generation' );
+
+		// The e2e mock returns Cyrillic and Japanese suggestions for this title.
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'Non-Latin slug test',
+			content: LONG_CONTENT,
+		} );
+		await editor.saveDraft();
+
+		await openPermalinkPopover( editor, page );
+		await page
+			.getByRole( 'button', { name: /Generate Slug|Regenerate Slug/i } )
+			.first()
+			.click();
+
+		const modal = page.getByRole( 'dialog', {
+			name: 'Slug suggestions',
+		} );
+		await expect( modal ).toBeVisible( { timeout: 10000 } );
+
+		// The suggestions are shown as written, not percent-encoded. A number
+		// is added when another post already uses the slug.
+		const selectedSlugInput = modal.getByLabel( 'Selected slug' );
+		await expect( selectedSlugInput ).toHaveValue( /^новости-дня(-\d+)?$/, {
+			timeout: 15000,
+		} );
+		await expect( modal.getByLabel( '今日のニュース' ) ).toBeVisible();
+		await expect( modal.getByText( /Will be applied as/ ) ).toBeHidden();
+
+		await modal.getByRole( 'button', { name: 'Apply' } ).click();
+		await expect( modal ).not.toBeVisible();
+
+		await openPermalinkPopover( editor, page );
+		await expect(
+			page.locator( '.editor-post-url input[type="text"]' ).first()
+		).toHaveValue( /^новости-дня(-\d+)?$/ );
+
+		// After saving, the slug comes back percent-encoded from the REST API.
+		// The pre-publish panel shows it as written and marks it as applied.
+		await editor.saveDraft();
+		await page
+			.getByRole( 'button', { name: 'Publish', exact: true } )
+			.first()
+			.click();
+		await page.getByRole( 'button', { name: /Suggest Slugs/i } ).click();
+
+		const panel = page.locator( '.ai-slug-prepublish-content' );
+		await expect( panel.getByText( /^новости-дня(-\d+)?$/ ) ).toBeVisible();
+
+		await page
+			.getByRole( 'button', { name: 'Generate Suggestions' } )
+			.click();
+		const appliedButton = panel.getByRole( 'button', {
+			name: 'Applied',
+			exact: true,
+		} );
+		await expect( appliedButton ).toBeVisible( { timeout: 15000 } );
+		await expect( appliedButton ).toBeDisabled();
 	} );
 } );

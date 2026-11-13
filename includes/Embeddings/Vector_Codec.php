@@ -21,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
  * The encoding is the same one used by MariaDB's `VECTOR` type, which keeps a future
  * native backend able to read the same bytes.
  *
- * @since x.x.x
+ * @since 1.4.0
  */
 final class Vector_Codec {
 
@@ -43,7 +43,7 @@ final class Vector_Codec {
 	/**
 	 * Packs a vector into a little-endian float32 byte string.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param list<int|float> $vector The vector to pack.
 	 * @return string Packed bytes, `4 * count( $vector )` long.
@@ -65,7 +65,7 @@ final class Vector_Codec {
 	/**
 	 * Unpacks a little-endian float32 byte string into a vector.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $packed     Packed bytes as produced by {@see self::pack()}.
 	 * @param int    $dimensions Expected number of components.
@@ -101,7 +101,7 @@ final class Vector_Codec {
 	 * Each component contributes a single bit recording its sign, most significant bit first, so a
 	 * 1536-dimension vector becomes 192 bytes rather than the 6,144 bytes of its float32 form.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param list<int|float> $vector The vector to quantize.
 	 * @return string Packed bits, `ceil( count( $vector ) / 8 )` bytes long.
@@ -139,7 +139,7 @@ final class Vector_Codec {
 	/**
 	 * Returns the Hamming distance between two binary quantization codes.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $a First code.
 	 * @param string $b Second code, of the same byte length as `$a`.
@@ -173,7 +173,7 @@ final class Vector_Codec {
 	/**
 	 * Returns a lazily built lookup table of set-bit counts for every byte value.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return array<int, int> Map of byte value to number of set bits.
 	 */
@@ -194,7 +194,7 @@ final class Vector_Codec {
 	/**
 	 * Validates that a value is a non-empty list of finite numbers.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param mixed $vector The candidate vector.
 	 * @return void

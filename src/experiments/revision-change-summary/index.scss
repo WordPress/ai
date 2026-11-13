@@ -1,0 +1,47 @@
+.ai-revision-change-summary {
+
+	.ai-revision-change-summary__description,
+	.ai-revision-change-summary__note {
+		color: #757575;
+	}
+
+	.ai-revision-change-summary__note {
+		font-size: 12px;
+	}
+
+	.ai-revision-change-summary__result {
+		margin-top: 16px;
+		overflow-wrap: anywhere;
+	}
+
+	.ai-revision-change-summary__changes {
+		list-style: disc;
+		margin: 0 0 1em;
+		padding-inline-start: 1.5em;
+	}
+
+	.components-notice {
+		margin: 16px 0 0;
+	}
+}
+
+.ai-revision-change-summary__description {
+	margin-top: 0;
+}
+
+// Full width like the comparison below, with the text kept to a readable width.
+.ai-revision-change-summary-classic {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	margin: 16px 0;
+	padding: 12px 16px;
+
+	.ai-revision-change-summary {
+		max-width: 720px;
+	}
+}
+
+.ai-revision-change-summary-classic__title {
+	font-size: 14px;
+	margin: 0 0 8px;
+}

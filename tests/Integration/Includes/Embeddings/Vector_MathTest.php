@@ -14,7 +14,7 @@ use WordPress\AI\Embeddings\Vector_Math;
 /**
  * Vector_Math test case.
  *
- * @since x.x.x
+ * @since 1.4.0
  *
  * @covers \WordPress\AI\Embeddings\Vector_Math
  */
@@ -23,7 +23,7 @@ class Vector_MathTest extends WP_UnitTestCase {
 	/**
 	 * Tests the dot product against a hand-computed value.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_dot_product(): void {
 		// 1*4 + 2*5 + 3*6 = 32.
@@ -34,7 +34,7 @@ class Vector_MathTest extends WP_UnitTestCase {
 	/**
 	 * Tests that two-vector functions reject mismatched dimension counts, naming both lengths.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_dot_product_rejects_mismatched_dimensions(): void {
 		$this->expectException( InvalidArgumentException::class );
@@ -46,7 +46,7 @@ class Vector_MathTest extends WP_UnitTestCase {
 	/**
 	 * Tests that operands are validated the same way the codec validates them.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_dot_product_rejects_non_numeric_components(): void {
 		$this->expectException( InvalidArgumentException::class );
@@ -57,7 +57,7 @@ class Vector_MathTest extends WP_UnitTestCase {
 	/**
 	 * Tests the norm calculation, including the zero vector.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_norm(): void {
 		$this->assertEqualsWithDelta( 5.0, Vector_Math::norm( array( 3, 4 ) ), 1.0e-9 );
@@ -67,7 +67,7 @@ class Vector_MathTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the norm rejects an empty vector.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_norm_rejects_empty_vector(): void {
 		$this->expectException( InvalidArgumentException::class );
@@ -78,7 +78,7 @@ class Vector_MathTest extends WP_UnitTestCase {
 	/**
 	 * Tests cosine similarity at its three landmark values.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_cosine_similarity_landmarks(): void {
 		// Orthogonal.
@@ -92,7 +92,7 @@ class Vector_MathTest extends WP_UnitTestCase {
 	/**
 	 * Tests a hand-computed cosine that is not a landmark value.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_cosine_similarity_hand_computed(): void {
 		// (1,2,3)·(4,5,6) = 32; |a| = sqrt(14); |b| = sqrt(77); cos = 32 / sqrt(1078).
@@ -104,7 +104,7 @@ class Vector_MathTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a vector's similarity with itself is 1.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_cosine_similarity_of_self_is_one(): void {
 		$vector = $this->seeded_vector( 1536 );
@@ -119,7 +119,7 @@ class Vector_MathTest extends WP_UnitTestCase {
 	 * the raw quotient lands a few ulps above 1.0 (about 1.0000000000000013 for this fixture). The
 	 * clamp is what brings it back; without it this assertion fails.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_cosine_similarity_is_clamped_to_one(): void {
 		$vector = $this->seeded_vector( 1536 );
@@ -137,7 +137,7 @@ class Vector_MathTest extends WP_UnitTestCase {
 	/**
 	 * Returns a deterministic pseudo-random vector with components in [-1, 1].
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param int $dimensions Number of components.
 	 * @return list<float> The vector.
@@ -155,7 +155,7 @@ class Vector_MathTest extends WP_UnitTestCase {
 	/**
 	 * Tests that cosine similarity refuses a zero vector rather than returning 0.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_cosine_similarity_rejects_zero_vector(): void {
 		$this->expectException( InvalidArgumentException::class );
@@ -166,7 +166,7 @@ class Vector_MathTest extends WP_UnitTestCase {
 	/**
 	 * Tests cosine similarity rejects mismatched dimension counts.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_cosine_similarity_rejects_mismatched_dimensions(): void {
 		$this->expectException( InvalidArgumentException::class );
@@ -177,7 +177,7 @@ class Vector_MathTest extends WP_UnitTestCase {
 	/**
 	 * Tests Euclidean distance with a 3-4-5 triangle and with identical vectors.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_euclidean_distance(): void {
 		$this->assertEqualsWithDelta( 5.0, Vector_Math::euclidean_distance( array( 0.0, 0.0 ), array( 3.0, 4.0 ) ), 1.0e-9 );
@@ -193,7 +193,7 @@ class Vector_MathTest extends WP_UnitTestCase {
 	/**
 	 * Tests Euclidean distance rejects mismatched dimension counts.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_euclidean_distance_rejects_mismatched_dimensions(): void {
 		$this->expectException( InvalidArgumentException::class );
@@ -204,7 +204,7 @@ class Vector_MathTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the metric constants are distinct strings.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_metric_constants_are_distinct(): void {
 		$metrics = array( Vector_Math::METRIC_COSINE, Vector_Math::METRIC_DOT_PRODUCT, Vector_Math::METRIC_EUCLIDEAN );
@@ -219,7 +219,7 @@ class Vector_MathTest extends WP_UnitTestCase {
 	/**
 	 * Tests that normalize() returns a unit vector pointing the same way as the input.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_normalize_returns_unit_vector_in_same_direction(): void {
 		$vector = array( 3.0, 4.0 );
@@ -233,7 +233,7 @@ class Vector_MathTest extends WP_UnitTestCase {
 	/**
 	 * Tests that normalize() returns floats for integer input and preserves length.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_normalize_returns_float_list(): void {
 		$unit = Vector_Math::normalize( array( 2, 0, 0 ) );
@@ -245,7 +245,7 @@ class Vector_MathTest extends WP_UnitTestCase {
 	/**
 	 * Tests that normalize() refuses a zero vector, which has no direction.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_normalize_rejects_zero_vector(): void {
 		$this->expectException( InvalidArgumentException::class );
@@ -258,7 +258,7 @@ class Vector_MathTest extends WP_UnitTestCase {
 	 *
 	 * This is the identity the ranking fast path relies on: normalize once, then dot.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_cosine_equals_dot_product_of_normalized_vectors(): void {
 		$a = array( 1.0, -2.0, 3.5, 0.25 );
@@ -274,7 +274,7 @@ class Vector_MathTest extends WP_UnitTestCase {
 	/**
 	 * Tests the centroid is the component-wise mean.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_centroid_is_component_wise_mean(): void {
 		$centroid = Vector_Math::centroid(
@@ -291,7 +291,7 @@ class Vector_MathTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the centroid of one vector is that vector, as floats.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_centroid_of_single_vector_is_itself(): void {
 		$this->assertSame( array( 1.0, 2.0, 3.0 ), Vector_Math::centroid( array( array( 1, 2, 3 ) ) ) );
@@ -300,7 +300,7 @@ class Vector_MathTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the centroid accepts string-keyed input (e.g. vectors keyed by label or post ID).
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_centroid_ignores_outer_keys(): void {
 		$centroid = Vector_Math::centroid(
@@ -316,7 +316,7 @@ class Vector_MathTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the centroid rejects an empty set.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_centroid_rejects_empty_set(): void {
 		$this->expectException( InvalidArgumentException::class );
@@ -327,7 +327,7 @@ class Vector_MathTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the centroid rejects vectors of differing lengths.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_centroid_rejects_mismatched_dimensions(): void {
 		$this->expectException( InvalidArgumentException::class );
@@ -338,7 +338,7 @@ class Vector_MathTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the centroid rejects a member that is not a vector.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_centroid_rejects_non_array_member(): void {
 		$this->expectException( InvalidArgumentException::class );

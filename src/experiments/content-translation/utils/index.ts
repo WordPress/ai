@@ -1,19 +1,46 @@
 /**
  * WordPress dependencies
  */
-import type { Block } from '@wordpress/blocks';
+import { getBlockType, type Block } from '@wordpress/blocks';
+import { store as blockEditorStore } from '@wordpress/block-editor';
+import { select } from '@wordpress/data';
 
 /**
  * Internal dependencies
  */
-import { getBlockHTML } from '../../../utils/blocks';
+import { getRichTextHTML } from '../../../utils/blocks';
 import { runAbility } from '../../../utils/run-ability';
 import type { AIContentTranslationData } from '../types';
 import {
+	TRANSLATION_EXCLUDED_BLOCK_TYPES,
 	TRANSLATION_LOADING_CLASSES,
 	TRANSLATION_MINIMUM_CONTENT_COUNT_DEFAULT,
-	TRANSLATION_SUPPORTED_BLOCK_TYPES,
 } from '../constants';
+
+/**
+ * Path to a value inside a block's attributes, e.g. `[ 'content' ]` or
+ * `[ 'body', 0, 'cells', 1, 'content' ]` for a table cell.
+ */
+type AttributePath = ( string | number )[];
+
+/**
+ * A single piece of rich text within a block that can be translated on its own.
+ */
+export type TranslatableSegment = {
+	/** Unique identifier of the segment, used to retry failed translations. */
+	key: string;
+	clientId: string;
+	path: AttributePath;
+	content: string;
+};
+
+/**
+ * Minimal shape of a registered block attribute definition.
+ */
+type AttributeSchema = {
+	source?: string;
+	query?: Record< string, AttributeSchema >;
+};
 
 /**
  * Retrieves the content translation settings from the global window object.
@@ -33,25 +60,173 @@ export const getSettings = (): AIContentTranslationData => {
 };
 
 /**
- * Get the translatable block if it is supported and has non-empty text content.
+ * Returns the paths of all rich text values in a set of attributes.
  *
- * @param block The block to check.
- * @return An object containing the clientId and content of the block, or null if the block is not translatable.
+ * Rich text attributes are found through the block type's registered schema
+ * (`source: 'rich-text'`), including those nested inside `query` attributes
+ * such as table cells.
+ *
+ * @param schema The attribute definitions to walk.
+ * @param values The attribute values matching the definitions.
+ * @param prefix The path of the values within the block's attributes.
+ * @return The paths of the rich text values.
  */
-export function getTranslatableBlock( block: Block ) {
-	const content = getBlockHTML( block );
+function getRichTextPaths(
+	schema: Record< string, AttributeSchema >,
+	values: Record< string, unknown >,
+	prefix: AttributePath = []
+): AttributePath[] {
+	return Object.entries( schema ).flatMap( ( [ name, definition ] ) => {
+		const value = values?.[ name ];
 
-	if (
-		TRANSLATION_SUPPORTED_BLOCK_TYPES.includes( block.name ) &&
-		content.trim().length > 0
-	) {
-		return {
-			clientId: block.clientId,
-			content,
-		};
+		if ( definition.source === 'rich-text' ) {
+			return [ [ ...prefix, name ] ];
+		}
+
+		if (
+			definition.source === 'query' &&
+			definition.query &&
+			Array.isArray( value )
+		) {
+			const query = definition.query;
+
+			return value.flatMap( ( item, index ) =>
+				getRichTextPaths( query, item, [ ...prefix, name, index ] )
+			);
+		}
+
+		return [];
+	} );
+}
+
+/**
+ * Returns the value at a path inside a block's attributes.
+ *
+ * @param attributes The block attributes.
+ * @param path       The path to read.
+ * @return The value at the path, or undefined if it doesn't exist.
+ */
+function getAttributeValue(
+	attributes: Record< string, unknown >,
+	path: AttributePath
+): unknown {
+	return path.reduce< unknown >(
+		( value, segment ) =>
+			value && typeof value === 'object'
+				? ( value as Record< string | number, unknown > )[ segment ]
+				: undefined,
+		attributes
+	);
+}
+
+/**
+ * Returns a copy of a value with the value at a path replaced.
+ *
+ * @param value    The object or array to copy.
+ * @param path     The path to replace.
+ * @param newValue The new value.
+ * @return The updated copy.
+ */
+function setAttributeValue(
+	value: unknown,
+	path: AttributePath,
+	newValue: unknown
+): unknown {
+	if ( path.length === 0 ) {
+		return newValue;
 	}
 
-	return null;
+	const [ segment, ...rest ] = path as [ string | number, ...AttributePath ];
+	const copy = Array.isArray( value )
+		? [ ...value ]
+		: { ...( value as Record< string, unknown > ) };
+
+	( copy as Record< string | number, unknown > )[ segment ] =
+		setAttributeValue(
+			( value as Record< string | number, unknown > )?.[ segment ],
+			rest,
+			newValue
+		);
+
+	return copy;
+}
+
+/**
+ * Returns the translatable rich text segments of a block.
+ *
+ * Every rich text attribute registered for the block type is included, so
+ * any block built with `RichText` (core or third-party) is supported without
+ * being listed. Blocks in `TRANSLATION_EXCLUDED_BLOCK_TYPES` and empty values
+ * are skipped.
+ *
+ * @param block The block to inspect.
+ * @return The block's translatable segments.
+ */
+export function getTranslatableSegments( block: Block ): TranslatableSegment[] {
+	if ( TRANSLATION_EXCLUDED_BLOCK_TYPES.includes( block.name ) ) {
+		return [];
+	}
+
+	const schema = ( getBlockType( block.name )?.attributes ?? {} ) as Record<
+		string,
+		AttributeSchema
+	>;
+
+	return getRichTextPaths( schema, block.attributes )
+		.map( ( path ) => ( {
+			key: `${ block.clientId }:${ path.join( '.' ) }`,
+			clientId: block.clientId,
+			path,
+			content: getRichTextHTML(
+				getAttributeValue( block.attributes, path )
+			),
+		} ) )
+		.filter( ( segment ) => segment.content.trim().length > 0 );
+}
+
+/**
+ * Checks whether a segment is no longer safe to update: its block was removed,
+ * or its content changed since it was captured.
+ *
+ * @param segment The segment to check.
+ * @return True if the block is missing or the segment's content changed.
+ */
+export function isSegmentStale( segment: TranslatableSegment ): boolean {
+	const block = select( blockEditorStore ).getBlock( segment.clientId );
+
+	return (
+		! block ||
+		getRichTextHTML(
+			getAttributeValue( block.attributes, segment.path )
+		) !== segment.content
+	);
+}
+
+/**
+ * Returns the attribute update that writes a translation back to a segment.
+ *
+ * Nested values (e.g. table cells) are merged into the block's current
+ * attributes so translations of sibling segments applied earlier are kept.
+ *
+ * @param segment     The segment that was translated.
+ * @param translation The translated content.
+ * @return The attributes to pass to `updateBlockAttributes()`.
+ */
+export function getSegmentUpdate(
+	segment: TranslatableSegment,
+	translation: string
+): Record< string, unknown > {
+	const [ attribute, ...rest ] = segment.path as [ string, ...AttributePath ];
+	const attributes =
+		select( blockEditorStore ).getBlockAttributes( segment.clientId ) ?? {};
+
+	return {
+		[ attribute ]: setAttributeValue(
+			attributes[ attribute ],
+			rest,
+			translation
+		),
+	};
 }
 
 /**

@@ -46,6 +46,12 @@ class Image_Generation extends Abstract_Feature {
 			'stability'   => 'stable',
 			'image'       => WPAI_PLUGIN_URL . 'assets/images/showcase-image-generation.webp',
 			'capability'  => 'image_generation',
+			'usage'       => array(
+				'trigger'  => 'on_demand',
+				'runs'     => __( 'When you click Generate Image or Generate featured image', 'ai' ),
+				'sends'    => __( 'Your prompt; featured images also send post content, title, and post type; editing an image also sends the existing image', 'ai' ),
+				'requests' => __( 'One to three requests per image', 'ai' ),
+			),
 		);
 	}
 
@@ -154,6 +160,7 @@ class Image_Generation extends Abstract_Feature {
 			array(
 				'label'         => $this->get_label(),
 				'description'   => $this->get_description(),
+				'category'      => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'ability_class' => Image_Generation_Ability::class,
 			),
 		);
@@ -163,6 +170,7 @@ class Image_Generation extends Abstract_Feature {
 			array(
 				'label'         => __( 'Base64 Image Import', 'ai' ),
 				'description'   => __( 'Imports a base64 encoded image into the media library', 'ai' ),
+				'category'      => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'ability_class' => Image_Import_Ability::class,
 			),
 		);
@@ -172,6 +180,7 @@ class Image_Generation extends Abstract_Feature {
 			array(
 				'label'         => __( 'Image Prompt Generation', 'ai' ),
 				'description'   => __( 'Generates a prompt from post content that can be used to generate an image', 'ai' ),
+				'category'      => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'ability_class' => Generate_Image_Prompt_Ability::class,
 			),
 		);

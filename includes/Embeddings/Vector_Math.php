@@ -21,14 +21,14 @@ defined( 'ABSPATH' ) || exit;
  * require equal lengths, and the functions whose result would be undefined for
  * a zero vector reject one.
  *
- * @since x.x.x
+ * @since 1.4.0
  */
 final class Vector_Math {
 
 	/**
 	 * Cosine similarity: higher is more similar, range [-1, 1].
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 * @var string
 	 */
 	public const METRIC_COSINE = 'cosine';
@@ -36,7 +36,7 @@ final class Vector_Math {
 	/**
 	 * Dot product: higher is more similar. Equals cosine similarity when both vectors are unit length.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 * @var string
 	 */
 	public const METRIC_DOT_PRODUCT = 'dot_product';
@@ -44,7 +44,7 @@ final class Vector_Math {
 	/**
 	 * Euclidean (L2) distance: lower is closer, range [0, ∞).
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 * @var string
 	 */
 	public const METRIC_EUCLIDEAN = 'euclidean';
@@ -52,7 +52,7 @@ final class Vector_Math {
 	/**
 	 * Returns the dot product of two vectors.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param list<int|float> $a First vector.
 	 * @param list<int|float> $b Second vector, the same length as $a.
@@ -74,7 +74,7 @@ final class Vector_Math {
 	/**
 	 * Returns the Euclidean (L2) norm of a vector.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param list<int|float> $vector The vector.
 	 * @return float The norm; 0.0 for a zero vector.
@@ -95,7 +95,7 @@ final class Vector_Math {
 	/**
 	 * Returns the cosine similarity of two vectors.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param list<int|float> $a First vector.
 	 * @param list<int|float> $b Second vector, the same length as $a.
@@ -130,7 +130,7 @@ final class Vector_Math {
 	/**
 	 * Returns the Euclidean (L2) distance between two vectors.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param list<int|float> $a First vector.
 	 * @param list<int|float> $b Second vector, the same length as $a.
@@ -153,7 +153,7 @@ final class Vector_Math {
 	/**
 	 * Returns the unit vector pointing in the same direction as the given vector.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param list<int|float> $vector The vector.
 	 * @return list<float> A vector of length 1.
@@ -178,7 +178,7 @@ final class Vector_Math {
 	/**
 	 * Returns the centroid (component-wise mean) of a set of vectors.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param array<int|string, list<int|float>> $vectors One or more vectors of equal length.
 	 * @return list<float> The centroid, the same length as the inputs.
@@ -236,7 +236,7 @@ final class Vector_Math {
 	/**
 	 * Validates two vectors and confirms they have the same number of dimensions.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param array<mixed> $a First vector.
 	 * @param array<mixed> $b Second vector.

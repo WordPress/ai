@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Logging;
 
+use WordPress\AI\Admin\Tools_Page;
 use WordPress\AI\Asset_Loader;
 
 defined( 'ABSPATH' ) || exit;
@@ -43,12 +44,10 @@ class AI_Request_Log_Page {
 	 * Registers the Tools page.
 	 */
 	public function register_menu(): void {
-		$page_hook = add_submenu_page(
-			'tools.php',
-			__( 'AI Request Logs', 'ai' ),
-			__( 'AI Request Logs', 'ai' ),
-			'manage_options',
+		$page_hook = Tools_Page::add_page(
 			self::PAGE_SLUG,
+			__( 'AI Request Logs', 'ai' ),
+			__( 'View and filter recorded AI requests.', 'ai' ),
 			array( $this, 'render_page' )
 		);
 
@@ -70,17 +69,7 @@ class AI_Request_Log_Page {
 	 * Enqueues the React bundle and passes localized data.
 	 */
 	public function enqueue_assets(): void {
-		// Enqueue bundled DataViews styles — copied into build/ by the build step.
-		// Falls back to the WP-registered handle if available in a future WP release.
-		$dataviews_css = WPAI_PLUGIN_DIR . 'build/admin/dataviews.css';
-		if ( ! wp_styles()->query( 'wp-dataviews' ) && file_exists( $dataviews_css ) ) {
-			wp_enqueue_style(
-				'ai-dataviews',
-				WPAI_PLUGIN_URL . 'build/admin/dataviews.css',
-				array(),
-				(string) filemtime( $dataviews_css )
-			);
-		}
+		Asset_Loader::enqueue_dataviews_style();
 
 		Asset_Loader::enqueue_script( 'ai_request_logs', 'admin/ai-request-logs' );
 		Asset_Loader::enqueue_style( 'ai_request_logs', 'admin/ai-request-logs' );

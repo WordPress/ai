@@ -224,6 +224,27 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that meta passed through the registration args is merged into the class meta.
+	 *
+	 * Lets `wp_register_ability_args` filters adjust meta on class-based abilities.
+	 */
+	public function test_constructor_merges_meta_from_args() {
+		$ability = new Test_Ability(
+			'test-ability',
+			array(
+				'label'       => 'Test',
+				'description' => 'Test',
+				'meta'        => array( 'mcp' => array( 'public' => false ) ),
+			)
+		);
+
+		$meta = $ability->get_meta();
+
+		$this->assertSame( 'meta', $meta['test'], 'Meta declared by the class must be kept.' );
+		$this->assertFalse( $meta['mcp']['public'], 'Meta from the registration args must be applied.' );
+	}
+
+	/**
 	 * Creates a temporary system instruction file and registers it for cleanup.
 	 *
 	 * @param string $filename The filename to create inside the feature directory.

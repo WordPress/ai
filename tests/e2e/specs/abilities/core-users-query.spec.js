@@ -6,10 +6,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 /**
  * Internal dependencies
  */
-const {
-	enableExperiment,
-	enableExperiments,
-} = require( '../../utils/helpers' );
+const { enableExperiment } = require( '../../utils/helpers' );
 
 /**
  * Runs the `core/users-query` ability through the client-side Abilities API, exactly
@@ -69,7 +66,6 @@ test.describe( 'core/users-query ability (client-side Abilities API)', () => {
 		// Enabling an experiment loads its block-editor script, which declares the
 		// `@wordpress/abilities` + `@wordpress/core-abilities` modules as dependencies
 		// and so adds them to the editor's import map.
-		await enableExperiments( admin, page );
 		await enableExperiment( admin, page, 'Excerpt Generation' );
 
 		// The core/users-query ability is gated behind the Custom Abilities
@@ -85,27 +81,27 @@ test.describe( 'core/users-query ability (client-side Abilities API)', () => {
 
 	test( 'returns the current user by ID', async ( { page } ) => {
 		const outcome = await runCoreUsers( page, {
-			id: currentUser.id,
+			where: { ids: [ currentUser.id ] },
 			fields: [ 'id', 'name', 'email' ],
 		} );
 
 		expect( outcome.ok ).toBe( true );
-		expect( outcome.result.id ).toBe( currentUser.id );
-		expect( outcome.result.email ).toBe( currentUser.email );
-		expect( outcome.result.users ).toBeUndefined();
-		expect( outcome.result.total ).toBeUndefined();
-		expect( outcome.result.total_pages ).toBeUndefined();
+		expect( outcome.result.items ).toHaveLength( 1 );
+		expect( outcome.result.items[ 0 ].id ).toBe( currentUser.id );
+		expect( outcome.result.items[ 0 ].email ).toBe( currentUser.email );
+		expect( outcome.result.pagination ).toEqual( {
+			total: 1,
+			total_pages: 1,
+		} );
 	} );
 
-	test( 'returns lean fields by default for a single user', async ( {
-		page,
-	} ) => {
+	test( 'returns lean fields by default', async ( { page } ) => {
 		const outcome = await runCoreUsers( page, {
-			id: currentUser.id,
+			where: { ids: [ currentUser.id ] },
 		} );
 
 		expect( outcome.ok ).toBe( true );
-		expect( Object.keys( outcome.result ).sort() ).toEqual( [
+		expect( Object.keys( outcome.result.items[ 0 ] ).sort() ).toEqual( [
 			'avatar_urls',
 			'id',
 			'link',
@@ -114,29 +110,29 @@ test.describe( 'core/users-query ability (client-side Abilities API)', () => {
 		] );
 	} );
 
-	test( 'returns a users collection for an empty request', async ( {
+	test( 'returns a page of users for an empty request', async ( {
 		page,
 	} ) => {
 		const outcome = await runCoreUsers( page, {} );
 
 		expect( outcome.ok ).toBe( true );
-		expect( Array.isArray( outcome.result.users ) ).toBe( true );
-		expect( outcome.result.users.length ).toBeGreaterThan( 0 );
+		expect( Array.isArray( outcome.result.items ) ).toBe( true );
+		expect( outcome.result.items.length ).toBeGreaterThan( 0 );
 		expect(
-			outcome.result.users.some( ( user ) => user.id === currentUser.id )
+			outcome.result.items.some( ( user ) => user.id === currentUser.id )
 		).toBe( true );
 	} );
 
-	test( 'returns a users collection when input is omitted', async ( {
+	test( 'returns a page of users when input is omitted', async ( {
 		page,
 	} ) => {
 		const outcome = await runCoreUsers( page );
 
 		expect( outcome.ok ).toBe( true );
-		expect( Array.isArray( outcome.result.users ) ).toBe( true );
-		expect( outcome.result.users.length ).toBeGreaterThan( 0 );
+		expect( Array.isArray( outcome.result.items ) ).toBe( true );
+		expect( outcome.result.items.length ).toBeGreaterThan( 0 );
 		expect(
-			outcome.result.users.some( ( user ) => user.id === currentUser.id )
+			outcome.result.items.some( ( user ) => user.id === currentUser.id )
 		).toBe( true );
 	} );
 
@@ -146,36 +142,63 @@ test.describe( 'core/users-query ability (client-side Abilities API)', () => {
 		} );
 
 		expect( outcome.ok ).toBe( true );
-		expect( outcome.result.users.length ).toBeGreaterThan( 0 );
-		for ( const user of outcome.result.users ) {
+		expect( outcome.result.items.length ).toBeGreaterThan( 0 );
+		for ( const user of outcome.result.items ) {
 			expect( Object.keys( user ).sort() ).toEqual( [ 'id', 'name' ] );
 		}
 	} );
 
-	test( 'limits collection results to included users', async ( { page } ) => {
-		const outcome = await runCoreUsers( page, {
-			include: [ currentUser.id ],
+	test( 'filters users by slug and username', async ( { page } ) => {
+		const bySlug = await runCoreUsers( page, {
+			where: { slugs: [ currentUser.slug ] },
 			fields: [ 'id' ],
 		} );
 
-		expect( outcome.ok ).toBe( true );
-		expect( outcome.result.users ).toEqual( [ { id: currentUser.id } ] );
-		expect( typeof outcome.result.total ).toBe( 'number' );
-		expect( typeof outcome.result.total_pages ).toBe( 'number' );
+		expect( bySlug.ok ).toBe( true );
+		expect( bySlug.result.items ).toEqual( [ { id: currentUser.id } ] );
+
+		const byUsername = await runCoreUsers( page, {
+			where: { usernames: [ currentUser.username ] },
+			fields: [ 'id' ],
+		} );
+
+		expect( byUsername.ok ).toBe( true );
+		expect( byUsername.result.items ).toEqual( [ { id: currentUser.id } ] );
 	} );
 
-	test( 'filters collection mode by role', async ( { page } ) => {
+	test( 'filters users by role', async ( { page } ) => {
 		const outcome = await runCoreUsers( page, {
-			roles: [ 'administrator' ],
+			where: { roles: [ 'administrator' ] },
 			fields: [ 'id', 'roles' ],
 		} );
 
 		expect( outcome.ok ).toBe( true );
 		expect(
-			outcome.result.users.some( ( user ) => user.id === currentUser.id )
+			outcome.result.items.some( ( user ) => user.id === currentUser.id )
 		).toBe( true );
-		for ( const user of outcome.result.users ) {
+		for ( const user of outcome.result.items ) {
 			expect( user.roles ).toContain( 'administrator' );
 		}
+	} );
+
+	test( 'paginates the results', async ( { page } ) => {
+		const outcome = await runCoreUsers( page, {
+			fields: [ 'id' ],
+			pagination: { page: 1, per_page: 1 },
+		} );
+
+		expect( outcome.ok ).toBe( true );
+		expect( outcome.result.items ).toHaveLength( 1 );
+		expect( outcome.result.pagination.total_pages ).toBe(
+			outcome.result.pagination.total
+		);
+	} );
+
+	test( 'rejects the old root-level filters', async ( { page } ) => {
+		const outcome = await runCoreUsers( page, {
+			id: currentUser.id,
+		} );
+
+		expect( outcome.ok ).toBe( false );
 	} );
 } );

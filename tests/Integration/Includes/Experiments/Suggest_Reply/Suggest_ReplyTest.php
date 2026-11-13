@@ -39,7 +39,6 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 		add_filter( 'wpai_has_ai_credentials', '__return_true' );
 
-		update_option( 'wpai_features_enabled', true );
 		update_option( 'wpai_feature_suggest-reply_enabled', true );
 
 		$this->admin_user_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
@@ -64,7 +63,6 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
-		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_suggest-reply_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );

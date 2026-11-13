@@ -76,9 +76,8 @@ class Site_HealthTest extends WP_UnitTestCase {
 		remove_all_filters( 'debug_information' );
 		remove_all_filters( 'site_status_tests' );
 		remove_all_filters( 'wpai_has_ai_credentials' );
-		delete_option( Settings_Registration::GLOBAL_OPTION );
+		remove_all_filters( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_site-health-test-feature_enabled' );
-		unregister_setting( Settings_Registration::OPTION_GROUP, Settings_Registration::GLOBAL_OPTION );
 		unregister_setting( Settings_Registration::OPTION_GROUP, 'wpai_feature_site-health-test-feature_enabled' );
 		unregister_setting( Settings_Registration::OPTION_GROUP, 'wpai_feature_site-health-test-feature_field_developer' );
 		parent::tearDown();
@@ -145,17 +144,24 @@ class Site_HealthTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that the ai_enabled field reflects the global toggle option.
+	 * Tests that the ai_enabled field reflects the wpai_features_enabled filter.
 	 *
 	 * @since 1.3.0
 	 */
-	public function test_debug_information_reflects_global_enabled_state(): void {
-		update_option( Settings_Registration::GLOBAL_OPTION, true );
+	public function test_debug_information_reflects_features_enabled_filter(): void {
+		$result = $this->site_health->add_debug_information( array() );
+		$fields = $result['ai-plugin']['fields'];
+
+		$this->assertSame( 'yes', $fields['ai_enabled']['debug'], 'Should default to yes when the filter is untouched.' );
+
+		add_filter( 'wpai_features_enabled', '__return_false' );
 
 		$result = $this->site_health->add_debug_information( array() );
 		$fields = $result['ai-plugin']['fields'];
 
-		$this->assertSame( 'yes', $fields['ai_enabled']['debug'] );
+		$this->assertSame( 'no', $fields['ai_enabled']['debug'], 'Should report no when the filter disables features.' );
+
+		remove_filter( 'wpai_features_enabled', '__return_false' );
 	}
 
 	/**

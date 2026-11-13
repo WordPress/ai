@@ -11,7 +11,6 @@ namespace WordPress\AI\Experiments\Key_Encryption;
 
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Experiments\Experiment_Category;
-use WordPress\AI\Settings\Settings_Registration;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
@@ -37,6 +36,18 @@ class Key_Encryption extends Abstract_Feature {
 	 * @since 1.1.0
 	 */
 	public const RESUME_MIGRATION_OPTION = 'wpai_key_encryption_resume_migration';
+
+	/**
+	 * Query arguments that return the ID of every site in the network.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @var array<string, int|string>
+	 */
+	private const ALL_SITE_IDS_QUERY = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+		'fields' => 'ids',
+		'number' => 0,
+	);
 
 	/**
 	 * Process-wide bridge instance.
@@ -89,6 +100,12 @@ class Key_Encryption extends Abstract_Feature {
 			'description' => __( 'Encrypts AI provider API keys at rest using bundled libsodium encryption. Keys are transparently decrypted on read and re-encrypted on write. Disabling the experiment or deactivating the plugin restores plaintext keys.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'none',
+			'usage'       => array(
+				'trigger' => 'none',
+				'runs'    => __( 'Encrypts stored AI provider API keys when enabled', 'ai' ),
+				'sends'   => __( 'Nothing', 'ai' ),
+				'details' => __( 'Restores plaintext keys when disabled', 'ai' ),
+			),
 		);
 	}
 
@@ -98,6 +115,10 @@ class Key_Encryption extends Abstract_Feature {
 	 * @since 1.1.0
 	 */
 	public function register(): void {
+		if ( ! function_exists( 'wp_get_secret' ) ) {
+			require_once WPAI_PLUGIN_DIR . 'includes/Vendor/Secrets/load.php';
+		}
+
 		self::get_bridge()->register_option_filters();
 	}
 
@@ -111,7 +132,7 @@ class Key_Encryption extends Abstract_Feature {
 	}
 
 	/**
-	 * Returns whether the experiment is effectively enabled (global AND individual toggle on).
+	 * Returns whether the experiment is effectively enabled (individual toggle on).
 	 *
 	 * Does not consult `Abstract_Feature::is_enabled()` because that
 	 * method caches per-instance, which would be stale immediately after
@@ -120,9 +141,16 @@ class Key_Encryption extends Abstract_Feature {
 	 * @since 1.1.0
 	 */
 	public static function is_effectively_enabled(): bool {
-		$global     = self::coerce_bool( get_option( Settings_Registration::GLOBAL_OPTION, false ) );
-		$individual = self::coerce_bool( get_option( self::get_toggle_option_name(), false ) );
-		return $global && $individual;
+		return self::coerce_bool( get_option( self::get_toggle_option_name(), false ) );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since 1.5.0
+	 */
+	public function get_preloaded_options(): array {
+		return array( self::RESUME_MIGRATION_OPTION );
 	}
 
 	/**
@@ -132,13 +160,9 @@ class Key_Encryption extends Abstract_Feature {
 	 */
 	public function register_settings(): void {
 		$individual = self::get_toggle_option_name();
-		$global     = Settings_Registration::GLOBAL_OPTION;
 
 		self::ensure_action( "update_option_{$individual}", array( self::class, 'handle_individual_toggle_update' ), 10, 2 );
 		self::ensure_action( "add_option_{$individual}", array( self::class, 'handle_individual_toggle_add' ), 10, 2 );
-
-		self::ensure_action( "update_option_{$global}", array( self::class, 'handle_global_toggle_update' ), 10, 2 );
-		self::ensure_action( "add_option_{$global}", array( self::class, 'handle_global_toggle_add' ), 10, 2 );
 
 		// Process any deferred re-encryption flagged by the activation hook. Priority 16 runs
 		// after `_wp_connectors_init` (priority 15), so `get_ai_connectors()` is populated.
@@ -177,6 +201,35 @@ class Key_Encryption extends Abstract_Feature {
 	}
 
 	/**
+	 * Runs a callback on the current site, or on every site of the network.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @param bool     $network_wide Whether to run the callback on every site of the network.
+	 * @param callable $callback     Callback to run in the context of each site.
+	 */
+	public static function for_each_site( bool $network_wide, callable $callback ): void {
+		$site_ids = array( get_current_blog_id() );
+
+		if ( $network_wide && is_multisite() ) {
+			$site_ids = get_sites( self::ALL_SITE_IDS_QUERY );
+		}
+
+		foreach ( $site_ids as $site_id ) {
+			// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog
+			$switched = is_multisite() && switch_to_blog( (int) $site_id );
+
+			try {
+				$callback();
+			} finally {
+				if ( $switched ) {
+					restore_current_blog();
+				}
+			}
+		}
+	}
+
+	/**
 	 * Idempotent `add_action` wrapper used for the toggle hooks.
 	 *
 	 * @since 1.1.0
@@ -202,10 +255,7 @@ class Key_Encryption extends Abstract_Feature {
 	 * @param mixed $new_value New option value.
 	 */
 	public static function handle_individual_toggle_update( $old_value, $new_value ): void {
-		$global = self::coerce_bool( get_option( Settings_Registration::GLOBAL_OPTION, false ) );
-		$was_on = $global && self::coerce_bool( $old_value );
-		$now_on = $global && self::coerce_bool( $new_value );
-		self::sync_effective_state( $was_on, $now_on );
+		self::sync_effective_state( self::coerce_bool( $old_value ), self::coerce_bool( $new_value ) );
 	}
 
 	/**
@@ -218,39 +268,7 @@ class Key_Encryption extends Abstract_Feature {
 	 */
 	public static function handle_individual_toggle_add( $option, $new_value ): void {
 		unset( $option );
-		$global = self::coerce_bool( get_option( Settings_Registration::GLOBAL_OPTION, false ) );
-		$now_on = $global && self::coerce_bool( $new_value );
-		self::sync_effective_state( false, $now_on );
-	}
-
-	/**
-	 * Handles updates to the global features toggle.
-	 *
-	 * @since 1.1.0
-	 *
-	 * @param mixed $old_value Previous option value.
-	 * @param mixed $new_value New option value.
-	 */
-	public static function handle_global_toggle_update( $old_value, $new_value ): void {
-		$individual = self::coerce_bool( get_option( self::get_toggle_option_name(), false ) );
-		$was_on     = self::coerce_bool( $old_value ) && $individual;
-		$now_on     = self::coerce_bool( $new_value ) && $individual;
-		self::sync_effective_state( $was_on, $now_on );
-	}
-
-	/**
-	 * Handles the first-time write of the global features toggle.
-	 *
-	 * @since 1.1.0
-	 *
-	 * @param string $option    Option name.
-	 * @param mixed  $new_value New option value.
-	 */
-	public static function handle_global_toggle_add( $option, $new_value ): void {
-		unset( $option );
-		$individual = self::coerce_bool( get_option( self::get_toggle_option_name(), false ) );
-		$now_on     = self::coerce_bool( $new_value ) && $individual;
-		self::sync_effective_state( false, $now_on );
+		self::sync_effective_state( false, self::coerce_bool( $new_value ) );
 	}
 
 	/**

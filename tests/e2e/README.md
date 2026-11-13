@@ -4,7 +4,7 @@ This directory contains end-to-end tests for the project, utilizing [Playwright]
 
 ## Prerequisites
 
-- **Node.js** (v22)
+- **Node.js** (v24)
 - **Docker**
 
 ## Running Tests

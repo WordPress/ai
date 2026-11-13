@@ -4,6 +4,15 @@
 
 The Content Summarization experiment adds AI-powered content summarization to the WordPress post editor. It provides a "Generate AI Summary" button in the post status panel that uses AI to create concise summaries of post content. The generated summary is inserted as a group variation block at the top of the post content. The experiment registers a WordPress Ability (`ai/summarization`) that can be used both through the admin UI and directly via REST API requests.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** No, only when you ask
+- **When it runs:** When you click Generate Summary or run the bulk action
+- **Sent to your AI provider:** Post content, title, slug, author name, excerpt, content type, and assigned categories and tags
+- **Requests and data:** One request per post
+- **Good to know:** The bulk action on the Posts screen saves the summary to each post directly, without a preview.
+
 ## Overview
 
 ### For End Users

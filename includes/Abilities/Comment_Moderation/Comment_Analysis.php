@@ -14,6 +14,7 @@ use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation;
 
 use function WordPress\AI\get_preferred_models_for_text_generation;
+use function WordPress\AI\is_post_publicly_readable;
 
 /**
  * Comment Analysis WordPress Ability.
@@ -217,7 +218,7 @@ class Comment_Analysis extends Abstract_Ability {
 	/**
 	 * Returns context from the post for comment analysis.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param int $post_id The ID of the post.
 	 * @return string|null The content of the post, or null if no context is available.
@@ -263,26 +264,20 @@ class Comment_Analysis extends Abstract_Ability {
 	/**
 	 * Checks whether a post's content may be sent as context.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param \WP_Post $post The post the comment was left on.
 	 * @return bool Whether the post's content is safe to share as context.
 	 */
 	private function is_post_context_shareable( \WP_Post $post ): bool {
-		if ( '' !== (string) $post->post_password ) {
-			return false;
-		}
-
-		$status = get_post_status_object( $post->post_status );
-
-		$shareable = $status instanceof \stdClass && ! empty( $status->public );
+		$shareable = is_post_publicly_readable( $post );
 
 		/**
 		 * Filters whether a post's content may be sent as comment analysis context.
 		 *
 		 * Defaults to true only for publicly readable, non-password-protected posts.
 		 *
-		 * @since x.x.x
+		 * @since 1.4.0
 		 *
 		 * @param bool     $shareable Whether the post's content is safe to share as context.
 		 * @param \WP_Post $post      The post the comment was left on.
@@ -293,7 +288,7 @@ class Comment_Analysis extends Abstract_Ability {
 	/**
 	 * Escapes untrusted text before it is embedded in the pseudo-XML prompt.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $text The untrusted text.
 	 * @return string The text with markup delimiters neutralized.
@@ -320,7 +315,7 @@ class Comment_Analysis extends Abstract_Ability {
 		 * and integrations that provide their own comment analysis implementation.
 		 *
 		 * @since 0.9.0
-		 * @since x.x.x Added the `$post_id` parameter.
+		 * @since 1.4.0 Added the `$post_id` parameter.
 		 *
 		 * @param array{toxicity_score: float, sentiment: string, value_score: float}|null $result  Precomputed analysis result.
 		 * @param string                                                                   $content Comment content.

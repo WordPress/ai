@@ -8,9 +8,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
  */
 const {
 	disableExperiment,
-	disableExperiments,
 	enableExperiment,
-	enableExperiments,
 } = require( '../../utils/helpers' );
 
 test.describe( 'Comment Moderation Experiment', () => {
@@ -18,9 +16,6 @@ test.describe( 'Comment Moderation Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Comment Moderation Experiment.
 		await enableExperiment( admin, page, 'Comment Moderation' );
 	} );
@@ -30,9 +25,6 @@ test.describe( 'Comment Moderation Experiment', () => {
 		page,
 		requestUtils,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Disable the Comment Moderation Experiment.
 		await disableExperiment( admin, page, 'Comment Moderation' );
 
@@ -108,39 +100,10 @@ test.describe( 'Comment Moderation Experiment', () => {
 		).toBeVisible();
 	} );
 
-	test( 'Ensure the Comment Moderation Experiment UI is not visible when Experiments are globally disabled', async ( {
-		admin,
-		page,
-	} ) => {
-		// Enable the Comment Moderation Experiment.
-		await enableExperiment( admin, page, 'Comment Moderation' );
-
-		// Globally turn off Experiments.
-		await disableExperiments( admin, page );
-
-		// Go to the comments admin page.
-		await admin.visitAdminPage( 'edit-comments.php' );
-
-		// Ensure the comment sentiment, toxicity and value badges are not visible.
-		await expect( page.locator( '.wpai_sentiment' ) ).not.toBeVisible();
-
-		await expect( page.locator( '.wpai_toxicity' ) ).not.toBeVisible();
-
-		await expect( page.locator( '.wpai_value_score' ) ).not.toBeVisible();
-
-		// Ensure our bulk option doesn't exist.
-		await expect(
-			page.locator( '#bulk-action-selector-top' )
-		).not.toContainText( 'Analyze Sentiment, Toxicity, and Value' );
-	} );
-
 	test( 'Ensure the Comment Moderation Experiment UI is not visible when the experiment is disabled', async ( {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Disable the Comment Moderation Experiment.
 		await disableExperiment( admin, page, 'Comment Moderation' );
 
@@ -166,7 +129,6 @@ test.describe( 'Comment Moderation Experiment', () => {
 		requestUtils,
 	} ) => {
 		await requestUtils.deleteAllComments();
-		await enableExperiments( admin, page );
 		await enableExperiment( admin, page, 'Comment Moderation' );
 
 		// Create a post for the comments.
@@ -352,9 +314,6 @@ test.describe( 'Comment Moderation Experiment', () => {
 		page,
 		requestUtils,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Comment Moderation Experiment.
 		await enableExperiment( admin, page, 'Comment Moderation' );
 

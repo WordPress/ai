@@ -14,9 +14,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 const {
 	clearCredentials,
 	disableExperiment,
-	disableExperiments,
 	enableExperiment,
-	enableExperiments,
 	seedCredentials,
 } = require( '../../utils/helpers' );
 
@@ -77,9 +75,6 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Alt Text Generation Experiment.
 		await enableExperiment( admin, page, 'Alt Text Generation' );
 	} );
@@ -89,9 +84,6 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		requestUtils,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Alt Text Generation Experiment.
 		await enableExperiment( admin, page, 'Alt Text Generation' );
 
@@ -135,9 +127,6 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		page,
 		requestUtils,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Alt Text Generation Experiment.
 		await enableExperiment( admin, page, 'Alt Text Generation' );
 
@@ -261,9 +250,6 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		page,
 		requestUtils,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Alt Text Generation Experiment.
 		await enableExperiment( admin, page, 'Alt Text Generation' );
 
@@ -309,9 +295,6 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		page,
 		requestUtils,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Alt Text Generation Experiment.
 		await enableExperiment( admin, page, 'Alt Text Generation' );
 
@@ -377,85 +360,12 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		).toBeChecked();
 	} );
 
-	test( 'Ensure the Alt Text Generation Experiment UI is not visible when Experiments are globally disabled', async ( {
-		admin,
-		editor,
-		requestUtils,
-		page,
-	} ) => {
-		// Enable the Alt Text Generation Experiment.
-		await enableExperiment( admin, page, 'Alt Text Generation' );
-
-		// Globally turn off Experiments.
-		await disableExperiments( admin, page );
-
-		// Upload a test image.
-		await requestUtils.uploadMedia( TEST_IMAGE_PATH );
-
-		// Go to the Media Library.
-		await admin.visitAdminPage( 'upload.php', 'mode=grid' );
-
-		// Click on the first image in the Media Library.
-		await page.getByRole( 'checkbox' ).first().click();
-
-		// Ensure the alt text generation button is not visible.
-		await expect(
-			page.getByRole( 'button', { name: 'Generate' } )
-		).toBeHidden();
-
-		// Create a new post.
-		await admin.createNewPost( {
-			postType: 'post',
-			title: 'Test Alt Text Generation Experiment Globally Disabled',
-			content:
-				'This is some test content for the Alt Text Generation Experiment.',
-		} );
-
-		// Save the post.
-		await editor.saveDraft();
-
-		// Insert a blank image block.
-		await editor.insertBlock( {
-			name: 'core/image',
-		} );
-
-		// Click the Media Library button in the image block.
-		const imageBlock = editor.canvas.locator( '.wp-block-image' ).first();
-		const mediaLibraryButton = imageBlock
-			.getByRole( 'button', { name: 'Media Library' } )
-			.first();
-		await mediaLibraryButton.click();
-
-		// Click on the first image in the Media Library.
-		await page.getByRole( 'checkbox' ).first().click();
-
-		// Ensure the alt text generation button is not visible.
-		await expect(
-			page.getByRole( 'button', { name: 'Generate' } )
-		).toBeHidden();
-
-		// Click the Select button.
-		await page
-			.getByRole( 'button', { name: 'Select', exact: true } )
-			.click();
-
-		// Ensure the Generate button is not visible in the sidebar.
-		await expect(
-			page.getByRole( 'button', { name: 'Generate Alt Text' } )
-		).toBeHidden();
-
-		await editor.saveDraft();
-	} );
-
 	test( 'Ensure the Alt Text Generation Experiment UI is not visible when the experiment is disabled', async ( {
 		admin,
 		editor,
 		requestUtils,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Disable the Alt Text Generation Experiment.
 		await disableExperiment( admin, page, 'Alt Text Generation' );
 
@@ -476,7 +386,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		// Create a new post.
 		await admin.createNewPost( {
 			postType: 'post',
-			title: 'Test Alt Text Generation Experiment Globally Disabled',
+			title: 'Test Alt Text Generation Experiment Disabled',
 			content:
 				'This is some test content for the Alt Text Generation Experiment.',
 		} );
@@ -522,9 +432,6 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		requestUtils,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Alt Text Generation Experiment.
 		await enableExperiment( admin, page, 'Alt Text Generation' );
 
@@ -547,9 +454,6 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		requestUtils,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Alt Text Generation Experiment.
 		await enableExperiment( admin, page, 'Alt Text Generation' );
 
@@ -602,9 +506,6 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		await clearCredentials( requestUtils );
 
 		try {
-			// Globally turn on Experiments.
-			await enableExperiments( admin, page );
-
 			// Enable the Alt Text Generation Experiment.
 			await enableExperiment( admin, page, 'Alt Text Generation' );
 
@@ -649,9 +550,6 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		requestUtils,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Alt Text Generation Experiment.
 		await enableExperiment( admin, page, 'Alt Text Generation' );
 
@@ -692,9 +590,6 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		requestUtils,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Alt Text Generation Experiment.
 		await enableExperiment( admin, page, 'Alt Text Generation' );
 
@@ -748,9 +643,6 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		requestUtils,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Disable the alt text generation experiment.
 		await disableExperiment( admin, page, 'Alt Text Generation' );
 

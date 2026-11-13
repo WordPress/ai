@@ -8,9 +8,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
  */
 const {
 	disableExperiment,
-	disableExperiments,
 	enableExperiment,
-	enableExperiments,
 } = require( '../../utils/helpers' );
 
 test.describe( 'Type-ahead Text Experiment', () => {
@@ -18,9 +16,6 @@ test.describe( 'Type-ahead Text Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Type-ahead Text Experiment.
 		await enableExperiment( admin, page, 'Type-ahead Text' );
 	} );
@@ -30,9 +25,6 @@ test.describe( 'Type-ahead Text Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Type-ahead Text Experiment.
 		await enableExperiment( admin, page, 'Type-ahead Text' );
 
@@ -82,54 +74,11 @@ test.describe( 'Type-ahead Text Experiment', () => {
 		await editor.saveDraft();
 	} );
 
-	test( 'Ensure the Type-ahead Text Experiment UI is not visible when Experiments are globally disabled', async ( {
-		admin,
-		editor,
-		page,
-	} ) => {
-		// Enable the Type-ahead Text Experiment.
-		await enableExperiment( admin, page, 'Type-ahead Text' );
-
-		// Globally turn off Experiments.
-		await disableExperiments( admin, page );
-
-		// Create a new post.
-		await admin.createNewPost( {
-			postType: 'post',
-			title: 'Test Type-ahead Text Experiment Globally Disabled',
-			content:
-				'This is some test content for the Type-ahead Text Experiment.',
-		} );
-
-		// Save the post.
-		await editor.saveDraft();
-
-		// Add a block.
-		await editor.insertBlock( {
-			name: 'core/paragraph',
-			attributes: {
-				content: 'This paragraph needs more text.',
-			},
-		} );
-
-		// Click into the block.
-		await editor.canvas
-			.getByRole( 'document', { name: 'Block: Paragraph' } )
-			.last()
-			.click();
-
-		// Ensure the type-ahead text is not visible.
-		await expect( editor.canvas.getByRole( 'status' ) ).toBeHidden();
-	} );
-
 	test( 'Ensure the Type-ahead Text Experiment UI is not visible when the experiment is disabled', async ( {
 		admin,
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Disable the Type-ahead Text Experiment.
 		await disableExperiment( admin, page, 'Type-ahead Text' );
 

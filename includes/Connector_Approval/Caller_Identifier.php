@@ -89,10 +89,14 @@ final class Caller_Identifier {
 			$wp_includes = 'wp-includes';
 		}
 
-		$core   = wp_normalize_path( ABSPATH . $wp_includes ) . '/';
-		$plugin = wp_normalize_path( dirname( __DIR__ ) ) . '/';
+		$core      = wp_normalize_path( ABSPATH . $wp_includes ) . '/';
+		$plugin    = wp_normalize_path( dirname( __DIR__ ) ) . '/';
+		$gutenberg = wp_normalize_path( WP_PLUGIN_DIR ) . '/gutenberg/';
 
 		$this->skip_prefixes = array(
+			// Gutenberg's polyfill of core's connectors.php, which validates
+			// connector keys in its place while the plugin is active.
+			$gutenberg . 'lib/compat/wordpress-7.0/default-connectors.php',
 			$core . 'option.php',
 			$core . 'class-wp-hook.php',
 			$core . 'plugin.php',
@@ -118,19 +122,22 @@ final class Caller_Identifier {
 	 *
 	 * @since 1.0.0
 	 *
+	 * @param list<string> $infrastructure Optional. Extension keys, as returned by
+	 *                                     extension_key(), whose frames are treated as
+	 *                                     infrastructure, like core's. Default empty.
 	 * @return array{type: string, basename: string, name: string}|null
 	 *     `null` when no plugin, mu-plugin, or theme frame could be found.
 	 */
-	public function identify(): ?array {
+	public function identify( array $infrastructure = array() ): ?array {
 		// phpcs:ignore PHPCompatibility.FunctionUse.ArgumentFunctionsUsage.DEBUG_BACKTRACE_IGNORE_ARGS
 		$frames      = debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace
-		$fingerprint = $this->fingerprint( $frames );
+		$fingerprint = $this->fingerprint( $frames ) . '|' . implode( ',', $infrastructure );
 
 		if ( array_key_exists( $fingerprint, $this->cache ) ) {
 			return $this->cache[ $fingerprint ];
 		}
 
-		$result                      = $this->resolve( $frames );
+		$result                      = $this->resolve( $frames, $infrastructure );
 		$this->cache[ $fingerprint ] = $result;
 
 		return $result;
@@ -160,10 +167,11 @@ final class Caller_Identifier {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param array<int, array<string, mixed>> $frames Raw backtrace frames.
+	 * @param array<int, array<string, mixed>> $frames         Raw backtrace frames.
+	 * @param list<string>                     $infrastructure Optional. Extension keys to skip. Default empty.
 	 * @return array{type: string, basename: string, name: string}|null
 	 */
-	private function resolve( array $frames ): ?array {
+	private function resolve( array $frames, array $infrastructure = array() ): ?array {
 		$origin = null;
 
 		foreach ( $frames as $frame ) {
@@ -178,6 +186,10 @@ final class Caller_Identifier {
 
 			$extension = $this->classify_file( $file );
 			if ( null === $extension ) {
+				continue;
+			}
+
+			if ( in_array( self::extension_key( $extension ), $infrastructure, true ) ) {
 				continue;
 			}
 
@@ -207,6 +219,22 @@ final class Caller_Identifier {
 	}
 
 	/**
+	 * Returns a key identifying an extension regardless of which of its files ran.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @param array{type: string, basename: string, name: string} $extension Extension from classify_file().
+	 * @return string Key of the form `{type}:{slug}`.
+	 */
+	public static function extension_key( array $extension ): string {
+		$slug = self::TYPE_PLUGIN === $extension['type']
+			? explode( '/', $extension['basename'] )[0]
+			: $extension['basename'];
+
+		return $extension['type'] . ':' . $slug;
+	}
+
+	/**
 	 * Attempts to map a file path to a plugin, mu-plugin, or theme.
 	 *
 	 * @since 1.0.0
@@ -214,7 +242,7 @@ final class Caller_Identifier {
 	 * @param string $file Absolute file path.
 	 * @return array{type: string, basename: string, name: string}|null
 	 */
-	private function classify_file( string $file ): ?array {
+	public function classify_file( string $file ): ?array {
 		$normalized      = wp_normalize_path( $file );
 		$plugin_base_dir = wp_normalize_path( WP_PLUGIN_DIR );
 
