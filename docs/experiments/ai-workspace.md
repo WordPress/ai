@@ -404,6 +404,8 @@ A turn is capped at five rounds by default and terminates with a status of `comp
 
 **A chat belongs to one user.** Every read matches the post author as well as the conversation ID, and a `map_meta_cap` filter grants `read_post`, `edit_post` and `delete_post` on a chat to its author alone, with no override for other administrators. A conversation ID that does not resolve for the requesting user is reported as not found rather than silently starting a new conversation. Deleting a user, or removing them from a site, deletes their chats before WordPress can reassign their content to someone else. The ownership filter and that cleanup are hooked whether or not the experiment is on.
 
+**Chats are personal data.** `Tools → Export Personal Data` includes an **AI chats** group: one item per chat, archived ones included, with its name, when it was created and last updated, whether it is archived, and each turn's message and reply. Tool results are left out. It pages at 20 chats. `Tools → Erase Personal Data` deletes all of the person's chats. A proposal from an erased chat can no longer be approved, because an approval is refused once its chat is gone. Like the ownership filter, the exporter and eraser (`Conversation_Privacy`) are hooked whether or not the experiment is on, and they find archived chats even while the `wpai_archived` status is not registered.
+
 **A turn replays a bounded window.** The whole transcript is kept for display, but a turn sends the model only the last 40 stored messages (see [`wpai_workspace_replay_messages`](#wpai_workspace_replay_messages)), opening on a message the person sent. Within that window, tool results from before the latest turn are replaced by their retrieval summary, so a long chat does not outgrow the provider's context limit.
 
 Cancellation markers and proposals still live in **user-scoped transients** sharing the plugin's `wpai_` prefix:
@@ -458,15 +460,40 @@ curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/search-c
 
 ## Auditing with the AI Request Log
 
-Enable the **AI Request Logging** experiment and every workspace tool call and every write attempt appears at `Tools → AI Request Logs`. The shape is fixed so workspace rows join with rows any other ability consumer writes:
+Every agent event is recorded in one place, `Agent_Audit`: each tool call, including a withheld one; each item an approval writes; and each event in a proposal's life. Enable the **AI Request Logging** experiment and they appear at `Tools → AI Request Logs`, where the **Type** filter's `agent` value shows only them and the **Status** filter's `denied` value shows what was refused.
 
-- `type` is always `ability`.
-- `operation` is the ability name — `ai/search-content`, `ai/read-content-bodies`, `ai/propose-drafts`, `ai/propose-template` — or `ai/create-drafts` or `ai/create-template` for a write attempt.
-- `status` is `success`, `error`, `denied`, or `skipped` for an idempotent duplicate. A **denial is recorded separately from a failure**: a refusal from the Abilities API sets `denied` and records `denial_reason` in the context.
-- `context` carries `surface` (always `ai-workspace`), `conversation_id`, the `round` index, and a `tool` object naming the ability, the function name and the call ID. Write rows add a `proposal` object with the proposal ID, item key, post type and status.
-- `user_id` is the person the tool ran as.
+- `type` is always `agent`. Rows written before this type existed keep the `ability` type.
+- `operation` is one of:
+  - for a tool call, the ability name, such as `ai/search-content` or `ai/propose-post-changes`;
+  - for an item an approval wrote, the kind's write operation: `ai/create-drafts`, `ai/create-template`, `ai/update-post-fields` or `ai/update-site-identity`;
+  - for a proposal event, `proposal_created`, `proposal_edited` (the person changed a value before approving), `proposal_declined`, `proposal_expired` (recorded once, when an expired proposal is next read), `proposal_failed` (a write that threw, or one interrupted for longer than the approval lock) or `proposal_refused` (an approval after the chat was deleted).
+- `status` is `success`, `error`, `denied`, `skipped` (an item left as it was: unchanged, stale, locked or a duplicate), or `timeout` for an expired proposal. A **denial is recorded separately from a failure**: a refusal sets `denied` and records `denial_reason` in the context.
+- `context` carries `surface` (always `ai-workspace`) and `conversation_id`.
+  - Tool rows add the `round` index and a `tool` object naming the ability, the function name and the call ID.
+  - Item rows add a `proposal` object with the proposal ID and item key, plus the post ID, post type, status and field, or the option.
+  - Proposal event rows add a `proposal` object with the proposal ID, its kind and its item keys, and for an edit the edited item keys. Failures and refusals add `error_code`.
+- `user_id` is the person the tool ran as, or whose proposal it is.
+
+No row carries post content or option values: a row names the field or option that changed, never what it changed to.
 
 Between them, those fields answer "what did the assistant do on this site, for whom, and was it allowed" without reading application code. Logging is best-effort: `log_ai_request()` returns `false` harmlessly when the logging experiment is off, so it is called unconditionally and costs nothing when nobody is watching.
+
+### `wpai_agent_event`
+
+Fires once for every event above, before its row is written, whether or not AI Request Logging is on, so an audit plugin need not depend on that experiment.
+
+```php
+add_action(
+	'wpai_agent_event',
+	function ( string $operation, string $status, array $context, string $error ) {
+		// $operation, $status and $context are the row's fields; $error is its error message, or ''.
+	},
+	10,
+	4
+);
+```
+
+It covers agent turns and approvals in the AI Workspace only. A direct MCP call to an ability does not fire it.
 
 ## Extending the Experiment
 
@@ -627,7 +654,8 @@ Filters whether a function-calling-capable model is available, for connectors th
    - As a non-administrator, confirm the Tools menu entry is absent and the routes return 403
    - With a limited role that can reach the screen via a filtered capability, confirm search results never contain another author's private or draft posts
 6. **Auditing:**
-   - Enable **AI Request Logging** and confirm each tool call and write attempt appears with `surface: ai-workspace`, its conversation ID and round
+   - Enable **AI Request Logging** and confirm each tool call and write attempt appears with type `agent`, `surface: ai-workspace`, its conversation ID and round
+   - Propose a change, edit it and approve it; decline a second one. Confirm `proposal_created`, `proposal_edited` and `proposal_declined` rows appear, and filter the log by type `agent` and status `denied`
 
 ### Automated tests
 

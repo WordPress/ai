@@ -14,10 +14,12 @@ use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_REST_Server;
+use WordPress\AI\Experiments\AI_Workspace\Agent_Audit;
 use WordPress\AI\Experiments\AI_Workspace\Conversation_Store;
 use WordPress\AI\Experiments\AI_Workspace\Draft_Writer;
 use WordPress\AI\Experiments\AI_Workspace\Proposal_Kind;
 use WordPress\AI\Experiments\AI_Workspace\Proposal_Store;
+use WordPress\AI\Experiments\AI_Workspace\Turn_Runner;
 use WordPress\AiClient\Messages\DTO\MessagePart;
 use WordPress\AiClient\Messages\DTO\UserMessage;
 
@@ -262,6 +264,8 @@ final class Proposal_Controller {
 		$this->store->delete( $proposal_id, $user_id );
 		$this->store->release( $proposal_id, $user_id );
 
+		Agent_Audit::proposal( 'proposal_declined', 'success', $proposal );
+
 		$conversation_id = isset( $proposal['conversation_id'] ) && is_string( $proposal['conversation_id'] )
 			? $proposal['conversation_id']
 			: '';
@@ -336,6 +340,8 @@ final class Proposal_Controller {
 		 */
 		if ( null === $this->conversations->get( $conversation_id, $user_id ) ) {
 			$this->store->delete( $proposal_id, $user_id );
+
+			Agent_Audit::proposal( 'proposal_refused', Turn_Runner::LOG_STATUS_DENIED, $proposal, array(), 'workspace_proposal_chat_deleted' );
 
 			return new WP_Error(
 				'workspace_proposal_chat_deleted',
@@ -419,6 +425,10 @@ final class Proposal_Controller {
 
 		$proposal = $edited;
 
+		if ( is_array( $edits ) && array() !== $edits ) {
+			Agent_Audit::proposal( 'proposal_edited', 'success', $proposal, array( 'edited' => array_map( 'strval', array_keys( $edits ) ) ) );
+		}
+
 		$proposal['status']          = 'executing';
 		$proposal['executing_since'] = time();
 		$proposal['results']         = array();
@@ -487,6 +497,8 @@ final class Proposal_Controller {
 		unset( $proposal['executing_since'] );
 		$this->store->save( $proposal );
 		$this->store->release( $proposal_id, $user_id );
+
+		Agent_Audit::proposal( 'proposal_failed', 'error', $proposal, array(), 'workspace_proposal_write_failed' );
 
 		$results = $this->stored_results( $proposal );
 		$counts  = array_intersect_key( $results, array_flip( Proposal_Kind::OUTCOMES ) );
@@ -610,7 +622,7 @@ final class Proposal_Controller {
 		 * still lapses on its own, {@see Proposal_Store::GRACE} after its last save.
 		 */
 		if ( $this->is_pending( $proposal ) && $this->store->is_expired( $proposal ) ) {
-			$this->store->delete( $proposal_id, $user_id );
+			$this->store->expire( $proposal );
 
 			return new WP_Error(
 				'workspace_proposal_expired',

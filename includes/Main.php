@@ -22,6 +22,7 @@ use WordPress\AI\CLI\Embedding_Sync_Command;
 use WordPress\AI\CLI\Embeddings_Command;
 use WordPress\AI\Connectors\Featured_Connectors;
 use WordPress\AI\Embeddings\Sync\Embedding_Sync;
+use WordPress\AI\Experiments\AI_Workspace\Conversation_Privacy;
 use WordPress\AI\Experiments\AI_Workspace\Conversation_Store;
 use WordPress\AI\Experiments\Experiments;
 use WordPress\AI\Features\Loader;
@@ -99,6 +100,9 @@ final class Main {
 
 		// Keep AI Workspace chats private to their owner regardless of experiment state.
 		Conversation_Store::register_lifecycle_hooks();
+
+		// Export and erase AI Workspace chats with personal data regardless of experiment state.
+		Conversation_Privacy::register();
 
 		// List featured Connector plugins on the Connectors screen.
 		( new Featured_Connectors() )->init();

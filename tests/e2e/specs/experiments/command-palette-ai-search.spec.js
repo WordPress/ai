@@ -220,10 +220,12 @@ test.describe( 'Command Palette AI Search', () => {
 			await route.continue();
 		} );
 
-		const input = await searchPalette( page, 'q' );
+		// Characters no command label contains, so the palette has no results of its own
+		// whichever experiments (and so admin screens) are on.
+		const input = await searchPalette( page, '~' );
 		await expect( page.getByText( 'No results found.' ) ).toBeVisible();
 
-		await input.fill( 'qz' );
+		await input.fill( '~^' );
 		await expect( page.getByText( 'No results found.' ) ).toBeVisible();
 
 		// Longer than the loader's debounce.

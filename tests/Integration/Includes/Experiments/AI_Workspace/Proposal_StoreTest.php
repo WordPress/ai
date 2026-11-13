@@ -7,6 +7,7 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace;
 
+use ReflectionProperty;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Experiments\AI_Workspace\Draft_Writer;
@@ -18,6 +19,7 @@ use WordPress\AI\Experiments\AI_Workspace\Propose_Site_Identity;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Template;
 use WordPress\AI\Experiments\AI_Workspace\Site_Identity_Writer;
 use WordPress\AI\Experiments\AI_Workspace\Template_Writer;
+use WordPress\AI\Logging\Logging_Integration;
 use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Test_Update_Kind;
 
 /**
@@ -53,12 +55,25 @@ class Proposal_StoreTest extends WP_UnitTestCase {
 	private int $user_id = 0;
 
 	/**
+	 * Manager the logging integration held before the test replaced it.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var \WordPress\AI\Logging\AI_Request_Log_Manager|null
+	 */
+	private $original_shared_manager = null;
+
+	/**
 	 * Set up test case.
 	 *
 	 * @since x.x.x
 	 */
 	public function setUp(): void {
 		parent::setUp();
+
+		// Storing a proposal records an agent event; nothing here reads the log, so none is written.
+		$this->original_shared_manager = Logging_Integration::get_log_manager();
+		$this->set_shared_manager( null );
 
 		( new Show_In_Abilities() )->register();
 
@@ -89,7 +104,22 @@ class Proposal_StoreTest extends WP_UnitTestCase {
 
 		wp_set_current_user( 0 );
 
+		$this->set_shared_manager( $this->original_shared_manager );
+
 		parent::tearDown();
+	}
+
+	/**
+	 * Replaces the manager the logging integration shares.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WordPress\AI\Logging\AI_Request_Log_Manager|null $manager Manager, or null for a disabled experiment.
+	 */
+	private function set_shared_manager( ?\WordPress\AI\Logging\AI_Request_Log_Manager $manager ): void {
+		$property = new ReflectionProperty( Logging_Integration::class, 'log_manager' );
+		$property->setAccessible( true );
+		$property->setValue( null, $manager );
 	}
 
 	/**

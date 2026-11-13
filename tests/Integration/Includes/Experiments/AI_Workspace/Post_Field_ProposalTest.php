@@ -12,6 +12,7 @@ use WP_REST_Request;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Content\Read_Content_Bodies;
 use WordPress\AI\Abilities\Show_In_Abilities;
+use WordPress\AI\Experiments\AI_Workspace\Agent_Audit;
 use WordPress\AI\Experiments\AI_Workspace\Conversation_Store;
 use WordPress\AI\Experiments\AI_Workspace\Post_Field_Writer;
 use WordPress\AI\Experiments\AI_Workspace\Proposal_Kind;
@@ -1336,5 +1337,55 @@ class Post_Field_ProposalTest extends WP_UnitTestCase {
 		);
 
 		$this->assertIsArray( $later );
+	}
+
+	/**
+	 * A content update records the post, the field and the outcome, never the content (R14).
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_content_update_records_the_field_not_the_content(): void {
+		$post_id = $this->make_post( array( 'post_content' => '<!-- wp:paragraph --><p>Private old body.</p><!-- /wp:paragraph -->' ) );
+
+		$events = array();
+		add_action(
+			Agent_Audit::ACTION,
+			static function ( string $operation, string $status, array $context ) use ( &$events ): void {
+				$events[] = array(
+					'operation' => $operation,
+					'status'    => $status,
+					'context'   => $context,
+				);
+			},
+			10,
+			3
+		);
+
+		$proposal = $this->store_changes(
+			array(
+				array(
+					'post_id' => $post_id,
+					'field'   => 'content',
+					'value'   => '<!-- wp:paragraph --><p>Private new body.</p><!-- /wp:paragraph -->',
+				),
+			)
+		);
+
+		$this->assertSame( 200, $this->execute( $proposal )->get_status() );
+
+		$writes = array_values(
+			array_filter(
+				$events,
+				static function ( array $event ): bool {
+					return Post_Field_Writer::LOG_OPERATION === $event['operation'];
+				}
+			)
+		);
+
+		$this->assertCount( 1, $writes );
+		$this->assertSame( 'success', $writes[0]['status'] );
+		$this->assertSame( 'content', $writes[0]['context']['proposal']['field'] );
+		$this->assertSame( $post_id, $writes[0]['context']['proposal']['post_id'] );
+		$this->assertStringNotContainsString( 'Private', (string) wp_json_encode( $events ), 'No event carries the old or new content.' );
 	}
 }

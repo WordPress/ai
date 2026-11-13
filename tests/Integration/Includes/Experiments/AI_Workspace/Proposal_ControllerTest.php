@@ -12,6 +12,7 @@ use WP_REST_Request;
 use WP_UnitTestCase;
 use WP_User;
 use WordPress\AI\Abilities\Show_In_Abilities;
+use WordPress\AI\Experiments\AI_Workspace\Agent_Audit;
 use WordPress\AI\Experiments\AI_Workspace\Conversation_Store;
 use WordPress\AI\Experiments\AI_Workspace\Draft_Writer;
 use WordPress\AI\Experiments\AI_Workspace\Proposal_Store;
@@ -36,6 +37,7 @@ use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Te
  * @covers \WordPress\AI\Experiments\AI_Workspace\Draft_Writer
  * @covers \WordPress\AI\Experiments\AI_Workspace\Proposal_Writer
  * @covers \WordPress\AI\Experiments\AI_Workspace\Proposal_Store
+ * @covers \WordPress\AI\Experiments\AI_Workspace\Agent_Audit
  */
 class Proposal_ControllerTest extends WP_UnitTestCase {
 
@@ -993,7 +995,7 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 		$this->assertSame( 'ai-workspace', $context['surface'] );
 		$this->assertSame( self::CONVERSATION, $context['conversation_id'] );
 		$this->assertSame( $proposal['id'], $context['proposal']['id'] );
-		$this->assertSame( 'ability', $rows[0]['type'] );
+		$this->assertSame( Agent_Audit::LOG_TYPE, $rows[0]['type'] );
 	}
 
 	/**
@@ -1697,5 +1699,259 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 		$this->assertSame( 400, $response->get_status() );
 		$this->assertSame( 'workspace_proposal_invalid_kind', $response->get_data()['code'] );
 		$this->assertSame( array(), $kind->written );
+	}
+
+	/**
+	 * Records every agent event the audit hook fires from here on.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return \ArrayObject<int, array{operation: string, status: string, context: array<string, mixed>, error: string}> The events, in order.
+	 */
+	private function capture_agent_events(): \ArrayObject {
+		$events = new \ArrayObject();
+
+		add_action(
+			Agent_Audit::ACTION,
+			static function ( string $operation, string $status, array $context, string $error ) use ( $events ): void {
+				$events[] = array(
+					'operation' => $operation,
+					'status'    => $status,
+					'context'   => $context,
+					'error'     => $error,
+				);
+			},
+			10,
+			4
+		);
+
+		return $events;
+	}
+
+	/**
+	 * Returns the agent log rows written so far.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return list<array<string, mixed>> The rows, oldest first.
+	 */
+	private function agent_log_rows(): array {
+		global $wpdb;
+		$table = $wpdb->prefix . AI_Request_Log_Schema::TABLE_NAME;
+
+		$rows = $wpdb->get_results( // phpcs:ignore
+			$wpdb->prepare( "SELECT * FROM {$table} WHERE type = %s ORDER BY id ASC", Agent_Audit::LOG_TYPE ), // phpcs:ignore
+			ARRAY_A
+		);
+
+		return is_array( $rows ) ? $rows : array();
+	}
+
+	/**
+	 * Dispatches a discard request for a proposal.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $proposal_id The proposal ID.
+	 * @return \WP_REST_Response The response.
+	 */
+	private function decline( string $proposal_id ) {
+		return rest_get_server()->dispatch( new WP_REST_Request( 'DELETE', '/ai/v1/workspace/proposals/' . $proposal_id ) );
+	}
+
+	/**
+	 * Proposing, discarding, editing and approving each record one event, in order (R14).
+	 *
+	 * @since x.x.x
+	 */
+	public function test_each_proposal_event_is_recorded_once_in_order(): void {
+		$user_id = $this->login_as( 'owner' );
+		$this->boot_logging();
+		$events = $this->capture_agent_events();
+
+		$kind    = new Test_Update_Kind();
+		$update  = $this->store_update_proposal( $kind );
+		$drafts  = $this->store_proposal( 1 );
+		$updates = $this->keys( $update );
+
+		$this->assertSame( 200, $this->decline( $drafts['id'] )->get_status() );
+		$this->assertSame( 200, $this->execute( $update['id'], $updates, self::CONVERSATION, array( $updates[0] => array( 'value' => 'Edited' ) ) )->get_status() );
+
+		$expected = array(
+			array( 'proposal_created', 'success', $update['id'] ),
+			array( 'proposal_created', 'success', $drafts['id'] ),
+			array( 'proposal_declined', 'success', $drafts['id'] ),
+			array( 'proposal_edited', 'success', $update['id'] ),
+		);
+
+		$summarize = static function ( string $operation, string $status, array $context ): array {
+			return array( $operation, $status, $context['proposal']['id'] );
+		};
+
+		$fired = array();
+		foreach ( $events as $event ) {
+			$fired[] = $summarize( $event['operation'], $event['status'], $event['context'] );
+		}
+
+		$this->assertSame( $expected, $fired, 'The hook fires once per event, in order.' );
+
+		$logged = array();
+		foreach ( $this->agent_log_rows() as $row ) {
+			$this->assertSame( (string) $user_id, (string) $row['user_id'] );
+			$logged[] = $summarize( $row['operation'], $row['status'], json_decode( (string) $row['context'], true ) );
+		}
+
+		$this->assertSame( $expected, $logged, 'Each event writes one row of the agent type.' );
+
+		$this->assertSame( Test_Update_Kind::KIND, $events[0]['context']['proposal']['kind'] );
+		$this->assertSame( $updates, $events[0]['context']['proposal']['items'] );
+		$this->assertSame( array( $updates[0] ), $events[3]['context']['proposal']['edited'] );
+		$this->assertSame( self::CONVERSATION, $events[2]['context']['conversation_id'] );
+		$this->assertSame( 'ai-workspace', $events[2]['context']['surface'] );
+		$this->assertStringNotContainsString( 'Edited', (string) wp_json_encode( $events[3] ), 'An edited value is not logged.' );
+		$this->assertStringNotContainsString( 'First', (string) wp_json_encode( $events[0] ), 'A proposed value is not logged.' );
+	}
+
+	/**
+	 * With the AI Request Logging experiment off, every event still fires the hook (R15).
+	 *
+	 * @since x.x.x
+	 */
+	public function test_events_fire_the_hook_with_logging_off(): void {
+		$this->login_as( 'owner' );
+		$this->boot_logging();
+		$this->set_shared_manager( null );
+		$events = $this->capture_agent_events();
+
+		$proposal = $this->store_proposal( 1 );
+		$this->decline( $proposal['id'] );
+
+		$this->assertSame( array( 'proposal_created', 'proposal_declined' ), array_column( $events->getArrayCopy(), 'operation' ) );
+		$this->assertSame( array(), $this->agent_log_rows(), 'Nothing is written while logging is off.' );
+	}
+
+	/**
+	 * An expired proposal records one `expired` event when it is next read, and none after.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_an_expired_proposal_is_recorded_once(): void {
+		$this->login_as( 'owner' );
+		$store    = new Proposal_Store();
+		$proposal = $this->store_proposal( 1 );
+
+		$proposal['expires'] = time() - 1;
+		$store->save( $proposal );
+
+		$events = $this->capture_agent_events();
+
+		$first  = rest_get_server()->dispatch( new WP_REST_Request( 'GET', '/ai/v1/workspace/proposals/' . $proposal['id'] ) );
+		$second = rest_get_server()->dispatch( new WP_REST_Request( 'GET', '/ai/v1/workspace/proposals/' . $proposal['id'] ) );
+
+		$this->assertSame( 410, $first->get_status() );
+		$this->assertSame( 404, $second->get_status() );
+		$this->assertCount( 1, $events );
+		$this->assertSame( 'proposal_expired', $events[0]['operation'] );
+		$this->assertSame( 'timeout', $events[0]['status'] );
+		$this->assertSame( $proposal['id'], $events[0]['context']['proposal']['id'] );
+	}
+
+	/**
+	 * A write interrupted for longer than the lock records one `failed` event when it is next read.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_an_interrupted_write_is_recorded_failed_once(): void {
+		$user_id  = $this->login_as( 'owner' );
+		$store    = new Proposal_Store();
+		$proposal = $this->store_update_proposal( new Test_Update_Kind() );
+
+		$proposal['status']          = 'executing';
+		$proposal['executing_since'] = time() - Proposal_Store::LOCK_TTL - 1;
+		$store->save( $proposal );
+
+		$events = $this->capture_agent_events();
+
+		$store->find( $proposal['id'], $user_id );
+		$store->find( $proposal['id'], $user_id );
+
+		$this->assertCount( 1, $events );
+		$this->assertSame( 'proposal_failed', $events[0]['operation'] );
+		$this->assertSame( 'error', $events[0]['status'] );
+		$this->assertSame( 'workspace_proposal_interrupted', $events[0]['context']['error_code'] );
+	}
+
+	/**
+	 * A writer that throws part way records one `failed` event.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_writer_that_throws_is_recorded_failed(): void {
+		$this->login_as( 'owner' );
+
+		$kind           = new Test_Update_Kind();
+		$kind->throw_on = 2;
+		$proposal       = $this->store_update_proposal( $kind );
+		$events         = $this->capture_agent_events();
+
+		$this->assertSame( 500, $this->execute( $proposal['id'], $this->keys( $proposal ) )->get_status() );
+
+		$this->assertSame( array( 'proposal_failed' ), array_column( $events->getArrayCopy(), 'operation' ) );
+		$this->assertSame( 'workspace_proposal_write_failed', $events[0]['context']['error_code'] );
+	}
+
+	/**
+	 * An approval refused because its chat was deleted is recorded as denied.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_an_approval_for_a_deleted_chat_is_recorded_denied(): void {
+		$user_id  = $this->login_as( 'owner' );
+		$proposal = $this->store_proposal( 1 );
+
+		$this->ensure_conversation();
+		( new Conversation_Store() )->delete( self::CONVERSATION, $user_id );
+
+		$events = $this->capture_agent_events();
+
+		$request = new WP_REST_Request( 'POST', '/ai/v1/workspace/proposals/' . $proposal['id'] . '/execute' );
+		$request->set_header( 'Content-Type', 'application/json' );
+		$request->set_body(
+			(string) wp_json_encode(
+				array(
+					'conversation_id' => self::CONVERSATION,
+					'selected'        => $this->keys( $proposal ),
+				)
+			)
+		);
+
+		$this->assertSame( 410, rest_get_server()->dispatch( $request )->get_status() );
+
+		$this->assertSame( array( 'proposal_refused' ), array_column( $events->getArrayCopy(), 'operation' ) );
+		$this->assertSame( 'denied', $events[0]['status'] );
+		$this->assertSame( 'workspace_proposal_chat_deleted', $events[0]['context']['error_code'] );
+		$this->assertSame( 'workspace_proposal_chat_deleted', $events[0]['context']['denial_reason'] );
+	}
+
+	/**
+	 * An expired proposal read through the store records one `expired` event, and none after.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_an_expired_proposal_read_through_the_store_is_recorded_once(): void {
+		$user_id  = $this->login_as( 'owner' );
+		$store    = new Proposal_Store();
+		$proposal = $this->store_proposal( 1 );
+
+		$proposal['expires'] = time() - 1;
+		$store->save( $proposal );
+
+		$events = $this->capture_agent_events();
+
+		$this->assertNull( $store->get( $proposal['id'], $user_id ) );
+		$this->assertNull( $store->get( $proposal['id'], $user_id ) );
+
+		$this->assertSame( array( 'proposal_expired' ), array_column( $events->getArrayCopy(), 'operation' ) );
+		$this->assertSame( 'workspace_proposal_expired', $events[0]['context']['error_code'] );
 	}
 }

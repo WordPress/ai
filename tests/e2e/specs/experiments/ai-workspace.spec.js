@@ -191,6 +191,197 @@ test.describe( 'AI Workspace transcript', () => {
 	 */
 } );
 
+/**
+ * Holds every turn request open until it is released.
+ *
+ * The mocked provider answers at once, so without this there is no window in
+ * which a turn is running to look at.
+ *
+ * @param {import('@playwright/test').Page} page The page.
+ * @return {Promise<{ release: () => Promise<void> }>} Lets the held turns go on.
+ */
+async function holdTurns( page ) {
+	const held = [];
+	let isReleased = false;
+
+	await page.route(
+		( url ) =>
+			url.href.includes( 'workspace/messages' ) &&
+			! url.href.includes( 'cancel' ),
+		( route ) => {
+			if ( isReleased ) {
+				return route.continue();
+			}
+
+			held.push( route );
+		}
+	);
+
+	return {
+		release: async () => {
+			isReleased = true;
+			await Promise.all( held.map( ( route ) => route.continue() ) );
+		},
+	};
+}
+
+/**
+ * Reads a sprite's source as text, so a still frame can be told from a moving one.
+ *
+ * @param {import('@playwright/test').Locator} sprite The sprite image.
+ * @return {Promise<string>} The decoded source.
+ */
+function spriteSource( sprite ) {
+	return sprite.evaluate( ( node ) => decodeURIComponent( node.src ) );
+}
+
+/**
+ * Whether a sprite image loaded and decoded.
+ *
+ * @param {import('@playwright/test').Locator} sprite The sprite image.
+ * @return {Promise<boolean>} True when the image rendered.
+ */
+function spriteLoaded( sprite ) {
+	return sprite.evaluate(
+		( node ) => node.complete && node.naturalWidth > 0
+	);
+}
+
+test.describe( 'AI Workspace Wapuu', () => {
+	test.beforeEach( async ( { admin, page } ) => {
+		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+		await admin.visitAdminPage( WORKSPACE_PAGE );
+	} );
+
+	test.afterEach( async ( { admin, page } ) => {
+		await disableExperiment( admin, page, EXPERIMENT_LABEL );
+	} );
+
+	test( 'a running turn shows the busy Wapuu beside "Responding…"', async ( {
+		page,
+	} ) => {
+		// The shared Playwright config asks for reduced motion; this test needs motion on.
+		await page.emulateMedia( { reducedMotion: 'no-preference' } );
+		await holdTurns( page );
+
+		await page
+			.getByLabel( 'Message', { exact: true } )
+			.fill( 'What should I write about next?' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+
+		const progress = page.locator( '.ai-workspace__progress' );
+		const sprite = progress.locator( '.ai-workspace__wapuu--busy' );
+
+		await expect( progress ).toContainText( 'Responding…' );
+		await expect( sprite ).toBeVisible();
+		await expect( sprite ).toHaveAttribute( 'alt', '' );
+		expect( await spriteLoaded( sprite ) ).toBe( true );
+
+		// The spinner it replaces is gone, and motion is on.
+		await expect( progress.locator( '.components-spinner' ) ).toHaveCount(
+			0
+		);
+		expect( await spriteSource( sprite ) ).not.toContain(
+			'animation:none'
+		);
+	} );
+
+	test( 'with reduced motion the busy Wapuu is a still frame', async ( {
+		page,
+	} ) => {
+		await page.emulateMedia( { reducedMotion: 'reduce' } );
+		await holdTurns( page );
+
+		await page
+			.getByLabel( 'Message', { exact: true } )
+			.fill( 'What should I write about next?' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+
+		const sprite = page.locator(
+			'.ai-workspace__progress .ai-workspace__wapuu--busy'
+		);
+
+		await expect( sprite ).toBeVisible();
+
+		/*
+		 * An image's own reduced-motion query is evaluated in a separate
+		 * document and cannot be inspected from here, so the still frame is
+		 * checked where it is made: the source switches every animation off,
+		 * and it still renders.
+		 */
+		expect( await spriteSource( sprite ) ).toContain( 'animation:none' );
+		expect( await spriteLoaded( sprite ) ).toBe( true );
+	} );
+
+	test( 'a failed turn shows the error Wapuu with the error', async ( {
+		page,
+	} ) => {
+		await page.route(
+			( url ) =>
+				url.href.includes( 'workspace/messages' ) &&
+				! url.href.includes( 'cancel' ),
+			( route ) => route.abort( 'failed' )
+		);
+
+		await page
+			.getByLabel( 'Message', { exact: true } )
+			.fill( 'What should I write about next?' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+
+		const failure = page
+			.locator( '.ai-workspace__turn' )
+			.first()
+			.locator( '.components-notice.is-error .ai-workspace__failure' );
+
+		await expect( failure ).toBeVisible();
+		await expect( failure ).not.toHaveText( '' );
+
+		const sprite = failure.locator( '.ai-workspace__wapuu--error' );
+
+		await expect( sprite ).toBeVisible();
+		await expect( sprite ).toHaveAttribute( 'alt', '' );
+		expect( await spriteLoaded( sprite ) ).toBe( true );
+
+		// Nothing is left looking busy.
+		await expect(
+			page.locator( '.ai-workspace__wapuu--busy' )
+		).toHaveCount( 0 );
+	} );
+
+	test( 'a finished turn shows the done Wapuu briefly', async ( {
+		page,
+	} ) => {
+		const turns = await holdTurns( page );
+
+		await page
+			.getByLabel( 'Message', { exact: true } )
+			.fill( 'What should I write about next?' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+
+		await expect(
+			page.locator( '.ai-workspace__wapuu--busy' )
+		).toBeVisible();
+
+		await turns.release();
+
+		const turn = page.locator( '.ai-workspace__turn' ).first();
+		await expect( turn ).toContainText( MOCKED_RESPONSE, {
+			timeout: 30000,
+		} );
+
+		const done = turn.locator( '.ai-workspace__wapuu--done' );
+
+		await expect( done ).toBeVisible();
+		await expect( done ).toHaveAttribute( 'alt', '' );
+		await expect(
+			page.locator( '.ai-workspace__wapuu--busy' )
+		).toHaveCount( 0 );
+
+		// It goes away on its own.
+		await expect( done ).toHaveCount( 0, { timeout: 5000 } );
+	} );
+} );
+
 test.describe( 'AI Workspace frame', () => {
 	test.beforeEach( async ( { admin, page } ) => {
 		await enableExperiment( admin, page, EXPERIMENT_LABEL );
