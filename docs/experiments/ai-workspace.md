@@ -54,6 +54,8 @@ The abilities offered to the model are not everything registered on the site. Th
 | `ai/search-content` | Full-text search over the post types exposed to abilities, or the newest posts when there is no search term, filterable by term, date range and featured image; returns titles, excerpts and terms | any authenticated user |
 | `ai/read-content-bodies` | Returns the full body text of up to five posts named by ID | any authenticated user |
 | `ai/list-terms` | Lists the site's categories, tags and other public terms with how many published posts each holds | any authenticated user |
+| `ai/get-site-info` | Returns the site's name, tagline, home URL, language, timezone, date and time formats and active theme, with the WordPress and PHP versions only for users who can `view_site_health_checks` | any authenticated user |
+| `ai/find-admin-screens` | Finds up to five admin screens for a short description of a task, such as "hide my site from google", from a curated map; returns only screens the user can open, each with its title, menu section and `admin_url()` link | any authenticated user |
 | `ai/propose-drafts` | Records a proposed set of drafts for a person to approve; writes nothing | `edit_posts` |
 | `ai/propose-template` | Records one proposed block template for a person to approve; writes nothing | `edit_theme_options` |
 | `ai/ask-user` | Asks the person one question with two to five choices, which ends the turn until they answer; writes nothing | any authenticated user (the ability itself requires `manage_options`) |
@@ -183,6 +185,23 @@ Two properties are worth stating plainly:
 ### `ai/list-terms`
 
 Registered alongside `ai/search-content`. It lists the terms of publicly viewable taxonomies attached to a post type exposed to abilities, with each term's `name`, `slug` and published-post `count`. With no `taxonomy` it lists categories and tags. `orderby` is `name` (the default) or `count` (most posts first), `hide_empty` defaults to true, and `per_page` is capped at 100; `total` says how many terms match in all. Term names and counts are already public, so it needs only an authenticated user. It stays until `core/terms-query` ([#1099](https://github.com/WordPress/ai/pull/1099), [#1084](https://github.com/WordPress/ai/pull/1084)) lands in this plugin.
+
+### `ai/get-site-info`
+
+Registered alongside `ai/search-content`, shown in REST, and listed over MCP by the MCP Adapter experiment like the other reads. It takes no input and returns a fixed set of fields: `name`, `tagline`, `home_url`, `language` (the site locale, such as `en_US`), `timezone` (a named zone, or a UTC offset such as `-05:00` when none is set), `date_format`, `time_format`, `theme` (the active theme's name) and `is_block_theme`. A user who can `view_site_health_checks` also gets `wp_version` and `php_version`; the output schema marks both optional, and an editor's response leaves them out rather than sending them empty. That is core's Site Health meta capability, which shows the same versions; it maps to `install_plugins`, so on multisite only a super admin gets them, not a sub-site administrator who has `manage_options`. The name and tagline are returned as plain text, with the HTML entities WordPress stores them with decoded. Calling it with no input at all is the same as passing an empty object. It needs only an authenticated user, like the other reads, because every other field is visible on the front end.
+
+It never returns the admin email, the WordPress address (`siteurl`), database details or the plugin list. That is why it sits on the floor while `core/get-environment-info` and `core/settings-get` stay on the [withheld list](#wpai_workspace_withheld_abilities): two version strings for administrators are a narrow exception to that list's rationale, not a way around it. It is annotated read-only, not destructive, idempotent and not open-world, so it stays admissible if declaration-based admission is switched on.
+
+### `ai/find-admin-screens`
+
+Registered alongside `ai/search-content`, shown in REST, and listed over MCP like the other reads. It answers "where do I…" with a link. It takes one `query`, the task in the person's words (required, at most 200 characters), and returns `screens`: up to five `{ title, section, url }`, best match first, where `section` is the menu the screen sits under (such as `Settings`) and is absent for a top-level screen. "hide my site from google" returns Settings → Reading first; "stop spam comments" returns Settings → Discussion first.
+
+- **The map, not the menu.** The admin menu is not built during a REST request, so the screens come from a curated map of core screens in `includes/Abilities/Site/admin-screens.php`: the dashboard and updates, posts, categories, tags, pages, media, comments, themes, the Site Editor on a block theme or the Customizer on a classic one, plugins, users and your profile, Site Health, export, import, the personal-data export and erase tools, and the General, Writing, Reading, Discussion, Media, Permalinks and Privacy settings. Each entry carries the capability core requires to open it. [`wpai_admin_screens`](#wpai_admin_screens) adds or removes entries.
+- **Matching on the server.** The query is lowercased, stripped of punctuation and common words such as "how", "my" and "change", and lightly stemmed, so "comments" matches "comment". A screen scores by how many query words its title, section or keywords contain; ties go to a title match, then to map order. There is no model call: the agent's own model chooses among the results. A query with no meaningful word, or one that matches nothing, returns an empty list rather than an error, so the model can try other words.
+- **Only screens the user can open.** Every entry is checked with `current_user_can()` before it is scored, so an editor asking for "plugins" gets no Plugins screen and no Settings screen. That is why the ability needs only an authenticated user.
+- **Only admin links.** Each `url` is `admin_url( path )`, and an entry whose `path` carries a scheme, a leading slash or backslash, or a parent directory is dropped, so a filter cannot point a result at another host. The transcript renders a link on the site's own host as a live anchor, and the ability's description tells the model to link the returned URL rather than build one.
+
+It is annotated read-only, not destructive, idempotent and not open-world.
 
 ### `ai/read-content-bodies`
 
@@ -473,6 +492,11 @@ and `core/get-user-info` is already public, read-only and not destructive -- the
 only thing keeping it off the surface is an absent `open_world` hint, which it
 would be correct for core to add.
 
+The plugin's own `ai/get-site-info` is not on this list, although it reads
+site configuration: it returns a fixed field set with no admin email, no plugin
+list and no database details, and the WordPress and PHP versions only for
+`view_site_health_checks`.
+
 Removing one is a deliberate act by someone with code access, which is the
 point:
 
@@ -494,6 +518,27 @@ add_filter( 'wpai_workspace_tool_admission_enabled', '__return_true' );
 ```
 
 This is not the site owner's off switch. That one lives on the Abilities Explorer, is on by default, and is not going away.
+
+### `wpai_admin_screens`
+
+Filters the screens `ai/find-admin-screens` can return. Each entry is an array with a `title`, a `path` relative to the admin directory (passed to `admin_url()`), the `capability` a user needs to be offered it, and optionally `keywords` (words or phrases a person might use for it) and a short `section`. An entry missing a title, a capability or a relative path is dropped. Earlier entries win ties.
+
+```php
+add_filter(
+	'wpai_admin_screens',
+	static function ( array $screens ): array {
+		$screens[] = array(
+			'title'      => 'Newsletter',
+			'section'    => 'Settings',
+			'path'       => 'options-general.php?page=my-newsletter',
+			'keywords'   => array( 'email', 'subscribers', 'mailing list' ),
+			'capability' => 'manage_options',
+		);
+
+		return $screens;
+	}
+);
+```
 
 ### `wpai_workspace_write_proposals_enabled`
 

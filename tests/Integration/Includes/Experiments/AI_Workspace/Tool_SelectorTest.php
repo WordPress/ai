@@ -13,7 +13,8 @@ use WordPress\AI\Abilities\Content\List_Terms;
 use WordPress\AI\Abilities\Content\Read_Content_Bodies;
 use WordPress\AI\Abilities\Content\Search_Content;
 use WordPress\AI\Abilities\Show_In_Abilities;
-use WordPress\AI\Experiments\Abilities_Explorer\Ability_Handler;
+use WordPress\AI\Abilities\Site\Find_Admin_Screens;
+use WordPress\AI\Abilities\Site\Get_Site_Info;
 use WordPress\AI\Experiments\AI_Workspace\Ask_User;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Drafts;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Post_Changes;
@@ -21,6 +22,7 @@ use WordPress\AI\Experiments\AI_Workspace\Propose_Site_Identity;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Template;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Policy;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Selector;
+use WordPress\AI\Experiments\Abilities_Explorer\Ability_Handler;
 use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Test_Update_Kind;
 
 /**
@@ -74,6 +76,8 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		'ai/search-content',
 		'ai/read-content-bodies',
 		'ai/list-terms',
+		'ai/get-site-info',
+		'ai/find-admin-screens',
 		'ai/propose-drafts',
 		'ai/propose-template',
 		'ai/propose-post-changes',
@@ -154,14 +158,16 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		Test_Update_Kind::unregister_ability();
 
 		$ability_names = array_merge(
-			array( 'ai/search-content', 'ai/read-content-bodies', 'ai/list-terms', 'ai/propose-drafts', 'ai/propose-template', 'ai/propose-post-changes', 'ai/propose-site-identity', 'ai/ask-user', self::EDITOR_ABILITY ),
+			array( 'ai/search-content', 'ai/read-content-bodies', 'ai/list-terms', 'ai/get-site-info', 'ai/find-admin-screens', 'ai/propose-drafts', 'ai/propose-template', 'ai/propose-post-changes', 'ai/propose-site-identity', 'ai/ask-user', self::EDITOR_ABILITY ),
 			$this->registered
 		);
 
 		foreach ( $ability_names as $ability_name ) {
-			if ( wp_has_ability( $ability_name ) ) {
-				wp_unregister_ability( $ability_name );
+			if ( ! wp_has_ability( $ability_name ) ) {
+				continue;
 			}
+
+			wp_unregister_ability( $ability_name );
 		}
 
 		$this->registered = array();
@@ -171,14 +177,16 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 
 		foreach ( array( 'post', 'page' ) as $post_type ) {
 			$object = get_post_type_object( $post_type );
-			if ( $object ) {
-				// WordPress 7.2 declares the property, and unsetting a declared property leaves it
-				// uninitialized, so restore core's default rather than removing it.
-				if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
-					$object->show_in_abilities = true;
-				} else {
-					unset( $object->show_in_abilities );
-				}
+			if ( ! $object ) {
+				continue;
+			}
+
+			// WordPress 7.2 declares the property, and unsetting a declared property leaves it
+			// uninitialized, so restore core's default rather than removing it.
+			if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
+				$object->show_in_abilities = true;
+			} else {
+				unset( $object->show_in_abilities );
 			}
 		}
 
@@ -452,7 +460,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 			'wpai-test/declared-reader',
 			array(
 				self::DECLARATION_CHANNEL => array( 'public' => true ),
-				'annotations'         => $this->safe_annotations(),
+				'annotations'             => $this->safe_annotations(),
 			)
 		);
 
@@ -503,7 +511,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 			$ability_id,
 			array(
 				self::DECLARATION_CHANNEL => array( 'public' => true ),
-				'annotations'         => $annotations,
+				'annotations'             => $annotations,
 			)
 		);
 
@@ -598,7 +606,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 			'wpai-test/declared-reader',
 			array(
 				self::DECLARATION_CHANNEL => array( 'public' => true ),
-				'annotations'         => $this->safe_annotations(),
+				'annotations'             => $this->safe_annotations(),
 			)
 		);
 
@@ -634,7 +642,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 			'wpai-test/declared-reader',
 			array(
 				self::DECLARATION_CHANNEL => array( 'public' => true ),
-				'annotations'         => $this->safe_annotations(),
+				'annotations'             => $this->safe_annotations(),
 			)
 		);
 
@@ -670,7 +678,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 			'wpai-test/declared-reader',
 			array(
 				self::DECLARATION_CHANNEL => array( 'public' => true ),
-				'annotations'         => $this->safe_annotations(),
+				'annotations'             => $this->safe_annotations(),
 			)
 		);
 		$this->register_fixture(
@@ -856,9 +864,11 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		$names = array();
 
 		foreach ( wp_get_abilities( ( new Tool_Policy() )->get_discovery_args() ) as $ability ) {
-			if ( $ability instanceof WP_Ability ) {
-				$names[] = $ability->get_name();
+			if ( ! ( $ability instanceof WP_Ability ) ) {
+				continue;
 			}
+
+			$names[] = $ability->get_name();
 		}
 
 		return $names;
@@ -876,7 +886,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 			'wpai-test/declared-reader',
 			array(
 				self::DECLARATION_CHANNEL => array( 'public' => true ),
-				'annotations'         => $this->safe_annotations(),
+				'annotations'             => $this->safe_annotations(),
 			)
 		);
 		$this->register_fixture(
@@ -919,7 +929,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 			'wpai-test/gated-reader',
 			array(
 				self::DECLARATION_CHANNEL => array( 'public' => true ),
-				'annotations'         => $this->safe_annotations(),
+				'annotations'             => $this->safe_annotations(),
 			)
 		);
 
@@ -1012,9 +1022,11 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	private function require_filtered_discovery(): void {
-		if ( ! ( new Tool_Policy() )->supports_filtered_discovery() ) {
-			$this->markTestSkipped( 'This WordPress does not support filtered ability discovery.' );
+		if ( ( new Tool_Policy() )->supports_filtered_discovery() ) {
+			return;
 		}
+
+		$this->markTestSkipped( 'This WordPress does not support filtered ability discovery.' );
 	}
 
 	/**
@@ -1047,9 +1059,11 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		$slugs = array();
 
 		foreach ( Ability_Handler::get_all_abilities() as $ability ) {
-			if ( isset( $ability['slug'] ) && is_string( $ability['slug'] ) ) {
-				$slugs[] = $ability['slug'];
+			if ( ! isset( $ability['slug'] ) || ! is_string( $ability['slug'] ) ) {
+				continue;
 			}
+
+			$slugs[] = $ability['slug'];
 		}
 
 		sort( $slugs );
@@ -1073,6 +1087,8 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		try {
 			( new Read_Content_Bodies() )->register();
 			( new List_Terms() )->register();
+			( new Get_Site_Info() )->register();
+			( new Find_Admin_Screens() )->register();
 			( new Propose_Drafts() )->register();
 			( new Propose_Template() )->register();
 			( new Propose_Post_Changes() )->register();
@@ -1102,7 +1118,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 	 *
 	 * @since x.x.x
 	 *
-	 * @return Tool_Selector The selector under test.
+	 * @return \WordPress\AI\Experiments\AI_Workspace\Tool_Selector The selector under test.
 	 */
 	private function selector_without_filtered_discovery(): Tool_Selector {
 		$policy = new class() extends Tool_Policy {
@@ -1198,8 +1214,8 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		$this->assertSame( 'edit_posts', $candidates['ai/propose-post-changes'] );
 		$this->assertSame( 'manage_options', $candidates['ai/propose-site-identity'] );
 		$this->assertSame(
-			array( 'ai/search-content', 'ai/read-content-bodies', 'ai/list-terms', 'ai/propose-drafts', 'ai/propose-template', 'ai/propose-post-changes', 'ai/propose-site-identity', 'ai/ask-user' ),
-			array_slice( array_keys( $candidates ), 0, 8 )
+			array( 'ai/search-content', 'ai/read-content-bodies', 'ai/list-terms', 'ai/get-site-info', 'ai/find-admin-screens', 'ai/propose-drafts', 'ai/propose-template', 'ai/propose-post-changes', 'ai/propose-site-identity', 'ai/ask-user' ),
+			array_slice( array_keys( $candidates ), 0, 10 )
 		);
 	}
 
