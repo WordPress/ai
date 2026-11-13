@@ -60,12 +60,14 @@ test.describe( 'Plugin settings', () => {
 			)
 		).toBeVisible();
 
-		// Ensure the no AI Connectors error message is displayed.
+		// Ensure the missing AI Connector message is displayed. While the Get
+		// started guide is open its first step carries the message; once the
+		// guide is collapsed or hidden the notice does.
 		await expect(
 			page
 				.locator( '#ai-wp-admin-app' )
 				.getByText(
-					'The AI plugin requires a valid AI Connector to function properly'
+					/The AI plugin requires a valid AI Connector to function properly|First stop: connect an AI provider\./
 				)
 		).toBeVisible();
 	} );

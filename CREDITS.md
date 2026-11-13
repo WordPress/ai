@@ -20,3 +20,4 @@ The following software libraries are utilized in this repository.
 
 * [c2pa-node](https://github.com/contentauth/c2pa-node) test fixtures (`XCA.jpg`, `A.jpg`) by Adobe, licensed MIT. Used as real-world signed JPEG assets in `tests/fixtures/c2pa/` to verify the JPEG APP11 manifest reader.
 * [HTML to MD](https://github.com/dmsnell/html-to-md) by Dennis Snell. Used to convert HTML to Markdown.
+* [Wapuu](https://jawordpressorg.github.io/wapuu/) by Kazuko Kaneuchi, licensed GPL-2.0-or-later. The Wapuu sprites in `assets/images/wapuu/` are derived from the original Wapuu and guide the Get started flow on Settings > AI.

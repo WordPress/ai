@@ -29,8 +29,25 @@ You need:
 1. Install and activate the AI plugin.
 2. Install and activate an AI Connector plugin.
 3. Go to `Settings -> Connectors` and add your API key.
-4. Go to `Settings -> AI`. If the page shows an error about AI Connectors, the key is missing or couldn't be verified; see [Troubleshooting](#troubleshooting).
-5. Read the description of each Feature or Experiment and select the info icon next to its name for details, then turn on the ones you want.
+4. Go to `Settings -> AI`. If the page asks you to connect an AI provider or shows an error about AI Connectors, the key is missing or couldn't be verified; see [Troubleshooting](#troubleshooting).
+5. Choose what you want help with in the Get started guide at the top of the page, or read the description of each Feature or Experiment below it and turn on the ones you want one by one.
+
+### The Get started guide
+
+On a new install, a guide at the top of `Settings -> AI` walks you through three steps: connect an AI provider, choose what AI helps with, and try a tool.
+
+In the second step you pick one or more use cases, and each one turns on a group of tools together:
+
+| Use case | Turns on | Optional add-on that runs on its own |
+| --- | --- | --- |
+| Write and publish | Title Generation, Excerpt Generation, Meta Description Generation, Slug Generation, Content Summarization | Type-ahead Text |
+| Edit and translate | Content Resizing, Content Classification, Editorial Notes, Editorial Updates, Revision Change Summary, Content Translation | |
+| Images and audio | Image Generation and Editing, Alt Text Generation, Text to Speech | |
+| Comments | Suggest Reply | Comment Moderation |
+
+Nothing is turned on until you choose it. The two add-ons run automatically once enabled, so each is a separate box that starts unticked. Changing your use cases later only turns off tools the guide turned on; tools you enabled yourself are left alone.
+
+Select "Hide guide" to put the guide away. It is hidden for your user only, and a short line at the top of the page lets you open it again. A site that already has tools turned on starts with the guide collapsed.
 
 ## Choosing What to Enable
 
