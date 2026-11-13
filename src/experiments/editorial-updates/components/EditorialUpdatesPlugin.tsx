@@ -51,6 +51,7 @@ export default function EditorialUpdatesPlugin() {
 				justify="flex-start"
 				className="editor-post-editorial-updates"
 				gap={ 2 }
+				style={ { width: '100%' } }
 			>
 				<FlexItem>
 					<Button
