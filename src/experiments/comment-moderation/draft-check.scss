@@ -1,0 +1,9 @@
+.wpai-comment-draft-notice {
+	font-size: 0.875em;
+}
+
+.wpai-comment-draft-status:not(:empty) {
+	border-inline-start: 3px solid currentColor;
+	margin-block-end: 1em;
+	padding: 0.5em 0.75em;
+}
