@@ -95,7 +95,7 @@ class AI_Workspace extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'AI Workspace', 'ai' ),
-			'description' => __( 'Adds a dedicated AI Workspace screen under Tools, where you hold a multi-step conversation about your own site. The assistant searches and reads your content under your own capabilities, and writes nothing until you approve a proposal showing the exact values, including the post status, that will be written.', 'ai' ),
+			'description' => __( 'Adds a dedicated AI Workspace screen under Tools, where you hold a multi-step conversation about your own site. The assistant searches and reads your content under your own capabilities, answers questions about the site, and changes nothing until you approve a proposal showing the exact values that will be written: new drafts and templates, or changes to a post or the site title and tagline. It also adds AI suggestions and an "Ask in AI Workspace" row to the Command Palette.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'text_generation',
 		);
