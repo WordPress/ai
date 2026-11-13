@@ -6,7 +6,7 @@
  * WordPress dependencies
  */
 import { Button, Notice, Spinner, ToggleControl } from '@wordpress/components';
-import { useState } from '@wordpress/element';
+import { useRef, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import { audio } from '@wordpress/icons';
 
@@ -54,6 +54,19 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 	} = useSpeechGeneration();
 	const [ confirmingDelete, setConfirmingDelete ] = useState( false );
 
+	const shouldFocusGenerate = useRef( false );
+	const shouldFocusDelete = useRef( false );
+	const shouldFocusCancel = useRef( false );
+
+	const focusWhenFlagged =
+		( flag: { current: boolean } ) =>
+		( node: HTMLButtonElement | null ) => {
+			if ( flag.current && node ) {
+				node.focus();
+				flag.current = false;
+			}
+		};
+
 	if ( isGenerating ) {
 		return (
 			<div className="ai-text-to-speech-panel__content">
@@ -89,7 +102,10 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 				<Button
 					__next40pxDefaultSize
 					variant="secondary"
-					onClick={ handleCheckAgain }
+					onClick={ () => {
+						shouldFocusGenerate.current = true;
+						handleCheckAgain();
+					} }
 				>
 					{ __( 'Check again', 'ai' ) }
 				</Button>
@@ -137,7 +153,12 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 			<Button
 				__next40pxDefaultSize
 				variant="secondary"
-				onClick={ handleGenerate }
+				onClick={ () => {
+					shouldFocusGenerate.current = true;
+					setConfirmingDelete( false );
+					handleGenerate();
+				} }
+				ref={ focusWhenFlagged( shouldFocusGenerate ) }
 				icon={ audio }
 				disabled={ ! hasTtsSupport || isBlockedByUnsavedChanges }
 				accessibleWhenDisabled
@@ -163,6 +184,7 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 								isDestructive
 								onClick={ async () => {
 									await handleDelete();
+									shouldFocusGenerate.current = true;
 									setConfirmingDelete( false );
 								} }
 								isBusy={ isDeleting }
@@ -174,7 +196,11 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 							<Button
 								__next40pxDefaultSize
 								variant="tertiary"
-								onClick={ () => setConfirmingDelete( false ) }
+								onClick={ () => {
+									shouldFocusDelete.current = true;
+									setConfirmingDelete( false );
+								} }
+								ref={ focusWhenFlagged( shouldFocusCancel ) }
 								disabled={ isDeleting }
 								accessibleWhenDisabled
 							>
@@ -187,7 +213,11 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 						__next40pxDefaultSize
 						variant="secondary"
 						isDestructive
-						onClick={ () => setConfirmingDelete( true ) }
+						onClick={ () => {
+							shouldFocusCancel.current = true;
+							setConfirmingDelete( true );
+						} }
+						ref={ focusWhenFlagged( shouldFocusDelete ) }
 					>
 						{ __( 'Delete Audio', 'ai' ) }
 					</Button>
