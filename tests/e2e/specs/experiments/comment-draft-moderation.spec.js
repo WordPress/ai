@@ -121,6 +121,9 @@ test.describe( 'Comment draft moderation', () => {
 		await comment.fill( toxic );
 		await submit.focus();
 		await expect( status ).toContainText( 'Please revise your comment' );
+		await expect(
+			status.locator( '.components-notice.is-error' )
+		).toBeVisible();
 		await expect( submit ).toBeDisabled();
 		await expect( comment ).toBeFocused();
 
@@ -201,6 +204,9 @@ test.describe( 'Comment draft moderation', () => {
 		const requested = page.waitForRequest( draftRoute );
 		await page.locator( '#comment' ).fill( constructive );
 		await requested;
+		await expect( page.getByRole( 'status' ) ).toContainText(
+			'Checking your comment'
+		);
 		await page.getByRole( 'button', { name: 'Post Comment' } ).click();
 		await expect( page.getByRole( 'status' ) ).toContainText(
 			'Checking your comment'
