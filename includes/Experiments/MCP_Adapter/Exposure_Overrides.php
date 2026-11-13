@@ -169,7 +169,10 @@ final class Exposure_Overrides {
 	 *
 	 * Deprecated aliases duplicate their replacement, so they stay hidden. This
 	 * plugin's abilities only register while the feature providing them is
-	 * enabled, so they are exposed. Other abilities keep the default they declare.
+	 * enabled, so they are exposed, unless one declares `meta.mcp.public` as
+	 * false: the abilities that only work inside an AI Workspace turn do, since
+	 * an MCP client could only ever see them refuse. Other abilities keep the
+	 * default they declare.
 	 *
 	 * @since 1.5.0
 	 *
@@ -184,7 +187,7 @@ final class Exposure_Overrides {
 		}
 
 		if ( self::is_plugin_ability( $name ) ) {
-			return true;
+			return ! ( isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) && false === ( $meta['mcp']['public'] ?? null ) );
 		}
 
 		return self::resolve_meta_exposure( $meta );

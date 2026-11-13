@@ -24,6 +24,7 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import {
 	classifyError,
+	createResponseSequencer,
 	fetchAbilities,
 	fetchAbility,
 	isFatalError,
@@ -36,7 +37,12 @@ import {
 	type ReportErrorOptions,
 } from '../context';
 import { routeToUrl, useRouter } from '../router';
-import type { AbilityDetailItem, AbilityListItem } from '../types';
+import type {
+	AbilityDetailItem,
+	AbilityListItem,
+	PolicyState,
+	SurfaceResponse,
+} from '../types';
 import DetailView from './DetailView';
 import ListView from './ListView';
 import LoadError from './LoadError';
@@ -49,6 +55,7 @@ export const ROOT_ID = 'ai-abilities-explorer-root';
 interface ListState {
 	status: 'idle' | 'loading' | 'ready' | 'error';
 	items: AbilityListItem[];
+	policy: PolicyState | null;
 	/** The first-load failure, shown inline with Retry. */
 	error: string | null;
 }
@@ -64,6 +71,7 @@ interface ItemState {
 const INITIAL_LIST: ListState = {
 	status: 'idle',
 	items: [],
+	policy: null,
 	error: null,
 };
 
@@ -101,6 +109,7 @@ export default function App() {
 	const fatalRef = useRef( false );
 
 	const [ list, setList ] = useState< ListState >( INITIAL_LIST );
+	const sequencer = useRef( createResponseSequencer() );
 	const [ itemState, setItemState ] = useState< ItemState >( INITIAL_ITEM );
 	const itemRequest = useRef( 0 );
 
@@ -150,11 +159,20 @@ export default function App() {
 		try {
 			const response = await fetchAbilities();
 
-			setList( {
-				status: 'ready',
-				items: response.items,
-				error: null,
-			} );
+			if ( sequencer.current.claimList( response.sequence ) ) {
+				setList( ( previous ) => ( {
+					status: 'ready',
+					items: sequencer.current.mergeRows(
+						response.sequence,
+						response.items,
+						previous.items
+					),
+					policy: sequencer.current.claimPolicy( response.sequence )
+						? response.policy
+						: previous.policy,
+					error: null,
+				} ) );
+			}
 		} catch ( error ) {
 			const classified = reportError( error, { notice: false } );
 
@@ -165,6 +183,49 @@ export default function App() {
 			} ) );
 		}
 	}, [ reportError ] );
+
+	const applySurfaceResponse = useCallback(
+		( response: SurfaceResponse ): boolean => {
+			const seq = sequencer.current;
+
+			if ( 'items' in response ) {
+				if ( ! seq.claimList( response.sequence ) ) {
+					return false;
+				}
+
+				setList( ( previous ) => ( {
+					...previous,
+					items: seq.mergeRows(
+						response.sequence,
+						response.items,
+						previous.items
+					),
+					policy: seq.claimPolicy( response.sequence )
+						? response.policy
+						: previous.policy,
+				} ) );
+
+				return true;
+			}
+
+			if ( ! seq.claimRow( response.item.slug, response.sequence ) ) {
+				return false;
+			}
+
+			setList( ( previous ) => ( {
+				...previous,
+				items: previous.items.map( ( row ) =>
+					row.slug === response.item.slug ? response.item : row
+				),
+				policy: seq.claimPolicy( response.sequence )
+					? response.policy
+					: previous.policy,
+			} ) );
+
+			return true;
+		},
+		[]
+	);
 
 	const loadItem = useCallback(
 		async ( name: string ) => {
@@ -263,7 +324,9 @@ export default function App() {
 			return (
 				<ListView
 					items={ list.items }
+					policy={ list.policy }
 					isLoading={ 'ready' !== list.status }
+					onSurfaceResponse={ applySurfaceResponse }
 				/>
 			);
 		}

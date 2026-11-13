@@ -25,7 +25,7 @@ import {
 	TITLE_FIELD_ID,
 	useFields,
 } from '../fields';
-import type { AbilityListItem } from '../types';
+import type { AbilityListItem, PolicyState, SurfaceResponse } from '../types';
 import {
 	appendNewFields,
 	loadSavedView,
@@ -34,17 +34,38 @@ import {
 	saveView,
 } from '../view-storage';
 import { applyProviderFilter } from './list/provider-filter';
+import PolicyToggle from './PolicyToggle';
 import Statistics from './Statistics';
+import { RowSurfaceActionContext, useSurfaceActions } from './SurfaceActions';
 
 export interface ListViewProps {
 	/** Every registered ability. */
 	items: AbilityListItem[];
+	/** The assistant admission policy, or null before the first load. */
+	policy: PolicyState | null;
 	/** True while the list is loading. */
 	isLoading: boolean;
+	/**
+	 * Applies a surface route response to the list. Returns false when the
+	 * response is stale because a newer one has already been applied.
+	 */
+	onSurfaceResponse: ( response: SurfaceResponse ) => boolean;
 }
 
 const PER_PAGE = 20;
 const SUPPORTED_LAYOUTS = [ 'table' ];
+
+/*
+ * The table layout. "Exposed in" gets a minimum width so its badges and reason
+ * text never squeeze or clip; the Name column takes what the others leave.
+ * A saved view gets these styles too (see `restoreView()`).
+ */
+const TABLE_LAYOUT = {
+	styles: {
+		description: { width: '50%' },
+		surface: { minWidth: '16em' },
+	},
+};
 
 const DEFAULT_VIEW: View = {
 	type: 'table',
@@ -55,14 +76,10 @@ const DEFAULT_VIEW: View = {
 	sort: { field: TITLE_FIELD_ID, direction: 'asc' },
 	titleField: TITLE_FIELD_ID,
 	fields: [ ...DEFAULT_VISIBLE_FIELDS ],
-	layout: {
-		styles: {
-			description: { width: '50%' },
-		},
-	},
+	layout: TABLE_LAYOUT,
 };
 
-const DEFAULT_LAYOUTS: SupportedLayouts = { table: {} };
+const DEFAULT_LAYOUTS: SupportedLayouts = { table: { layout: TABLE_LAYOUT } };
 
 const getItemId = ( item: AbilityListItem ): string => item.slug;
 
@@ -82,12 +99,21 @@ const getCandidateIds = ( fieldIds: string[] ): string[] =>
 /**
  * The ability list: statistics, then a DataViews table.
  *
- * @param props           Component props.
- * @param props.items     The abilities.
- * @param props.isLoading Whether a load is in flight.
+ * @param props                   Component props.
+ * @param props.items             The abilities.
+ * @param props.policy            The assistant admission policy.
+ * @param props.isLoading         Whether a load is in flight.
+ * @param props.onSurfaceResponse Applies a surface route response.
  * @return The view.
  */
-export default function ListView( { items, isLoading }: ListViewProps ) {
+export default function ListView( {
+	items,
+	policy,
+	isLoading,
+	onSurfaceResponse,
+}: ListViewProps ) {
+	const tableRef = useRef< HTMLDivElement >( null );
+
 	const fields = useFields( items );
 	const fieldIds = useMemo(
 		() => fields.map( ( field ) => field.id ),
@@ -172,27 +198,83 @@ export default function ListView( { items, isLoading }: ListViewProps ) {
 		);
 	}, [ items, view, fields ] );
 
+	/*
+	 * Counts settled row surface changes. The count is set in the same batch
+	 * as the response, so the effect runs once the list has rendered with it.
+	 *
+	 * The row's surface button survives a label flip, so focus normally stays
+	 * on it.
+	 * When the change takes the row out of an active "Exposed in" filter, or
+	 * leaves it with no surface action to offer, the focused button is gone
+	 * and focus has fallen to the body: move it to the labelled list region
+	 * instead of leaving the user at the top of the page. The region is used
+	 * rather than the table because a filtered list can end up empty, and
+	 * DataViews then renders no table at all.
+	 */
+	const [ settledCount, setSettledCount ] = useState( 0 );
+
+	const onSurfaceSettled = useCallback( () => {
+		setSettledCount( ( count ) => count + 1 );
+	}, [] );
+
+	useEffect( () => {
+		if ( 0 === settledCount ) {
+			return;
+		}
+
+		const { activeElement } = document;
+
+		if (
+			activeElement &&
+			activeElement !== document.body &&
+			activeElement.isConnected
+		) {
+			return;
+		}
+
+		tableRef.current?.focus();
+	}, [ settledCount ] );
+
+	const getRowSurfaceAction = useSurfaceActions( {
+		onSurfaceResponse,
+		onSettled: onSurfaceSettled,
+	} );
+
 	const isFirstLoad = isLoading && 0 === items.length;
 
 	return (
 		<div className="ai-abilities-explorer__list">
 			{ ! isFirstLoad && <Statistics items={ items } /> }
+			{ null !== policy && (
+				<PolicyToggle
+					policy={ policy }
+					onSurfaceResponse={ onSurfaceResponse }
+				/>
+			) }
 			<div
+				ref={ tableRef }
 				className="ai-abilities-explorer__table"
 				role="region"
 				aria-label={ __( 'Abilities list', 'ai' ) }
+				tabIndex={ -1 }
 			>
-				<DataViews< AbilityListItem >
-					data={ data }
-					fields={ fields }
-					view={ view }
-					onChangeView={ onChangeView }
-					paginationInfo={ paginationInfo }
-					getItemId={ getItemId }
-					isLoading={ isFirstLoad }
-					defaultLayouts={ DEFAULT_LAYOUTS }
-					searchLabel={ __( 'Search Abilities', 'ai' ) }
-				/>
+				{ /*
+				 * No DataViews `actions`: the row actions sit under the name,
+				 * as in `WP_List_Table`, rendered by the Name field.
+				 */ }
+				<RowSurfaceActionContext.Provider value={ getRowSurfaceAction }>
+					<DataViews< AbilityListItem >
+						data={ data }
+						fields={ fields }
+						view={ view }
+						onChangeView={ onChangeView }
+						paginationInfo={ paginationInfo }
+						getItemId={ getItemId }
+						isLoading={ isFirstLoad }
+						defaultLayouts={ DEFAULT_LAYOUTS }
+						searchLabel={ __( 'Search Abilities', 'ai' ) }
+					/>
+				</RowSurfaceActionContext.Provider>
 			</div>
 		</div>
 	);

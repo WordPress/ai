@@ -269,7 +269,7 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 			'status'           => array(
 				'description' => __( 'Filter by status.', 'ai' ),
 				'type'        => 'string',
-				'enum'        => array( '', 'success', 'error', 'timeout' ),
+				'enum'        => array( '', 'success', 'error', 'timeout', 'denied' ),
 				'default'     => '',
 			),
 			'provider'         => array(

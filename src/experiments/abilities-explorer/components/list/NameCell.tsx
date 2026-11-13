@@ -1,6 +1,7 @@
 /**
  * WordPress dependencies
  */
+import { Button } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 
 /**
@@ -8,6 +9,7 @@ import { __ } from '@wordpress/i18n';
  */
 import type { AbilityListItem } from '../../types';
 import RouterLink from '../RouterLink';
+import { useRowSurfaceAction } from '../SurfaceActions';
 
 /**
  * The separator between two row actions.
@@ -23,13 +25,16 @@ function Separator() {
 }
 
 /**
- * Renders an ability's name and its row actions, as in `WP_List_Table`.
+ * Renders an ability's name and its row actions, as in `WP_List_Table`:
+ * "View", "Test", and the surface action when the row offers one.
  *
  * @param props      Component props.
  * @param props.item The ability.
  * @return The cell content.
  */
 export default function NameCell( { item }: { item: AbilityListItem } ) {
+	const surfaceAction = useRowSurfaceAction( item );
+
 	// One block, so the actions sit under the name in DataViews' flex row.
 	return (
 		<div className="ai-abilities-explorer__name-cell">
@@ -47,6 +52,24 @@ export default function NameCell( { item }: { item: AbilityListItem } ) {
 				<RouterLink route={ { view: 'runner', ability: item.slug } }>
 					{ __( 'Test', 'ai' ) }
 				</RouterLink>
+				{ surfaceAction && (
+					<>
+						<Separator />
+						{ /*
+						 * The same button whatever its label, so focus stays on
+						 * it when the label flips. Disabled while pending, but
+						 * still focusable.
+						 */ }
+						<Button
+							variant="link"
+							disabled={ surfaceAction.disabled }
+							accessibleWhenDisabled
+							onClick={ surfaceAction.onActivate }
+						>
+							{ surfaceAction.label }
+						</Button>
+					</>
+				) }
 			</div>
 		</div>
 	);

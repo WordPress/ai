@@ -1,0 +1,696 @@
+# AI Workspace
+
+## Summary
+
+The AI Workspace experiment adds a conversation surface on a dedicated admin screen at `Tools → AI Workspace`, where a site owner can ask questions about their own site. The assistant is given a small allowlist of WordPress Abilities as callable tools; every call runs through `WP_Ability::execute()`, so it can never reach content the requesting user could not read. It cannot change anything on its own: creating drafts or a block template, and changing a post's title, excerpt or content or the site title and tagline, are two-step proposals that a person approves before the server writes. Replies arrive in the transcript whole, once the model has finished; token-by-token streaming from the provider is planned for a follow-up once the PHP AI Client ships streaming ([WordPress/php-ai-client#255](https://github.com/WordPress/php-ai-client/pull/255)).
+
+## Overview
+
+### For End Users
+
+Enable the experiment at `Settings → AI` and open `Tools → AI Workspace`. The screen requires `manage_options`, and the menu entry is not shown to users who lack it.
+
+**Key features:**
+
+- A transcript, a context-scope control, and a multi-line prompt input, with four starter prompts on the empty state
+- **Site Context**, in which the assistant may call tools to look up content the current user is allowed to read, and **General Knowledge**, in which no tools are declared at all
+- A visible in-progress state while a turn runs, and a cancel control that stops server-side work rather than just hiding output
+- Post lists returned by a tool render as a read-only DataViews table inside the message, with editor links for posts the user can edit
+- Draft creation as a proposal: the assistant proposes, the person picks which items to create, and only then is anything written
+- Block template creation as a proposal, on a block theme: the assistant proposes one template, the person sees its markup, and approving creates it for the active theme
+- Changes to existing content as a proposal: a post's title, excerpt or content, or the site title and tagline, shown as the current value beside the new one, editable before approval (see [Changes to existing content](#changes-to-existing-content))
+- Answers about the site itself, such as its PHP version or theme, and links to the admin screen for a task, such as Settings → Reading for "hide my site from Google"
+- Saved conversations: each chat is kept until its owner deletes it, a "New space" control starts a new one, and a chats panel lists, renames, archives and deletes them
+- A Wapuu beside the status while a turn runs, finishes or fails, still when reduced motion is on
+- Every tool call and proposal event recorded in the AI Request Log while AI Request Logging is on, with a hook for audit plugins either way, and chats included in personal-data export and erase (see [Auditing with the AI Request Log](#auditing-with-the-ai-request-log))
+- An action in the block editor that opens the workspace seeded with the current post's identity
+- An AI fallback in the command palette (Cmd/Ctrl+K): a plain-language search the palette finds nothing for suggests the screens that answer it, and an "Ask in AI Workspace" row carries the search into the workspace (see [The command palette](#the-command-palette))
+
+The screen degrades with an explanatory state rather than failing when the plugin has no valid AI credentials, or when no configured connector exposes a model that supports function calling.
+
+### One agent
+
+AI Workspace is the plugin's one agent surface. Two proposals that were heading for separate experiments are part of it instead ([#1287](https://github.com/WordPress/ai/issues/1287)):
+
+- **Site Agent** ([#1214](https://github.com/WordPress/ai/pull/1214)) proposed an agent that reads site information and changes posts and settings after approval. Its site-information read and its post, site title and tagline writes are here as `ai/get-site-info`, `ai/propose-post-changes` and `ai/propose-site-identity`; its plugin-list and environment reads are not, since the workspace withholds them. The writes are proposal types rather than registered write abilities, so no MCP client can call them without a person approving in the workspace.
+- **Command Palette AI Search** ([#1250](https://github.com/WordPress/ai/pull/1250)) proposed an AI fallback for the command palette. It is here as the palette's AI suggestions and its "Ask in AI Workspace" row, enabled with this experiment rather than with a toggle of its own (see [The command palette](#the-command-palette)).
+
+The name, menu entry, URL and every identifier are unchanged: the experiment ID stays `ai-workspace`, so a site that had it on keeps it on.
+
+### Starter prompts
+
+The empty state offers four prompts. Choosing one fills the composer, to edit or send. Each asks only for what the tools above can do, so each ends in something to act on:
+
+| Prompt | Tools it leads to | Where it ends |
+| --- | --- | --- |
+| **Find a gap** | `ai/search-content` (newest posts), `ai/list-terms` | Three topics, then a question offering to draft one |
+| **Audit content** | `ai/search-content` with tag, date and featured-image filters | The matching posts, then a question offering a narrower or wider list |
+| **Plan a series** | `ai/propose-drafts` | Five drafts to review and approve |
+| **Write a template** | `ai/list-terms`, `ai/propose-template` | A 404 template to review and approve, on a block theme |
+
+Fixing what the audit finds, such as adding featured images, needs an ability to edit posts, which the workspace does not have, so the assistant does not offer it.
+
+### Context scopes
+
+The scope belongs to the message being sent and is chosen in the composer:
+
+- **Site Context** declares the permitted tools to the model.
+- **General Knowledge** declares no tools; the assistant answers without touching the site.
+
+Site Context reports its own unavailability instead of quietly behaving like General Knowledge. When no tool passes the current user's capability check, the turn returns a `tools_unavailable` status with a reason (`no_tools_registered`, `surface_emptied` when the owner or site code removed every candidate, or `insufficient_capabilities`), and the transcript says so.
+
+## The tool surface
+
+The abilities offered to the model are not everything registered on the site. Three ship as a **floor**, held in `Tool_Selector::DEFAULT_CANDIDATES`, and an ability can earn a place beside them by declaring itself fit for a conversational surface:
+
+| Ability | What it does | Coarse capability to be declared |
+| --- | --- | --- |
+| `ai/search-content` | Full-text search over the post types exposed to abilities, or the newest posts when there is no search term, filterable by term, date range and featured image; returns titles, excerpts and terms | any authenticated user |
+| `ai/read-content-bodies` | Returns the full body text of up to five posts named by ID | any authenticated user |
+| `ai/list-terms` | Lists the site's categories, tags and other public terms with how many published posts each holds | any authenticated user |
+| `ai/get-site-info` | Returns the site's name, tagline, home URL, language, timezone, date and time formats and active theme, with the WordPress and PHP versions only for users who can `view_site_health_checks` | any authenticated user |
+| `ai/find-admin-screens` | Finds up to five admin screens for a short description of a task, such as "hide my site from google", from a curated map; returns only screens the user can open, each with its title, menu section and `admin_url()` link | any authenticated user |
+| `ai/propose-drafts` | Records a proposed set of drafts for a person to approve; writes nothing | `edit_posts` |
+| `ai/propose-template` | Records one proposed block template for a person to approve; writes nothing | `edit_theme_options` |
+| `ai/ask-user` | Asks the person one question with two to five choices, which ends the turn until they answer; writes nothing | any authenticated user (the ability itself requires `manage_options`) |
+
+An ability outside the floor is admitted only if it does two things: it is
+exposed to this surface, and it annotates itself `readonly: true`,
+`destructive: false`, `open_world: false`. All three annotations must be
+present and explicit — WordPress defaults them to `null`, and an absent
+`open_world` hint means the ability may reach external systems, so silence is
+refused rather than assumed. An ability that is exposed but carries no
+annotations is not admitted, and the Abilities Explorer says which of the two
+refused it rather than blaming the wrong one.
+
+Exposure follows the precedence [WordPress 7.1
+defines](https://make.wordpress.org/core/2026/08/04/a-unified-public-exposure-flag-for-abilities-in-wordpress-7-1/)
+for every channel: this surface's own key, then the general `meta.public` flag,
+then closed.
+
+```php
+'meta' => array(
+	// Eligible for this surface and every other public channel.
+	'public'       => true,
+
+	// Or name the surface, which wins over the general flag either way.
+	'ai-workspace' => array( 'public' => false ),
+),
+```
+
+So an ability marked public is eligible here without naming this surface. There
+is no "the author said nothing" state: core writes `meta.public` onto every
+ability at registration and validates it as a boolean, so an ability with no
+opinion of its own is eligible-false by core's default. That is why the effect
+class carries the weight it does — being public says nothing about whether an
+ability is safe for something a model can be talked into calling.
+
+Both are the author's self-attestation. They are keys in one `meta` array,
+written by one hand, and the same line that sets exposure can set the
+annotations. The effect class is a **declared intent**,
+not a property the plugin can enforce: nothing inspects what an ability's
+callback actually does. What admission decides is what the model is *told
+exists*. The boundaries that hold are the owner's controls on the Abilities
+Explorer, and the execute-time `permission_callback` that runs inside
+`WP_Ability::execute()` on every call.
+
+### Admission is switched off by default
+
+The channel name is provisional while
+[#354](https://github.com/WordPress/ai/issues/354) settles it. Keeping it a
+`private const` is a statement about support, not a barrier — this is an open
+source plugin, so an author needs nothing but the literal string to opt in, and
+inheriting from `meta.public` means an ability can be eligible without naming
+the channel at all. So admission ships **off**, and the surface is the three
+curated abilities until #354 lands.
+
+To try it before then, either return true from a filter:
+
+```php
+add_filter( 'wpai_workspace_tool_admission_enabled', '__return_true' );
+```
+
+or define `WPAI_WORKSPACE_TOOL_ADMISSION` as true in `wp-config.php`. The filter
+wins over the constant. Both are temporary and go away with #354; neither is the
+site owner's off switch, which is described below and stays.
+
+On WordPress 7.0 there is no ability filtering in core, so the policy does not
+run at all and the surface is the floor. That is also what the owner's off
+switch does, deliberately through the same branch, so the fallback is exercised
+on every WordPress version rather than only on the oldest one. The owner's
+switch is a separate control from the #354 gate above: it is on by default, it
+is thrown from the Abilities Explorer, and it outlives the gate.
+
+A site owner can see the whole picture under **Tools → Abilities Explorer**:
+which abilities the assistant holds, the exact description text the model
+receives, why any other ability is excluded, and controls to remove one or
+switch the policy off.
+
+The coarse capability decides only whether a tool is **declared** to the model. Object-level authorization stays inside `WP_Ability::execute()`, which runs the ability's own `permission_callback` on every call — the same path the MCP surface uses, so the two cannot disagree about what a user may do.
+
+The allowlist is filterable; see [Extending the Experiment](#extending-the-experiment).
+
+### `ai/search-content`
+
+Registered by this experiment (not by Custom Abilities), so the workspace always has a search tool, and so the REST `abilities` endpoints, the Abilities Explorer and MCP clients can reach the same ability.
+
+**Input schema** (`additionalProperties` is false):
+
+```php
+array(
+    'type'       => 'object',
+    'properties' => array(
+        'search'             => array( 'type' => 'string', 'minLength' => 1 ), // Optional; without it the newest posts are listed.
+        'orderby'            => array( 'enum' => array( 'relevance', 'date' ) ), // Relevance with a search term, date without.
+        'tax'                => array( 'type' => 'object' ), // { taxonomy, terms }: a public taxonomy and term slugs or names.
+        'date_after'         => array( 'type' => 'string' ), // YYYY-MM-DD, inclusive.
+        'date_before'        => array( 'type' => 'string' ), // YYYY-MM-DD, inclusive.
+        'has_featured_image' => array( 'type' => 'boolean' ),
+        'post_type'          => array( 'type' => 'array' ), // Exposed post types; defaults to all of them.
+        'status'             => array( 'type' => 'array' ), // Defaults to publish.
+        'page'               => array( 'type' => 'integer', 'minimum' => 1 ),
+        'per_page'           => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 20 ),
+    ),
+)
+```
+
+**Output schema:**
+
+```php
+array(
+    'type'       => 'object',
+    'required'   => array( 'results', 'total', 'total_pages', 'examined', 'withheld' ),
+    'properties' => array(
+        'results'     => array( /* id, post_type, status, date, slug, link, title, excerpt, edit_link, terms, has_featured_image */ ),
+        'total'       => array( 'type' => 'integer' ),
+        'total_pages' => array( 'type' => 'integer' ),
+        'examined'    => array( 'type' => 'integer' ),
+        'withheld'    => array( 'type' => array( 'integer', 'null' ) ),
+    ),
+)
+```
+
+Two properties are worth stating plainly:
+
+- **No body content is ever returned.** Rows carry a title and a plain-text excerpt, generated from the content when the post has none. Reading a body is `ai/read-content-bodies`'s job, and is capped at five posts a call.
+- **A filter never widens the list.** A taxonomy the ability does not list, a `tax` filter that is not an object, and a date that is not a real day (such as `2026-02-31`) are errors, and a term the taxonomy does not have matches no posts, rather than any of them being ignored. Only publicly viewable taxonomies can be filtered by or appear in a row's `terms`. A post has a featured image when its `_thumbnail_id` is a positive number, the same test the row's `has_featured_image` uses.
+- **Every row is filtered at execute time** by the current user's read permission, using the same inherited-parent walk `core/content-query` performs. `total` comes from the underlying query and may therefore exceed the number of rows returned. The 20-item page cap is a context limit for the model, not an access control. `edit_link` is present only when the user can edit that post.
+
+### `ai/list-terms`
+
+Registered alongside `ai/search-content`. It lists the terms of publicly viewable taxonomies attached to a post type exposed to abilities, with each term's `name`, `slug` and published-post `count`. With no `taxonomy` it lists categories and tags. `orderby` is `name` (the default) or `count` (most posts first), `hide_empty` defaults to true, and `per_page` is capped at 100; `total` says how many terms match in all. Term names and counts are already public, so it needs only an authenticated user. It stays until `core/terms-query` ([#1099](https://github.com/WordPress/ai/pull/1099), [#1084](https://github.com/WordPress/ai/pull/1084)) lands in this plugin.
+
+### `ai/get-site-info`
+
+Registered alongside `ai/search-content`, shown in REST, and listed over MCP by the MCP Adapter experiment like the other reads. It takes no input and returns a fixed set of fields: `name`, `tagline`, `home_url`, `language` (the site locale, such as `en_US`), `timezone` (a named zone, or a UTC offset such as `-05:00` when none is set), `date_format`, `time_format`, `theme` (the active theme's name) and `is_block_theme`. A user who can `view_site_health_checks` also gets `wp_version` and `php_version`; the output schema marks both optional, and an editor's response leaves them out rather than sending them empty. That is core's Site Health meta capability, which shows the same versions; it maps to `install_plugins`, so on multisite only a super admin gets them, not a sub-site administrator who has `manage_options`. The name and tagline are returned as plain text, with the HTML entities WordPress stores them with decoded. Calling it with no input at all is the same as passing an empty object. It needs only an authenticated user, like the other reads, because every other field is visible on the front end.
+
+It never returns the admin email, the WordPress address (`siteurl`), database details or the plugin list. That is why it sits on the floor while `core/get-environment-info` and `core/settings-get` stay on the [withheld list](#wpai_workspace_withheld_abilities): two version strings for administrators are a narrow exception to that list's rationale, not a way around it. It is annotated read-only, not destructive, idempotent and not open-world, so it stays admissible if declaration-based admission is switched on.
+
+### `ai/find-admin-screens`
+
+Registered alongside `ai/search-content`, shown in REST, and listed over MCP like the other reads. It answers "where do I…" with a link. It takes one `query`, the task in the person's words (required, at most 200 characters), and returns `screens`: up to five `{ title, section, url }`, best match first, where `section` is the menu the screen sits under (such as `Settings`) and is absent for a top-level screen. "hide my site from google" returns Settings → Reading first; "stop spam comments" returns Settings → Discussion first.
+
+- **The map, not the menu.** The admin menu is not built during a REST request, so the screens come from a curated map of core screens in `includes/Abilities/Site/admin-screens.php`: the dashboard and updates, posts, categories, tags, pages, media, comments, themes, the Site Editor on a block theme or the Customizer on a classic one, plugins, users and your profile, Site Health, export, import, the personal-data export and erase tools, and the General, Writing, Reading, Discussion, Media, Permalinks and Privacy settings. Each entry carries the capability core requires to open it. [`wpai_admin_screens`](#wpai_admin_screens) adds or removes entries.
+- **Matching on the server.** The query is lowercased, stripped of punctuation and common words such as "how", "my" and "change", and lightly stemmed, so "comments" matches "comment". A screen scores by how many query words its title, section or keywords contain; ties go to a title match, then to map order. There is no model call: the agent's own model chooses among the results. A query with no meaningful word, or one that matches nothing, returns an empty list rather than an error, so the model can try other words.
+- **Only screens the user can open.** Every entry is checked with `current_user_can()` before it is scored, so an editor asking for "plugins" gets no Plugins screen and no Settings screen. That is why the ability needs only an authenticated user.
+- **Only admin links.** Each `url` is `admin_url( path )`, and an entry whose `path` carries a scheme, a leading slash or backslash, or a parent directory is dropped, so a filter cannot point a result at another host. The transcript renders a link on the site's own host as a live anchor, and the ability's description tells the model to link the returned URL rather than build one.
+
+It is annotated read-only, not destructive, idempotent and not open-world.
+
+### `ai/read-content-bodies`
+
+The reading half of retrieval, and the largest increase in reachable content on this surface. Registered by this experiment for the same reason the search ability is: `core/content-query` belongs to the Custom Abilities experiment, and the workspace's reach must not change when a different experiment is switched off.
+
+**Input schema** (`additionalProperties` is false):
+
+```php
+array(
+    'type'       => 'object',
+    'required'   => array( 'ids' ),
+    'properties' => array(
+        'ids' => array(
+            'type'        => 'array',
+            'uniqueItems' => true,
+            'minItems'    => 1,
+            'maxItems'    => 5,
+            'items'       => array( 'type' => 'integer', 'minimum' => 1 ),
+        ),
+    ),
+)
+```
+
+**Output schema:**
+
+```php
+array(
+    'type'       => 'object',
+    'required'   => array( 'posts', 'unavailable' ),
+    'properties' => array(
+        'posts'       => array( /* id, post_type, status, date, slug, link, title, content, content_protected, edit_link */ ),
+        'unavailable' => array( /* the requested IDs that were not returned */ ),
+    ),
+)
+```
+
+Three properties are load bearing:
+
+- **Five posts a call, enforced twice.** The cap is in the input schema and clamped again in the execute callback, so it survives a transport that never validated the input. It is a context limit for the model, not an access control.
+- **Every body is filtered at execute time** by the current user's read permission, using the same inherited-parent walk the search ability performs. A body of a password-protected post is empty unless the user can edit that post; `content_protected` says which posts those are. `edit_link` is present only when the user can edit that post.
+- **An unreadable ID and an unknown ID are reported identically**, in `unavailable`. The caller supplied the IDs, so nothing is disclosed that it did not already know, and the two cases stay indistinguishable.
+
+Bodies are returned as plain text: the rendered content with markup stripped. The model is given text to reason about rather than markup to reproduce.
+
+### `ai/propose-drafts`
+
+The model's only reach toward the write path. It records the exact field values it proposes in a user-scoped, expiring transient and returns a proposal identifier. It does not touch the posts table.
+
+Three properties are load bearing:
+
+- It is **withheld from the REST and MCP surfaces**: `show_in_rest` is false for REST, and `meta.mcp.public` is false for MCP, since the MCP Adapter reads exposure from that key. An owner can still expose it from the MCP Access screen, where it refuses every call. It also refuses outright unless it is running inside a workspace turn, so a remote agent cannot accumulate proposals for someone else to approve.
+- The proposal is **bound to the conversation it was made in**, read from the authenticated request rather than from the model's arguments.
+- Only the declared item fields (`post_type`, `status`, `title`, `content`, `excerpt`) survive storage. Anything else the model supplies — a prose summary of what it claims it will write, for instance — is dropped.
+
+A proposal carries at most 20 items, requires a title per item, and refuses a post type or a status the user cannot write rather than quietly downgrading it to a draft.
+
+### `ai/propose-template`
+
+The same reach for one block template for the active theme, with the same three properties: it is withheld from REST and MCP and refuses outside a workspace turn, the proposal is bound to its conversation, and only the declared fields (`slug`, `title`, `content`) survive storage. It also:
+
+- **Explains instead of failing on a classic theme.** The call returns an error saying the theme does not use block templates, for the assistant to pass on, and nothing is stored.
+- **Accepts only a slug from the template hierarchy** core lists (`404`, `search`, `archive`, `single`, `page`, `home`, `front-page`, …), or `page-{slug}` for one page.
+- **Accepts only block markup.** The markup is filtered with `wp_kses_post()` when it is stored, as draft bodies are, and is then refused if it holds no blocks, any HTML outside the block comments, or a block the site does not register. The error names an unknown block so the assistant can correct it.
+- **Never overwrites a template someone has edited.** A slug that already has an edited template for the theme is refused. A template the theme ships as a file, such as `404.html`, may be replaced: the card says so, and Reset in the Site Editor brings the theme's version back.
+
+Its card shows the slug, the theme and the full markup without a click, says the template is live for visitors as soon as it is created, and has one **Create template** button.
+
+### `ai/propose-post-changes`
+
+Proposes new values for fields of posts that already exist: one item is one field (`title`, `excerpt` or `content`) of one post, up to 20 items. It is withheld from REST and MCP, refuses outside a workspace turn, and binds the proposal to its conversation, like the others. It also:
+
+- **Needs `edit_post` on each post**, when proposed and again when approved, and refuses trashed posts, revisions, autosaves and fields the post type does not support.
+- **Keeps titles plain.** A title holding any markup, or longer than 500 characters, is refused. Excerpts and content go through `wp_kses_post()` for every user, because the value is model-authored.
+- **Refuses to rewrite content kses would damage.** If a post's current content holds markup `wp_kses_post()` would strip (an iframe or embed saved with `unfiltered_html`), a content change for it is refused, so approving can't silently remove it from a live post. Title and excerpt changes for that post still work.
+- **Changes only the approved field.** Every other text column is written back exactly as stored, so `wp_update_post()` re-running the save filters can't alter them.
+- **Can change a published post.** The card says the change is live as soon as it is approved.
+
+### `ai/propose-site-identity`
+
+Proposes a new site title (`blogname`) or tagline (`blogdescription`), at most one item for each, for users with `manage_options` (checked when proposed and again when approved). Values are plain text: HTML is stripped, and a value over 200 characters (title) or 300 (tagline) is refused rather than cut. An empty title is refused; an empty tagline clears it. It is withheld from REST and MCP and refuses outside a workspace turn.
+
+### Changes to existing content
+
+`ai/propose-post-changes` and `ai/propose-site-identity` change things that already exist, so their cards and their approval differ from drafts:
+
+- **The card shows the current value next to the proposed one**, with content rendered rather than shown as HTML. Content is parsed in an inert `DOMParser` document and mapped onto the transcript's renderer through an allowlist, so nothing in it runs or loads.
+- **The person can edit a proposed value before approving.** An edit goes back through the same server-side rules as the assistant's value, and the value written, and reported to the assistant, is the edited one. An edit can change only the value, never which post, field or option the item targets.
+- **A change is checked against the value it was proposed over.** At approval, an item whose field changed since the proposal is reported as changed since proposed and left alone, one already at the new value is reported as unchanged, and a post someone else is editing is reported as locked.
+
+Both can be switched off with [`wpai_workspace_write_proposals_enabled`](#wpai_workspace_write_proposals_enabled).
+
+## The write path
+
+There is **no registered write ability anywhere in this feature**. The writers are plain classes reachable only from `REST\Proposal_Controller`: each kind of proposal (`Draft_Writer` for drafts, `Template_Writer` for a template, `Post_Field_Writer` for post fields, `Site_Identity_Writer` for the site title and tagline) supplies its fields, its sanitizer, its capability check and its writer, and they share one approval path. A registered write ability would be reachable by every ability consumer on the site — MCP, the Abilities Explorer, any third-party caller — none of which has a confirm gate, which would make confirmation a property of one controller rather than of the write path.
+
+The flow:
+
+1. The assistant calls a propose ability (`ai/propose-drafts`, for example) with resolved values. Nothing is written.
+2. The transcript renders a confirmation panel listing the **stored** values, item by item, with a checkbox per item.
+3. Approving posts to `/ai/v1/workspace/proposals/<id>/execute` with the conversation ID and the selected item keys. The controller re-checks the capability, compares the conversation, and rejects an unknown item key.
+4. The proposal's writer writes each selected item independently, re-checking the user's capability per item at write time (`edit_theme_options` for a template), and stamps each created post with an idempotency token in the `_wpai_workspace_proposal_item` meta key so a resubmitted execution finds the existing post instead of creating a second one.
+5. Each item reports its own outcome — `created`, `updated`, `unchanged`, `stale`, `locked`, `denied`, `failed`, `duplicate` or `deselected` — to the person and, as data, to the assistant. Nothing is retried automatically.
+
+**A proposal is approved at most once.** Approval first takes a per-proposal lock with one `INSERT IGNORE` into the options table, as core's `WP_Upgrader::create_lock()` does, so two approvals from two tabs can't both write. A second approval returns the first one's results. Each item's result is saved as it is written; a proposal still being applied after five minutes was interrupted, and reads as failed with whatever results it saved. Approval is also refused once the proposal's chat has been deleted.
+
+Proposals expire 30 minutes after they are created, and the expiry stored on the record is compared on every read, so a stale confirmation cannot become executable again.
+
+## Safety posture
+
+### What the assistant may not do
+
+It never deletes or trashes anything, never changes a user's role or capabilities, never manages connector credentials, never installs plugins or themes, and never writes settings. Its whole reachable surface is the abilities in the table above. It cannot write content at all except by proposing values that a person then confirms — and even then the write happens in a separate authenticated request that the person makes, not in the request that ran the turn.
+
+### Why writes require confirmation
+
+The assistant reads content other people wrote. Post bodies, titles and excerpts are author-controlled, and an instruction planted in one of them can influence what the model says next. So the confirmation surface deliberately shows the **stored resolved values** — the post type, status, title, content and excerpt that will actually be written — and never the assistant's own summary of them, because that summary is influenced by the content it read. The proposal store enforces this by dropping every field outside the declared item shape, so there is nothing else for the confirmation to render.
+
+The proposal cap of 20 items exists for the same reason. Set approval is the weakest point of the write path: the longer the list, the less of it anyone reads, and an injected instruction wins by appending to an otherwise legitimate batch.
+
+**Per-item selection is a deliberate divergence from the design reference.** The design reference for this screen (produced outside this repository) shows the confirmation as a plain list of the proposed items with a single "Create drafts" action for the whole batch. The shipped implementation instead gives each item its own checkbox. In a batch of two or more, every checkbox starts unchecked, so a person must actively select which items to create rather than approving the set as a whole; an injected instruction wins by appending an item to an otherwise legitimate batch, and an unchecked item cannot ride along. A proposal of a single draft or pending item starts checked, because there is no batch for anything to hide in and its stored values are the whole card; the main button names what it will do, so "write a post about X" is one click to create and one to open. An item that would be published or made private is never preselected, and a button that would publish says so. This was a deliberate choice, not drift, and batches should not be "fixed" back toward the mockup: selection is what makes partial approval possible, and the guarantee above — that a person approves the exact stored resolved values that will be written, never the assistant's prose summary of them — is stronger when approval can be scoped to a subset of a batch rather than forced to all-or-nothing. The server-side contract carries this, not just the UI: the proposal-execute route (`POST /workspace/proposals/{id}/execute` in `includes/Experiments/AI_Workspace/REST/Proposal_Controller.php`) requires a `selected` argument naming the approved item keys and rejects the request if it names none, and `Proposal_Writer::write()` (`includes/Experiments/AI_Workspace/Proposal_Writer.php`), which each kind's writer inherits, walks every item in the proposal, skips writing any item whose key is absent from `selected`, and reports it back with a `deselected` outcome rather than silently omitting it.
+
+### The tool surface is an allowlist
+
+The model is offered only the abilities admitted by the tool policy that also pass the current user's capability check, not every ability registered on the site. Admission is opt-in and defaults to refusing: an ability that declares nothing is never offered, however it is annotated. A tool a user cannot run is never advertised to the model, so the model cannot ask for it. The allowlist is filterable, which means a site that adds an ability to it is widening what the assistant can reach; see the caution under [`wpai_workspace_tool_candidates`](#wpai_workspace_tool_candidates).
+
+### What leaves the site
+
+**Site content is sent to the configured third-party AI provider.** When the assistant calls a tool, the tool's result — post titles, excerpts, statuses, dates, slugs, permalinks and editor URLs, and whole post bodies when the body read tool is called — is sent to that provider as part of the next model request, along with the conversation so far. Two bounds apply, and neither is a reason to skip telling people about the first sentence:
+
+- Only content the **requesting user could already read** is retrieved, because every row is permission-filtered at execute time.
+- Only the **fields the tool returned** are sent. `ai/search-content` never returns a post body; `ai/read-content-bodies` does, for at most five posts a call, and only for posts the requesting user could already read.
+
+The conversation is replayed to the provider on every turn, within a bounded window (see [Conversation and proposal storage](#conversation-and-proposal-storage)), so content retrieved in an earlier turn can reach the provider again later.
+
+Which provider receives it is whatever connector the site has configured, following the site's provider preference. Sites with confidentiality obligations should treat enabling this experiment as a decision about egress, not only about features.
+
+### Retrieved content is untrusted
+
+Tool results reach the model wrapped in a provenance envelope — `wp_tool_result`, carrying the ability name, the site, the requesting user and roles, a `trust: untrusted` marker and a note stating that everything under `data` is site content to report on rather than instructions to follow. JSON gives unambiguous delimiters that prose tags do not. Tool output is **never** merged into the system instruction.
+
+Instructing a model to ignore injected instructions is a mitigation, not a control. The controls are the ones above: the permission filter, the fact that no write happens without confirmation, and the rendering rules below.
+
+### Assistant output is rendered inert
+
+Model output is parsed by a restricted-subset markdown renderer that builds a node tree React renders as elements. No code path produces an HTML string, and nothing is handed to `dangerouslySetInnerHTML`:
+
+- Raw HTML is never recognised; it falls through and is displayed as visible text.
+- Images never produce a node that can issue a network request. Inline images render as inert text, and reference-style images and definitions are not recognised at all. Markdown images are the zero-click exfiltration channel, so both spellings are covered.
+- Links are neutralised by policy: only `http` and `https` survive, and a destination outside the site's own host is marked inert and rendered as text rather than as a live anchor.
+- Generated code is offered with a copy affordance, not an insert affordance.
+
+Tool results rendered as a table are rebuilt field by field from the ability's declared output shape, so a result carrying extra properties cannot smuggle them into the UI.
+
+## The command palette
+
+With the experiment on, the command palette gets an AI fallback on every admin screen that has the palette, for users who can `edit_posts`. When a search of at least three characters has no results, the loader waits 450 ms after the last keystroke, then sends the search and the palette's own commands (name, label and keywords) to `ai/command-palette-ai-search`. The model returns up to three command IDs from that list, and the loader shows those commands as ordinary palette results, the first one selected, so Enter runs it. While it waits the palette shows a "Searching with AI…" row.
+
+- **Only commands the palette already has.** Each command is sent as an ID (`c0`, `c1`, …), and the model is asked to return IDs only. An ID that was not sent is dropped, so the model cannot invent a destination.
+- **Silent failure.** A failed or unparseable request shows nothing extra: the palette shows its own empty state.
+- **Not an agent tool.** `ai/command-palette-ai-search` makes its own model call over a list only the browser can send, so it is registered with `meta.mcp.public = false` and annotated open-world, and the tool policy never offers it to the assistant. It is not marked read-only although it writes nothing, because the REST run route accepts only GET for a read-only ability and the command list does not fit in a URL.
+- **What leaves the site.** The search and the labels and keywords of the commands the user can run are sent to the configured provider. No site content is.
+
+### Ask in AI Workspace
+
+For users who can open the workspace (`manage_options`), the loader adds an "Ask in AI Workspace: <query>" row under the same conditions as the suggestions: the palette found nothing, the search has at least three characters, and the debounce has settled. It comes after any suggestions, and it stays when the AI request fails, so a failed request leaves only that row. The server tells the loader whether to offer it; nobody else is told where the workspace is.
+
+Choosing it opens the workspace with the search in the `wpai-prompt` query argument. `Admin_Page` reads it once: tags are stripped, whitespace is flattened to one line, and it is cut to 500 characters. It lands in the composer, unsent, and takes precedence over a post from the block editor handoff. The screen removes `wpai-prompt` from the URL as soon as it has read it, so a reload opens an empty composer.
+
+## Architecture & Implementation
+
+### Key hooks & entry points
+
+`WordPress\AI\Experiments\AI_Workspace\AI_Workspace::register()` runs when the experiment is enabled. It:
+
+- Registers `Admin_Page`, which adds the `Tools` submenu, enqueues the React bundle, and re-checks `manage_options` in the render callback so a direct call can never emit the app shell or its localized data.
+- Registers `Show_In_Abilities`, so the curated core post types are exposed before the abilities build their input schemas.
+- Registers `Search_Content` (`ai/search-content`), `Read_Content_Bodies` (`ai/read-content-bodies`), `List_Terms` (`ai/list-terms`), `Get_Site_Info` (`ai/get-site-info`), `Find_Admin_Screens` (`ai/find-admin-screens`), `Propose_Drafts` (`ai/propose-drafts`), `Propose_Template` (`ai/propose-template`), `Propose_Post_Changes` (`ai/propose-post-changes`), `Propose_Site_Identity` (`ai/propose-site-identity`) and `Ask_User` (`ai/ask-user`).
+- Registers `REST\Turn_Controller`, `REST\Stream_Responder` and `REST\Proposal_Controller`.
+- Registers the `wpai_chat` post type and `wpai_archived` status (`Conversation_Store::register_post_type()`) and `REST\Conversation_Controller`. The chat ownership filter and user-removal cleanup (`Conversation_Store::register_lifecycle_hooks()`), and the personal-data exporter and eraser (`Conversation_Privacy::register()`), are hooked by the plugin's `Main` class instead, so they hold while the experiment is off.
+- Hooks `admin_enqueue_scripts` to add the block editor handoff action on `post.php` and `post-new.php`, for users who can open the workspace. The handoff carries the post's identity and a flattened, clamped title, and nothing else — the workspace reads any body through the same permission-checked tool path.
+- Registers `ai/command-palette-ai-search` and hooks `admin_enqueue_scripts` (priority 20, after the palette) to add the command palette loader for users who can `edit_posts`, on screens where `wp-commands` is enqueued. The loader is told the workspace URL only for users who can `manage_options`, who get the "Ask in AI Workspace" row.
+
+### The turn loop
+
+`Turn_Runner` drives WordPress core's ability-backed tool plumbing — `WP_AI_Client_Prompt_Builder::using_abilities()` and `WP_AI_Client_Ability_Function_Resolver` — rather than brokering abilities itself. Per round it:
+
+1. Re-reads the out-of-band cancellation marker, before the model call and again before any tool runs.
+2. Asks the model for a message. The reply arrives whole (see [Streaming](#streaming)).
+3. Executes each ability call individually (`execute_ability()`, not the batch form), so the provenance envelope and the one-log-row-per-invocation rule have a seam to apply at.
+4. Feeds the enveloped results back as a user message.
+
+A turn is capped at five rounds by default and terminates with a status of `complete`, `max_rounds` or `cancelled`.
+
+### Conversation and proposal storage
+
+**Chats are private posts.** Each conversation is a post of the `wpai_chat` type, registered with `public`, `publicly_queryable`, `show_ui` and `show_in_rest` all false, `exclude_from_search` true and `can_export` false, so it appears in no list, search, feed, REST collection or WXR export. Its author is the owner and its title is the name; it is first named after the opening message, shortened to 60 characters. `publish` means active and the non-public `wpai_archived` status means archived. Trash is never used, because `wp_scheduled_delete` empties it on its own.
+
+**Chats are kept until their owner deletes them.** Nothing expires a chat, and archiving only hides it from the default list. The model messages and one entry record per turn (the prompt, the reply, the status, the rounds and each tool call with its result) are stored in post meta as JSON, with `post_content` left empty so neither kses nor unslashing can rewrite them.
+
+**A chat belongs to one user.** Every read matches the post author as well as the conversation ID, and a `map_meta_cap` filter grants `read_post`, `edit_post` and `delete_post` on a chat to its author alone, with no override for other administrators. A conversation ID that does not resolve for the requesting user is reported as not found rather than silently starting a new conversation. Deleting a user, or removing them from a site, deletes their chats before WordPress can reassign their content to someone else. The ownership filter and that cleanup are hooked whether or not the experiment is on.
+
+**Chats are personal data.** `Tools → Export Personal Data` includes an **AI chats** group: one item per chat, archived ones included, with its name, when it was created and last updated, whether it is archived, and each turn's message and reply. Tool results are left out. It pages at 20 chats. `Tools → Erase Personal Data` deletes all of the person's chats. A proposal from an erased chat can no longer be approved, because an approval is refused once its chat is gone. Like the ownership filter, the exporter and eraser (`Conversation_Privacy`) are hooked whether or not the experiment is on, and they find archived chats even while the `wpai_archived` status is not registered.
+
+**A turn replays a bounded window.** The whole transcript is kept for display, but a turn sends the model only the last 40 stored messages (see [`wpai_workspace_replay_messages`](#wpai_workspace_replay_messages)), opening on a message the person sent. Within that window, tool results from before the latest turn are replaced by their retrieval summary, so a long chat does not outgrow the provider's context limit.
+
+Cancellation markers and proposals still live in **user-scoped transients** sharing the plugin's `wpai_` prefix:
+
+| Store | Prefix | Lifetime |
+| --- | --- | --- |
+| Cancellation marker | `wpai_workspace_cancel_` | 10 minutes |
+| Proposal | `wpai_workspace_proposal_` | 30 minutes |
+
+A proposal keeps its own short lifetime even though its chat does not expire, so a stale proposal in an old chat cannot become approvable again. The transient is kept for an hour past that lifetime, so an expired proposal is reported as expired rather than as not found. Conversations stored as `wpai_workspace_conv_` transients before chats were saved as posts are not migrated; they expire on their own.
+
+Uninstall deletes every chat post, along with the transients.
+
+### Streaming
+
+Replies are buffered today: each model round goes through core's `wp_ai_client_prompt()` and the reply arrives whole. Token-by-token streaming from the provider is planned for a follow-up once the PHP AI Client ships streaming ([WordPress/php-ai-client#255](https://github.com/WordPress/php-ai-client/pull/255)).
+
+The plumbing between WordPress and the browser is already in place, so the follow-up only has to supply the provider half. Streaming is opt-in per request: only a request carrying the `X-WP-AI-Stream: 1` header is considered, and the CLI SAPI is refused outright. The turn route writes no output itself — it exposes the `wpai_workspace_stream_emitter` filter, and `REST\Stream_Responder` is the consumer that turns the emitter into server-sent events (`delta` frames, then one `result` or `error` frame, then `done`). Headers are sent lazily on the first delta, so a turn that produced no streamed text still answers with the ordinary JSON body and the client reads the buffered shape. Until a model client emits deltas, every turn answers that way.
+
+On the model side, `Prompt_Model_Client` accepts an optional `Stream_Driver_Interface`. None is supplied by default, so rounds take the buffered path; a driver that returns null also falls back to a buffered request rather than failing the turn.
+
+## REST API
+
+All routes require `manage_options`, checked on every request independently of nonce validation. Cookie-authenticated requests additionally have to clear core's REST nonce check.
+
+| Method | Route | Purpose |
+| --- | --- | --- |
+| `POST` | `/wp-json/ai/v1/workspace/messages` | Run a turn (`message`, optional `conversation_id`, `scope` of `site` or `general`) |
+| `POST` | `/wp-json/ai/v1/workspace/messages/cancel` | Mark the conversation's in-flight turn cancelled (`conversation_id`) |
+| `GET` | `/wp-json/ai/v1/workspace/proposals/<id>` | Read a proposal's stored resolved values |
+| `DELETE` | `/wp-json/ai/v1/workspace/proposals/<id>` | Decline a proposal; writes nothing |
+| `POST` | `/wp-json/ai/v1/workspace/proposals/<id>/execute` | Create the approved items (`conversation_id`, `selected`) |
+| `GET` | `/wp-json/ai/v1/workspace/conversations` | List the current user's chats, most recently active first (`archived`, `page`, `per_page` up to 50) |
+| `GET` | `/wp-json/ai/v1/workspace/conversations/<id>` | Open a chat: its name, scope, entry records and any reported proposal outcomes |
+| `POST` | `/wp-json/ai/v1/workspace/conversations/<id>` | Rename (`name`, up to 200 characters) or archive and restore (`archived`) a chat |
+| `DELETE` | `/wp-json/ai/v1/workspace/conversations/<id>` | Delete a chat for good |
+
+A chat the caller does not own answers 404 on every conversations route, so an ID never confirms that someone else's chat exists.
+
+Cancellation is a second route rather than client-abort detection: PHP only observes a disconnected client after it writes output, so a buffered turn cannot detect one at all. The cancel route writes a marker the turn loop re-reads between rounds.
+
+`ai/search-content` and `ai/read-content-bodies` are also runnable like any other ability:
+
+```bash
+curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/search-content/run" \
+  -u "username:application-password" \
+  -H "Content-Type: application/json" \
+  -d '{ "input": { "search": "remote work", "per_page": 5 } }'
+```
+
+`ai/propose-drafts`, `ai/propose-template`, `ai/propose-post-changes`, `ai/propose-site-identity` and `ai/ask-user` are not available this way: they declare `meta.mcp.public` as false and `show_in_rest` as false, and they refuse outside a workspace turn.
+
+## Auditing with the AI Request Log
+
+Every agent event is recorded in one place, `Agent_Audit`: each tool call, including a withheld one; each item an approval writes; and each event in a proposal's life. Enable the **AI Request Logging** experiment and they appear at `Tools → AI Request Logs`, where the **Type** filter's `agent` value shows only them and the **Status** filter's `denied` value shows what was refused.
+
+- `type` is always `agent`. Rows written before this type existed keep the `ability` type.
+- `operation` is one of:
+  - for a tool call, the ability name, such as `ai/search-content` or `ai/propose-post-changes`;
+  - for an item an approval wrote, the kind's write operation: `ai/create-drafts`, `ai/create-template`, `ai/update-post-fields` or `ai/update-site-identity`;
+  - for a proposal event, `proposal_created`, `proposal_edited` (the person changed a value before approving), `proposal_declined`, `proposal_expired` (recorded once, when an expired proposal is next read), `proposal_failed` (a write that threw, or one interrupted for longer than the approval lock) or `proposal_refused` (an approval after the chat was deleted).
+- `status` is `success`, `error`, `denied`, `skipped` (an item left as it was: unchanged, stale, locked or a duplicate), or `timeout` for an expired proposal. A **denial is recorded separately from a failure**: a refusal sets `denied` and records `denial_reason` in the context.
+- `context` carries `surface` (always `ai-workspace`) and `conversation_id`.
+  - Tool rows add the `round` index and a `tool` object naming the ability, the function name and the call ID.
+  - Item rows add a `proposal` object with the proposal ID and item key, plus the post ID, post type, status and field, or the option.
+  - Proposal event rows add a `proposal` object with the proposal ID, its kind and its item keys, and for an edit the edited item keys. Failures and refusals add `error_code`.
+- `user_id` is the person the tool ran as, or whose proposal it is.
+
+No row carries post content or option values: a row names the field or option that changed, never what it changed to.
+
+Between them, those fields answer "what did the assistant do on this site, for whom, and was it allowed" without reading application code. Logging is best-effort: `log_ai_request()` returns `false` harmlessly when the logging experiment is off, so it is called unconditionally and costs nothing when nobody is watching.
+
+### `wpai_agent_event`
+
+Fires once for every event above, before its row is written, whether or not AI Request Logging is on, so an audit plugin need not depend on that experiment.
+
+```php
+add_action(
+	'wpai_agent_event',
+	function ( string $operation, string $status, array $context, string $error ) {
+		// $operation, $status and $context are the row's fields; $error is its error message, or ''.
+	},
+	10,
+	4
+);
+```
+
+It covers agent turns and approvals in the AI Workspace only. A direct MCP call to an ability does not fire it.
+
+## Extending the Experiment
+
+### `wpai_workspace_tool_candidates`
+
+Filters the abilities the workspace may declare, as a map of ability name to the coarse capability required to declare it. An empty capability means any authenticated user.
+
+```php
+add_filter( 'wpai_workspace_tool_candidates', function ( array $candidates ): array {
+    $candidates['my-plugin/read-analytics'] = 'manage_options';
+
+    return $candidates;
+} );
+```
+
+**Adding a candidate widens what the assistant can reach.** An ability added here is offered to a model that is reading content other people wrote, so it should be read-only, should enforce its own permissions inside `execute_callback` rather than only in its `permission_callback`, and should never be a destructive or credential-bearing operation. An ability that is not registered is skipped, so removing one is safe.
+
+The filter does not have the last word on removals: the site owner's own removals are applied after it, so a filter cannot re-add an ability the owner took off the surface. A name this filter removes is reported in the Abilities Explorer as removed by site code, rather than blamed on the reader's capabilities.
+
+### `wpai_workspace_withheld_abilities`
+
+The abilities the workspace never admits, whatever their exposure and
+annotations say. Ships holding `core/get-user-info`, `core/users-query`,
+`core/read-users`, `core/settings-get`, `core/read-settings` and
+`core/get-environment-info`. `core/settings-get` is the name WordPress 7.2
+registers for the settings reader that was `core/read-settings`.
+
+`core/users-query` and `core/read-users` are the same ability under two names:
+[#1002](https://github.com/WordPress/ai/pull/1002) renamed it and kept the old
+name as a deprecated alias. The alias is a real registration that copies the
+replacement's meta, so a change in exposure reaches both at once and both have
+to be listed. A rename upstream is a hole here until the new name is added.
+
+The effect class asks whether an ability writes or reaches outside the site. It
+cannot ask whether handing it to a model is a bad idea, and for these the answer
+is yes: they read people's personal data, the site's configuration or its
+environment, and this surface is reachable by instructions embedded in content
+someone else wrote. They are registered by WordPress rather than by this plugin,
+and `core/get-user-info` is already public, read-only and not destructive -- the
+only thing keeping it off the surface is an absent `open_world` hint, which it
+would be correct for core to add.
+
+The plugin's own `ai/get-site-info` is not on this list, although it reads
+site configuration: it returns a fixed field set with no admin email, no plugin
+list and no database details, and the WordPress and PHP versions only for
+`view_site_health_checks`.
+
+Removing one is a deliberate act by someone with code access, which is the
+point:
+
+```php
+add_filter(
+	'wpai_workspace_withheld_abilities',
+	static function ( $withheld ) {
+		return array_diff( $withheld, array( 'core/read-settings' ) );
+	}
+);
+```
+
+### `wpai_workspace_tool_admission_enabled`
+
+Temporary. Switches declaration-based admission on before [#354](https://github.com/WordPress/ai/issues/354) settles the declaration's public shape; it defaults to false and is removed when that lands. `WPAI_WORKSPACE_TOOL_ADMISSION`, defined in `wp-config.php`, does the same thing, and this filter wins over it.
+
+```php
+add_filter( 'wpai_workspace_tool_admission_enabled', '__return_true' );
+```
+
+This is not the site owner's off switch. That one lives on the Abilities Explorer, is on by default, and is not going away.
+
+### `wpai_admin_screens`
+
+Filters the screens `ai/find-admin-screens` can return. Each entry is an array with a `title`, a `path` relative to the admin directory (passed to `admin_url()`), the `capability` a user needs to be offered it, and optionally `keywords` (words or phrases a person might use for it) and a short `section`. An entry missing a title, a capability or a relative path is dropped. Earlier entries win ties.
+
+```php
+add_filter(
+	'wpai_admin_screens',
+	static function ( array $screens ): array {
+		$screens[] = array(
+			'title'      => 'Newsletter',
+			'section'    => 'Settings',
+			'path'       => 'options-general.php?page=my-newsletter',
+			'keywords'   => array( 'email', 'subscribers', 'mailing list' ),
+			'capability' => 'manage_options',
+		);
+
+		return $screens;
+	}
+);
+```
+
+### `wpai_workspace_write_proposals_enabled`
+
+Filters whether the assistant may propose changes to things that already exist: post fields, and the site title and tagline. Default true. Returning false removes `ai/propose-post-changes` and `ai/propose-site-identity` from the assistant's tools and from its instructions, and refuses approval of any such proposal already stored. Drafts and templates are not affected.
+
+```php
+add_filter( 'wpai_workspace_write_proposals_enabled', '__return_false' );
+```
+
+### `wpai_workspace_proposal_kinds`
+
+Filters the list of proposal kinds, as `Proposal_Kind` instances. Each kind names its propose ability, the capability that ability needs and the sentence the system instruction carries for it, so the tool list, the abilities that end a turn and the abilities a follow-up withholds are all built from this list. The write gate above runs after this filter.
+
+### `wpai_workspace_max_rounds`
+
+Filters how many model rounds a single turn may run. Default 5, clamped to at least 1.
+
+```php
+add_filter( 'wpai_workspace_max_rounds', fn (): int => 3 );
+```
+
+### `wpai_workspace_replay_messages`
+
+Filters how many stored messages a turn replays to the model. Default 40, clamped to at least 2. The whole transcript is still stored and shown.
+
+```php
+add_filter( 'wpai_workspace_replay_messages', fn (): int => 20 );
+```
+
+### `wpai_workspace_system_instruction`
+
+Filters the system instruction, which receives the scope as its second argument. **Tool results must never be merged into this value** — that is what keeps retrieved content out of the instruction channel.
+
+```php
+add_filter( 'wpai_workspace_system_instruction', function ( string $instruction, string $scope ): string {
+    return $instruction . ' ' . 'Prefer British English spellings.';
+}, 10, 2 );
+```
+
+### `wpai_workspace_stream_emitter`
+
+Filters the callback that receives assistant text deltas. The workspace's own transport supplies the emitter. Returning null keeps the turn buffered. The model client only calls the emitter when a stream driver is injected, which no default configuration does today.
+
+### `wpai_has_function_calling_support`
+
+Filters whether a function-calling-capable model is available, for connectors that do not expose model metadata. Answered from metadata rather than a live request, so it is cheap enough to run before every turn.
+
+## Testing
+
+### Manual Testing
+
+1. **Enable the experiment:**
+   - Go to `Settings → AI`, enable global AI features, and toggle **AI Workspace**
+   - Ensure valid AI connector credentials are configured
+2. **Hold a conversation:**
+   - Open `Tools → AI Workspace`, choose **Site Context**, and ask something that needs retrieval ("find posts about remote work")
+   - Confirm the reply appears, the tool step lists the call, and a post list renders as a table with editor links
+   - Cancel a long turn and confirm the transcript reports the cancellation
+   - Clear the conversation and confirm the next turn starts a new space
+3. **Scopes:**
+   - Switch to **General Knowledge** and confirm the assistant says it cannot see site data
+4. **Proposal flow:**
+   - Ask for a multi-post plan ("titles and excerpts for a 5-part series on remote work")
+   - Confirm the confirmation panel lists the stored values, deselect one item, approve the rest
+   - Confirm only the approved items were created, that outcomes are reported per item, and that re-submitting the same approval does not create duplicates
+   - On a block theme, ask for a 404 template; confirm the card shows its markup and says it replaces the theme's template, then create it and open it in the Site Editor
+   - On a classic theme, ask for the same and confirm the assistant says templates need a block theme
+5. **Permissions:**
+   - As a non-administrator, confirm the Tools menu entry is absent and the routes return 403
+   - With a limited role that can reach the screen via a filtered capability, confirm search results never contain another author's private or draft posts
+6. **Auditing:**
+   - Enable **AI Request Logging** and confirm each tool call and write attempt appears with type `agent`, `surface: ai-workspace`, its conversation ID and round
+   - Propose a change, edit it and approve it; decline a second one. Confirm `proposal_created`, `proposal_edited` and `proposal_declined` rows appear, and filter the log by type `agent` and status `denied`
+
+### Automated tests
+
+- PHP integration tests live in `tests/Integration/Includes/Experiments/AI_Workspace/` and `tests/Integration/Includes/Abilities/Content/Search_ContentTest.php`
+- Playwright specs live in `tests/e2e/specs/experiments/ai-workspace*.{js,ts}`, driven by the fixture scenarios in `tests/e2e-testing/responses/Anthropic/scenarios/`
+
+One thing bites in practice:
+
+- **Running `npm run test:php` before `npm run test:e2e` fails.** The PHP suite reinstalls WordPress in the shared test environment and deactivates the plugins, so the e2e `enableExperiment()` helper cannot find the settings screen. See [TESTING.md](../TESTING.md#running-both-suites-in-one-session) for the reactivation command.
+
+## Notes & Considerations
+
+### Requirements
+
+- WordPress 7.0+, for `WP_AI_Client_Prompt_Builder::using_abilities()` and `WP_AI_Client_Ability_Function_Resolver`. Declaration-based admission additionally needs WordPress 7.1+, for the filtering `wp_get_abilities( $args )` added in [Trac #64990](https://core.trac.wordpress.org/ticket/64990); on 7.0 the surface is the curated floor
+- Valid AI credentials, and at least one connector exposing a model that supports function declarations
+- `manage_options` for the screen and every route behind it
+
+### Limitations
+
+- **Bodies are read five at a time, and never in bulk.** `ai/read-content-bodies` takes explicit IDs and caps a call at five posts, so a question that would need dozens of bodies at once cannot be answered in one pass. There is no way to ask for "every post in this category" as bodies.
+- **Older tool results are summarized when a chat is continued.** Beyond the replay window the model sees nothing, and within it only the latest turn's tool results are replayed whole.
+- **No mobile-optimized layout.** The screen is built for a desktop admin.
+- The transcript shows tool activity as a collapsible step listing each call, rather than a one-line retrieval trace; a result set narrowed by a permission check is not itself reported.
+- Comment content is never retrievable. Comments are authored by unauthenticated visitors, which would let an anonymous party place instructions into an admin session.

@@ -95,6 +95,8 @@ const getStatusClass = ( status: string ): string => {
 			return 'ai-request-logs__status--error';
 		case 'timeout':
 			return 'ai-request-logs__status--timeout';
+		case 'denied':
+			return 'ai-request-logs__status--denied';
 		default:
 			return '';
 	}
@@ -108,7 +110,13 @@ const formatSelectLabel = ( value: string ): string =>
 
 const getRequestKind = ( entry: LogEntry ): string => {
 	const raw = entry.context?.request_kind;
-	return typeof raw === 'string' ? raw : 'text';
+
+	if ( typeof raw === 'string' ) {
+		return raw;
+	}
+
+	// Agent rows record tool calls and proposal events, not generations.
+	return 'agent' === entry.type ? 'agent' : 'text';
 };
 
 const getSourceLabel = ( entry: LogEntry ): string | null => {

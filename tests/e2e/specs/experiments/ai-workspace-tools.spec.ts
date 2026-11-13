@@ -1,0 +1,834 @@
+/**
+ * External dependencies
+ */
+import type { Page } from '@playwright/test';
+
+/**
+ * WordPress dependencies
+ */
+import {
+	test,
+	expect,
+	type RequestUtils,
+} from '@wordpress/e2e-test-utils-playwright';
+
+/**
+ * Internal dependencies
+ */
+import {
+	activateMockScenario,
+	deactivateMockScenario,
+	disableExperiment,
+	enableExperiment,
+	getMockScenarioReport,
+	seedCredentials,
+} from '../../utils/helpers';
+
+const EXPERIMENT_LABEL = 'AI Workspace';
+const WORKSPACE_PAGE = 'tools.php?page=ai-workspace';
+
+/*
+ * These specs drive the workspace against sequenced Anthropic fixtures, which is
+ * the only provider the mock has a tool-calling round trip for. Anthropic is
+ * seeded exclusively so the turn cannot be answered by another configured
+ * provider, and OpenAI is restored afterwards because the rest of the suite
+ * assumes the state global setup left behind.
+ *
+ * Nothing here reaches the network: `pre_http_request` answers both the models
+ * lookup and every round of the turn from
+ * `tests/e2e-testing/responses/Anthropic/`.
+ */
+const seedAnthropic = ( requestUtils: RequestUtils ) =>
+	seedCredentials( requestUtils, [ 'anthropic' ] );
+
+const seedOpenAi = ( requestUtils: RequestUtils ) =>
+	seedCredentials( requestUtils, [ 'openai' ] );
+
+test.describe( 'AI Workspace tool loop', () => {
+	test.beforeEach( async ( { admin, page, requestUtils } ) => {
+		await seedAnthropic( requestUtils );
+		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+	} );
+
+	test.afterEach( async ( { admin, page, requestUtils } ) => {
+		await deactivateMockScenario( requestUtils );
+		await disableExperiment( admin, page, EXPERIMENT_LABEL );
+		await seedOpenAi( requestUtils );
+	} );
+
+	test( 'drives a full tool-calling round trip from sequenced fixtures', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		await activateMockScenario( requestUtils, 'workspace-search' );
+		await admin.visitAdminPage( WORKSPACE_PAGE );
+
+		await page
+			.getByLabel( 'Message', { exact: true } )
+			.fill( 'What sample content is on this site?' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+
+		const turn = page.locator( '.ai-workspace__turn' ).first();
+
+		// The answer comes from the second fixture entry, which the model can
+		// only have reached by way of the tool call in the first one.
+		await expect( turn ).toContainText(
+			'The search returned the seeded fixture entry titled AI E2E Sample Content.',
+			{ timeout: 30000 }
+		);
+
+		// The tool step records the ability that actually ran, not the fixture.
+		const tools = turn.locator( '.ai-workspace__tools' );
+
+		// The retrieval trace is the always-visible summary (U13/R24): it names
+		// what the turn retrieved before the detail is opened. The count comes
+		// from the server's own retrieval summary, so asserting it here proves
+		// the whole path -- ability, turn response, transcript -- carried it.
+		await expect( tools.locator( 'summary' ) ).toContainText( 'Searched' );
+		await expect( tools.locator( 'summary' ) ).not.toContainText(
+			'Checked the site'
+		);
+
+		/*
+		 * An administrator can read everything the fixture seeds, so nothing is
+		 * withheld and the trace must stay silent about permissions rather than
+		 * claim "none hidden". The withheld count itself is exercised
+		 * server-side, where a role can actually be denied a row.
+		 */
+		await expect( tools.locator( 'summary' ) ).not.toContainText(
+			'hidden by your permissions'
+		);
+		await expect( tools.locator( 'code' ) ).toHaveText(
+			'ai/search-content'
+		);
+		await expect( tools ).toContainText( 'success' );
+
+		// The ability's own rows are rendered, so the result reached the
+		// transcript rather than only the model.
+		await tools.locator( 'summary' ).click();
+		await expect( tools ).toContainText( 'AI E2E Sample Content' );
+
+		// Two entries of one fixture answered one turn: the sequence advanced.
+		const report = await getMockScenarioReport( requestUtils );
+		expect( report.scenario ).toBe( 'workspace-search' );
+		expect( report.calls[ 'Anthropic/workspace-search' ] ).toBe( 2 );
+	} );
+
+	test( 'repeats the last entry once the sequence is exhausted', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		await activateMockScenario( requestUtils, 'workspace-search' );
+		await admin.visitAdminPage( WORKSPACE_PAGE );
+
+		// The first turn consumes both entries of the two-entry sequence. The
+		// second turn is served the last one again — a terminating message — so
+		// it ends cleanly instead of falling through to the substring-matched
+		// default and answering with something unrelated.
+		for ( const prompt of [ 'First question.', 'Second question.' ] ) {
+			await page.getByLabel( 'Message', { exact: true } ).fill( prompt );
+			await page.getByRole( 'button', { name: 'Send' } ).click();
+			await expect(
+				page.locator( '.ai-workspace__turn' ).last()
+			).toContainText( 'AI E2E Sample Content', { timeout: 30000 } );
+		}
+
+		const report = await getMockScenarioReport( requestUtils );
+		expect(
+			report.calls[ 'Anthropic/workspace-search' ]
+		).toBeGreaterThanOrEqual( 3 );
+	} );
+
+	test( 'a stop on the first turn stays stopped rather than turning into an error', async ( {
+		admin,
+		page,
+	} ) => {
+		/*
+		 * The turn is held open and never answered, so the only thing that can
+		 * settle the request is the abort that Stop performs. That is the case
+		 * the regression lives in: on a conversation's first turn there is no
+		 * identifier to cancel with, so Stop closes the reader locally and the
+		 * aborted request then settles on its own with a transport failure.
+		 */
+		await page.route(
+			( url ) =>
+				url.href.includes( 'workspace/messages' ) &&
+				! url.href.includes( 'cancel' ),
+			() => {
+				// Deliberately never fulfilled.
+			}
+		);
+
+		await admin.visitAdminPage( WORKSPACE_PAGE );
+
+		await page
+			.getByLabel( 'Message', { exact: true } )
+			.fill( 'A question I will stop.' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+
+		const stopButton = page.getByRole( 'button', { name: 'Stop' } );
+		await expect( stopButton ).toBeEnabled();
+		await stopButton.click();
+
+		const turn = page.locator( '.ai-workspace__turn' ).first();
+		await expect( turn ).toContainText( 'You stopped this response.' );
+
+		// The aborted request settles a moment later. The stopped state has to
+		// survive it: the person stopped the turn, so nothing may report a
+		// failure they did not cause.
+		await page.waitForTimeout( 1000 );
+		await expect( turn ).toContainText( 'You stopped this response.' );
+		await expect( turn ).not.toContainText( 'Send this message again' );
+		await expect( turn.locator( '.components-notice' ) ).toHaveCount( 0 );
+
+		// The workspace's own live region reports the stop, not a failure, so a
+		// screen reader is not told the turn broke.
+		await expect(
+			page.locator( '.screen-reader-text[aria-live="polite"]' )
+		).toHaveText( 'Response stopped.' );
+	} );
+} );
+
+// The question the `workspace-ask` scenario asks, and its reply to any answer.
+const QUESTION = 'How would you like to go on?';
+const ANSWER_REPLY = 'Got it. I will rework the series to match.';
+
+test.describe( 'AI Workspace questions', () => {
+	test.beforeEach( async ( { admin, page, requestUtils } ) => {
+		await seedAnthropic( requestUtils );
+		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+		await activateMockScenario( requestUtils, 'workspace-ask' );
+		await admin.visitAdminPage( WORKSPACE_PAGE );
+
+		await page
+			.getByLabel( 'Message', { exact: true } )
+			.fill( 'Plan a series about the block editor.' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+
+		await expect(
+			page.getByRole( 'group', { name: QUESTION } )
+		).toBeVisible( { timeout: 30000 } );
+	} );
+
+	test.afterEach( async ( { admin, page, requestUtils } ) => {
+		await deactivateMockScenario( requestUtils );
+		await disableExperiment( admin, page, EXPERIMENT_LABEL );
+		await seedOpenAi( requestUtils );
+	} );
+
+	test( 'asks with choices, and a click sends the choice as the answer', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const card = page.getByRole( 'group', { name: QUESTION } );
+		const turns = page.locator( '.ai-workspace__turn' );
+
+		// Asking ended the turn: one model call, and the card waits for an answer.
+		await expect( turns ).toHaveCount( 1 );
+		expect(
+			( await getMockScenarioReport( requestUtils ) ).calls[
+				'Anthropic/workspace-ask'
+			]
+		).toBe( 1 );
+		await expect( card.getByRole( 'button' ) ).toHaveCount( 3 );
+		await expect(
+			card.getByRole( 'button', { name: 'Fewer parts' } )
+		).toBeEnabled();
+
+		// Asking is not a lookup, so it is not listed as one.
+		await expect(
+			turns.first().locator( '.ai-workspace__tools' )
+		).toHaveCount( 0 );
+
+		await card.getByRole( 'button', { name: 'Fewer parts' } ).click();
+
+		// The choice is sent exactly as if it had been typed.
+		await expect( turns ).toHaveCount( 2 );
+		await expect(
+			turns.nth( 1 ).locator( '.ai-workspace__message--user' )
+		).toHaveText( 'Fewer parts' );
+		await expect( turns.nth( 1 ) ).toContainText( ANSWER_REPLY, {
+			timeout: 30000,
+		} );
+
+		// The answered card can't be answered again, and shows what was sent.
+		for ( const choice of [
+			'Create these 5 drafts',
+			'Change the angle',
+			'Fewer parts',
+		] ) {
+			await expect(
+				card.getByRole( 'button', { name: choice } )
+			).toBeDisabled();
+		}
+		await expect(
+			card.getByRole( 'button', { name: 'Fewer parts' } )
+		).toHaveAttribute( 'aria-pressed', 'true' );
+		await expect(
+			card.getByRole( 'button', { name: 'Change the angle' } )
+		).toHaveAttribute( 'aria-pressed', 'false' );
+	} );
+
+	test( 'a typed reply also closes the question', async ( { page } ) => {
+		const card = page.getByRole( 'group', { name: QUESTION } );
+
+		await page
+			.getByLabel( 'Message', { exact: true } )
+			.fill( 'Make it four parts' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+
+		await expect(
+			page.locator( '.ai-workspace__turn' ).nth( 1 )
+		).toContainText( ANSWER_REPLY, { timeout: 30000 } );
+
+		await expect( card.getByRole( 'button' ) ).toHaveCount( 3 );
+		for ( const button of await card.getByRole( 'button' ).all() ) {
+			await expect( button ).toBeDisabled();
+			await expect( button ).toHaveAttribute( 'aria-pressed', 'false' );
+		}
+	} );
+} );
+
+test.describe( 'AI Workspace question asked alongside a proposal', () => {
+	test.beforeEach( async ( { admin, page, requestUtils } ) => {
+		await requestUtils.deleteAllPosts();
+		await seedAnthropic( requestUtils );
+		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+		await activateMockScenario( requestUtils, 'workspace-ask-propose' );
+	} );
+
+	test.afterEach( async ( { admin, page, requestUtils } ) => {
+		await deactivateMockScenario( requestUtils );
+		await disableExperiment( admin, page, EXPERIMENT_LABEL );
+		await seedOpenAi( requestUtils );
+		await requestUtils.deleteAllPosts();
+	} );
+
+	test( 'settling the proposal does not close the question', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.visitAdminPage( WORKSPACE_PAGE );
+
+		await page
+			.getByLabel( 'Message', { exact: true } )
+			.fill( 'Plan a series about the block editor.' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+
+		const card = page.getByRole( 'group', { name: QUESTION } );
+		await expect( card ).toBeVisible( { timeout: 30000 } );
+
+		await page.getByRole( 'button', { name: 'Discard' } ).click();
+
+		// The automatic follow-up is not an answer, so the question stays open.
+		const turns = page.locator( '.ai-workspace__turn' );
+		await expect( turns.nth( 1 ) ).toContainText(
+			'Understood. The question above still stands.',
+			{ timeout: 30000 }
+		);
+		await expect(
+			card.getByRole( 'button', { name: 'Fewer parts' } )
+		).toBeEnabled();
+
+		await card.getByRole( 'button', { name: 'Fewer parts' } ).click();
+
+		await expect(
+			turns.nth( 2 ).locator( '.ai-workspace__message--user' )
+		).toHaveText( 'Fewer parts' );
+		await expect(
+			card.getByRole( 'button', { name: 'Fewer parts' } )
+		).toBeDisabled();
+		await expect(
+			card.getByRole( 'button', { name: 'Fewer parts' } )
+		).toHaveAttribute( 'aria-pressed', 'true' );
+	} );
+} );
+
+// The one follow-up reply the proposal scenario serves after a decision.
+const FOLLOW_UP_REPLY =
+	'Noted what you decided about “Proposed E2E Draft”. Want me to draft another post?';
+
+test.describe( 'AI Workspace proposal confirmation', () => {
+	test.beforeEach( async ( { admin, page, requestUtils } ) => {
+		await requestUtils.deleteAllPosts();
+		await seedAnthropic( requestUtils );
+		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+		await activateMockScenario( requestUtils, 'workspace-proposal' );
+	} );
+
+	test.afterEach( async ( { admin, page, requestUtils } ) => {
+		await deactivateMockScenario( requestUtils );
+		await disableExperiment( admin, page, EXPERIMENT_LABEL );
+		await seedOpenAi( requestUtils );
+		await requestUtils.deleteAllPosts();
+	} );
+
+	test( 'writes nothing until the proposal is approved, then creates the draft', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		await admin.visitAdminPage( WORKSPACE_PAGE );
+
+		await page
+			.getByLabel( 'Message', { exact: true } )
+			.fill( 'Draft me something about the site.' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+
+		const review = page.getByRole( 'region', {
+			name: 'Create 1 draft',
+		} );
+		await expect( review ).toBeVisible( { timeout: 30000 } );
+
+		// Proposing ended the turn: the model said what it would propose and
+		// was not asked to carry on past its own card.
+		const turns = page.locator( '.ai-workspace__turn' );
+		await expect( turns ).toHaveCount( 1 );
+		await expect( turns.first() ).toContainText(
+			'I will propose one draft for you to review.'
+		);
+		expect(
+			( await getMockScenarioReport( requestUtils ) ).calls[
+				'Anthropic/workspace-proposal'
+			]
+		).toBe( 1 );
+
+		// The values shown are read back from the server's stored proposal.
+		await expect( review ).toContainText( 'Proposed E2E Draft' );
+		await expect( review ).toContainText( 'post — will be saved as draft' );
+
+		// Proposing wrote nothing.
+		expect( await draftTitles( requestUtils ) ).toEqual( [] );
+
+		// The item starts selected, so the one main button does what was asked.
+		await expect(
+			review.getByRole( 'checkbox', { name: 'Proposed E2E Draft' } )
+		).toBeChecked();
+		await review.getByRole( 'button', { name: 'Create 1 draft' } ).click();
+
+		// One created draft: the card leads with the way into it.
+		const created = page.getByRole( 'region', { name: 'Created 1 draft' } );
+		await expect( created ).toContainText( 'Proposed E2E Draft' );
+
+		// The draft is real, and carries the values the person approved.
+		const [ draft ] = await drafts( requestUtils );
+		expect( draft?.title ).toBe( 'Proposed E2E Draft' );
+		await expect(
+			created.getByRole( 'link', { name: 'Open draft' } )
+		).toHaveAttribute( 'href', editLink( draft?.id ?? 0 ) );
+
+		// The assistant follows up once, in a turn with no message of the
+		// person's, and the card keeps its outcome above it.
+		await expect( turns ).toHaveCount( 2 );
+		await expect( turns.nth( 1 ) ).toContainText( FOLLOW_UP_REPLY, {
+			timeout: 30000,
+		} );
+		await expect(
+			turns.nth( 1 ).locator( '.ai-workspace__message--user' )
+		).toHaveCount( 0 );
+		await expect(
+			page.getByRole( 'link', { name: 'Open draft' } )
+		).toBeVisible();
+
+		// Exactly one follow-up: no further model call follows it.
+		await page.waitForTimeout( 1000 );
+		await expect( turns ).toHaveCount( 2 );
+		expect(
+			( await getMockScenarioReport( requestUtils ) ).calls[
+				'Anthropic/workspace-proposal'
+			]
+		).toBe( 2 );
+	} );
+
+	test( 'creates nothing when the proposal is discarded', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		await admin.visitAdminPage( WORKSPACE_PAGE );
+
+		await page
+			.getByLabel( 'Message', { exact: true } )
+			.fill( 'Draft me something about the site.' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+
+		const review = page.getByRole( 'region', {
+			name: 'Create 1 draft',
+		} );
+		await expect( review ).toBeVisible( { timeout: 30000 } );
+
+		await page.getByRole( 'button', { name: 'Discard' } ).click();
+
+		await expect(
+			page.locator( '.components-notice__content', {
+				hasText: 'Discarded. Nothing was created.',
+			} )
+		).toBeVisible();
+		expect( await draftTitles( requestUtils ) ).toEqual( [] );
+
+		// A discard is followed up too, so the assistant knows the outcome.
+		const followUp = page.locator( '.ai-workspace__turn' ).nth( 1 );
+		await expect( followUp ).toContainText( FOLLOW_UP_REPLY, {
+			timeout: 30000,
+		} );
+		await expect(
+			followUp.locator( '.ai-workspace__message--user' )
+		).toHaveCount( 0 );
+	} );
+
+	test( 'keeps the outcome and says so when the follow-up fails', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		await admin.visitAdminPage( WORKSPACE_PAGE );
+
+		await page
+			.getByLabel( 'Message', { exact: true } )
+			.fill( 'Draft me something about the site.' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+
+		const review = page.getByRole( 'region', {
+			name: 'Create 1 draft',
+		} );
+		await expect( review ).toBeVisible( { timeout: 30000 } );
+
+		// Only the follow-up request fails; the approval itself goes through.
+		let followUps = 0;
+		await page.route(
+			( url ) => url.href.includes( 'workspace/messages' ),
+			async ( route ) => {
+				if ( route.request().postDataJSON()?.follow_up ) {
+					followUps += 1;
+					await route.abort( 'failed' );
+					return;
+				}
+
+				await route.continue();
+			}
+		);
+
+		await review.getByRole( 'button', { name: 'Create 1 draft' } ).click();
+
+		await expect(
+			page.getByRole( 'region', { name: 'Created 1 draft' } )
+		).toBeVisible();
+
+		const followUp = page.locator( '.ai-workspace__turn' ).nth( 1 );
+		await expect( followUp ).toContainText(
+			'The assistant couldn’t follow up on this.'
+		);
+		await expect(
+			followUp.getByRole( 'button', { name: 'Send this message again' } )
+		).toHaveCount( 0 );
+
+		// Nothing is retried.
+		await page.waitForTimeout( 1000 );
+		expect( followUps ).toBe( 1 );
+		expect( await draftTitles( requestUtils ) ).toEqual( [
+			'Proposed E2E Draft',
+		] );
+	} );
+
+	test( 'reports a proposal it could not load instead of spinning forever', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.visitAdminPage( WORKSPACE_PAGE );
+
+		// The read-back of the stored proposal fails at the transport, which is
+		// what an offline tab or a dropped connection looks like. The dialog
+		// must reach a terminal state rather than sit on its spinner.
+		await page.route(
+			( url ) => url.href.includes( 'workspace/proposals' ),
+			( route ) => route.abort( 'failed' )
+		);
+
+		await page
+			.getByLabel( 'Message', { exact: true } )
+			.fill( 'Draft me something about the site.' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+
+		await expect(
+			page.locator( '.components-notice__content', {
+				hasText: 'This proposal could not be loaded.',
+			} )
+		).toBeVisible( { timeout: 30000 } );
+
+		await expect(
+			page.getByText( 'Loading what the assistant proposes to write' )
+		).toHaveCount( 0 );
+	} );
+
+	test( 'ends an approval that never reached the server in a terminal state', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		await admin.visitAdminPage( WORKSPACE_PAGE );
+
+		await page
+			.getByLabel( 'Message', { exact: true } )
+			.fill( 'Draft me something about the site.' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+
+		const review = page.getByRole( 'region', {
+			name: 'Create 1 draft',
+		} );
+		await expect( review ).toBeVisible( { timeout: 30000 } );
+
+		// Only the execute call fails, so the proposal loaded normally and the
+		// failure lands on the approval itself, where the controls are already
+		// disabled and a lost rejection would leave them that way. The card's
+		// read-back still reaches the server and finds the proposal pending,
+		// which is what lets it say nothing was created.
+		await page.route(
+			( url ) =>
+				url.href.includes( 'workspace/proposals' ) &&
+				url.href.includes( '/execute' ),
+			( route ) => route.abort( 'failed' )
+		);
+
+		await review.getByRole( 'button', { name: 'Create 1 draft' } ).click();
+
+		await expect(
+			page.locator( '.components-notice__content', {
+				hasText:
+					'The request could not be sent, so nothing was created.',
+			} )
+		).toBeVisible();
+
+		// No control is left disabled mid-flight, and nothing was written.
+		await expect(
+			page.getByRole( 'button', { name: /^Create \d+ draft/ } )
+		).toHaveCount( 0 );
+		expect( await draftTitles( requestUtils ) ).toEqual( [] );
+	} );
+} );
+
+// The three drafts the `workspace-proposal-series` scenario proposes.
+const SERIES = [
+	'Getting Started with Blocks',
+	'Building a Page Layout',
+	'Reusing Your Best Blocks',
+];
+
+test.describe( 'AI Workspace proposal card', () => {
+	test.beforeEach( async ( { admin, page, requestUtils } ) => {
+		await requestUtils.deleteAllPosts();
+		await seedAnthropic( requestUtils );
+		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+		await activateMockScenario( requestUtils, 'workspace-proposal-series' );
+		await admin.visitAdminPage( WORKSPACE_PAGE );
+
+		await page
+			.getByLabel( 'Message', { exact: true } )
+			.fill( 'Plan a three-part series about the block editor.' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+
+		await expect(
+			page.getByRole( 'region', { name: 'Create 3 drafts' } )
+		).toBeVisible( { timeout: 30000 } );
+	} );
+
+	test.afterEach( async ( { admin, page, requestUtils } ) => {
+		await deactivateMockScenario( requestUtils );
+		await disableExperiment( admin, page, EXPERIMENT_LABEL );
+		await seedOpenAi( requestUtils );
+		await requestUtils.deleteAllPosts();
+	} );
+
+	test( 'starts a batch unchecked, and the button counts what is checked', async ( {
+		page,
+	} ) => {
+		const card = page.getByRole( 'region', { name: 'Create 3 drafts' } );
+
+		// Each item in a batch is chosen deliberately, so none starts checked.
+		for ( const title of SERIES ) {
+			await expect(
+				card.getByRole( 'checkbox', { name: title } )
+			).not.toBeChecked();
+		}
+
+		const create = card.getByRole( 'button', {
+			name: /^Create \d+ draft/,
+		} );
+		await expect( create ).toHaveText( 'Create 0 drafts' );
+		await expect( create ).toBeDisabled();
+
+		await card.getByRole( 'checkbox', { name: SERIES[ 1 ] } ).check();
+		await expect( create ).toHaveText( 'Create 1 draft' );
+		await expect( create ).toBeEnabled();
+
+		await card.getByRole( 'checkbox', { name: SERIES[ 0 ] } ).check();
+		await card.getByRole( 'checkbox', { name: SERIES[ 2 ] } ).check();
+		await expect( create ).toHaveText( 'Create 3 drafts' );
+
+		await card.getByRole( 'checkbox', { name: SERIES[ 0 ] } ).uncheck();
+		await expect( create ).toHaveText( 'Create 2 drafts' );
+
+		// Each body is still one click away, behind "Preview".
+		await expect(
+			card.getByText( 'Blocks are the pieces a page is built from.', {
+				exact: false,
+			} )
+		).toBeHidden();
+		await card.getByText( 'Preview' ).first().click();
+		await expect(
+			card.getByText( 'Blocks are the pieces a page is built from.', {
+				exact: false,
+			} )
+		).toBeVisible();
+	} );
+
+	test( 'opens each created draft, or all of them in Posts', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		await checkSeries( page );
+		await page.getByRole( 'button', { name: 'Create 3 drafts' } ).click();
+
+		const created = page.getByRole( 'region', {
+			name: 'Created 3 drafts',
+		} );
+		await expect( created ).toBeVisible();
+
+		const posts = await drafts( requestUtils );
+		expect( posts.map( ( post ) => post.title ) ).toEqual( SERIES );
+
+		for ( const post of posts ) {
+			await expect(
+				created.getByRole( 'link', { name: `Open “${ post.title }”` } )
+			).toHaveAttribute( 'href', editLink( post.id ) );
+		}
+
+		const all = created.getByRole( 'link', { name: 'Open all in Posts' } );
+		const href = new URL( ( await all.getAttribute( 'href' ) ) ?? '' );
+		expect( href.pathname ).toBe( '/wp-admin/edit.php' );
+		expect( href.searchParams.get( 'post_type' ) ).toBe( 'post' );
+		expect( href.searchParams.get( 'post_status' ) ).toBe( 'draft' );
+	} );
+
+	test( 'says why an item was not created, and opens the rest', async ( {
+		page,
+	} ) => {
+		/*
+		 * The server is real; only its answer is rewritten, so the second item
+		 * reads as failed and the third as a duplicate of an earlier approval.
+		 * Neither can be forced from a mocked model, and what is under test
+		 * here is how the card shows them.
+		 */
+		await page.route(
+			( url ) => url.href.includes( '/execute' ),
+			async ( route ) => {
+				const response = await route.fetch();
+				const body = await response.json();
+
+				body.items[ 1 ] = {
+					...body.items[ 1 ],
+					outcome: 'failed',
+					post_id: 0,
+					edit_link: '',
+					error_code: 'db_insert_error',
+					error_message: 'Could not insert post into the database.',
+				};
+				body.items[ 2 ] = { ...body.items[ 2 ], outcome: 'duplicate' };
+				body.created -= 2;
+				body.failed += 1;
+				body.duplicate += 1;
+
+				await route.fulfill( { response, json: body } );
+			}
+		);
+
+		await checkSeries( page );
+		await page.getByRole( 'button', { name: 'Create 3 drafts' } ).click();
+
+		// One draft was created, so it leads with the way into it.
+		const created = page.getByRole( 'region', { name: 'Created 1 draft' } );
+		await expect( created ).toBeVisible();
+		await expect(
+			created.getByRole( 'link', { name: 'Open draft' } )
+		).toBeVisible();
+
+		await expect(
+			created.getByRole( 'listitem' ).filter( { hasText: SERIES[ 1 ] } )
+		).toContainText(
+			'Not created: Could not insert post into the database.'
+		);
+		await expect(
+			created.getByRole( 'link', { name: `Open “${ SERIES[ 1 ] }”` } )
+		).toHaveCount( 0 );
+
+		// A duplicate still points at the draft an earlier approval made.
+		const duplicate = created
+			.getByRole( 'listitem' )
+			.filter( { hasText: SERIES[ 2 ] } );
+		await expect( duplicate ).toContainText( 'Already created earlier' );
+		await expect(
+			duplicate.getByRole( 'link', { name: `Open “${ SERIES[ 2 ] }”` } )
+		).toBeVisible();
+	} );
+} );
+
+/**
+ * Checks every item on the series card, which starts unchecked.
+ *
+ * @param page The page fixture from the test context.
+ */
+async function checkSeries( page: Page ): Promise< void > {
+	const card = page.getByRole( 'region', { name: 'Create 3 drafts' } );
+
+	for ( const title of SERIES ) {
+		await card.getByRole( 'checkbox', { name: title } ).check();
+	}
+}
+
+/**
+ * Reads back the titles of every draft post on the site.
+ *
+ * @param requestUtils The requestUtils fixture from the test context.
+ * @return The draft titles.
+ */
+async function draftTitles( requestUtils: RequestUtils ): Promise< string[] > {
+	return ( await drafts( requestUtils ) ).map( ( post ) => post.title );
+}
+
+/**
+ * Reads back every draft post on the site, oldest first.
+ *
+ * @param requestUtils The requestUtils fixture from the test context.
+ * @return The drafts' IDs and titles.
+ */
+async function drafts(
+	requestUtils: RequestUtils
+): Promise< Array< { id: number; title: string } > > {
+	const posts = ( await requestUtils.rest( {
+		path: '/wp/v2/posts',
+		method: 'GET',
+		params: {
+			status: 'draft',
+			per_page: 100,
+			context: 'edit',
+			orderby: 'id',
+			order: 'asc',
+		},
+	} ) ) as Array< { id: number; title: { raw: string } } >;
+
+	return posts.map( ( post ) => ( { id: post.id, title: post.title.raw } ) );
+}
+
+/**
+ * Matches the block editor link WordPress gives a post, on whatever host the
+ * suite runs against.
+ *
+ * @param id The post ID.
+ * @return A pattern for the edit link.
+ */
+function editLink( id: number ): RegExp {
+	return new RegExp(
+		`^https?://[^/]+/wp-admin/post\\.php\\?post=${ id }&action=edit$`
+	);
+}
