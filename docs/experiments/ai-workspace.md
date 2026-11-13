@@ -20,6 +20,7 @@ Enable the experiment at `Settings → AI` and open `Tools → AI Workspace`. Th
 - Block template creation as a proposal, on a block theme: the assistant proposes one template, the person sees its markup, and approving creates it for the active theme
 - Saved conversations: each chat is kept until its owner deletes it, and a "New space" control starts a new one
 - An action in the block editor that opens the workspace seeded with the current post's identity
+- An AI fallback in the command palette (Cmd/Ctrl+K): a plain-language search the palette finds nothing for suggests the screens that answer it, and an "Ask AI" row carries the search into the workspace (see [The command palette](#the-command-palette))
 
 The screen degrades with an explanatory state rather than failing when the plugin has no valid AI credentials, or when no configured connector exposes a model that supports function calling.
 
@@ -355,6 +356,21 @@ Model output is parsed by a restricted-subset markdown renderer that builds a no
 
 Tool results rendered as a table are rebuilt field by field from the ability's declared output shape, so a result carrying extra properties cannot smuggle them into the UI.
 
+## The command palette
+
+With the experiment on, the command palette gets an AI fallback on every admin screen that has the palette, for users who can `edit_posts`. When a search of at least three characters has no results, the loader waits 450 ms after the last keystroke, then sends the search and the palette's own commands (name, label and keywords) to `ai/command-palette-ai-search`. The model returns up to three command IDs from that list, and the loader shows those commands as ordinary palette results, the first one selected, so Enter runs it. While it waits the palette shows a "Searching with AI…" row.
+
+- **Only commands the palette already has.** Each command is sent as an ID (`c0`, `c1`, …), and the model is asked to return IDs only. An ID that was not sent is dropped, so the model cannot invent a destination.
+- **Silent failure.** A failed or unparseable request shows nothing extra: the palette shows its own empty state.
+- **Not an agent tool.** `ai/command-palette-ai-search` makes its own model call over a list only the browser can send, so it is registered with `meta.mcp.public = false` and annotated open-world, and the tool policy never offers it to the assistant. It is not marked read-only although it writes nothing, because the REST run route accepts only GET for a read-only ability and the command list does not fit in a URL.
+- **What leaves the site.** The search and the labels and keywords of the commands the user can run are sent to the configured provider. No site content is.
+
+### Ask AI
+
+For users who can open the workspace (`manage_options`), the loader adds an "Ask in AI Workspace: <query>" row under the same conditions as the suggestions: the palette found nothing, the search has at least three characters, and the debounce has settled. It comes after any suggestions, and it stays when the AI request fails, so a failed request leaves only that row. The server tells the loader whether to offer it; nobody else is told where the workspace is.
+
+Choosing it opens the workspace with the search in the `wpai-prompt` query argument. `Admin_Page` reads it once: tags are stripped, whitespace is flattened to one line, and it is cut to 500 characters. It lands in the composer, unsent, and takes precedence over a post from the block editor handoff. The screen removes `wpai-prompt` from the URL as soon as it has read it, so a reload opens an empty composer.
+
 ## Architecture & Implementation
 
 ### Key hooks & entry points
@@ -367,6 +383,7 @@ Tool results rendered as a table are rebuilt field by field from the ability's d
 - Registers `REST\Turn_Controller`, `REST\Stream_Responder` and `REST\Proposal_Controller`.
 - Registers the `wpai_chat` post type and `wpai_archived` status (`Conversation_Store::register_post_type()`) and `REST\Conversation_Controller`. The chat ownership filter and user-removal cleanup (`Conversation_Store::register_lifecycle_hooks()`) are hooked by the plugin's `Main` class instead, so they hold while the experiment is off.
 - Hooks `admin_enqueue_scripts` to add the block editor handoff action on `post.php` and `post-new.php`, for users who can open the workspace. The handoff carries the post's identity and a flattened, clamped title, and nothing else — the workspace reads any body through the same permission-checked tool path.
+- Registers `ai/command-palette-ai-search` and hooks `admin_enqueue_scripts` (priority 20, after the palette) to add the command palette loader for users who can `edit_posts`, on screens where `wp-commands` is enqueued. The loader is told the workspace URL only for users who can `manage_options`, who get the Ask AI row.
 
 ### The turn loop
 

@@ -38,7 +38,7 @@ import PromptInput from './components/PromptInput';
 import Transcript from './components/Transcript';
 import { useTurn, type OpenResult } from './hooks/useTurn';
 import { chatFromUrl, urlForChat } from './utils/chat';
-import { getSeedNotice, getSeedPrompt } from './utils/seed';
+import { getSeedNotice, getSeedPrompt, urlWithoutPrompt } from './utils/seed';
 import type { Availability, LocalizedData } from './types';
 
 /**
@@ -187,6 +187,23 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 	 */
 	const [ prompt, setPrompt ] = useState( () => getSeedPrompt( seed ) );
 	const seedNotice = getSeedNotice( seed );
+	// A prompt from a link was written by whoever made the link, so say so until the person changes or sends it.
+	const [ fromLink, setFromLink ] = useState(
+		() => seed?.status === 'prompt' && '' !== seed.prompt
+	);
+	const changePrompt = useCallback( ( value: string ): void => {
+		setPrompt( value );
+		setFromLink( false );
+	}, [] );
+
+	// The palette's prompt is in the composer now, so a reload must not bring it back.
+	useEffect( () => {
+		const next = urlWithoutPrompt( window.location.href );
+
+		if ( next !== window.location.href ) {
+			window.history.replaceState( null, '', next );
+		}
+	}, [] );
 	const inputRef = useRef< HTMLTextAreaElement | null >( null );
 	const hasRun = useRef( false );
 	const {
@@ -463,7 +480,7 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 						<Transcript
 							entries={ entries }
 							onRetry={ retry }
-							onSuggest={ setPrompt }
+							onSuggest={ changePrompt }
 							rest={ data.rest }
 							conversationId={ conversationId }
 							outcomes={ outcomes }
@@ -481,12 +498,25 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 						aria-label={ __( 'Send a message', 'ai' ) }
 						onSubmit={ ( event ) => event.preventDefault() }
 					>
+						{ fromLink && (
+							<Notice
+								className="ai-workspace__prefill-notice"
+								status="info"
+								isDismissible={ false }
+							>
+								{ __(
+									'This message was filled in from a link. Check it before you send it.',
+									'ai'
+								) }
+							</Notice>
+						) }
+
 						<PromptInput
 							value={ prompt }
-							onChange={ setPrompt }
+							onChange={ changePrompt }
 							onSubmit={ () => {
 								void send( prompt, scope );
-								setPrompt( '' );
+								changePrompt( '' );
 							} }
 							onStop={ () => {
 								void stop();
