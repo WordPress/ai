@@ -145,6 +145,11 @@ class Comment_Moderation extends Abstract_Feature {
 	public const DEFAULT_MODERATE_GUESTS = true;
 
 	/**
+	 * Minimum toxicity score, as a percentage, for blocking a draft in the form.
+	 */
+	public const DEFAULT_DRAFT_TOXICITY_THRESHOLD = 70;
+
+	/**
 	 * Value score level: low.
 	 *
 	 * @var string
@@ -306,9 +311,9 @@ class Comment_Moderation extends Abstract_Feature {
 			'category'    => Experiment_Category::ADMIN,
 			'usage'       => array(
 				'trigger'  => 'automatic',
-				'runs'     => __( 'Automatically, on each new comment, including guest comments by default. You can also run it from the "Analyze Sentiment, Toxicity, and Value" row action or bulk action in Comments', 'ai' ),
-				'sends'    => __( 'Comment text, author name, and a post excerpt', 'ai' ),
-				'requests' => __( 'One request per new comment', 'ai' ),
+				'runs'     => __( 'On new comments and when requested in Comments. If draft checks are enabled, also while readers write or submit a comment.', 'ai' ),
+				'sends'    => __( 'Comment text, author name, and post context for saved comments. Only comment text for drafts.', 'ai' ),
+				'requests' => __( 'One request per new comment, plus optional requests for drafts as readers revise them.', 'ai' ),
 			),
 		);
 	}
@@ -324,6 +329,12 @@ class Comment_Moderation extends Abstract_Feature {
 
 		// Moderate new comments.
 		add_action( 'wp_insert_comment', array( $this, 'moderate_comment' ) );
+
+		if ( $this->should_check_drafts() ) {
+			$draft_check = new Draft_Check( $this );
+			add_action( 'comment_form', array( $draft_check, 'render' ) );
+			add_action( 'rest_api_init', array( $draft_check, 'register_route' ) );
+		}
 
 		// Add columns to comments list table.
 		add_filter( 'manage_edit-comments_columns', array( $this, 'add_columns' ) );
@@ -383,6 +394,34 @@ class Comment_Moderation extends Abstract_Feature {
 	public function register_settings(): void {
 		register_setting(
 			Settings_Registration::OPTION_GROUP,
+			static::get_field_option_name( 'check_drafts' ),
+			array(
+				'type'              => 'boolean',
+				'default'           => false,
+				'sanitize_callback' => 'rest_sanitize_boolean',
+				'show_in_rest'      => true,
+			)
+		);
+
+		register_setting(
+			Settings_Registration::OPTION_GROUP,
+			static::get_field_option_name( 'draft_toxicity_threshold' ),
+			array(
+				'type'              => 'integer',
+				'default'           => self::DEFAULT_DRAFT_TOXICITY_THRESHOLD,
+				'sanitize_callback' => array( $this, 'sanitize_draft_toxicity_threshold' ),
+				'show_in_rest'      => array(
+					'schema' => array(
+						'type'    => 'integer',
+						'minimum' => 1,
+						'maximum' => 100,
+					),
+				),
+			)
+		);
+
+		register_setting(
+			Settings_Registration::OPTION_GROUP,
 			static::get_field_option_name( 'moderate_guests' ),
 			array(
 				'type'              => 'boolean',
@@ -408,7 +447,55 @@ class Comment_Moderation extends Abstract_Feature {
 				'type'    => 'boolean',
 				'default' => self::DEFAULT_MODERATE_GUESTS,
 			),
+			array(
+				'id'          => 'check_drafts',
+				'label'       => __( 'Check comments before submission', 'ai' ),
+				'type'        => 'boolean',
+				'description' => __( 'Sends draft text to your AI provider after a pause or on submission. Applies to guests if automatic guest moderation is enabled.', 'ai' ),
+				'default'     => false,
+			),
+			array(
+				'id'          => 'draft_toxicity_threshold',
+				'label'       => __( 'Draft toxicity threshold (%)', 'ai' ),
+				'type'        => 'integer',
+				'description' => __( 'A draft is blocked in the form if its sentiment is negative and its toxicity meets or exceeds this score.', 'ai' ),
+				'default'     => self::DEFAULT_DRAFT_TOXICITY_THRESHOLD,
+				'isValid'     => array(
+					'min' => 1,
+					'max' => 100,
+				),
+			),
 		);
+	}
+
+	/**
+	 * Checks whether to enable analysis in public comment forms.
+	 *
+	 * @return bool Whether the administrator opted in.
+	 */
+	private function should_check_drafts(): bool {
+		return (bool) get_option( static::get_field_option_name( 'check_drafts' ), false );
+	}
+
+	/**
+	 * Normalizes the draft threshold to a percentage between 1 and 100.
+	 *
+	 * @param mixed $value Saved setting value.
+	 * @return int Draft toxicity threshold.
+	 */
+	public function sanitize_draft_toxicity_threshold( $value ): int {
+		return is_numeric( $value ) ? max( 1, min( 100, (int) $value ) ) : self::DEFAULT_DRAFT_TOXICITY_THRESHOLD;
+	}
+
+	/**
+	 * Returns the draft toxicity threshold on the model's 0 to 1 scale.
+	 *
+	 * @return float Draft toxicity threshold.
+	 */
+	public function get_draft_toxicity_threshold(): float {
+		return $this->sanitize_draft_toxicity_threshold(
+			get_option( static::get_field_option_name( 'draft_toxicity_threshold' ), self::DEFAULT_DRAFT_TOXICITY_THRESHOLD )
+		) / 100;
 	}
 
 	/**
@@ -526,7 +613,7 @@ class Comment_Moderation extends Abstract_Feature {
 	 *
 	 * @return \WordPress\AI\Abilities\Comment_Moderation\Comment_Analysis Comment analysis ability.
 	 */
-	private function get_comment_analysis_ability(): Comment_Analysis_Ability {
+	public function get_comment_analysis_ability(): Comment_Analysis_Ability {
 		if ( ! $this->comment_analysis_ability ) {
 			$this->comment_analysis_ability = new Comment_Analysis_Ability(
 				'ai/comment-analysis',
