@@ -693,6 +693,37 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A key the Secrets API does not store, while it is usable, is neither written in plaintext
+	 * nor allowed to replace the stored secret.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_write_keeps_the_stored_key_when_the_secrets_api_does_not_store_it() {
+		update_option( self::TOGGLE, true );
+		update_option( self::SETTING_NAME, 'sk-stored' );
+		$this->assertSame( 'sk-stored', $this->secret_value(), 'The key should be stored as a secret.' );
+
+		// The secret's record cannot be written, as with a read-only provider or a failed write.
+		$refuse = static function ( $value, $old_value ) {
+			return $old_value;
+		};
+		add_filter( 'pre_update_option__wp_secret_' . self::SECRET_KEY, $refuse, 10, 2 );
+		add_filter( 'wp_trigger_error_trigger_error', '__return_false' );
+
+		try {
+			$this->assertTrue( Key_Encryption::get_bridge()->is_secrets_api_usable(), 'The Secrets API should be usable.' );
+
+			update_option( self::SETTING_NAME, 'sk-refused' );
+		} finally {
+			remove_filter( 'pre_update_option__wp_secret_' . self::SECRET_KEY, $refuse, 10 );
+		}
+
+		$this->assertSame( '', $this->raw_option( self::SETTING_NAME ), 'The refused key must not be written in plaintext.' );
+		$this->assertSame( 'sk-stored', $this->secret_value(), 'The stored secret must be kept.' );
+		$this->assertSame( 'sk-stored', get_option( self::SETTING_NAME ), 'The option should still read the stored key.' );
+	}
+
+	/**
 	 * Deactivation completes when a secret is undecryptable, leaving the secret in place.
 	 *
 	 * @since 1.5.0
@@ -743,6 +774,96 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that a root key wrapped under the salts is re-wrapped under WP_SECRETS_KEY.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_recover_rewraps_salt_wrapped_root_key_under_wp_secrets_key(): void {
+		update_option( self::TOGGLE, true );
+		$this->store_secret_under_salts( 'sk-salt-wrapped' );
+
+		$this->assertFalse( wp_is_secrets_api_available(), 'WP_SECRETS_KEY must not open a root key wrapped under the salts.' );
+
+		Key_Encryption::maybe_recover_secrets();
+
+		$this->assertTrue( wp_is_secrets_api_available(), 'The root key must be re-wrapped under WP_SECRETS_KEY.' );
+		$this->assertSame( 'sk-salt-wrapped', get_option( self::SETTING_NAME ), 'The key must read back through the Secrets API.' );
+		$this->assertSame( '', $this->raw_option( self::SETTING_NAME ), 'The key must stay encrypted.' );
+	}
+
+	/**
+	 * Tests that, without a usable WP_SECRETS_KEY, keys stored under the salts are restored to
+	 * plaintext and kept flagged for encryption until the key is added.
+	 *
+	 * @since x.x.x
+	 *
+	 * @runInSeparateProcess
+	 * @preserveGlobalState disabled
+	 */
+	public function test_recover_restores_plaintext_without_wp_secrets_key(): void {
+		$this->assertSame( '', WP_SECRETS_KEY, 'This test needs a process without a usable WP_SECRETS_KEY.' );
+
+		update_option( self::TOGGLE, true );
+		$this->store_secret_under_salts( 'sk-salt-wrapped' );
+
+		Key_Encryption::maybe_recover_secrets();
+
+		$this->assertSame( 'sk-salt-wrapped', $this->raw_option( self::SETTING_NAME ), 'The key must be restored to its option.' );
+		$this->assertSame( 'sk-salt-wrapped', get_option( self::SETTING_NAME ), 'The key must keep working.' );
+		$this->assertFalse( get_option( '_wp_secret_' . self::SECRET_KEY, false ), 'The unreadable secret must be removed.' );
+
+		Key_Encryption::maybe_resume_migration();
+
+		$this->assertSame( '1', get_option( Key_Encryption::RESUME_MIGRATION_OPTION ), 'The key must be encrypted once WP_SECRETS_KEY is added.' );
+	}
+
+	/**
+	 * Stores the test connector's secret under a root key wrapped under the salts.
+	 *
+	 * This is how the Secrets API stored secrets before WP_SECRETS_KEY was required.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $value The secret value.
+	 */
+	private function store_secret_under_salts( string $value ): void {
+		if ( ! defined( 'LOGGED_IN_KEY' ) || 'put your unique phrase here' === LOGGED_IN_KEY ) {
+			$this->markTestSkipped( 'The salts are the wp-config-sample.php placeholder.' );
+		}
+
+		$salt_keyring = new class() extends \WP_Secrets_Keyring {
+			public function wrap( string $key_material ) {
+				$nonce = random_bytes( SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_NPUBBYTES );
+
+				return base64_encode( $nonce . sodium_crypto_aead_xchacha20poly1305_ietf_encrypt( $key_material, \WP_Secrets_Config_Key_Provider::AAD, $nonce, $this->key() ) ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
+			}
+
+			public function unwrap( string $wrapped ) {
+				return new \WP_Error( 'unused', 'Unused.' );
+			}
+
+			public function get_key_source(): string {
+				return 'salts';
+			}
+
+			private function key(): string {
+				return sodium_crypto_generichash( LOGGED_IN_KEY . LOGGED_IN_SALT, '', SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_KEYBYTES );
+			}
+		};
+
+		delete_site_option( \WP_Secrets_Key_Manager::ROOT_KEY_OPTION );
+
+		$provider = new \WP_Secrets_Libsodium_Provider( new \WP_Secrets_Option_Store(), new \WP_Secrets_Key_Manager( $salt_keyring ) );
+
+		$this->assertTrue( $provider->set( self::SECRET_KEY, $value ), 'The secret must be stored under the salts.' );
+
+		// The bridge warns about the secret it cannot read yet; keep that out of the test run.
+		add_filter( 'wp_trigger_error_trigger_error', '__return_false' );
+
+		$this->set_raw_option( self::SETTING_NAME, '' );
+	}
+
+	/**
 	 * Returns the decrypted secret value for the test connector, or null if none is stored.
 	 *
 	 * @since 1.1.0
@@ -784,7 +905,7 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 		$bridge = Key_Encryption::get_bridge();
 		remove_filter( "pre_update_option_{$option}", array( $bridge, 'on_write' ), 10 );
 		update_option( $option, $value );
-		add_filter( "pre_update_option_{$option}", array( $bridge, 'on_write' ), 10, 1 );
+		add_filter( "pre_update_option_{$option}", array( $bridge, 'on_write' ), 10, 2 );
 	}
 
 	/**
