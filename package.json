@@ -60,6 +60,7 @@
 		"@wordpress/env": "11.15.0",
 		"@wordpress/prettier-config": "4.57.0",
 		"@wordpress/scripts": "36.1.0",
+		"@wordpress/theme": "4.0.0",
 		"concurrently": "10.0.6",
 		"filenamify": "7.0.3",
 		"typescript": "5.9.3",
