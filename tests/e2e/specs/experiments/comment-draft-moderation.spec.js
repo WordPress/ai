@@ -1,0 +1,441 @@
+/**
+ * WordPress dependencies
+ */
+const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
+
+/**
+ * Internal dependencies
+ */
+const {
+	disableAdvancedSettings,
+	enableAdvancedSettings,
+	visitSettingsPage,
+} = require( '../../utils/helpers' );
+
+const setting = 'wpai_feature_comment-moderation_field_check_drafts';
+const threshold =
+	'wpai_feature_comment-moderation_field_draft_toxicity_threshold';
+const route = '**/*ai/v1/comment-draft-check*';
+const toxic = 'This is a mean and toxic comment.';
+const constructive = 'This plugin did not work for me.';
+const draftRoute = ( request ) =>
+	request.url().includes( '/ai/v1/comment-draft-check' );
+
+function updateSettings( requestUtils, data ) {
+	return requestUtils.rest( {
+		path: '/wp/v2/settings',
+		method: 'POST',
+		data,
+	} );
+}
+
+const postIds = [];
+
+async function createPost( requestUtils ) {
+	const post = await requestUtils.createPost( {
+		title: 'Comment draft checks',
+		status: 'publish',
+		comment_status: 'open',
+	} );
+	postIds.push( post.id );
+	return post;
+}
+
+test.describe( 'Comment draft moderation', () => {
+	test.beforeEach( async ( { requestUtils } ) => {
+		await updateSettings( requestUtils, {
+			'wpai_feature_comment-moderation_enabled': true,
+			[ setting ]: true,
+			[ threshold ]: 70,
+		} );
+	} );
+
+	test.afterEach( async ( { requestUtils } ) => {
+		await updateSettings( requestUtils, {
+			'wpai_feature_comment-moderation_enabled': false,
+			[ setting ]: false,
+			[ threshold ]: 70,
+		} );
+		await Promise.all(
+			postIds.splice( 0 ).map( ( postId ) =>
+				requestUtils.rest( {
+					path: `/wp/v2/posts/${ postId }`,
+					method: 'DELETE',
+					params: { force: true },
+				} )
+			)
+		);
+	} );
+
+	test( 'sends toxic comments to Pending Moderation with JavaScript disabled @webkit', async ( {
+		browser,
+		page,
+		requestUtils,
+	} ) => {
+		const post = await createPost( requestUtils );
+		const context = await browser.newContext( {
+			javaScriptEnabled: false,
+			storageState: await page.context().storageState(),
+		} );
+		try {
+			const noScriptPage = await context.newPage();
+			await noScriptPage.goto( post.link );
+			await noScriptPage.locator( '#comment' ).fill( toxic );
+			await noScriptPage
+				.getByRole( 'button', { name: 'Post Comment' } )
+				.click();
+			await expect(
+				noScriptPage.getByText( /your comment is awaiting moderation/i )
+			).toBeVisible();
+			const commentId = Number(
+				new URL( noScriptPage.url() ).searchParams.get( 'unapproved' )
+			);
+			const saved = await requestUtils.rest( {
+				path: `/wp/v2/comments/${ commentId }`,
+				params: { context: 'edit' },
+			} );
+			expect( saved.status ).toBe( 'hold' );
+			expect( saved.content.rendered ).toContain( toxic );
+		} finally {
+			await context.close();
+		}
+	} );
+
+	test( 'blocks a toxic draft after a pause and submits a revision without checking it twice @webkit', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const post = await createPost( requestUtils );
+		const drafts = [];
+		page.on( 'request', ( request ) => {
+			if ( draftRoute( request ) ) {
+				drafts.push( request.postDataJSON().text );
+			}
+		} );
+		await page.goto( post.link );
+
+		const comment = page.locator( '#comment' );
+		const submit = page.getByRole( 'button', { name: 'Post Comment' } );
+		const status = page.locator( 'form [role="status"]' );
+
+		await comment.fill( toxic );
+		await submit.focus();
+		await expect( status ).toContainText( 'Please revise your comment' );
+		await expect( submit ).toBeDisabled();
+		await expect( comment ).toBeFocused();
+
+		const checked = page.waitForResponse( draftRoute );
+		await comment.fill( constructive );
+		await expect( submit ).toBeEnabled();
+		expect( await ( await checked ).json() ).toEqual( { blocked: false } );
+		await expect( status ).toBeEmpty();
+		await submit.click();
+		await expect(
+			page.locator( '.comment-content' ).getByText( constructive )
+		).toBeVisible();
+		expect( drafts ).toEqual( [ toxic, constructive ] );
+	} );
+
+	test( 'checks a fast submit and checks a revised draft before submitting @webkit', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const post = await createPost( requestUtils );
+		await page.goto( post.link );
+		const comment = page.locator( '#comment' );
+		const submit = page.getByRole( 'button', { name: 'Post Comment' } );
+		await comment.fill( toxic );
+		await submit.click();
+		await expect( submit ).toBeDisabled();
+		await expect( comment ).toBeFocused();
+
+		await comment.fill( 'Another toxic draft.' );
+		await submit.click();
+		await expect( submit ).toBeDisabled();
+		await expect( page.locator( '.comment-content' ) ).toHaveCount( 0 );
+
+		await comment.fill( constructive );
+		await submit.focus();
+		await page.keyboard.press( 'Enter' );
+		await expect(
+			page.locator( '.comment-content' ).getByText( constructive )
+		).toBeVisible();
+	} );
+
+	test( 'posts normally when the draft endpoint fails @webkit', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const post = await createPost( requestUtils );
+		let calls = 0;
+		await page.route( route, async ( request ) => {
+			calls++;
+			await request.fulfill( { status: 503 } );
+		} );
+		await page.goto( post.link );
+		await page.locator( '#comment' ).fill( constructive );
+		await page.getByRole( 'button', { name: 'Post Comment' } ).click();
+		await expect(
+			page.locator( '.comment-content' ).getByText( constructive )
+		).toBeVisible();
+		expect( calls ).toBe( 1 );
+	} );
+
+	test( 'waits for the check already running for the submitted text @webkit', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const post = await createPost( requestUtils );
+		let calls = 0;
+		let respond;
+		await page.route( route, ( draftRequest ) => {
+			calls++;
+			return new Promise( ( resolve ) => {
+				respond = async () => {
+					await draftRequest.fulfill( { json: { blocked: false } } );
+					resolve();
+				};
+			} );
+		} );
+		await page.goto( post.link );
+		const requested = page.waitForRequest( draftRoute );
+		await page.locator( '#comment' ).fill( constructive );
+		await requested;
+		await page.getByRole( 'button', { name: 'Post Comment' } ).click();
+		await expect( page.getByRole( 'status' ) ).toContainText(
+			'Checking your comment'
+		);
+		await respond();
+		await expect(
+			page.locator( '.comment-content' ).getByText( constructive )
+		).toBeVisible();
+		expect( calls ).toBe( 1 );
+	} );
+
+	test( 'ignores an old response after the reader changes the draft @webkit', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const post = await createPost( requestUtils );
+		let respond;
+		await page.route( route, ( draftRequest ) => {
+			return new Promise( ( resolve ) => {
+				respond = async () => {
+					await draftRequest.fulfill( { json: { blocked: true } } );
+					resolve();
+				};
+			} );
+		} );
+		await page.goto( post.link );
+		const comment = page.locator( '#comment' );
+		const submit = page.getByRole( 'button', { name: 'Post Comment' } );
+		const requested = page.waitForRequest( draftRoute );
+		await comment.fill( toxic );
+		await submit.click();
+		await requested;
+		await comment.fill( '   ' );
+		const finished = page.waitForResponse( draftRoute );
+		await respond();
+		await finished;
+		await expect( submit ).toBeEnabled();
+		await expect( page.getByRole( 'status' ) ).toBeEmpty();
+		await expect( page.locator( '.comment-content' ) ).toHaveCount( 0 );
+	} );
+
+	test( 'lets a reader submit when the draft check times out @webkit', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const post = await createPost( requestUtils );
+		let calls = 0;
+		await page.route( route, () => {
+			calls++;
+			// Leave the request unanswered to exercise the browser timeout.
+		} );
+		await page.goto( post.link );
+		await page.locator( '#comment' ).fill( constructive );
+		await page.getByRole( 'button', { name: 'Post Comment' } ).click();
+		await expect( page.getByRole( 'status' ) ).toContainText(
+			'Checking your comment'
+		);
+		await expect(
+			page.locator( '.comment-content' ).getByText( constructive )
+		).toBeVisible();
+		expect( calls ).toBe( 1 );
+	} );
+
+	test( 'bounds the submit wait when an older draft check is still running @webkit', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const post = await createPost( requestUtils );
+		// Neither request responds. The first request must not extend the submit deadline.
+		await page.route( route, () => {} );
+		await page.goto( post.link );
+		const first = page.waitForRequest( draftRoute );
+		const comment = page.locator( '#comment' );
+		await comment.fill( toxic );
+		await first;
+		await comment.fill( constructive );
+		await page.getByRole( 'button', { name: 'Post Comment' } ).click();
+		await expect(
+			page.locator( '.comment-content' ).getByText( constructive )
+		).toBeVisible( { timeout: 5500 } );
+	} );
+
+	test( 'does not post to a different thread when the reader cancels a reply during a check', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const post = await createPost( requestUtils );
+		await requestUtils.createComment( {
+			content: 'A parent comment for the reply test.',
+			post: post.id,
+			status: 'approve',
+		} );
+		let respond;
+		await page.route( route, ( draftRequest ) => {
+			return new Promise( ( resolve ) => {
+				respond = async () => {
+					await draftRequest.fulfill( { json: { blocked: false } } );
+					resolve();
+				};
+			} );
+		} );
+		await page.goto( post.link );
+		await page.getByRole( 'link', { name: /reply to/i } ).click();
+		const requested = page.waitForRequest( draftRoute );
+		await page.locator( '#comment' ).fill( constructive );
+		const submit = page.getByRole( 'button', { name: 'Post Comment' } );
+		await submit.click();
+		await requested;
+		await page.getByRole( 'link', { name: /cancel reply/i } ).click();
+		await respond();
+		await expect( page.getByRole( 'status' ) ).toBeEmpty();
+		await expect( page.locator( '#comment' ) ).toHaveValue( constructive );
+		await expect( page.locator( '.comment-content' ) ).toHaveCount( 1 );
+		await submit.click();
+		await expect(
+			page.locator( '.comment-content' ).getByText( constructive )
+		).toBeVisible();
+	} );
+
+	test( 'applies the configured threshold only to the form @webkit', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		await updateSettings( requestUtils, { [ threshold ]: 96 } );
+		const post = await createPost( requestUtils );
+		await page.goto( post.link );
+		await page.locator( '#comment' ).fill( toxic );
+		const response = page.waitForResponse( draftRoute );
+		await page.getByRole( 'button', { name: 'Post Comment' } ).click();
+		expect( ( await response ).ok() ).toBe( true );
+		await expect(
+			page.getByText( /your comment is awaiting moderation/i )
+		).toBeVisible();
+	} );
+
+	test( 'checks guest drafts in the core block form @webkit', async ( {
+		browser,
+		requestUtils,
+	} ) => {
+		await requestUtils.activateTheme( 'twentytwentyfive' );
+		const context = await browser.newContext( {
+			storageState: { cookies: [], origins: [] },
+		} );
+		try {
+			const page = await context.newPage();
+			const post = await createPost( requestUtils );
+			await page.goto( post.link );
+			await page.locator( '#comment' ).fill( toxic );
+			await expect( page.getByRole( 'status' ) ).toContainText(
+				'Please revise your comment'
+			);
+			await expect(
+				page.getByRole( 'button', { name: 'Post Comment' } )
+			).toBeDisabled();
+		} finally {
+			await context.close();
+			await requestUtils.activateTheme( 'twentytwentyone' );
+		}
+	} );
+
+	test( 'leaves the comment form alone when draft checks are off @webkit', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		await updateSettings( requestUtils, { [ setting ]: false } );
+		const post = await createPost( requestUtils );
+		await page.goto( post.link );
+		await expect(
+			page.getByText( /sent to this site’s AI provider/i )
+		).toHaveCount( 0 );
+		await page.locator( '#comment' ).fill( toxic );
+		await page.getByRole( 'button', { name: 'Post Comment' } ).click();
+		await expect(
+			page.getByText( /your comment is awaiting moderation/i )
+		).toBeVisible();
+	} );
+
+	test( 'saves the draft settings from the AI settings screen', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		await updateSettings( requestUtils, { [ setting ]: false } );
+		await visitSettingsPage( admin );
+		await enableAdvancedSettings( page );
+		try {
+			const toggle = page.getByRole( 'checkbox', {
+				name: 'Check comments before submission',
+			} );
+			await expect( toggle ).not.toBeChecked();
+			await toggle.check();
+			await page
+				.getByRole( 'spinbutton', {
+					name: 'Draft toxicity threshold (%)',
+				} )
+				.fill( '85' );
+			await page
+				.getByRole( 'button', {
+					name: 'Save Comment Moderation settings',
+				} )
+				.click();
+			await expect(
+				page
+					.locator( '.components-snackbar__content' )
+					.getByText( 'Comment Moderation settings saved.' )
+			).toBeVisible();
+			const settings = await requestUtils.rest( {
+				path: '/wp/v2/settings',
+			} );
+			expect( settings[ setting ] ).toBe( true );
+			expect( settings[ threshold ] ).toBe( 85 );
+		} finally {
+			await disableAdvancedSettings( page );
+		}
+	} );
+
+	test( 'retries a failed background check when the reader submits @webkit', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const post = await createPost( requestUtils );
+		let calls = 0;
+		await page.route( route, async ( draftRequest ) => {
+			calls++;
+			await draftRequest.fulfill(
+				calls === 1 ? { status: 503 } : { json: { blocked: true } }
+			);
+		} );
+		await page.goto( post.link );
+		const response = page.waitForResponse( draftRoute );
+		await page.locator( '#comment' ).fill( toxic );
+		await response;
+		const submit = page.getByRole( 'button', { name: 'Post Comment' } );
+		await submit.click();
+		await expect( submit ).toBeDisabled();
+		expect( calls ).toBe( 2 );
+	} );
+} );
