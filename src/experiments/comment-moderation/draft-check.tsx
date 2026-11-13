@@ -1,7 +1,9 @@
 /**
  * WordPress dependencies
  */
+import { Notice } from '@wordpress/components';
 import domReady from '@wordpress/dom-ready';
+import { createRoot } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
 /**
@@ -91,6 +93,8 @@ function enhanceCommentForm( marker: HTMLElement, index: number ): void {
 	status.className = 'wpai-comment-draft-status';
 	status.setAttribute( 'role', 'status' );
 	status.setAttribute( 'aria-atomic', 'true' );
+	const statusRoot = createRoot( status );
+	const checkingMessage = __( 'Checking your comment…', 'ai' );
 	( textarea.closest( '.comment-form-comment' ) ?? textarea ).before(
 		notice,
 		status
@@ -118,9 +122,13 @@ function enhanceCommentForm( marker: HTMLElement, index: number ): void {
 			// Only undo a disabled state we set ourselves.
 			locked ||= ! submitButton.disabled;
 			submitButton.disabled = true;
-			status.textContent = __(
-				'Your comment may contain abusive language. Please revise your comment and try again.',
-				'ai'
+			statusRoot.render(
+				<Notice status="error" isDismissible={ false } spokenMessage="">
+					{ __(
+						'Your comment may contain abusive language. Please revise your comment and try again.',
+						'ai'
+					) }
+				</Notice>
 			);
 			if ( restoreFocus ) {
 				field.focus();
@@ -131,7 +139,7 @@ function enhanceCommentForm( marker: HTMLElement, index: number ): void {
 			submitButton.disabled = false;
 			locked = false;
 		}
-		status.textContent = '';
+		statusRoot.render( null );
 	}
 
 	function analyze(
@@ -160,6 +168,7 @@ function enhanceCommentForm( marker: HTMLElement, index: number ): void {
 			return Promise.resolve( checked.verdict );
 		}
 
+		statusRoot.render( checkingMessage );
 		const result = checkDraft( endpoint, nonce, postId, text ).then(
 			( verdict ) => {
 				running = undefined;
@@ -239,9 +248,8 @@ function enhanceCommentForm( marker: HTMLElement, index: number ): void {
 
 		const attempt = { text, submitter: event.submitter };
 		const parent = parentField?.value;
-		const checkingMessage = __( 'Checking your comment…', 'ai' );
 		submitting = attempt;
-		status.textContent = checkingMessage;
+		statusRoot.render( checkingMessage );
 
 		let submitTimeout: ReturnType< typeof setTimeout >;
 		const deadline = new Promise< Verdict >( ( resolve ) => {
@@ -264,7 +272,7 @@ function enhanceCommentForm( marker: HTMLElement, index: number ): void {
 					composing ||
 					parentField?.value !== parent
 				) {
-					if ( status.textContent === checkingMessage ) {
+					if ( verdict !== 'blocked' && textarea.value === text ) {
 						showVerdict( undefined );
 					}
 					return;
