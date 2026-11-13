@@ -1,6 +1,6 @@
 <?php
 /**
- * The `core/read-nav-menus` WordPress Ability.
+ * The `core/navigation-menus-query` WordPress Ability.
  *
  * @package WordPress\AI
  *
@@ -21,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Class - Nav_Menus
  *
- * Registers the read-only `core/read-nav-menus` ability, which retrieves one or more nav
+ * Registers the read-only `core/navigation-menus-query` ability, which retrieves one or more nav
  * menus. Supports fetching a single menu (with its items) by ID, slug, or registered theme
  * location, or querying the full collection of nav menus alongside the site's registered
  * theme locations and their current menu assignments.
@@ -43,16 +43,15 @@ final class Nav_Menus {
 	 * @since x.x.x
 	 * @var string
 	 */
-	private const CATEGORY = 'navigation';
+	private const CATEGORY = 'site-editing';
 
 	/**
 	 * Hooks the ability, and the category it needs, into the Abilities API.
 	 *
 	 * Plugin: this method has no equivalent in a core implementation. In core, register()
-	 * would be invoked directly from wp_register_core_abilities(), and the `navigation`
-	 * category would be registered by wp_register_core_ability_categories(). Core does not
-	 * yet register a `navigation` category, so the plugin provides one here. Both hooks run
-	 * at priority 11, one tick after core's own registration, so the plugin's copies win.
+	 * would be invoked directly from wp_register_core_abilities(), and the `site-editing`
+	 * category would be registered by wp_register_core_ability_categories(). The plugin
+	 * registers the category if needed. Both hooks run after core's registration.
 	 *
 	 * @since x.x.x
 	 */
@@ -67,11 +66,15 @@ final class Nav_Menus {
 	 * @since x.x.x
 	 */
 	public function register_category(): void {
+		if ( wp_has_ability_category( self::CATEGORY ) ) {
+			return;
+		}
+
 		wp_register_ability_category(
 			self::CATEGORY,
 			array(
-				'label'       => __( 'Navigation', 'ai' ),
-				'description' => __( 'Abilities that retrieve or modify navigation menus and their items.', 'ai' ),
+				'label'       => __( 'Site Editing', 'ai' ),
+				'description' => __( 'Abilities that retrieve or modify site structure and presentation.', 'ai' ),
 			)
 		);
 	}
@@ -88,20 +91,20 @@ final class Nav_Menus {
 	}
 
 	/**
-	 * Registers the read-only `core/read-nav-menus` ability.
+	 * Registers the read-only `core/navigation-menus-query` ability.
 	 *
 	 * @since x.x.x
 	 */
 	private function register_get_nav_menus(): void {
-		// Plugin: unregister any core-provided copy first so the plugin's version wins.
-		if ( wp_has_ability( 'core/read-nav-menus' ) ) {
-			wp_unregister_ability( 'core/read-nav-menus' );
+		// Keep any core-provided ability in effect.
+		if ( wp_has_ability( 'core/navigation-menus-query' ) ) {
+			return;
 		}
 
 		wp_register_ability(
-			'core/read-nav-menus',
+			'core/navigation-menus-query',
 			array(
-				'label'               => __( 'Read Nav Menus', 'ai' ),
+				'label'               => __( 'Query Navigation Menus', 'ai' ),
 				'description'         => __( 'Retrieves one or more nav menus. Fetch a single menu, with its items, by ID, slug, or registered theme location, or query the full collection of nav menus alongside the registered theme locations and their current menu assignments.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_nav_menus_input_schema(),
@@ -121,7 +124,7 @@ final class Nav_Menus {
 	}
 
 	/**
-	 * Permission callback for the `core/read-nav-menus` ability.
+	 * Permission callback for the `core/navigation-menus-query` ability.
 	 *
 	 * Nav menus are ordinarily rendered to every site visitor, but a menu not currently
 	 * assigned to any location, or the full location-assignment map, exposes more of the
@@ -137,7 +140,7 @@ final class Nav_Menus {
 	}
 
 	/**
-	 * Executes the `core/read-nav-menus` ability.
+	 * Executes the `core/navigation-menus-query` ability.
 	 *
 	 * @since x.x.x
 	 *
@@ -370,7 +373,7 @@ final class Nav_Menus {
 	}
 
 	/**
-	 * Builds the input schema for the `core/read-nav-menus` ability.
+	 * Builds the input schema for the `core/navigation-menus-query` ability.
 	 *
 	 * The ability has four mutually exclusive modes, modeled as a `oneOf` so invalid
 	 * combinations are rejected rather than silently ignored:
@@ -445,7 +448,7 @@ final class Nav_Menus {
 	}
 
 	/**
-	 * Builds the output schema for the `core/read-nav-menus` ability.
+	 * Builds the output schema for the `core/navigation-menus-query` ability.
 	 *
 	 * Single-menu modes (by ID, slug, or location) return the menu object directly, with its
 	 * items. Collection mode returns every menu without items, alongside the registered

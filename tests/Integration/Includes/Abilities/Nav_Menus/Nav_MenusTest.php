@@ -1,6 +1,6 @@
 <?php
 /**
- * Integration tests for the core/read-nav-menus Ability provided by the plugin.
+ * Integration tests for the core/navigation-menus-query Ability provided by the plugin.
  *
  * @package WordPress\AI\Tests\Integration\Includes\Abilities\Nav_Menus
  */
@@ -55,12 +55,12 @@ class Nav_MenusTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Makes sure the navigation category exists before the tests register its ability.
+	 * Makes sure the site-editing category exists before the tests register its ability.
 	 *
 	 * @since x.x.x
 	 */
 	private function ensure_ability_category(): void {
-		if ( wp_has_ability_category( 'navigation' ) ) {
+		if ( wp_has_ability_category( 'site-editing' ) ) {
 			return;
 		}
 
@@ -79,8 +79,8 @@ class Nav_MenusTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function tearDown(): void {
-		if ( wp_has_ability( 'core/read-nav-menus' ) ) {
-			wp_unregister_ability( 'core/read-nav-menus' );
+		if ( wp_has_ability( 'core/navigation-menus-query' ) ) {
+			wp_unregister_ability( 'core/navigation-menus-query' );
 		}
 
 		wp_delete_nav_menu( $this->menu_id );
@@ -91,7 +91,7 @@ class Nav_MenusTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Registers the plugin's core/read-nav-menus ability inside a faked init action.
+	 * Registers the plugin's core/navigation-menus-query ability inside a faked init action.
 	 *
 	 * @since x.x.x
 	 */
@@ -115,18 +115,18 @@ class Nav_MenusTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The ability is registered in the `navigation` category and flagged read-only.
+	 * The ability is registered in the `site-editing` category and flagged read-only.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_core_read_nav_menus_ability_is_registered(): void {
 		$this->register_ability();
 
-		$ability = wp_get_ability( 'core/read-nav-menus' );
+		$ability = wp_get_ability( 'core/navigation-menus-query' );
 
 		$this->assertInstanceOf( WP_Ability::class, $ability );
-		$this->assertSame( 'core/read-nav-menus', $ability->get_name() );
-		$this->assertSame( 'navigation', $ability->get_category() );
+		$this->assertSame( 'core/navigation-menus-query', $ability->get_name() );
+		$this->assertSame( 'site-editing', $ability->get_category() );
 		$this->assertTrue( $ability->get_meta_item( 'show_in_rest', false ) );
 
 		$annotations = $ability->get_meta_item( 'annotations', array() );
@@ -136,21 +136,21 @@ class Nav_MenusTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * When core already provides core/read-nav-menus, the plugin's version replaces it.
+	 * When core already provides core/navigation-menus-query, the plugin leaves it in place.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_override_replaces_existing_core_read_nav_menus(): void {
+	public function test_preserves_existing_core_navigation_menus_query(): void {
 		// Simulate a core-provided ability with a different (minimal) shape.
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
 			wp_register_ability(
-				'core/read-nav-menus',
+				'core/navigation-menus-query',
 				array(
 					'label'               => 'Core Provided',
 					'description'         => 'Core provided nav menus ability.',
-					'category'            => 'navigation',
+					'category'            => 'site-editing',
 					'execute_callback'    => static function (): array {
 						return array();
 					},
@@ -161,14 +161,12 @@ class Nav_MenusTest extends WP_UnitTestCase {
 			array_pop( $wp_current_filter );
 		}
 
-		$this->assertSame( 'Core Provided', wp_get_ability( 'core/read-nav-menus' )->get_label() );
+		$this->assertSame( 'Core Provided', wp_get_ability( 'core/navigation-menus-query' )->get_label() );
 
 		$this->register_ability();
 
-		$ability = wp_get_ability( 'core/read-nav-menus' );
-		$this->assertSame( 'Read Nav Menus', $ability->get_label() );
-		// The plugin's shape exposes a `oneOf` input schema; the minimal core stand-in did not.
-		$this->assertArrayHasKey( 'oneOf', $ability->get_input_schema() );
+		$ability = wp_get_ability( 'core/navigation-menus-query' );
+		$this->assertSame( 'Core Provided', $ability->get_label() );
 	}
 
 	/**
@@ -180,7 +178,7 @@ class Nav_MenusTest extends WP_UnitTestCase {
 		$this->become_admin();
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-nav-menus' )->execute( array( 'id' => $this->menu_id ) );
+		$result = wp_get_ability( 'core/navigation-menus-query' )->execute( array( 'id' => $this->menu_id ) );
 
 		$this->assertIsArray( $result );
 		$this->assertSame( $this->menu_id, $result['id'] );
@@ -200,7 +198,7 @@ class Nav_MenusTest extends WP_UnitTestCase {
 		$this->become_admin();
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-nav-menus' )->execute( array( 'slug' => 'test-menu' ) );
+		$result = wp_get_ability( 'core/navigation-menus-query' )->execute( array( 'slug' => 'test-menu' ) );
 
 		$this->assertSame( $this->menu_id, $result['id'] );
 		$this->assertCount( 1, $result['items'] );
@@ -215,7 +213,7 @@ class Nav_MenusTest extends WP_UnitTestCase {
 		$this->become_admin();
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-nav-menus' )->execute( array( 'location' => 'primary' ) );
+		$result = wp_get_ability( 'core/navigation-menus-query' )->execute( array( 'location' => 'primary' ) );
 
 		$this->assertSame( $this->menu_id, $result['id'] );
 	}
@@ -231,7 +229,7 @@ class Nav_MenusTest extends WP_UnitTestCase {
 		$this->become_admin();
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-nav-menus' )->execute( array( 'location' => 'footer' ) );
+		$result = wp_get_ability( 'core/navigation-menus-query' )->execute( array( 'location' => 'footer' ) );
 
 		$this->assertWPError( $result );
 		$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
@@ -246,7 +244,7 @@ class Nav_MenusTest extends WP_UnitTestCase {
 		$this->become_admin();
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-nav-menus' )->execute( array( 'id' => 999999 ) );
+		$result = wp_get_ability( 'core/navigation-menus-query' )->execute( array( 'id' => 999999 ) );
 
 		$this->assertWPError( $result );
 		$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
@@ -262,7 +260,7 @@ class Nav_MenusTest extends WP_UnitTestCase {
 		$this->become_admin();
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-nav-menus' )->execute( array() );
+		$result = wp_get_ability( 'core/navigation-menus-query' )->execute( array() );
 
 		$this->assertCount( 1, $result['menus'] );
 		$this->assertSame( $this->menu_id, $result['menus'][0]['id'] );
@@ -281,7 +279,7 @@ class Nav_MenusTest extends WP_UnitTestCase {
 		$this->become_admin();
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-nav-menus' )->execute( array( 'search' => 'Nonexistent' ) );
+		$result = wp_get_ability( 'core/navigation-menus-query' )->execute( array( 'search' => 'Nonexistent' ) );
 
 		$this->assertSame( array(), $result['menus'] );
 	}
@@ -295,7 +293,7 @@ class Nav_MenusTest extends WP_UnitTestCase {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-nav-menus' )->execute( array( 'id' => $this->menu_id ) );
+		$result = wp_get_ability( 'core/navigation-menus-query' )->execute( array( 'id' => $this->menu_id ) );
 
 		$this->assertWPError( $result );
 		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code() );
@@ -310,7 +308,7 @@ class Nav_MenusTest extends WP_UnitTestCase {
 		$this->become_admin();
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-nav-menus' )->execute(
+		$result = wp_get_ability( 'core/navigation-menus-query' )->execute(
 			(object) array(
 				'id' => $this->menu_id,
 			)
@@ -351,7 +349,7 @@ class Nav_MenusTest extends WP_UnitTestCase {
 		add_filter( 'wp_get_nav_menus', $filter );
 
 		try {
-			$result = wp_get_ability( 'core/read-nav-menus' )->execute( array() );
+			$result = wp_get_ability( 'core/navigation-menus-query' )->execute( array() );
 		} finally {
 			remove_filter( 'wp_get_nav_menus', $filter );
 		}
@@ -378,7 +376,7 @@ class Nav_MenusTest extends WP_UnitTestCase {
 		$this->become_admin();
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-nav-menus' )->execute( array() );
+		$result = wp_get_ability( 'core/navigation-menus-query' )->execute( array() );
 
 		$this->assertTrue( property_exists( $result['location_assignments'], 'primary' ) );
 		$this->assertSame( $this->menu_id, $result['location_assignments']->primary );
@@ -406,7 +404,7 @@ class Nav_MenusTest extends WP_UnitTestCase {
 		$this->register_ability();
 
 		try {
-			$result = wp_get_ability( 'core/read-nav-menus' )->execute( array( 'id' => $this->menu_id ) );
+			$result = wp_get_ability( 'core/navigation-menus-query' )->execute( array( 'id' => $this->menu_id ) );
 
 			$this->assertSame( array( 'primary' ), $result['locations'] );
 		} finally {
