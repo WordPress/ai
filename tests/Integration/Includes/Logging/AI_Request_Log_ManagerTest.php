@@ -134,6 +134,36 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that request metrics can be kept without retaining draft content.
+	 */
+	public function test_log_can_omit_request_and_response_content(): void {
+		add_filter( 'wpai_request_log_include_content', '__return_false' );
+		try {
+			$log_id = $this->manager->log(
+				array(
+					'type'          => 'ai_client',
+					'operation'     => 'completion',
+					'status'        => 'error',
+					'error_message' => 'Error containing the unpublished draft.',
+					'context'       => array(
+						'input_preview'  => 'Unpublished draft.',
+						'output_preview' => 'Response quoting the draft.',
+						'request_kind'   => 'text',
+					),
+				)
+			);
+		} finally {
+			remove_filter( 'wpai_request_log_include_content', '__return_false' );
+		}
+
+		$this->assertIsString( $log_id );
+		$log = $this->manager->get_log( $log_id );
+		$this->assertIsArray( $log );
+		$this->assertSame( array( 'request_kind' => 'text' ), $log['context'] );
+		$this->assertNull( $log['error_message'] );
+	}
+
+	/**
 	 * Tests that search matches on request_preview content.
 	 *
 	 * @since 1.0.0
