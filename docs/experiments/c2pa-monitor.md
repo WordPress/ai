@@ -49,6 +49,7 @@ The handler is wrapped in a `try / catch ( Throwable )` boundary and writes a re
 - `manage_upload_sortable_columns` → `register_sortable_column()`: marks the column as sortable (descending by default).
 - `pre_get_posts` → `sort_by_c2pa_column()`: injects `meta_key` / `orderby` when sorting by the column.
 - `admin_head-upload.php` / `admin_head-post.php` → `print_admin_styles()`: prints inline CSS for the hover tooltip and the label-alignment fix for the compat field.
+- `wpai_c2pa_public_verify_url`: optionally supplies a public original-image URL to pre-fill the external CAI Verify tool. The filter receives the attachment ID and `wp_get_original_image_url()` result. Return an empty string unless the URL works without authentication and serves the original, unmodified bytes; scaled images, optimization/CDN transforms, and hotlink protection can remove the manifest or block the verifier. The plugin checks only the URL scheme, host, and absence of user information; it does not resolve the host or reject private network addresses, so the filter operator is responsible for returning only URLs they intend to share publicly. Media attached to draft or private posts is never pre-filled. Password-protected posts remain `publish`, and their uploads are not protected by the post password, so filter implementations must handle those attachments explicitly when required.
 
 **Attachment Details / Edit Media UI**
 
@@ -164,7 +165,7 @@ When the experiment is enabled a **Content Verification** column appears in the 
 
 The column is sortable: clicking the header sorts credentials-first (descending). Attachments with no scan record appear at the bottom.
 
-**Verification note:** WordPress attachment URLs are not reachable by the CAI verify tool's fetcher from outside the admin session (local, Playground, staging, and auth-gated sites are all unreachable). To verify a credential, download the original image from your media library and drag it into the verify tool manually. In-browser verification via the C2PA JS SDK (`@contentauth/sdk`) is planned as a follow-up and would remove this step.
+**Verification note:** By default, no attachment URL is sent to the CAI Verify tool. To verify a credential, download the original image from your media library and drag it into the tool manually. Sites with publicly reachable original uploads can opt in through `wpai_c2pa_public_verify_url`; the URL must load without authentication and serve the original bytes with the manifest intact. Scaled images, optimization/CDN transforms, hotlink protection, and private media can make the result unusable. The plugin validates only that the filtered value is an HTTP(S) URL with a host and no user information; it does not perform DNS or private-network checks. The filter operator is responsible for returning only URLs they are comfortable sharing publicly. The plugin suppresses pre-filling when an attachment belongs to a draft or private post, but password-protected posts still have `publish` status and WordPress post passwords do not protect their uploaded files. Filter implementations should return an empty string for those attachments when public sharing is not intended. In-browser verification via the C2PA JS SDK (`@contentauth/sdk`) is planned as a follow-up.
 
 ## Attachment Details and Edit Media screens
 
