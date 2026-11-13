@@ -71,7 +71,7 @@ Everything is opt-in and off by default. Features are stable and supported; Expe
 * **[Editorial Notes](docs/experiments/editorial-notes.md)** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
 * **[Editorial Updates](docs/experiments/editorial-updates.md)** - Apply pending editorial notes to content and save the post, without a preview.
 * **[Excerpt Generation](docs/experiments/excerpt-generation.md)** - Generates excerpt suggestions from content.
-* **[Key Encryption](docs/experiments/key-encryption.md)** - Encrypts AI provider API keys at rest using bundled libsodium encryption. Keys are transparently decrypted on read and re-encrypted on write. Disabling the experiment or deactivating the plugin restores plaintext keys.
+* **[Key Encryption](docs/experiments/key-encryption.md)** - Encrypts AI provider API keys at rest using bundled libsodium encryption. Keys are transparently decrypted on read and re-encrypted on write. Requires `WP_SECRETS_KEY` in `wp-config.php`. Disabling the experiment or deactivating the plugin restores plaintext keys.
 * **[Markdown Feeds](docs/experiments/markdown-feeds.md)** - Serves your public content as Markdown for AI agents and other machine readers.
 * **[MCP Access](docs/experiments/mcp-adapter.md)** - Controls which abilities AI agents can use over the Model Context Protocol (MCP). Installs and activates the MCP Adapter plugin when enabled.
 * **[Meta Description Generation](docs/experiments/meta-description.md)** - Generates meta description suggestions and integrates those with various SEO plugins.
