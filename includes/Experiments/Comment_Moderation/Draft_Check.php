@@ -69,7 +69,7 @@ final class Draft_Check {
 		}
 
 		Asset_Loader::enqueue_script( 'comment_draft_check', 'experiments/comment-draft-check' );
-		Asset_Loader::enqueue_style( 'comment_draft_check', 'experiments/comment-draft-check' );
+		Asset_Loader::enqueue_style( 'comment_draft_check', 'experiments/comment-draft-check', array( 'wp-components' ) );
 		printf(
 			'<span hidden data-wpai-comment-draft-check="%1$s" data-nonce="%2$s"></span>',
 			esc_url( rest_url( 'ai/v1' . self::ROUTE ) ),
