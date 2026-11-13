@@ -121,6 +121,53 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		);
 	} );
 
+	test( 'Sends one request per click when the media modal is reused', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		await enableExperiment( admin, page, 'Alt Text Generation' );
+		const media = await requestUtils.uploadMedia( TEST_IMAGE_PATH );
+
+		let requests = 0;
+		await page.route(
+			/\/wp-abilities\/v1\/abilities\/ai\/alt-text-generation\/run/,
+			async ( route ) => {
+				requests++;
+				await route.fulfill( {
+					json: {
+						alt_text: 'Generated alt text',
+						is_decorative: false,
+					},
+				} );
+			}
+		);
+
+		await admin.createNewPost();
+
+		// Open one modal three times, as the classic editor does for "Set featured image".
+		await page.evaluate( () => {
+			const frame = window.wp.media();
+			frame.open();
+			frame.close();
+			frame.open();
+			frame.close();
+			frame.open();
+			frame.content.mode( 'browse' );
+		} );
+
+		const modal = page.locator( '.media-modal' );
+		await modal.locator( `li[data-id="${ media.id }"]` ).click();
+		await modal
+			.getByRole( 'button', { name: 'Generate', exact: true } )
+			.click();
+
+		await expect(
+			modal.locator( '#attachment-details-alt-text' )
+		).toHaveValue( 'Generated alt text' );
+		expect( requests ).toBe( 1 );
+	} );
+
 	test( 'Can use the Alt Text Generation Experiment in the editor', async ( {
 		admin,
 		editor,
