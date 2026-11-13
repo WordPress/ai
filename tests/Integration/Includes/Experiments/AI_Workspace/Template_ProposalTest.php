@@ -12,6 +12,7 @@ use WP_REST_Request;
 use WP_UnitTestCase;
 use WP_User;
 use WordPress\AI\Abilities\Show_In_Abilities;
+use WordPress\AI\Experiments\AI_Workspace\Conversation_Store;
 use WordPress\AI\Experiments\AI_Workspace\Proposal_Store;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Template;
 use WordPress\AI\Experiments\AI_Workspace\REST\Proposal_Controller;
@@ -256,6 +257,15 @@ class Template_ProposalTest extends WP_UnitTestCase {
 	 * @return \WP_REST_Response The response.
 	 */
 	private function execute( array $proposal ) {
+		// An approval is refused once its chat is gone (R7), so the chat is stored first.
+		$conversations = new Conversation_Store();
+
+		if ( null === $conversations->get( self::CONVERSATION, get_current_user_id() ) ) {
+			$conversation       = $conversations->create( get_current_user_id(), 'site' );
+			$conversation['id'] = self::CONVERSATION;
+			$conversations->save( $conversation );
+		}
+
 		$request = new WP_REST_Request( 'POST', '/ai/v1/workspace/proposals/' . $proposal['id'] . '/execute' );
 		$request->set_header( 'Content-Type', 'application/json' );
 		$request->set_body(
@@ -626,7 +636,22 @@ class Template_ProposalTest extends WP_UnitTestCase {
 	public function test_approving_twice_creates_one_template(): void {
 		$proposal = $this->store_template();
 
-		$first  = $this->execute( $proposal )->get_data();
+		$first = $this->execute( $proposal )->get_data();
+
+		// A second approval of the stored proposal returns the first result.
+		$again = $this->execute( $proposal )->get_data();
+
+		$this->assertSame( $first['items'], $again['items'] );
+		$this->assertSame( 1, $again['created'] );
+
+		// A write that runs again anyway, from a lost record, finds the template by its token.
+		$store  = new Proposal_Store();
+		$stored = $store->get( $proposal['id'], get_current_user_id() );
+
+		$stored['status']  = 'pending';
+		$stored['results'] = array();
+		$store->save( $stored );
+
 		$second = $this->execute( $proposal )->get_data();
 
 		$this->assertSame( 1, $first['created'] );

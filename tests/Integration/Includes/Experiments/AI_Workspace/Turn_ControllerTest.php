@@ -25,6 +25,7 @@ use WordPress\AI\Experiments\AI_Workspace\Turn_Runner;
 use WordPress\AI\Logging\AI_Request_Log_Manager;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
 use WordPress\AI\Logging\Logging_Integration;
+use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Test_Update_Kind;
 use WordPress\AiClient\Messages\DTO\Message;
 use WordPress\AiClient\Messages\DTO\MessagePart;
 use WordPress\AiClient\Messages\Enums\MessagePartChannelEnum;
@@ -155,6 +156,8 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 		remove_filter( 'wpai_workspace_tool_candidates', array( $this, 'add_denied_candidate' ) );
 		remove_all_filters( 'wpai_workspace_max_rounds' );
 		remove_all_filters( 'wpai_workspace_replay_messages' );
+		remove_all_filters( 'wpai_workspace_proposal_kinds' );
+		Test_Update_Kind::unregister_ability();
 
 		$this->set_shared_manager( $this->original_shared_manager );
 
@@ -477,6 +480,321 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 		$this->assertSame( 'Will this be kept?', $chat['entries'][0]['prompt'] );
 		$this->assertSame( Turn_Runner::STATUS_ERROR, $chat['entries'][0]['status'] );
 		$this->assertSame( 'provider_down', $chat['entries'][0]['error_code'] );
+	}
+
+	/**
+	 * A first turn can name the chat it creates, so a client whose connection
+	 * drops before the reply arrives can still find the chat.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_first_turn_is_saved_under_the_id_the_client_chose(): void {
+		$user_id = $this->login_as( 'administrator' );
+		$chat_id = wp_generate_uuid4();
+
+		$response = $this->dispatch_turn(
+			new Scripted_Model_Client( array( $this->text_message( 'All done.' ) ) ),
+			array(
+				'message'             => 'Hello',
+				'new_conversation_id' => $chat_id,
+			)
+		);
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( $chat_id, $response->get_data()['conversation_id'] );
+		$this->assertIsArray( ( new Conversation_Store() )->get( $chat_id, $user_id ), 'The chat is saved under the chosen ID.' );
+	}
+
+	/**
+	 * A turn's entry keeps the ID the client gave the turn, including a turn
+	 * that ends in an error.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_turn_entry_keeps_the_turn_id(): void {
+		$user_id = $this->login_as( 'administrator' );
+		$chat_id = wp_generate_uuid4();
+		$first   = wp_generate_uuid4();
+		$second  = wp_generate_uuid4();
+
+		$this->dispatch_turn(
+			new Scripted_Model_Client( array( $this->text_message( 'All done.' ) ) ),
+			array(
+				'message'             => 'Hello',
+				'new_conversation_id' => $chat_id,
+				'turn_id'             => $first,
+			)
+		);
+		$this->dispatch_turn(
+			new Scripted_Model_Client( array( new WP_Error( 'provider_down', 'The provider is down.' ) ) ),
+			array(
+				'message'         => 'Again',
+				'conversation_id' => $chat_id,
+				'turn_id'         => $second,
+			)
+		);
+
+		$chat = ( new Conversation_Store() )->get( $chat_id, $user_id );
+
+		$this->assertIsArray( $chat );
+		$this->assertSame( $first, $chat['entries'][0]['turn_id'] );
+		$this->assertSame( $second, $chat['entries'][1]['turn_id'] );
+		$this->assertSame( Turn_Runner::STATUS_ERROR, $chat['entries'][1]['status'] );
+	}
+
+	/**
+	 * A turn sent without an ID saves an entry without one, as before.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_turn_without_an_id_saves_no_turn_id(): void {
+		$user_id  = $this->login_as( 'administrator' );
+		$response = $this->dispatch_turn(
+			new Scripted_Model_Client( array( $this->text_message( 'All done.' ) ) ),
+			array( 'message' => 'Hello' )
+		);
+		$chat     = ( new Conversation_Store() )->get( $response->get_data()['conversation_id'], $user_id );
+
+		$this->assertIsArray( $chat );
+		$this->assertArrayNotHasKey( 'turn_id', $chat['entries'][0] );
+	}
+
+	/**
+	 * Turn and chat IDs must be version 4 UUIDs.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_ids_that_are_not_uuids_are_refused(): void {
+		$this->login_as( 'administrator' );
+
+		foreach ( array( 'new_conversation_id', 'turn_id' ) as $param ) {
+			$response = $this->dispatch_turn(
+				new Scripted_Model_Client( array( $this->text_message( 'All done.' ) ) ),
+				array(
+					'message' => 'Hello',
+					$param    => 'not-a-uuid',
+				)
+			);
+
+			$this->assertSame( 400, $response->get_status(), $param . ' must be a UUID.' );
+			$this->assertSame( 'rest_invalid_param', $response->get_data()['code'] );
+		}
+	}
+
+	/**
+	 * A new chat ID is only for a first turn.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_new_chat_id_with_an_existing_chat_is_refused(): void {
+		$user_id = $this->login_as( 'administrator' );
+		$store   = new Conversation_Store();
+		$chat    = $store->create( $user_id, Tool_Selector::SCOPE_SITE );
+		$store->save( $chat );
+
+		$response = $this->dispatch_turn(
+			new Scripted_Model_Client( array( $this->text_message( 'All done.' ) ) ),
+			array(
+				'message'             => 'Hello',
+				'conversation_id'     => $chat['id'],
+				'new_conversation_id' => wp_generate_uuid4(),
+			)
+		);
+
+		$this->assertSame( 400, $response->get_status() );
+		$this->assertSame( 'workspace_new_conversation_id_conflict', $response->get_data()['code'] );
+	}
+
+	/**
+	 * A new chat ID that is already one of the person's chats is refused, so
+	 * a repeated first turn cannot overwrite that chat.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_new_chat_id_already_in_use_is_refused(): void {
+		$user_id = $this->login_as( 'administrator' );
+		$store   = new Conversation_Store();
+		$chat    = $store->create( $user_id, Tool_Selector::SCOPE_SITE );
+		$store->save( $chat );
+
+		$response = $this->dispatch_turn(
+			new Scripted_Model_Client( array( $this->text_message( 'All done.' ) ) ),
+			array(
+				'message'             => 'Hello',
+				'new_conversation_id' => $chat['id'],
+			)
+		);
+
+		$this->assertSame( 409, $response->get_status() );
+		$this->assertSame( 'workspace_conversation_exists', $response->get_data()['code'] );
+	}
+
+	/**
+	 * Another user's chat ID cannot be claimed for a new chat: the turn runs,
+	 * but nothing is written over the other chat.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_new_chat_id_owned_by_someone_else_is_not_written(): void {
+		$store = new Conversation_Store();
+		$other = $store->create( self::$user_ids['editor'], Tool_Selector::SCOPE_SITE );
+		$store->save( $other );
+
+		$user_id = $this->login_as( 'administrator' );
+
+		$this->dispatch_turn(
+			new Scripted_Model_Client( array( $this->text_message( 'All done.' ) ) ),
+			array(
+				'message'             => 'Hello',
+				'new_conversation_id' => $other['id'],
+			)
+		);
+
+		$this->assertNull( $store->get( $other['id'], $user_id ), 'The administrator gets no chat under that ID.' );
+		$kept = $store->get( $other['id'], self::$user_ids['editor'] );
+		$this->assertIsArray( $kept );
+		$this->assertSame( array(), $kept['entries'], "The editor's chat is unchanged." );
+	}
+
+	/**
+	 * Reads a turn's state through the state route.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $turn_id The turn ID.
+	 * @return \WP_REST_Response The response.
+	 */
+	private function turn_state( string $turn_id ) {
+		$this->fresh_rest_server();
+		( new Turn_Controller( new Conversation_Store(), new Tool_Selector(), new Scripted_Model_Client( array() ) ) )->register_routes();
+
+		return rest_get_server()->dispatch( new WP_REST_Request( 'GET', '/ai/v1/workspace/messages/' . $turn_id ) );
+	}
+
+	/**
+	 * A turn the server never received is unknown, and one it ran is done,
+	 * for its own user only.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_the_state_route_reports_a_turn_as_unknown_or_done(): void {
+		$this->login_as( 'administrator' );
+		$turn_id = wp_generate_uuid4();
+
+		$this->assertSame( array( 'state' => 'unknown' ), $this->turn_state( $turn_id )->get_data() );
+
+		$this->dispatch_turn(
+			new Scripted_Model_Client( array( new WP_Error( 'provider_down', 'The provider is down.' ) ) ),
+			array(
+				'message' => 'Hello',
+				'turn_id' => $turn_id,
+			)
+		);
+
+		$this->assertSame( array( 'state' => 'done' ), $this->turn_state( $turn_id )->get_data(), 'A turn that failed is done too.' );
+
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+
+		$this->assertSame( array( 'state' => 'unknown' ), $this->turn_state( $turn_id )->get_data(), "Another user cannot see this user's turn." );
+	}
+
+	/**
+	 * A turn is marked running while it runs.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_turn_is_running_while_the_model_answers(): void {
+		$this->login_as( 'administrator' );
+		$turn_id = wp_generate_uuid4();
+		$seen    = '';
+
+		$client = new class( $turn_id, $seen ) implements Model_Client_Interface {
+			/**
+			 * The turn ID.
+			 *
+			 * @var string
+			 */
+			private $turn_id;
+
+			/**
+			 * The state seen during the round.
+			 *
+			 * @var string
+			 */
+			public $seen;
+
+			/**
+			 * Constructor.
+			 *
+			 * @param string $turn_id The turn ID.
+			 * @param string $seen    The state seen.
+			 */
+			public function __construct( string $turn_id, string &$seen ) {
+				$this->turn_id = $turn_id;
+				$this->seen    = &$seen;
+			}
+
+			/**
+			 * {@inheritDoc}
+			 */
+			public function supports_text_generation(): bool {
+				return true;
+			}
+
+			/**
+			 * {@inheritDoc}
+			 */
+			public function supports_function_calling(): bool {
+				return true;
+			}
+
+			/**
+			 * {@inheritDoc}
+			 *
+			 * @param list<\WordPress\AiClient\Messages\DTO\Message> $messages           The conversation so far.
+			 * @param list<string>                                   $ability_names      Abilities to declare as tools.
+			 * @param string                                         $system_instruction The system instruction.
+			 * @param callable|null                                  $on_text            Optional. Receives text deltas.
+			 * @return \WordPress\AiClient\Messages\DTO\Message The reply.
+			 */
+			public function generate( array $messages, array $ability_names, string $system_instruction, ?callable $on_text = null ) {
+				$this->seen = (string) get_transient( Turn_Controller::TURN_STATE_PREFIX . md5( get_current_user_id() . ':' . $this->turn_id ) );
+
+				return new Message( MessageRoleEnum::model(), array( new MessagePart( 'All done.' ) ) );
+			}
+		};
+
+		$this->dispatch_turn(
+			$client,
+			array(
+				'message' => 'Hello',
+				'turn_id' => $turn_id,
+			)
+		);
+
+		$this->assertSame( 'running', $seen );
+	}
+
+	/**
+	 * The state route only answers for a version 4 UUID.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_the_state_route_needs_a_uuid(): void {
+		$this->login_as( 'administrator' );
+
+		$this->assertSame( 404, $this->turn_state( 'not-a-uuid' )->get_status() );
+	}
+
+	/**
+	 * The state route needs the workspace capability.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_the_state_route_refuses_a_subscriber(): void {
+		$this->login_as( 'subscriber' );
+
+		$this->assertSame( 403, $this->turn_state( wp_generate_uuid4() )->get_status() );
 	}
 
 	/**
@@ -1923,6 +2241,112 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A proposal that arrives as its own message, after the sentence announcing
+	 * it, still runs and ends the turn. The OpenAI connector returns a reply in
+	 * that shape, and reading only its first message lost the call.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_proposal_after_its_announcement_ends_the_turn(): void {
+		$this->login_as( 'administrator' );
+		$this->register_proposal_ability();
+
+		$client = new Scripted_Model_Client(
+			array(
+				array(
+					$this->text_message( 'I am proposing the draft now.' ),
+					$this->proposal_message(),
+				),
+				$this->text_message( 'This narration should never be requested.' ),
+			)
+		);
+
+		$response = $this->dispatch_turn( $client, array( 'message' => 'Draft me a post.' ) );
+		$data     = $response->get_data();
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( Turn_Runner::STATUS_AWAITING_USER, $data['status'] );
+		$this->assertCount( 1, $client->calls );
+		$this->assertCount( 1, $data['tool_calls'] );
+		$this->assertSame( 'success', $data['tool_calls'][0]['status'] );
+		$this->assertSame( 'I am proposing the draft now.', $data['text'], 'The sentence before the call is the reply the person sees.' );
+	}
+
+	/**
+	 * A reply that came as several messages is replayed in that shape: each
+	 * call keeps its own message and is answered in a message of its own,
+	 * because the OpenAI connector refuses a call that shares a message.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_reply_in_several_messages_is_replayed_in_that_shape(): void {
+		$this->login_as( 'administrator' );
+
+		$client = new Scripted_Model_Client(
+			array(
+				array(
+					$this->text_message( 'Let me look.' ),
+					$this->tool_call_message( 'ai/search-content', array( 'search' => 'hello' ), 'call_a' ),
+					$this->tool_call_message( 'ai/search-content', array( 'search' => 'world' ), 'call_b' ),
+				),
+				$this->text_message( 'Done.' ),
+			)
+		);
+
+		$response = $this->dispatch_turn( $client, array( 'message' => 'What is on this site?' ) );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( Turn_Runner::STATUS_COMPLETE, $response->get_data()['status'] );
+		$this->assertSame( 'Done.', $response->get_data()['text'], 'Only the last reply is the text, not an earlier round\'s.' );
+		$this->assertCount( 2, $client->calls );
+
+		$shape = array();
+
+		foreach ( array_slice( $client->calls[1]['messages'], -5 ) as $message ) {
+			$parts = $message->getParts();
+			$this->assertCount( 1, $parts, 'Each message of the split reply, and each answer, must hold one part.' );
+
+			$call   = $parts[0]->getFunctionCall();
+			$answer = $parts[0]->getFunctionResponse();
+
+			if ( null !== $call ) {
+				$shape[] = 'call ' . $call->getId();
+			} elseif ( null !== $answer ) {
+				$shape[] = 'answer ' . $answer->getId();
+			} else {
+				$shape[] = 'text';
+			}
+		}
+
+		$this->assertSame( array( 'text', 'call call_a', 'call call_b', 'answer call_a', 'answer call_b' ), $shape );
+	}
+
+	/**
+	 * A newly registered kind's propose ability ends the turn without editing the runner.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_turn_ends_once_the_model_calls_a_newly_registered_kind(): void {
+		$this->login_as( 'administrator' );
+
+		( new Test_Update_Kind() )->add_to_stores();
+		Test_Update_Kind::register_ability();
+
+		$client = new Scripted_Model_Client(
+			array(
+				$this->tool_call_message( Test_Update_Kind::ABILITY, array( 'value' => 'New' ) ),
+				$this->text_message( 'This narration should never be requested.' ),
+			)
+		);
+
+		$data = $this->dispatch_turn( $client, array( 'message' => 'Change the value.' ) )->get_data();
+
+		$this->assertSame( 'success', $data['tool_calls'][0]['status'] );
+		$this->assertSame( Turn_Runner::STATUS_AWAITING_USER, $data['status'] );
+		$this->assertCount( 1, $client->calls, 'The model must not be called again after it proposes.' );
+	}
+
+	/**
 	 * A valid question ends the turn and hands back the question and choices as given.
 	 *
 	 * @since x.x.x
@@ -2470,9 +2894,10 @@ class Scripted_Model_Client implements Model_Client_Interface {
 	public $on_generate = null;
 
 	/**
-	 * Scripted replies, consumed in order.
+	 * Scripted replies, consumed in order. A list stands for a reply that came
+	 * as several messages, as the OpenAI connector returns one.
 	 *
-	 * @var list<\WordPress\AiClient\Messages\DTO\Message>
+	 * @var list<\WordPress\AiClient\Messages\DTO\Message|non-empty-list<\WordPress\AiClient\Messages\DTO\Message>>
 	 */
 	private $replies;
 
@@ -2486,8 +2911,8 @@ class Scripted_Model_Client implements Model_Client_Interface {
 	/**
 	 * Constructor.
 	 *
-	 * @param list<\WordPress\AiClient\Messages\DTO\Message> $replies  Scripted replies.
-	 * @param \WordPress\AiClient\Messages\DTO\Message|null  $fallback Reply used once the script runs out.
+	 * @param list<\WordPress\AiClient\Messages\DTO\Message|non-empty-list<\WordPress\AiClient\Messages\DTO\Message>> $replies  Scripted replies.
+	 * @param \WordPress\AiClient\Messages\DTO\Message|null                                                           $fallback Reply used once the script runs out.
 	 */
 	public function __construct( array $replies, ?Message $fallback = null ) {
 		$this->replies  = $replies;
@@ -2515,7 +2940,7 @@ class Scripted_Model_Client implements Model_Client_Interface {
 	 * @param list<string>                                   $ability_names      Declared abilities.
 	 * @param string                                         $system_instruction The system instruction.
 	 * @param callable|null                                  $on_text            Text delta callback.
-	 * @return \WordPress\AiClient\Messages\DTO\Message|\WP_Error The reply.
+	 * @return \WordPress\AiClient\Messages\DTO\Message|non-empty-list<\WordPress\AiClient\Messages\DTO\Message>|\WP_Error The reply.
 	 */
 	public function generate( array $messages, array $ability_names, string $system_instruction, ?callable $on_text = null ) {
 		if ( null !== $this->on_generate ) {

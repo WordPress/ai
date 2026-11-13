@@ -100,6 +100,41 @@ final class Draft_Writer extends Proposal_Writer {
 	}
 
 	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function ability(): string {
+		return Propose_Drafts::ABILITY;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * Proposing drafts writes nothing, but a user who cannot edit any post has
+	 * nothing to gain from being offered it, and its own permission callback
+	 * refuses them anyway.
+	 *
+	 * @since x.x.x
+	 */
+	public function capability(): string {
+		return 'edit_posts';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function instruction(): string {
+		return sprintf(
+			/* translators: %1$d: The most drafts one proposal can hold. */
+			__( 'To create drafts, call the proposal tool with the exact values you want written; the person then sees those stored values and chooses which to approve. Proposing ends your turn, so say what you are proposing before you call it. Never say anything has been created until you are told the outcome. One proposal holds at most %1$d drafts: when asked for more, propose the first %1$d and say the rest can follow once these are approved. When proposing many drafts, keep each body to a short outline, so the reply arrives before the request times out.', 'ai' ),
+			Proposal_Store::MAX_ITEMS
+		);
+	}
+
+	/**
 	 * Normalizes and validates one proposed draft.
 	 *
 	 * @since x.x.x

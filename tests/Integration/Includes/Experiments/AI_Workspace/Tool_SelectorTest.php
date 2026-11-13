@@ -16,9 +16,12 @@ use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Experiments\Abilities_Explorer\Ability_Handler;
 use WordPress\AI\Experiments\AI_Workspace\Ask_User;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Drafts;
+use WordPress\AI\Experiments\AI_Workspace\Propose_Post_Changes;
+use WordPress\AI\Experiments\AI_Workspace\Propose_Site_Identity;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Template;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Policy;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Selector;
+use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Test_Update_Kind;
 
 /**
  * Tool_Selector test case.
@@ -73,6 +76,8 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		'ai/list-terms',
 		'ai/propose-drafts',
 		'ai/propose-template',
+		'ai/propose-post-changes',
+		'ai/propose-site-identity',
 		'ai/ask-user',
 	);
 
@@ -144,9 +149,12 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 	public function tearDown(): void {
 		remove_filter( 'wpai_workspace_tool_admission_enabled', '__return_true' );
 		remove_filter( 'wpai_workspace_tool_candidates', array( $this, 'add_editor_only_candidate' ) );
+		remove_all_filters( 'wpai_workspace_proposal_kinds' );
+		remove_all_filters( 'wpai_workspace_write_proposals_enabled' );
+		Test_Update_Kind::unregister_ability();
 
 		$ability_names = array_merge(
-			array( 'ai/search-content', 'ai/read-content-bodies', 'ai/list-terms', 'ai/propose-drafts', 'ai/propose-template', 'ai/ask-user', self::EDITOR_ABILITY ),
+			array( 'ai/search-content', 'ai/read-content-bodies', 'ai/list-terms', 'ai/propose-drafts', 'ai/propose-template', 'ai/propose-post-changes', 'ai/propose-site-identity', 'ai/ask-user', self::EDITOR_ABILITY ),
 			$this->registered
 		);
 
@@ -1067,6 +1075,8 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 			( new List_Terms() )->register();
 			( new Propose_Drafts() )->register();
 			( new Propose_Template() )->register();
+			( new Propose_Post_Changes() )->register();
+			( new Propose_Site_Identity() )->register();
 			( new Ask_User() )->register();
 		} finally {
 			array_pop( $wp_current_filter );
@@ -1154,6 +1164,61 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 			wp_has_ability( $ability_name ),
 			sprintf( 'The fixture ability %s must register before the selector can be asked about it.', $ability_name )
 		);
+	}
+
+	/**
+	 * A kind registered with the proposal store is offered without editing the selector.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_newly_registered_kind_is_offered(): void {
+		$this->login_as( 'administrator' );
+
+		( new Test_Update_Kind() )->add_to_stores();
+		Test_Update_Kind::register_ability();
+
+		$selector   = new Tool_Selector();
+		$candidates = $selector->get_candidates();
+
+		$this->assertArrayHasKey( Test_Update_Kind::ABILITY, $candidates );
+		$this->assertSame( '', $candidates[ Test_Update_Kind::ABILITY ], 'The kind supplies its own capability.' );
+		$this->assertContains( Test_Update_Kind::ABILITY, $selector->get_tool_names( Tool_Selector::SCOPE_SITE ), 'Like the built-in kinds, it is exempt from the effect-class check.' );
+	}
+
+	/**
+	 * The built-in kinds keep their place and capability in the curated floor.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_built_in_kinds_keep_their_capabilities(): void {
+		$candidates = ( new Tool_Selector() )->get_candidates();
+
+		$this->assertSame( 'edit_posts', $candidates['ai/propose-drafts'] );
+		$this->assertSame( 'edit_theme_options', $candidates['ai/propose-template'] );
+		$this->assertSame( 'edit_posts', $candidates['ai/propose-post-changes'] );
+		$this->assertSame( 'manage_options', $candidates['ai/propose-site-identity'] );
+		$this->assertSame(
+			array( 'ai/search-content', 'ai/read-content-bodies', 'ai/list-terms', 'ai/propose-drafts', 'ai/propose-template', 'ai/propose-post-changes', 'ai/propose-site-identity', 'ai/ask-user' ),
+			array_slice( array_keys( $candidates ), 0, 8 )
+		);
+	}
+
+	/**
+	 * Turning write proposals off removes the update kinds' propose abilities from the tools (R8).
+	 *
+	 * @since x.x.x
+	 */
+	public function test_write_gate_off_withholds_update_kinds(): void {
+		$this->login_as( 'administrator' );
+
+		( new Test_Update_Kind() )->add_to_stores();
+		Test_Update_Kind::register_ability();
+		add_filter( 'wpai_workspace_write_proposals_enabled', '__return_false' );
+
+		$selector = new Tool_Selector();
+
+		$this->assertNotContains( Test_Update_Kind::ABILITY, $selector->get_tool_names( Tool_Selector::SCOPE_SITE ) );
+		$this->assertArrayHasKey( 'ai/propose-drafts', $selector->get_candidates(), 'Kinds that only create stay on.' );
 	}
 }
 

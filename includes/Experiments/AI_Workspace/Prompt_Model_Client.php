@@ -33,6 +33,32 @@ defined( 'ABSPATH' ) || exit;
 class Prompt_Model_Client implements Model_Client_Interface {
 
 	/**
+	 * The shortest time, in seconds, a workspace round waits for the model.
+	 *
+	 * Core's AI client waits 30 seconds by default. A round that writes a full
+	 * proposal, such as twenty drafts, can take longer than that, and the
+	 * request was cut off before any reply arrived.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var float
+	 */
+	public const REQUEST_TIMEOUT = 120.0;
+
+	/**
+	 * The most tokens a workspace round asks the model to write.
+	 *
+	 * Some connectors cap a reply when the caller sets nothing: the Anthropic
+	 * connector sends 4,096, and a proposal of twenty drafts stopped partway
+	 * with a token-limit error. This leaves room for a full proposal.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var int
+	 */
+	public const MAX_OUTPUT_TOKENS = 16384;
+
+	/**
 	 * The streaming driver, when one was supplied.
 	 *
 	 * @since x.x.x
@@ -83,7 +109,7 @@ class Prompt_Model_Client implements Model_Client_Interface {
 	 * @param list<string>                                   $ability_names      Abilities to declare as tools.
 	 * @param string                                         $system_instruction The system instruction.
 	 * @param callable|null                                  $on_text            Optional. Receives text deltas as they stream.
-	 * @return \WordPress\AiClient\Messages\DTO\Message|\WP_Error The assistant message, or an error.
+	 * @return \WordPress\AiClient\Messages\DTO\Message|non-empty-list<\WordPress\AiClient\Messages\DTO\Message>|\WP_Error The assistant message, the assistant messages when the reply came as several, or an error.
 	 */
 	public function generate( array $messages, array $ability_names, string $system_instruction, ?callable $on_text = null ) {
 		$messages = self::without_unsigned_thoughts( $messages );
@@ -154,6 +180,76 @@ class Prompt_Model_Client implements Model_Client_Interface {
 	}
 
 	/**
+	 * Returns the timeout a workspace round's request uses.
+	 *
+	 * Hooked to `wp_ai_client_default_request_timeout` while the round's
+	 * request is built. It only ever raises the wait, so a longer default a
+	 * site set is kept.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $default_timeout The timeout core would use, in seconds.
+	 * @return mixed The timeout to use, in seconds, or the value given when it is not a number.
+	 */
+	public static function request_timeout( $default_timeout ) {
+		if ( ! is_numeric( $default_timeout ) ) {
+			return $default_timeout;
+		}
+
+		/**
+		 * Filters the shortest time, in seconds, a workspace round waits for the model.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param float $timeout The timeout in seconds. Default 120.
+		 */
+		$timeout = (float) apply_filters( 'wpai_workspace_request_timeout', self::REQUEST_TIMEOUT );
+
+		return max( (float) $default_timeout, $timeout );
+	}
+
+	/**
+	 * Returns the most tokens a workspace round asks the model to write.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return int The output token limit.
+	 */
+	public static function max_output_tokens(): int {
+		/**
+		 * Filters the most tokens a workspace round asks the model to write.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param int $max_tokens The output token limit. Default 16384.
+		 */
+		$max_tokens = (int) apply_filters( 'wpai_workspace_max_output_tokens', self::MAX_OUTPUT_TOKENS );
+
+		return $max_tokens > 0 ? $max_tokens : self::MAX_OUTPUT_TOKENS;
+	}
+
+	/**
+	 * Applies a round's settings to the prompt builder.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_AI_Client_Prompt_Builder $builder            The prompt builder.
+	 * @param list<string>                 $ability_names      Abilities to declare as tools.
+	 * @param string                       $system_instruction The system instruction.
+	 * @return \WP_AI_Client_Prompt_Builder The configured builder.
+	 */
+	protected function prepare_builder( $builder, array $ability_names, string $system_instruction ) {
+		$builder = $builder->using_system_instruction( $system_instruction );
+		$builder = $builder->using_max_tokens( self::max_output_tokens() );
+
+		if ( array() !== $ability_names ) {
+			$builder = $builder->using_abilities( ...$ability_names );
+		}
+
+		return $builder;
+	}
+
+	/**
 	 * Runs a buffered model round through the core prompt builder.
 	 *
 	 * @since x.x.x
@@ -161,7 +257,7 @@ class Prompt_Model_Client implements Model_Client_Interface {
 	 * @param list<\WordPress\AiClient\Messages\DTO\Message> $messages           The conversation so far.
 	 * @param list<string>                                   $ability_names      Abilities to declare as tools.
 	 * @param string                                         $system_instruction The system instruction.
-	 * @return \WordPress\AiClient\Messages\DTO\Message|\WP_Error The assistant message, or an error.
+	 * @return \WordPress\AiClient\Messages\DTO\Message|non-empty-list<\WordPress\AiClient\Messages\DTO\Message>|\WP_Error The assistant message, the assistant messages when the reply came as several, or an error.
 	 */
 	protected function generate_buffered( array $messages, array $ability_names, string $system_instruction ) {
 		if ( ! function_exists( 'wp_ai_client_prompt' ) ) {
@@ -172,15 +268,22 @@ class Prompt_Model_Client implements Model_Client_Interface {
 			);
 		}
 
-		try {
-			$builder = wp_ai_client_prompt( $messages )
-				->using_system_instruction( $system_instruction );
+		$raise = array( self::class, 'request_timeout' );
 
-			if ( array() !== $ability_names ) {
-				$builder = $builder->using_abilities( ...$ability_names );
+		try {
+			/*
+			 * Core reads the timeout when the builder is made, so the raise is
+			 * scoped to that, and a model call an ability makes keeps its own.
+			 */
+			add_filter( 'wp_ai_client_default_request_timeout', $raise, PHP_INT_MAX );
+
+			try {
+				$builder = wp_ai_client_prompt( $messages );
+			} finally {
+				remove_filter( 'wp_ai_client_default_request_timeout', $raise, PHP_INT_MAX );
 			}
 
-			$result = $builder->generate_text_result();
+			$result = $this->prepare_builder( $builder, $ability_names, $system_instruction )->generate_text_result();
 		} catch ( Throwable $e ) {
 			return new WP_Error(
 				'workspace_generation_failed',
@@ -193,6 +296,22 @@ class Prompt_Model_Client implements Model_Client_Interface {
 			return $result;
 		}
 
-		return $result->toMessage();
+		/*
+		 * Every candidate is kept, not only the first. The OpenAI connector
+		 * returns each item of a Responses API reply as its own candidate, so a
+		 * model that says what it is about to do and then calls a tool sends the
+		 * sentence and the call as two. Reading only the first kept the sentence
+		 * and lost the call: the model announced a proposal the person never saw.
+		 * They stay separate messages because that connector refuses a function
+		 * call that shares a message with anything else when the history is
+		 * replayed. A connector that replies in one candidate is unchanged.
+		 */
+		$replies = array();
+
+		foreach ( $result->getCandidates() as $candidate ) {
+			$replies[] = $candidate->getMessage();
+		}
+
+		return 1 === count( $replies ) ? $replies[0] : $replies;
 	}
 }

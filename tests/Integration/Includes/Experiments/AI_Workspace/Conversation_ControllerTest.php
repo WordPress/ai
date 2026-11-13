@@ -256,6 +256,65 @@ class Conversation_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Reopening a chat whose proposal was discarded returns the discard, marked as one.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_write_results_include_a_discarded_proposal(): void {
+		$owner = self::$user_ids['owner'];
+		wp_set_current_user( $owner );
+
+		$discard = array(
+			'wp_proposal_discarded' => array(
+				'proposal_id'  => 'p-discarded',
+				'discarded_by' => array( 'user_id' => $owner ),
+				'items'        => array(
+					array(
+						'key'       => 'k-1',
+						'post_type' => 'post',
+						'title'     => 'An idea',
+					),
+				),
+				'note'         => 'The person discarded this proposal.',
+			),
+		);
+
+		$id = $this->save_chat(
+			$owner,
+			'Draft one',
+			array(
+				array(
+					'role'  => 'user',
+					'parts' => array(
+						array(
+							'type' => 'text',
+							'text' => (string) wp_json_encode( $discard ),
+						),
+					),
+				),
+				array(
+					'role'  => 'assistant',
+					'parts' => array(
+						array(
+							'type' => 'text',
+							'text' => (string) wp_json_encode( $discard ),
+						),
+					),
+				),
+			)
+		);
+
+		$results = $this->request( 'GET', '/' . $id )->get_data()['write_results'];
+
+		$this->assertCount( 1, $results, 'Only the server-appended discard counts, not a model reply shaped like one.' );
+		$this->assertSame( 'p-discarded', $results[0]['proposal_id'] );
+		$this->assertTrue( $results[0]['discarded'] );
+		$this->assertSame( 'discarded', $results[0]['items'][0]['outcome'] );
+		$this->assertSame( 'An idea', $results[0]['items'][0]['title'] );
+		$this->assertSame( '', $results[0]['items'][0]['edit_link'] );
+	}
+
+	/**
 	 * A reader who cannot edit a written post gets no link to it, and a model
 	 * reply shaped like an outcome is not shown as one.
 	 *

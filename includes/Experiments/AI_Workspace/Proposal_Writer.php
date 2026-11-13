@@ -9,8 +9,6 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\AI_Workspace;
 
-use function WordPress\AI\log_ai_request;
-
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
@@ -41,6 +39,8 @@ defined( 'ABSPATH' ) || exit;
  */
 abstract class Proposal_Writer implements Proposal_Kind {
 
+	use Proposal_Writes;
+
 	/**
 	 * Post meta holding the idempotency token of the item that created a post.
 	 *
@@ -51,70 +51,26 @@ abstract class Proposal_Writer implements Proposal_Kind {
 	public const IDEMPOTENCY_META = '_wpai_workspace_proposal_item';
 
 	/**
-	 * Writes the selected items of a proposal.
+	 * Kinds that create posts change nothing that exists, so the write gate never removes them.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param array<string, mixed> $proposal The stored proposal.
-	 * @param array<int, string>   $selected The item keys the person approved.
-	 * @return array{items: list<array<string, mixed>>, created: int, failed: int, denied: int, duplicate: int, deselected: int} The per-item outcomes.
+	 * @return bool Always false.
 	 */
-	public function write( array $proposal, array $selected ): array {
-		$items           = isset( $proposal['items'] ) && is_array( $proposal['items'] ) ? $proposal['items'] : array();
-		$conversation_id = isset( $proposal['conversation_id'] ) && is_string( $proposal['conversation_id'] )
-			? $proposal['conversation_id']
-			: '';
-		$proposal_id     = isset( $proposal['id'] ) && is_string( $proposal['id'] ) ? $proposal['id'] : '';
-
-		$outcomes = array();
-		$counts   = array(
-			'created'    => 0,
-			'failed'     => 0,
-			'denied'     => 0,
-			'duplicate'  => 0,
-			'deselected' => 0,
-		);
-
-		foreach ( $items as $item ) {
-			if ( ! is_array( $item ) ) {
-				continue;
-			}
-
-			$key = isset( $item['key'] ) && is_string( $item['key'] ) ? $item['key'] : '';
-
-			if ( ! in_array( $key, $selected, true ) ) {
-				++$counts['deselected'];
-				$outcomes[] = $this->outcome( $item, 'deselected', 0, '', '' );
-				continue;
-			}
-
-			$outcome = $this->write_item( $item, $proposal_id, $conversation_id );
-
-			++$counts[ $outcome['outcome'] ];
-			$outcomes[] = $outcome;
-		}
-
-		return array(
-			'items'      => $outcomes,
-			'created'    => $counts['created'],
-			'failed'     => $counts['failed'],
-			'denied'     => $counts['denied'],
-			'duplicate'  => $counts['duplicate'],
-			'deselected' => $counts['deselected'],
-		);
+	public function is_update(): bool {
+		return false;
 	}
 
 	/**
-	 * Writes one item.
+	 * Kinds that create posts take no edits; the person asks for a new proposal instead.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param array<string, mixed> $item            The proposal item.
-	 * @param string               $proposal_id     The proposal ID.
-	 * @param string               $conversation_id The conversation ID.
-	 * @return array<string, mixed> The item outcome, built with {@see self::outcome()}.
+	 * @return bool Always false.
 	 */
-	abstract protected function write_item( array $item, string $proposal_id, string $conversation_id ): array;
+	public function accepts_edits(): bool {
+		return false;
+	}
 
 	/**
 	 * Returns the post type an item writes.
@@ -218,8 +174,8 @@ abstract class Proposal_Writer implements Proposal_Kind {
 	 */
 	protected function outcome( array $item, string $outcome, int $post_id, string $error_code, string $error_message ): array {
 		return array(
-			'key'           => isset( $item['key'] ) && is_string( $item['key'] ) ? $item['key'] : '',
-			'title'         => isset( $item['title'] ) && is_string( $item['title'] ) ? $item['title'] : '',
+			'key'           => $this->field( $item, 'key' ),
+			'title'         => $this->field( $item, 'title' ),
 			'post_type'     => $this->item_post_type( $item ),
 			'status'        => $this->item_status( $item ),
 			'outcome'       => $outcome,
@@ -231,70 +187,23 @@ abstract class Proposal_Writer implements Proposal_Kind {
 	}
 
 	/**
-	 * Writes the single log row for one write attempt.
-	 *
-	 * The shape matches the rows {@see Turn_Runner} writes for tool calls, so
-	 * reads and writes from one conversation join in a single log view (KTD10).
+	 * {@inheritDoc}
 	 *
 	 * @since x.x.x
-	 *
-	 * @param array<string, mixed> $item            The proposal item.
-	 * @param string               $proposal_id     The proposal ID.
-	 * @param string               $conversation_id The conversation ID.
-	 * @param string               $status          The outcome status.
-	 * @param int                  $duration        Duration in milliseconds.
-	 * @param string               $error_code      The error code, when there is one.
-	 * @param string               $error_message   The error message, when there is one.
 	 */
-	protected function log(
-		array $item,
-		string $proposal_id,
-		string $conversation_id,
-		string $status,
-		int $duration,
-		string $error_code,
-		string $error_message
-	): void {
-		$operation = $this->log_operation();
+	protected function deselected_outcome( array $item ): array {
+		return $this->outcome( $item, 'deselected', 0, '', '' );
+	}
 
-		$context = array(
-			'surface'         => Turn_Runner::LOG_SURFACE,
-			'conversation_id' => $conversation_id,
-			'round'           => 0,
-			'tool'            => array(
-				'ability'  => $operation,
-				'function' => $operation,
-				'call_id'  => isset( $item['key'] ) && is_string( $item['key'] ) ? $item['key'] : '',
-			),
-			'proposal'        => array(
-				'id'        => $proposal_id,
-				'item_key'  => isset( $item['key'] ) && is_string( $item['key'] ) ? $item['key'] : '',
-				'post_type' => $this->item_post_type( $item ),
-				'status'    => $this->item_status( $item ),
-			),
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	protected function log_details( array $item ): array {
+		return array(
+			'post_type' => $this->item_post_type( $item ),
+			'status'    => $this->item_status( $item ),
 		);
-
-		if ( '' !== $error_code ) {
-			$context['error_code'] = $error_code;
-		}
-
-		if ( Turn_Runner::LOG_STATUS_DENIED === $status ) {
-			$context['denial_reason'] = $error_code;
-		}
-
-		$log_data = array(
-			'type'        => 'ability',
-			'operation'   => $operation,
-			'status'      => $status,
-			'user_id'     => get_current_user_id(),
-			'context'     => $context,
-			'duration_ms' => $duration,
-		);
-
-		if ( '' !== $error_message ) {
-			$log_data['error_message'] = $error_message;
-		}
-
-		log_ai_request( $log_data );
 	}
 }

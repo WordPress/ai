@@ -240,6 +240,102 @@ class Prompt_Model_ClientTest extends WP_UnitTestCase {
 
 		$this->assertSame( $messages, Prompt_Model_Client::without_unsigned_thoughts( $messages ) );
 	}
+
+	/**
+	 * A round waits longer than core's 30 second default, which cut off a
+	 * round that wrote a full proposal.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_round_waits_longer_than_the_core_default(): void {
+		$this->assertSame( Prompt_Model_Client::REQUEST_TIMEOUT, Prompt_Model_Client::request_timeout( 30.0 ) );
+	}
+
+	/**
+	 * A longer timeout a site already set is kept.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_longer_site_timeout_is_kept(): void {
+		$this->assertSame( 300.0, Prompt_Model_Client::request_timeout( 300.0 ) );
+	}
+
+	/**
+	 * The workspace's own wait can be changed with a filter.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_the_round_timeout_is_filterable(): void {
+		$filter = static function (): float {
+			return 45.0;
+		};
+
+		add_filter( 'wpai_workspace_request_timeout', $filter );
+
+		try {
+			$this->assertSame( 45.0, Prompt_Model_Client::request_timeout( 30.0 ) );
+		} finally {
+			remove_filter( 'wpai_workspace_request_timeout', $filter );
+		}
+	}
+
+	/**
+	 * A round asks for room to write a full proposal, more than the 4,096
+	 * tokens a connector may default to.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_round_asks_for_enough_output_tokens(): void {
+		$builder = new Recording_Prompt_Builder();
+		$client  = new Builder_Exposing_Model_Client();
+
+		$client->prepare( $builder, array( 'ai/search-content' ), 'system' );
+
+		$this->assertSame(
+			array(
+				array( 'using_system_instruction', array( 'system' ) ),
+				array( 'using_max_tokens', array( Prompt_Model_Client::MAX_OUTPUT_TOKENS ) ),
+				array( 'using_abilities', array( 'ai/search-content' ) ),
+			),
+			$builder->calls
+		);
+		$this->assertGreaterThan( 4096, Prompt_Model_Client::MAX_OUTPUT_TOKENS );
+	}
+
+	/**
+	 * The output token limit is filterable, and a value that is not positive
+	 * falls back to the default.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_the_output_token_limit_is_filterable(): void {
+		$lower = static function (): int {
+			return 8000;
+		};
+		$none  = static function (): int {
+			return 0;
+		};
+
+		add_filter( 'wpai_workspace_max_output_tokens', $lower );
+		$this->assertSame( 8000, Prompt_Model_Client::max_output_tokens() );
+		remove_filter( 'wpai_workspace_max_output_tokens', $lower );
+
+		add_filter( 'wpai_workspace_max_output_tokens', $none );
+		$this->assertSame( Prompt_Model_Client::MAX_OUTPUT_TOKENS, Prompt_Model_Client::max_output_tokens() );
+		remove_filter( 'wpai_workspace_max_output_tokens', $none );
+	}
+
+	/**
+	 * The raise is removed once the round's request is built, so other model
+	 * calls on the same page keep core's default.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_the_raise_does_not_outlive_the_round(): void {
+		( new Prompt_Model_Client() )->generate( $this->conversation(), array(), 'system' );
+
+		$this->assertFalse( has_filter( 'wp_ai_client_default_request_timeout', array( Prompt_Model_Client::class, 'request_timeout' ) ) );
+	}
 }
 
 /**
@@ -320,5 +416,53 @@ class Canned_Stream_Driver implements Stream_Driver_Interface {
 		$on_text( 'streamed reply' );
 
 		return new Message( MessageRoleEnum::model(), array( new MessagePart( 'streamed reply' ) ) );
+	}
+}
+
+/**
+ * A prompt builder stand-in that records the settings applied to it.
+ *
+ * @since x.x.x
+ */
+class Recording_Prompt_Builder {
+
+	/**
+	 * The calls made, as method name and arguments.
+	 *
+	 * @var list<array{0: string, 1: array<int, mixed>}>
+	 */
+	public $calls = array();
+
+	/**
+	 * Records a builder call.
+	 *
+	 * @param string            $name      The method.
+	 * @param array<int, mixed> $arguments The arguments.
+	 * @return self The builder.
+	 */
+	public function __call( string $name, array $arguments ): self {
+		$this->calls[] = array( $name, $arguments );
+
+		return $this;
+	}
+}
+
+/**
+ * Exposes the client's builder setup to the test.
+ *
+ * @since x.x.x
+ */
+class Builder_Exposing_Model_Client extends Prompt_Model_Client {
+
+	/**
+	 * Applies a round's settings to a builder.
+	 *
+	 * @param object       $builder            The builder.
+	 * @param list<string> $ability_names      The abilities.
+	 * @param string       $system_instruction The system instruction.
+	 * @return object The builder.
+	 */
+	public function prepare( $builder, array $ability_names, string $system_instruction ) {
+		return $this->prepare_builder( $builder, $ability_names, $system_instruction );
 	}
 }

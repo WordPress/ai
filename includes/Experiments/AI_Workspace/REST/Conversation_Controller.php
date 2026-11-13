@@ -342,8 +342,9 @@ final class Conversation_Controller {
 	 * The transcript is the entry records, one per turn, rather than the model
 	 * messages, which hold provider-shaped tool traffic. The one thing a turn's
 	 * entry cannot hold is what happened after it ended: a proposal approved later
-	 * reports its outcome into the messages as a `wp_write_result` record, so those
-	 * records are returned alongside the entries.
+	 * reports its outcome into the messages as a `wp_write_result` record, and a
+	 * discard as a `wp_proposal_discarded` record, so those records are returned
+	 * alongside the entries.
 	 *
 	 * @since x.x.x
 	 *
@@ -371,7 +372,7 @@ final class Conversation_Controller {
 	 * @since x.x.x
 	 *
 	 * @param list<mixed> $messages The stored model messages.
-	 * @return list<array<string, mixed>> The `wp_write_result` records, in order.
+	 * @return list<array<string, mixed>> The `wp_write_result` and discard records, in order.
 	 */
 	private function write_results( array $messages ): array {
 		$results = array();
@@ -391,14 +392,11 @@ final class Conversation_Controller {
 			}
 
 			foreach ( $message['parts'] as $part ) {
-				$text    = is_array( $part ) && isset( $part['text'] ) && is_string( $part['text'] ) ? $part['text'] : '';
-				$decoded = '' !== $text && str_starts_with( $text, '{"wp_write_result"' ) ? json_decode( $text, true ) : null;
+				$result = $this->outcome_record( $part );
 
-				if ( ! is_array( $decoded ) || ! isset( $decoded['wp_write_result'] ) || ! is_array( $decoded['wp_write_result'] ) ) {
+				if ( null === $result ) {
 					continue;
 				}
-
-				$result = $decoded['wp_write_result'];
 
 				if ( isset( $result['items'] ) && is_array( $result['items'] ) ) {
 					$result['items'] = array_map( array( $this, 'describe_written_item' ), $result['items'] );
@@ -409,6 +407,54 @@ final class Conversation_Controller {
 		}
 
 		return $results;
+	}
+
+	/**
+	 * Reads the proposal outcome one message part reports, if it reports one.
+	 *
+	 * An approval reports a `wp_write_result`. A discard reports a
+	 * `wp_proposal_discarded`, returned marked `discarded` with every item's
+	 * outcome `discarded`, so a reopened chat shows the card as discarded rather
+	 * than as still waiting for an answer.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $part The message part.
+	 * @return array<string, mixed>|null The outcome record, or null when the part is not one.
+	 */
+	private function outcome_record( $part ): ?array {
+		$text = is_array( $part ) && isset( $part['text'] ) && is_string( $part['text'] ) ? $part['text'] : '';
+
+		if ( str_starts_with( $text, '{"wp_write_result"' ) ) {
+			$decoded = json_decode( $text, true );
+
+			return is_array( $decoded ) && isset( $decoded['wp_write_result'] ) && is_array( $decoded['wp_write_result'] )
+				? $decoded['wp_write_result']
+				: null;
+		}
+
+		if ( ! str_starts_with( $text, '{"wp_proposal_discarded"' ) ) {
+			return null;
+		}
+
+		$decoded = json_decode( $text, true );
+
+		if ( ! is_array( $decoded ) || ! isset( $decoded['wp_proposal_discarded'] ) || ! is_array( $decoded['wp_proposal_discarded'] ) ) {
+			return null;
+		}
+
+		$result = $decoded['wp_proposal_discarded'];
+		$items  = isset( $result['items'] ) && is_array( $result['items'] ) ? $result['items'] : array();
+
+		$result['discarded'] = true;
+		$result['items']     = array_map(
+			static function ( $item ) {
+				return is_array( $item ) ? array_merge( $item, array( 'outcome' => 'discarded' ) ) : $item;
+			},
+			$items
+		);
+
+		return $result;
 	}
 
 	/**

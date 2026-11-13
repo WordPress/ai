@@ -11,6 +11,11 @@ use WP_UnitTestCase;
 use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Experiments\MCP_Adapter\Exposure_Overrides;
 use WordPress\AI\Experiments\MCP_Adapter\MCP_Adapter;
+use WordPress\AI\Experiments\AI_Workspace\Ask_User;
+use WordPress\AI\Experiments\AI_Workspace\Propose_Drafts;
+use WordPress\AI\Experiments\AI_Workspace\Propose_Post_Changes;
+use WordPress\AI\Experiments\AI_Workspace\Propose_Site_Identity;
+use WordPress\AI\Experiments\AI_Workspace\Propose_Template;
 
 require_once __DIR__ . '/Class_Ability_Fixture.php';
 
@@ -43,11 +48,17 @@ class MCP_AdapterTest extends WP_UnitTestCase {
 		$defaults->setAccessible( true );
 		$defaults->setValue( null, array() );
 
-		foreach ( array( 'ai-test/mcp-exposure', 'ai/mcp-test-class', 'ai/mcp-test-deprecated' ) as $name ) {
+		foreach ( array( 'ai-test/mcp-exposure', 'ai/mcp-test-class', 'ai/mcp-test-deprecated', 'ai/mcp-test-hidden', Propose_Drafts::ABILITY, Propose_Template::ABILITY, Propose_Post_Changes::ABILITY, Propose_Site_Identity::ABILITY, Ask_User::ABILITY ) as $name ) {
 			if ( wp_has_ability( $name ) ) {
 				wp_unregister_ability( $name );
 			}
 		}
+
+		$post = get_post_type_object( 'post' );
+		if ( $post && ! property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
+			unset( $post->show_in_abilities );
+		}
+		wp_set_current_user( 0 );
 
 		parent::tearDown();
 	}
@@ -258,5 +269,92 @@ class MCP_AdapterTest extends WP_UnitTestCase {
 			menu_page_url( 'ai-mcp-access', false ),
 			'MCP Access admin page should be registered under Tools.'
 		);
+	}
+
+	/**
+	 * Registers the workspace-only abilities as the workspace experiment would.
+	 */
+	private function register_workspace_only_abilities(): void {
+		global $wp_current_filter;
+
+		// The proposal ability registers only while a post type is exposed to abilities.
+		get_post_type_object( 'post' )->show_in_abilities = true;
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+
+		$wp_current_filter[] = 'wp_abilities_api_categories_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+		try {
+			( new Propose_Drafts() )->register_category();
+		} finally {
+			array_pop( $wp_current_filter );
+		}
+
+		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+		try {
+			( new Propose_Drafts() )->register();
+			( new Propose_Template() )->register();
+			( new Propose_Post_Changes() )->register();
+			( new Propose_Site_Identity() )->register();
+			( new Ask_User() )->register();
+		} finally {
+			array_pop( $wp_current_filter );
+		}
+	}
+
+	/**
+	 * Tests that a plugin ability declaring itself hidden from MCP stays hidden by default.
+	 */
+	public function test_plugin_ability_declared_hidden_stays_hidden() {
+		$this->experiment->register();
+
+		$this->register_test_ability( array( 'mcp' => array( 'public' => false ) ), 'ai/mcp-test-hidden' );
+
+		$this->assertFalse( wp_get_ability( 'ai/mcp-test-hidden' )->get_meta()['mcp']['public'] );
+		$this->assertFalse( Exposure_Overrides::get_registration_default( 'ai/mcp-test-hidden' ), 'The screen must report the declared default.' );
+	}
+
+	/**
+	 * Tests that a saved override still exposes a plugin ability declared hidden.
+	 */
+	public function test_override_exposes_a_plugin_ability_declared_hidden() {
+		update_option( Exposure_Overrides::OPTION_NAME, array( 'ai/mcp-test-hidden' => true ) );
+		$this->experiment->register();
+
+		$this->register_test_ability( array( 'mcp' => array( 'public' => false ) ), 'ai/mcp-test-hidden' );
+
+		$this->assertTrue( wp_get_ability( 'ai/mcp-test-hidden' )->get_meta()['mcp']['public'] );
+	}
+
+	/**
+	 * Tests that the abilities which only work inside a workspace turn are not offered over MCP.
+	 */
+	public function test_workspace_only_abilities_are_hidden_from_mcp() {
+		$this->experiment->register();
+		$this->register_workspace_only_abilities();
+
+		foreach ( array( Propose_Drafts::ABILITY, Propose_Template::ABILITY, Propose_Post_Changes::ABILITY, Propose_Site_Identity::ABILITY, Ask_User::ABILITY ) as $name ) {
+			$this->assertFalse( wp_get_ability( $name )->get_meta()['mcp']['public'], $name . ' must not be offered over MCP.' );
+		}
+	}
+
+	/**
+	 * Tests that a workspace-only ability called outside a turn refuses and stores nothing.
+	 */
+	public function test_workspace_only_ability_refuses_outside_a_turn() {
+		$this->experiment->register();
+		$this->register_workspace_only_abilities();
+
+		$result = wp_get_ability( Propose_Drafts::ABILITY )->execute(
+			array(
+				'items' => array(
+					array(
+						'post_type' => 'post',
+						'title'     => 'From an MCP client',
+					),
+				),
+			)
+		);
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'workspace_context_required', $result->get_error_code() );
 	}
 }

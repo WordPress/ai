@@ -655,4 +655,106 @@ class Read_Content_BodiesTest extends WP_UnitTestCase {
 		$this->assertNotNull( $contributor_row, 'A published post should be readable by a contributor.' );
 		$this->assertSame( '', $contributor_row['edit_link'], 'A post the user cannot edit must carry no editor URL.' );
 	}
+
+	/**
+	 * With `raw`, a user who can edit a post also receives its stored markup, unchanged.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_raw_returns_stored_markup_to_an_editor_of_the_post(): void {
+		$author_id = $this->login_as( 'author' );
+		$markup    = '<!-- wp:image {"id":5} --><figure class="wp-block-image"><img src="https://example.com/a.jpg" alt=""/></figure><!-- /wp:image -->' . "\n\n" . '<!-- wp:paragraph --><p>Raw body.</p><!-- /wp:paragraph -->';
+
+		$post_id = self::factory()->post->create(
+			array(
+				'post_title'   => 'Raw markup subject',
+				'post_content' => $markup,
+				'post_status'  => 'publish',
+				'post_author'  => $author_id,
+			)
+		);
+
+		$row = $this->find_row(
+			$this->execute(
+				array(
+					'ids' => array( $post_id ),
+					'raw' => true,
+				)
+			),
+			$post_id
+		);
+
+		$this->assertNotNull( $row );
+		$this->assertArrayHasKey( 'content_raw', $row );
+		$this->assertSame( get_post( $post_id )->post_content, $row['content_raw'], 'The markup is returned exactly as stored.' );
+		$this->assertStringContainsString( '<!-- wp:image', $row['content_raw'] );
+		$this->assertSame( 'Raw body.', $row['content'], 'The plain-text body is unchanged.' );
+	}
+
+	/**
+	 * With `raw`, a user who can only read a post receives no stored markup for it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_raw_is_withheld_from_a_user_who_can_only_read_the_post(): void {
+		$author_id = $this->login_as( 'author' );
+
+		$post_id = self::factory()->post->create(
+			array(
+				'post_title'   => 'Read-only raw subject',
+				'post_content' => '<!-- wp:paragraph --><p>Not yours.</p><!-- /wp:paragraph -->',
+				'post_status'  => 'publish',
+				'post_author'  => $author_id,
+			)
+		);
+
+		foreach ( array( 'contributor', 'subscriber', 'author_secondary' ) as $role ) {
+			$this->login_as( $role );
+
+			$row = $this->find_row(
+				$this->execute(
+					array(
+						'ids' => array( $post_id ),
+						'raw' => true,
+					)
+				),
+				$post_id
+			);
+
+			$this->assertNotNull( $row, $role . ' can read the published post.' );
+			$this->assertArrayNotHasKey( 'content_raw', $row, $role . ' cannot edit the post, so gets no markup.' );
+			$this->assertSame( 'Not yours.', $row['content'], $role . ' still gets the text.' );
+		}
+	}
+
+	/**
+	 * Without `raw`, or with it false, no stored markup is returned, even to an editor.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_raw_is_off_by_default(): void {
+		$this->login_as( 'administrator' );
+
+		$post_id = self::factory()->post->create(
+			array(
+				'post_title'   => 'Default raw subject',
+				'post_content' => '<!-- wp:paragraph --><p>Default body.</p><!-- /wp:paragraph -->',
+				'post_status'  => 'publish',
+			)
+		);
+
+		foreach ( array(
+			array( 'ids' => array( $post_id ) ),
+			array(
+				'ids' => array( $post_id ),
+				'raw' => false,
+			),
+		) as $input ) {
+			$row = $this->find_row( $this->execute( $input ), $post_id );
+
+			$this->assertNotNull( $row );
+			$this->assertArrayNotHasKey( 'content_raw', $row );
+			$this->assertSame( 'Default body.', $row['content'] );
+		}
+	}
 }

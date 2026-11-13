@@ -14,13 +14,14 @@
 import { speak } from '@wordpress/a11y';
 import { Button } from '@wordpress/components';
 import { useInstanceId } from '@wordpress/compose';
-import { useEffect, useState } from '@wordpress/element';
+import { memo, useEffect, useMemo, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import { check, copy as copyIcon } from '@wordpress/icons';
 
 /**
  * Internal dependencies
  */
+import { renderHtml } from '../utils/render-html';
 import {
 	renderMarkdown,
 	type BlockNode,
@@ -69,10 +70,96 @@ function Inline( { node }: { node: InlineNode } ) {
 					) }
 				</span>
 			);
+		case 'withheld':
+			return <Withheld node={ node } />;
 		case 'link':
 		default:
 			return <Link node={ node } />;
 	}
+}
+
+/**
+ * Describes post markup that would render, play or load on the live site.
+ *
+ * Plain text only: nothing is played, embedded or fetched, and the detail
+ * (attributes, URLs, labels) is shown as data.
+ *
+ * @param props      Component props.
+ * @param props.node The withheld node.
+ * @return The description.
+ */
+function Withheld( {
+	node,
+}: {
+	node: Extract< InlineNode, { type: 'withheld' } >;
+} ) {
+	const { name, detail } = node;
+	let text: string;
+
+	switch ( node.kind ) {
+		case 'block':
+			text =
+				'' === detail
+					? sprintf(
+							/* translators: %s: block name. */
+							__( '[block: %s]', 'ai' ),
+							name
+					  )
+					: sprintf(
+							/* translators: 1: block name, 2: block attributes. */
+							__( '[block: %1$s — %2$s]', 'ai' ),
+							name,
+							detail
+					  );
+			break;
+		case 'media':
+			text =
+				'' === detail
+					? sprintf(
+							/* translators: %s: media element name. */
+							__( '[%s not played]', 'ai' ),
+							name
+					  )
+					: sprintf(
+							/* translators: 1: media element name, 2: its attributes. */
+							__( '[%1$s not played: %2$s]', 'ai' ),
+							name,
+							detail
+					  );
+			break;
+		case 'control':
+			text =
+				'' === detail
+					? sprintf(
+							/* translators: %s: form control element name. */
+							__( '[form control: %s]', 'ai' ),
+							name
+					  )
+					: sprintf(
+							/* translators: 1: form control element name, 2: its label and attributes. */
+							__( '[form control: %1$s %2$s]', 'ai' ),
+							name,
+							detail
+					  );
+			break;
+		case 'embed':
+		default:
+			text =
+				'' === detail
+					? sprintf(
+							/* translators: %s: embedded element name. */
+							__( '[%s not shown]', 'ai' ),
+							name
+					  )
+					: sprintf(
+							/* translators: 1: embedded element name, 2: its attributes. */
+							__( '[%1$s not shown: %2$s]', 'ai' ),
+							name,
+							detail
+					  );
+	}
+
+	return <span className="ai-workspace__inert">{ text }</span>;
 }
 
 /**
@@ -321,3 +408,32 @@ export default function Markdown( { source }: { source: string } ) {
 		</div>
 	);
 }
+
+/**
+ * Renders post markup as the reader sees it, through the same node tree.
+ *
+ * Used for a post's current and proposed content on an update card. The markup
+ * is read by {@link renderHtml}, never handed to the browser to render.
+ *
+ * Parsing is memoized on the markup, so a card that re-renders for another
+ * reason, such as a checkbox, does not parse a post's content again.
+ *
+ * @param props        Component props.
+ * @param props.source The post markup.
+ * @return The rendered markup.
+ */
+function RenderedHtmlImpl( { source }: { source: string } ) {
+	const allowedHost = window.location.host;
+	const blocks = useMemo(
+		() => renderHtml( source, { allowedHost } ),
+		[ source, allowedHost ]
+	);
+
+	return (
+		<div className="ai-workspace__markdown">
+			<Blocks blocks={ blocks } />
+		</div>
+	);
+}
+
+export const RenderedHtml = memo( RenderedHtmlImpl );

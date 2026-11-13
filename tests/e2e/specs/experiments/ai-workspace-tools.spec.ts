@@ -581,9 +581,13 @@ test.describe( 'AI Workspace proposal confirmation', () => {
 
 		// Only the execute call fails, so the proposal loaded normally and the
 		// failure lands on the approval itself, where the controls are already
-		// disabled and a lost rejection would leave them that way.
+		// disabled and a lost rejection would leave them that way. The card's
+		// read-back still reaches the server and finds the proposal pending,
+		// which is what lets it say nothing was created.
 		await page.route(
-			( url ) => url.href.includes( 'workspace/proposals' ),
+			( url ) =>
+				url.href.includes( 'workspace/proposals' ) &&
+				url.href.includes( '/execute' ),
 			( route ) => route.abort( 'failed' )
 		);
 

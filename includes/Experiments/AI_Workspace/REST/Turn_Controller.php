@@ -67,6 +67,26 @@ final class Turn_Controller {
 	public const CANCEL_ROUTE = 'ai/v1/workspace/messages/cancel';
 
 	/**
+	 * Transient name prefix for the marker that says a turn is running or done.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const TURN_STATE_PREFIX = 'wpai_workspace_turn_';
+
+	/**
+	 * How long a turn's running or done marker survives, in seconds.
+	 *
+	 * Longer than any turn runs, so a marker outlives the turn it describes.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var int
+	 */
+	public const TURN_STATE_TTL = HOUR_IN_SECONDS;
+
+	/**
 	 * Capability required to use the workspace, matching the admin screen.
 	 *
 	 * The check itself passes the literal so the capability sniff can verify it;
@@ -166,7 +186,7 @@ final class Turn_Controller {
 					'callback'            => array( $this, 'run_turn' ),
 					'permission_callback' => array( $this, 'check_permission' ),
 					'args'                => array(
-						'message'         => array(
+						'message'             => array(
 							'type'    => 'string',
 							'default' => '',
 						),
@@ -175,21 +195,59 @@ final class Turn_Controller {
 						 * carries no message: the outcome is already the last
 						 * message in the conversation.
 						 */
-						'follow_up'       => array(
+						'follow_up'           => array(
 							'type'    => 'boolean',
 							'default' => false,
 						),
-						'conversation_id' => array(
+						'conversation_id'     => array(
 							'type'              => 'string',
 							'default'           => '',
 							'sanitize_callback' => 'sanitize_text_field',
 						),
-						'scope'           => array(
+						/*
+						 * The ID a new chat is stored under, chosen by the
+						 * client, so it can find the chat if the connection
+						 * drops before the reply arrives. Only for a first
+						 * turn; the server mints one when it is left out.
+						 */
+						'new_conversation_id' => array(
+							'type'              => 'string',
+							'default'           => '',
+							'validate_callback' => array( self::class, 'validate_optional_uuid' ),
+						),
+						/*
+						 * Names this turn's transcript entry, so a client whose
+						 * connection dropped can tell when the turn has finished
+						 * by reading the saved chat.
+						 */
+						'turn_id'             => array(
+							'type'              => 'string',
+							'default'           => '',
+							'validate_callback' => array( self::class, 'validate_optional_uuid' ),
+						),
+						'scope'               => array(
 							'type'    => 'string',
 							'enum'    => array( Tool_Selector::SCOPE_SITE, Tool_Selector::SCOPE_GENERAL ),
 							'default' => Tool_Selector::SCOPE_SITE,
 						),
 					),
+				),
+			)
+		);
+
+		/*
+		 * Reports whether a turn is running or done, for a client whose
+		 * connection dropped. A turn the server never received is unknown,
+		 * so that client can report the failure instead of waiting.
+		 */
+		register_rest_route(
+			self::API_NAMESPACE,
+			'/workspace/messages/(?P<turn_id>[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})',
+			array(
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => array( $this, 'get_turn_state' ),
+					'permission_callback' => array( $this, 'check_permission' ),
 				),
 			)
 		);
@@ -211,6 +269,26 @@ final class Turn_Controller {
 					),
 				),
 			)
+		);
+	}
+
+	/**
+	 * Validates an optional UUID parameter: empty, or a version 4 UUID.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $value The parameter value.
+	 * @return true|\WP_Error True when valid, WP_Error otherwise.
+	 */
+	public static function validate_optional_uuid( $value ) {
+		if ( '' === $value || ( is_string( $value ) && wp_is_uuid( $value, 4 ) ) ) {
+			return true;
+		}
+
+		return new WP_Error(
+			'rest_invalid_param',
+			__( 'Expected an empty string or a version 4 UUID.', 'ai' ),
+			array( 'status' => 400 )
 		);
 	}
 
@@ -247,6 +325,8 @@ final class Turn_Controller {
 		$scope           = (string) $request->get_param( 'scope' );
 		$follow_up       = (bool) $request->get_param( 'follow_up' );
 		$conversation_id = (string) $request->get_param( 'conversation_id' );
+		$new_id          = (string) $request->get_param( 'new_conversation_id' );
+		$turn_id         = (string) $request->get_param( 'turn_id' );
 
 		if ( ! $follow_up && '' === trim( $message ) ) {
 			return new WP_Error(
@@ -264,7 +344,15 @@ final class Turn_Controller {
 			);
 		}
 
-		$conversation = $this->resolve_conversation( $conversation_id, $user_id, $scope );
+		if ( '' !== $new_id && '' !== $conversation_id ) {
+			return new WP_Error(
+				'workspace_new_conversation_id_conflict',
+				__( 'A new chat ID is only for a chat that does not exist yet.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		$conversation = $this->resolve_conversation( $conversation_id, $user_id, $scope, $new_id );
 
 		if ( is_wp_error( $conversation ) ) {
 			return $conversation;
@@ -321,7 +409,13 @@ final class Turn_Controller {
 		 */
 		$emitter = apply_filters( 'wpai_workspace_stream_emitter', null, $request );
 
-		$result = $runner->run( $conversation, $message, is_callable( $emitter ) ? $emitter : null, $follow_up );
+		$this->set_turn_state( $turn_id, $user_id, 'running' );
+
+		try {
+			$result = $runner->run( $conversation, $message, is_callable( $emitter ) ? $emitter : null, $follow_up, $turn_id );
+		} finally {
+			$this->set_turn_state( $turn_id, $user_id, 'done' );
+		}
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -352,6 +446,53 @@ final class Turn_Controller {
 			),
 			200
 		);
+	}
+
+	/**
+	 * Reports whether one of the current user's turns is running or done.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_REST_Request $request The REST request.
+	 * @return \WP_REST_Response The state: `running`, `done`, or `unknown` for a turn this user never sent.
+	 */
+	public function get_turn_state( WP_REST_Request $request ): WP_REST_Response {
+		$state = get_transient( $this->turn_state_name( (string) $request->get_param( 'turn_id' ), get_current_user_id() ) );
+
+		return new WP_REST_Response(
+			array( 'state' => in_array( $state, array( 'running', 'done' ), true ) ? $state : 'unknown' ),
+			200
+		);
+	}
+
+	/**
+	 * Records that a turn is running or done, when the client named the turn.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $turn_id The client's ID for the turn, or an empty string.
+	 * @param int    $user_id The user running the turn.
+	 * @param string $state   `running` or `done`.
+	 */
+	private function set_turn_state( string $turn_id, int $user_id, string $state ): void {
+		if ( '' === $turn_id ) {
+			return;
+		}
+
+		set_transient( $this->turn_state_name( $turn_id, $user_id ), $state, self::TURN_STATE_TTL );
+	}
+
+	/**
+	 * Builds the transient name holding a turn's state, scoped to its user.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $turn_id The turn ID.
+	 * @param int    $user_id The user ID.
+	 * @return string The transient name.
+	 */
+	private function turn_state_name( string $turn_id, int $user_id ): string {
+		return self::TURN_STATE_PREFIX . md5( $user_id . ':' . $turn_id );
 	}
 
 	/**
@@ -397,11 +538,20 @@ final class Turn_Controller {
 	 * @param string $conversation_id The requested conversation ID, or an empty string.
 	 * @param int    $user_id         The requesting user ID.
 	 * @param string $scope           The requested scope.
+	 * @param string $new_id          Optional. The ID the client chose for a new chat.
 	 * @return array<string, mixed>|\WP_Error The conversation, or an error.
 	 */
-	private function resolve_conversation( string $conversation_id, int $user_id, string $scope ) {
+	private function resolve_conversation( string $conversation_id, int $user_id, string $scope, string $new_id = '' ) {
 		if ( '' === $conversation_id ) {
-			return $this->store->create( $user_id, $scope );
+			if ( '' !== $new_id && null !== $this->store->get( $new_id, $user_id ) ) {
+				return new WP_Error(
+					'workspace_conversation_exists',
+					__( 'A chat with that ID already exists.', 'ai' ),
+					array( 'status' => 409 )
+				);
+			}
+
+			return $this->store->create( $user_id, $scope, $new_id );
 		}
 
 		$conversation = $this->store->get( $conversation_id, $user_id );
