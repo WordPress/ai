@@ -51,6 +51,7 @@ final class Experiments {
 		\WordPress\AI\Experiments\Slug_Generation\Slug_Generation::class,
 		\WordPress\AI\Experiments\Text_To_Speech\Text_To_Speech::class,
 		\WordPress\AI\Experiments\Title_Generation\Title_Generation::class,
+		\WordPress\AI\Experiments\Topic_Pages\Topic_Pages::class,
 		\WordPress\AI\Experiments\Type_Ahead\Type_Ahead::class,
 		\WordPress\AI\Experiments\Markdown_Feeds\Markdown_Feeds::class,
 		\WordPress\AI\Experiments\WebMCP\WebMCP::class,

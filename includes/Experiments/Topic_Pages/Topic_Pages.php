@@ -1,0 +1,274 @@
+<?php
+/**
+ * Topic Pages experiment.
+ *
+ * @package WordPress\AI
+ * @since x.x.x
+ */
+
+declare( strict_types=1 );
+
+namespace WordPress\AI\Experiments\Topic_Pages;
+
+use WP_Term;
+use WordPress\AI\Abilities\Topic_Overview\Topic_Overview;
+use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Asset_Loader;
+use WordPress\AI\Experiments\Experiment_Category;
+
+/**
+ * Connects the topic editor and saved-section blocks to WordPress.
+ *
+ * @since x.x.x
+ */
+class Topic_Pages extends Abstract_Feature {
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public static function get_id(): string {
+		return 'topic-pages';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	protected function load_metadata(): array {
+		return array(
+			'label'       => __( 'Topic Pages', 'ai' ),
+			'description' => __( 'Generate guides for categories with five or more public posts. Preview and save each section on the Category edit screen.', 'ai' ),
+			'category'    => Experiment_Category::ADMIN,
+			'usage'       => array(
+				'trigger'  => 'on_demand',
+				'runs'     => __( 'Runs when an editor clicks Generate or Regenerate on the Category edit screen.', 'ai' ),
+				'sends'    => __( 'Selected public post excerpts from eligible categories, including child categories', 'ai' ),
+				'requests' => __( 'One text-generation request per regenerated section', 'ai' ),
+				'details'  => __( 'Generated text stays private until an editor chooses Save. Provider charges may apply when generating.', 'ai' ),
+			),
+		);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function register(): void {
+		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
+		add_action( 'rest_api_init', array( new Controller(), 'register_routes' ) );
+		add_action( 'save_post', array( Sources::class, 'post_changed' ), 20 );
+		add_action( 'clean_term_cache', array( Sources::class, 'invalidate' ), 10, 2 );
+
+		add_filter( 'category_template_hierarchy', array( new Template(), 'hierarchy' ) );
+		( new Template() )->register();
+
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin' ) );
+		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_blocks' ) );
+
+		foreach ( Sources::taxonomies() as $taxonomy ) {
+			add_action( $taxonomy . '_edit_form_fields', array( $this, 'term_panel' ) );
+		}
+
+		$this->register_blocks();
+	}
+
+	/**
+	 * Registers the topic display blocks and their shared stylesheet.
+	 *
+	 * @since x.x.x
+	 */
+	private function register_blocks(): void {
+		$style_path = WPAI_PLUGIN_DIR . 'build-scripts/experiments/topic-pages-frontend.css';
+
+		foreach ( Store::ALL_SECTIONS as $section ) {
+			wp_enqueue_block_style(
+				'ai/topic-' . $section,
+				array(
+					'handle' => 'ai-topic-pages',
+					'src'    => WPAI_PLUGIN_URL . 'build-scripts/experiments/topic-pages-frontend.css',
+					'path'   => $style_path,
+					'ver'    => file_exists( $style_path ) ? (string) filemtime( $style_path ) : WPAI_VERSION,
+				)
+			);
+			register_block_type(
+				'ai/topic-' . $section,
+				// @phpstan-ignore argument.type (WordPress uses an integer API version; the current stub declares string.)
+				array(
+					'api_version'     => 3,
+					'supports'        => array(
+						'html'       => false,
+						'align'      => array( 'wide', 'full' ),
+						'color'      => array(
+							'background' => true,
+							'text'       => true,
+						),
+						'spacing'    => array(
+							'margin'  => true,
+							'padding' => true,
+						),
+						'typography' => array(
+							'fontSize'   => true,
+							'lineHeight' => true,
+						),
+					),
+					'render_callback' => fn(): string => $this->render_block( $section ),
+				)
+			);
+		}
+	}
+
+	/**
+	 * Renders one topic section for the current term archive.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $section Topic section name.
+	 * @return string Section HTML, or an empty string when content is unavailable.
+	 */
+	private function render_block( string $section ): string {
+		$term = get_queried_object();
+
+		if ( ! is_archive() || ! $term instanceof WP_Term || ! in_array( $term->taxonomy, Sources::taxonomies(), true ) ) {
+			return '';
+		}
+
+		$term_id = $term->term_id;
+
+		$content = Store::TIMELINE === $section ? $this->timeline( $term_id ) : ( new Store() )->render( $term_id, $section );
+
+		if ( '' === $content ) {
+			return '';
+		}
+
+		$labels  = array(
+			Store::SUMMARY  => __( 'Summary', 'ai' ),
+			Store::OVERVIEW => __( 'Narrative overview', 'ai' ),
+			Store::TIMELINE => __( 'Timeline', 'ai' ),
+		);
+		$classes = 'wpai-topic-block wpai-topic-' . $section;
+
+		if ( Store::OVERVIEW === $section ) {
+			$content .= '<p class="wpai-topic-note">' . esc_html__( 'Based on selected article excerpts.', 'ai' ) . '</p>';
+		}
+
+		return '<section ' . get_block_wrapper_attributes( array( 'class' => $classes ) ) . '>' .
+			'<header class="wpai-topic-header"><h2 class="wpai-topic-title">' .
+			esc_html( $labels[ $section ] ) . '</h2></header>' .
+			'<div class="wpai-topic-content">' . $content . '</div>' .
+			'</section>';
+	}
+
+	/**
+	 * Registers reusable generation, following the Suggest Reply experiment.
+	 *
+	 * @since x.x.x
+	 */
+	public function register_abilities(): void {
+		wp_register_ability(
+			'ai/topic-overview',
+			array(
+				'label'         => __( 'Topic Overview', 'ai' ),
+				'description'   => __( 'Generates sourced topic sections for editorial review without saving or publishing them.', 'ai' ),
+				'category'      => WPAI_DEFAULT_ABILITY_CATEGORY,
+				'ability_class' => Topic_Overview::class,
+			)
+		);
+	}
+
+	/**
+	 * Adds the small review panel to the existing Category form.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Term $term Category term.
+	 */
+	public function term_panel( WP_Term $term ): void {
+		if ( ! ( new Sources() )->can_manage_term( $term ) ) {
+			return;
+		}
+
+		echo '<tr class="form-field"><th scope="row">' .
+			esc_html__( 'Topic guide', 'ai' ) .
+			'</th><td><div id="ai-topic-review"></div></td></tr>';
+	}
+
+	/**
+	 * Loads only on an existing supported term's edit screen.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $hook Current admin page.
+	 */
+	public function enqueue_admin( string $hook ): void {
+		if ( 'term.php' !== $hook ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation; REST writes use nonces and capabilities.
+		$id      = isset( $_GET['tag_ID'] ) ? absint( $_GET['tag_ID'] ) : 0;
+		$sources = new Sources();
+		$term    = $sources->term( $id );
+
+		if ( is_wp_error( $term ) || ! $sources->can_manage_term( $term ) ) {
+			return;
+		}
+
+		wp_enqueue_style( 'wp-components' );
+		Asset_Loader::enqueue_script( 'topic_review', 'experiments/topic-pages' );
+		Asset_Loader::enqueue_style( 'topic_review', 'experiments/topic-pages' );
+		Asset_Loader::localize_script(
+			'topic_review',
+			'TopicReviewData',
+			array(
+				'termId'     => $id,
+				'archiveUrl' => get_term_link( $term ),
+				'state'      => ( new Store() )->state( $id ),
+			)
+		);
+	}
+
+	/**
+	 * Shows at most ten real posts in date order, without an AI request.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $term_id Term ID.
+	 * @return string HTML timeline list.
+	 */
+	public function timeline( int $term_id ): string {
+		$sources = new Sources();
+
+		if ( ! $sources->eligible( $term_id ) ) {
+			return '';
+		}
+
+		$html = '<ol class="wpai-topic-events">';
+
+		foreach ( $sources->sample( $term_id, 10 ) as $id ) {
+			$title = get_the_title( $id );
+			$title = '' !== trim( $title ) ? $title : __( '(no title)', 'ai' );
+
+			$html .= '<li><time datetime="' . esc_attr( (string) get_the_date( 'c', $id ) ) . '">' .
+				esc_html( (string) get_the_date( '', $id ) ) . '</time><a href="' .
+				esc_url( (string) get_permalink( $id ) ) . '">' .
+				esc_html( $title ) . '</a></li>';
+		}
+
+		return $html . '</ol><p class="wpai-topic-note">' .
+			esc_html__( 'Selected posts across this category’s history. Browse all posts below.', 'ai' ) .
+			'</p>';
+	}
+
+	/**
+	 * Registers public display blocks in the Site Editor and post editor.
+	 *
+	 * @since x.x.x
+	 */
+	public function enqueue_blocks(): void {
+		Asset_Loader::enqueue_script( 'topic_blocks', 'experiments/topic-pages-blocks' );
+	}
+}

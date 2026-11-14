@@ -18,6 +18,7 @@ use WordPress\AI\Experiments\C2pa_Monitor\Sidecar_Writer;
 use WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation;
 use WordPress\AI\Experiments\Key_Encryption\Secrets_Bridge;
 use WordPress\AI\Experiments\Text_To_Speech\Job_Manager;
+use WordPress\AI\Experiments\Topic_Pages\Store as Topic_Pages_Store;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
 
 // Exit if accessed directly.
@@ -303,6 +304,9 @@ final class Uninstall {
 		foreach ( $comment_meta_keys as $meta_key ) {
 			delete_metadata( 'comment', 0, $meta_key, '', true );
 		}
+
+		// Topic Pages owns this term metadata; ordinary term descriptions are retained.
+		delete_metadata( 'term', 0, Topic_Pages_Store::META_KEY, '', true );
 	}
 
 	/**
