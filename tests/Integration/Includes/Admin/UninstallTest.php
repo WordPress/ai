@@ -16,6 +16,7 @@ use WordPress\AI\Experiments\C2pa_Monitor\Sidecar_Writer;
 use WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation;
 use WordPress\AI\Experiments\Key_Encryption\Secrets_Bridge;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
+use WordPress\AI\Services\Personas;
 use WordPress\AI\Tests\Integration\Includes\Experiments\Key_Encryption\Legacy_Secrets_Helpers;
 
 /**
@@ -519,6 +520,60 @@ class UninstallTest extends WP_UnitTestCase {
 		$this->assertNotSame( '', get_post_meta( $this->attachment_id, C2pa_Monitor::POSTMETA_KEY, true ), 'C2PA post meta should be preserved when filtered out.' );
 		$this->assertSame( '1', get_comment_meta( $this->comment_id, Comment_Moderation::META_TOXICITY_SCORE, true ), 'Comment Moderation meta should be preserved when filtered out.' );
 		$this->assertFileExists( $this->sidecar_path( $this->attachment_id . '.jpeg.c2pa' ), 'C2PA sidecars should be preserved when filtered out.' );
+	}
+
+	/**
+	 * Seeds a persona definition and a post that selects it.
+	 *
+	 * The personas post type is not registered during uninstall, so the seed
+	 * leaves it unregistered too, matching what the uninstall routine sees.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array{persona: int, post: int} The persona and post IDs.
+	 */
+	private function seed_personas(): array {
+		$persona_id = self::factory()->post->create( array( 'post_type' => Personas::POST_TYPE ) );
+		update_post_meta( $persona_id, Personas::ROLE_META_KEY, 'A reporter.' );
+
+		$post_id = self::factory()->post->create();
+		update_post_meta( $post_id, Personas::META_KEY, 'journalistic' );
+
+		return array(
+			'persona' => $persona_id,
+			'post'    => $post_id,
+		);
+	}
+
+	/**
+	 * Tests that persona definitions and per-post selections are removed.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_uninstall_removes_personas(): void {
+		$ids = $this->seed_personas();
+
+		Uninstall::run();
+
+		$this->assertNull( get_post( $ids['persona'] ), 'Persona definitions should be deleted.' );
+		$this->assertSame( '', get_post_meta( $ids['persona'], Personas::ROLE_META_KEY, true ), 'Persona meta should be deleted with the persona.' );
+		$this->assertSame( '', get_post_meta( $ids['post'], Personas::META_KEY, true ), 'Per-post persona selections should be deleted.' );
+		$this->assertNotNull( get_post( $ids['post'] ), 'The post that selected a persona should be kept.' );
+	}
+
+	/**
+	 * Tests that personas are preserved when a developer opts out via the filter.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_uninstall_preserves_personas_when_filtered_out(): void {
+		$ids = $this->seed_personas();
+		add_filter( 'wpai_remove_data_on_uninstall', '__return_false' );
+
+		Uninstall::run();
+
+		$this->assertNotNull( get_post( $ids['persona'] ), 'Persona definitions should be preserved when filtered out.' );
+		$this->assertSame( 'journalistic', get_post_meta( $ids['post'], Personas::META_KEY, true ), 'Per-post persona selections should be preserved when filtered out.' );
 	}
 
 	/**

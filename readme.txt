@@ -59,6 +59,7 @@ Experiments marked "runs automatically" do their work without you clicking anyth
 * **Markdown Feeds** – Publishes a Markdown feed and Markdown versions of your public posts and pages for AI agents and other machine readers.
 * **MCP Access** – Controls which abilities AI agents can use over the Model Context Protocol (MCP). Installs and activates the MCP Adapter plugin when enabled.
 * **Meta Description Generation** – Generates meta description suggestions and integrates them with several SEO plugins.
+* **Personas** – Define reusable personas (role, audience, and brand voice) and apply one across content generation experiments, site-wide or per post.
 * **Revision Change Summary** – Summarizes what changed between two revisions of a post in plain language, on the visual and classic revisions screens.
 * **Slug Generation** – Suggests SEO-friendly permalink slugs from the permalink popover or the pre-publish panel.
 * **Suggest Reply** – Adds a "Suggest Reply" action to the Comments screen and Activity widget to draft replies to comments.
