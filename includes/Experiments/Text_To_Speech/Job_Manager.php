@@ -107,6 +107,21 @@ class Job_Manager {
 	public const META_JOB = '_wpai_tts_job';
 
 	/**
+	 * Every post meta key the experiment writes.
+	 *
+	 * @since x.x.x
+	 * @var string[]
+	 */
+	public const META_KEYS = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+		self::META_AUDIO_ID,
+		self::META_STATUS,
+		self::META_ERROR,
+		self::META_UPDATED,
+		self::META_JOB,
+		self::META_DISPLAY,
+	);
+
+	/**
 	 * Filename prefix of the temp file a job appends chunks to, in the root
 	 * of the uploads directory. The full name is `{prefix}{post ID}-{random}.part`.
 	 *
@@ -563,16 +578,7 @@ class Job_Manager {
 			wp_delete_attachment( $audio_id, true );
 		}
 
-		foreach (
-			array(
-				self::META_AUDIO_ID,
-				self::META_STATUS,
-				self::META_ERROR,
-				self::META_UPDATED,
-				self::META_JOB,
-				self::META_DISPLAY,
-			) as $meta_key
-		) {
+		foreach ( self::META_KEYS as $meta_key ) {
 			delete_post_meta( $post_id, $meta_key );
 		}
 

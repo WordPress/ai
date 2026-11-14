@@ -260,8 +260,8 @@ final class Uninstall {
 	/**
 	 * Deletes the plugin's metadata.
 	 *
-	 * Removes user meta, the C2PA Monitor post meta, and the Comment Moderation
-	 * analysis comment meta.
+	 * Removes user meta, the C2PA Monitor and Text to Speech post meta, and the
+	 * Comment Moderation analysis comment meta.
 	 *
 	 * Only metadata owned by the plugin is removed. Metadata that the plugin
 	 * writes to but does not own (e.g. core `_wp_attachment_image_alt` or
@@ -290,6 +290,12 @@ final class Uninstall {
 		// mirrors. Both are written by this plugin and carry no meaning without it.
 		delete_post_meta_by_key( C2pa_Monitor::POSTMETA_KEY );
 		delete_post_meta_by_key( C2pa_Monitor::SORT_META_KEY );
+
+		// Post meta: the Text to Speech job state and the link to the generated
+		// audio. The audio attachment itself stays in the Media Library.
+		foreach ( Job_Manager::META_KEYS as $meta_key ) {
+			delete_post_meta_by_key( $meta_key );
+		}
 
 		// Comment Moderation analysis results and status.
 		$comment_meta_keys = array(
