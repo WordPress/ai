@@ -9,6 +9,8 @@ namespace WordPress\AI\Tests\Integration\Experiments\AI_Workspace;
 
 use WP_UnitTestCase;
 use WordPress\AI\Experiments\AI_Workspace\Admin_Page;
+use WordPress\AI\Experiments\AI_Workspace\Proposal_Store;
+use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Test_Update_Kind;
 
 /**
  * Admin_Page prompt seed test case.
@@ -137,6 +139,41 @@ class Admin_PageTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * The page tells the client every kind's propose ability.
+	 *
+	 * The transcript shows a card only for a result from one of these, so the
+	 * list has to come from the server's kinds rather than a client copy.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_page_data_lists_the_proposal_abilities() {
+		$data = $this->page_data( array() );
+
+		$this->assertSame( ( new Proposal_Store() )->proposal_abilities(), $data['proposalAbilities'] );
+	}
+
+	/**
+	 * A kind another plugin registers through the kinds filter reaches the client.
+	 *
+	 * Without it, the model could propose the kind and the turn would end
+	 * waiting on a card the transcript never draws.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_page_data_lists_a_kind_another_plugin_registers() {
+		$callback = ( new Test_Update_Kind() )->add_to_stores();
+
+		try {
+			$data = $this->page_data( array() );
+		} finally {
+			remove_filter( 'wpai_workspace_proposal_kinds', $callback );
+		}
+
+		$this->assertContains( Test_Update_Kind::ABILITY, $data['proposalAbilities'] );
+		$this->assertContains( 'ai/propose-drafts', $data['proposalAbilities'], 'The built-in kinds stay listed.' );
+	}
+
+	/**
 	 * Runs the workspace enqueue with the given query arguments and returns the seed.
 	 *
 	 * @since x.x.x
@@ -145,6 +182,22 @@ class Admin_PageTest extends WP_UnitTestCase {
 	 * @return array<string, mixed>|null The decoded seed.
 	 */
 	private function seed_for( array $query ): ?array {
+		$decoded = $this->page_data( $query );
+
+		$this->assertArrayHasKey( 'seed', $decoded );
+
+		return $decoded['seed'];
+	}
+
+	/**
+	 * Runs the workspace enqueue with the given query arguments and returns the page data.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $query The query arguments.
+	 * @return array<string, mixed> The decoded data the page localizes for the client.
+	 */
+	private function page_data( array $query ): array {
 		$this->reset_enqueue_registries();
 
 		foreach ( $query as $key => $value ) {
@@ -167,9 +220,8 @@ class Admin_PageTest extends WP_UnitTestCase {
 		$decoded = json_decode( substr( $data, (int) $start, (int) $end - (int) $start + 1 ), true );
 
 		$this->assertIsArray( $decoded );
-		$this->assertArrayHasKey( 'seed', $decoded );
 
-		return $decoded['seed'];
+		return $decoded;
 	}
 
 	/**

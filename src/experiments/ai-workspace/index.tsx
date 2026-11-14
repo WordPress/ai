@@ -38,6 +38,7 @@ import PromptInput from './components/PromptInput';
 import Transcript from './components/Transcript';
 import { useTurn, type OpenResult } from './hooks/useTurn';
 import { chatFromUrl, urlForChat } from './utils/chat';
+import { proposalAbilitiesFrom } from './utils/proposal';
 import { getSeedNotice, getSeedPrompt, urlWithoutPrompt } from './utils/seed';
 import type { Availability, LocalizedData } from './types';
 
@@ -180,6 +181,7 @@ function isNarrow(): boolean {
  */
 function WorkspaceApp( { data }: { data: LocalizedData } ) {
 	const seed = data.seed ?? null;
+	const proposalAbilities = proposalAbilitiesFrom( data.proposalAbilities );
 	/*
 	 * A handoff opens the composer with a prompt naming the seeded post. It is
 	 * prefilled rather than sent: the title in it is author-controlled text, so
@@ -484,6 +486,7 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 							rest={ data.rest }
 							conversationId={ conversationId }
 							outcomes={ outcomes }
+							proposalAbilities={ proposalAbilities }
 							onFollowUp={ ( turnScope, forConversation ) => {
 								void followUp( turnScope, forConversation );
 							} }

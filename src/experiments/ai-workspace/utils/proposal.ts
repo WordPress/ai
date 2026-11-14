@@ -13,11 +13,13 @@ import type {
 } from '../types';
 
 /**
- * The abilities whose successful result carries a stored proposal, one per kind.
+ * The built-in kinds' propose abilities.
  *
- * A copy of the server's list, which is built from the proposal kinds
- * (`Proposal_Store::proposal_abilities()`); `Proposal_StoreTest` fails when the
- * two differ, so add a new kind's ability here too.
+ * The page passes the server's full list (`Proposal_Store::proposal_abilities()`),
+ * which also holds kinds another plugin registers through
+ * `wpai_workspace_proposal_kinds`; see {@link proposalAbilitiesFrom}. This copy
+ * is the fallback when that list is missing, and `Proposal_StoreTest` fails
+ * when it drifts from the built-in kinds.
  */
 export const PROPOSAL_ABILITIES = [
 	'ai/propose-drafts',
@@ -25,6 +27,28 @@ export const PROPOSAL_ABILITIES = [
 	'ai/propose-post-changes',
 	'ai/propose-site-identity',
 ];
+
+/**
+ * Reads the propose abilities the page was given.
+ *
+ * Keeps only string entries, and falls back to the built-in list when the page
+ * data has none, so a malformed value can neither throw nor hide the built-in
+ * kinds' cards.
+ *
+ * @param value The `proposalAbilities` value from the page data.
+ * @return The ability names.
+ */
+export function proposalAbilitiesFrom( value: unknown ): string[] {
+	if ( ! Array.isArray( value ) ) {
+		return PROPOSAL_ABILITIES;
+	}
+
+	const names = value.filter(
+		( name ): name is string => typeof name === 'string' && '' !== name
+	);
+
+	return 0 === names.length ? PROPOSAL_ABILITIES : names;
+}
 
 /**
  * Reads a string property from an untrusted record.

@@ -277,10 +277,11 @@ class Proposal_StoreTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The client's copy of the proposal abilities matches the server's list.
+	 * The client's fallback list matches the built-in kinds.
 	 *
-	 * The transcript uses it to find the tool results that carry a proposal, so a
-	 * kind added on the server and not here would render no card.
+	 * The page passes the server's full list, including kinds another plugin
+	 * registers (see Admin_PageTest). The client copy is only the fallback for
+	 * page data without one, so it must still name every built-in kind.
 	 *
 	 * @since x.x.x
 	 */
