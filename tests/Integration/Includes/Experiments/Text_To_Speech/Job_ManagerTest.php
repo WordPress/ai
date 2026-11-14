@@ -775,4 +775,22 @@ class Job_ManagerTest extends WP_UnitTestCase {
 		// No chunk event is left scheduled.
 		$this->assertFalse( wp_next_scheduled( Job_Manager::CRON_HOOK, array( $post_id ) ) );
 	}
+
+	/**
+	 * Tests that META_KEYS lists every post meta key constant, so uninstall and
+	 * delete_audio() remove a newly added key too.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_meta_keys_lists_every_meta_key_constant(): void {
+		$meta_constants = array_filter(
+			( new \ReflectionClass( Job_Manager::class ) )->getConstants(),
+			static function ( $value, string $name ): bool {
+				return 0 === strpos( $name, 'META_' ) && is_string( $value );
+			},
+			ARRAY_FILTER_USE_BOTH
+		);
+
+		$this->assertEqualsCanonicalizing( array_values( $meta_constants ), Job_Manager::META_KEYS );
+	}
 }
