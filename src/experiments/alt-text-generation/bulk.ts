@@ -110,6 +110,7 @@ async function processBulkAltText(): Promise< void > {
 
 	let processed = 0;
 	const failedIds: number[] = [];
+	const decorativeIds: number[] = [];
 
 	const initialMessage = sprintf(
 		// translators: 1: number processed so far, 2: total number of images
@@ -122,13 +123,17 @@ async function processBulkAltText(): Promise< void > {
 	for ( const id of attachmentIds ) {
 		try {
 			const result = await generateAltText( id );
-			const altText = result.alt_text;
 
-			await apiFetch( {
-				path: `/wp/v2/media/${ id }`,
-				method: 'POST',
-				data: { alt_text: altText },
-			} );
+			// A decorative result has empty alt text; saving it would erase the existing alt text.
+			if ( result.is_decorative ) {
+				decorativeIds.push( id );
+			} else {
+				await apiFetch( {
+					path: `/wp/v2/media/${ id }`,
+					method: 'POST',
+					data: { alt_text: result.alt_text },
+				} );
+			}
 		} catch {
 			failedIds.push( id );
 		}
@@ -143,10 +148,11 @@ async function processBulkAltText(): Promise< void > {
 		);
 	}
 
-	const successCount = processed - failedIds.length;
+	const successCount = processed - failedIds.length - decorativeIds.length;
+	let message: string;
 
-	if ( failedIds.length === 0 ) {
-		statusParagraph.textContent = sprintf(
+	if ( failedIds.length === 0 && decorativeIds.length === 0 ) {
+		message = sprintf(
 			// translators: %d: number of images
 			_n(
 				'Alt text generated for %d image.',
@@ -156,8 +162,20 @@ async function processBulkAltText(): Promise< void > {
 			),
 			successCount
 		);
+	} else if ( failedIds.length === 0 ) {
+		message = sprintf(
+			// translators: 1: number successfully processed, 2: total images
+			_n(
+				'Alt text generated for %1$d of %2$d image.',
+				'Alt text generated for %1$d of %2$d images.',
+				total,
+				'ai'
+			),
+			successCount,
+			total
+		);
 	} else {
-		statusParagraph.textContent = sprintf(
+		message = sprintf(
 			// translators: 1: number successfully processed, 2: total images, 3: comma-separated list of failed attachment IDs
 			__(
 				'Alt text generated for %1$d of %2$d images. Failed attachment IDs: %3$s.',
@@ -168,6 +186,23 @@ async function processBulkAltText(): Promise< void > {
 			failedIds.join( ', ' )
 		);
 	}
+
+	if ( decorativeIds.length > 0 ) {
+		const decorativeMessage = sprintf(
+			// translators: 1: number of decorative images, 2: comma-separated list of their attachment IDs
+			_n(
+				'%1$d image was identified as decorative, so its alt text was left unchanged. Attachment ID: %2$s.',
+				'%1$d images were identified as decorative, so their alt text was left unchanged. Attachment IDs: %2$s.',
+				decorativeIds.length,
+				'ai'
+			),
+			decorativeIds.length,
+			decorativeIds.join( ', ' )
+		);
+		message = `${ message } ${ decorativeMessage }`;
+	}
+
+	statusParagraph.textContent = message;
 }
 
 document.addEventListener( 'DOMContentLoaded', () => {
