@@ -97,7 +97,10 @@ test.describe( 'Content Resizing Experiment', () => {
 		await page.getByRole( 'menuitem', { name: 'Rephrase' } ).click();
 
 		// Wait for the modal to be visible.
-		const modal = page.locator( '.ai-content-resizing-modal' );
+		const modal = page.getByRole( 'dialog', {
+			name: 'Suggested replacement',
+			exact: true,
+		} );
 		await expect( modal ).toBeVisible();
 
 		// Both the original and suggested panels should be visible.
@@ -120,7 +123,9 @@ test.describe( 'Content Resizing Experiment', () => {
 
 		// Word-diff chip should appear once the suggestion is loaded.
 		await expect(
-			modal.locator( '.ai-content-resizing-modal__diff' )
+			suggestedPanel.getByLabel(
+				/characters? (added|removed)$|^No change in character count$/
+			)
 		).toBeVisible();
 
 		// The Accept button should be focused after content generation completes.
@@ -172,7 +177,10 @@ test.describe( 'Content Resizing Experiment', () => {
 
 		// The modal must not open on a client-side validation failure.
 		await expect(
-			page.locator( '.ai-content-resizing-modal' )
+			page.getByRole( 'dialog', {
+				name: 'Suggested replacement',
+				exact: true,
+			} )
 		).toHaveCount( 0 );
 
 		// The error notice should be registered in the core/notices store.
@@ -209,18 +217,29 @@ test.describe( 'Content Resizing Experiment', () => {
 		await page.getByRole( 'menuitem', { name: 'Shorten' } ).click();
 
 		// The minimum-length gate passes, so the modal opens.
-		const modal = page.locator( '.ai-content-resizing-modal' );
+		const modal = page.getByRole( 'dialog', {
+			name: 'Suggested replacement',
+			exact: true,
+		} );
 		await expect( modal ).toBeVisible();
 
 		// The suggested panel renders the exact mocked AI response (await the
 		// async generation), and the original panel renders the exact block text.
 		await expect(
-			modal.locator(
-				'.ai-content-resizing-modal__text:not(.ai-content-resizing-modal__text--original)'
-			)
+			modal
+				.getByRole( 'region', {
+					name: 'Suggested content',
+					exact: true,
+				} )
+				.getByText( MOCKED_RESPONSE, { exact: true } )
 		).toHaveText( MOCKED_RESPONSE, { timeout: 15000 } );
 		await expect(
-			modal.locator( '.ai-content-resizing-modal__text--original' )
+			modal
+				.getByRole( 'region', {
+					name: 'Original content',
+					exact: true,
+				} )
+				.getByText( SAMPLE_PARAGRAPH, { exact: true } )
 		).toHaveText( SAMPLE_PARAGRAPH );
 
 		// The Accept button should be focused after content generation completes.
