@@ -143,14 +143,18 @@ function retrievalTrace( toolCalls: ToolCallRecord[] ): string | null {
  * cannot show one thing and write another (R16).
  *
  * @param toolCalls The turn's tool invocations.
+ * @param abilities The propose abilities of every registered kind.
  * @return The proposal identifiers.
  */
-function proposalIds( toolCalls: ToolCallRecord[] ): string[] {
+function proposalIds(
+	toolCalls: ToolCallRecord[],
+	abilities: string[]
+): string[] {
 	const ids: string[] = [];
 
 	toolCalls.forEach( ( call ) => {
 		if (
-			! PROPOSAL_ABILITIES.includes( call.ability ) ||
+			! abilities.includes( call.ability ) ||
 			call.status !== 'success'
 		) {
 			return;
@@ -390,16 +394,18 @@ function TurnState( {
  * announcing that would flood assistive technology. Announcements come from the
  * single polite region the app renders, at sentence boundaries.
  *
- * @param props                Component props.
- * @param props.entries        The transcript entries.
- * @param props.onRetry        Retry handler.
- * @param props.onSuggest      Fills the composer with a suggested prompt.
- * @param props.rest           The REST transport data.
- * @param props.conversationId The conversation being rendered.
- * @param props.onFollowUp     Asks the assistant to follow up a settled proposal.
- * @param props.onAnswer       Sends a question's choice as the next message.
- * @param props.outcomes       Outcomes already reported into a reopened chat,
- *                             keyed by proposal ID.
+ * @param props                   Component props.
+ * @param props.entries           The transcript entries.
+ * @param props.onRetry           Retry handler.
+ * @param props.onSuggest         Fills the composer with a suggested prompt.
+ * @param props.rest              The REST transport data.
+ * @param props.conversationId    The conversation being rendered.
+ * @param props.onFollowUp        Asks the assistant to follow up a settled proposal.
+ * @param props.onAnswer          Sends a question's choice as the next message.
+ * @param props.outcomes          Outcomes already reported into a reopened chat,
+ *                                keyed by proposal ID.
+ * @param props.proposalAbilities The propose abilities of every registered kind;
+ *                                defaults to the built-in kinds.
  * @return The rendered transcript.
  */
 export default function Transcript( {
@@ -411,6 +417,7 @@ export default function Transcript( {
 	onFollowUp,
 	onAnswer,
 	outcomes = {},
+	proposalAbilities = PROPOSAL_ABILITIES,
 }: {
 	entries: TranscriptEntry[];
 	onRetry: ( id: string ) => void;
@@ -420,6 +427,7 @@ export default function Transcript( {
 	onFollowUp: ( scope: ContextScope, conversationId: string ) => void;
 	onAnswer: ( choice: string, scope: ContextScope ) => void;
 	outcomes?: Record< string, ProposalExecution >;
+	proposalAbilities?: string[];
 } ) {
 	if ( 0 === entries.length ) {
 		return <EmptyState onSelect={ onSuggest } />;
@@ -483,7 +491,10 @@ export default function Transcript( {
 							<WapuuDone status={ entry.status } />
 
 							{ '' !== conversationId &&
-								proposalIds( entry.toolCalls ).map( ( id ) => (
+								proposalIds(
+									entry.toolCalls,
+									proposalAbilities
+								).map( ( id ) => (
 									<ConfirmProposal
 										key={ id }
 										proposalId={ id }

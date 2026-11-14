@@ -242,6 +242,15 @@ final class Admin_Page {
 				'availability'  => $this->get_availability(),
 				'connectorsUrl' => admin_url( 'options-connectors.php' ),
 				/*
+				 * The propose abilities of every registered kind, including
+				 * kinds another plugin adds through
+				 * `wpai_workspace_proposal_kinds`. The transcript reads a
+				 * proposal ID only from a successful call to one of these, so a
+				 * kind missing here would be stored on approval's terms but
+				 * never shown.
+				 */
+				'proposalAbilities' => ( new Proposal_Store() )->proposal_abilities(),
+				/*
 				 * The block editor handoff carries a post identity and nothing
 				 * more. The workspace reads a body only through the
 				 * permission-checked tool path, so there is one enforcement

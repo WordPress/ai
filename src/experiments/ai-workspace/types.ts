@@ -59,6 +59,12 @@ export interface LocalizedData {
 	availability: Availability;
 	/** URL of the Connectors screen, where a provider is set up. */
 	connectorsUrl: string;
+	/**
+	 * The propose abilities of every registered proposal kind, built in-plugin
+	 * or added by another plugin. A tool result carries a proposal only when it
+	 * comes from one of these.
+	 */
+	proposalAbilities: string[];
 	/** The seeded post, or null when the workspace was opened directly. */
 	seed: WorkspaceSeed | null;
 }
