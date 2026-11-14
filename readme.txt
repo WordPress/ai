@@ -60,6 +60,7 @@ Experiments marked "runs automatically" do their work without you clicking anyth
 * **MCP Access** – Controls which abilities AI agents can use over the Model Context Protocol (MCP). Installs and activates the MCP Adapter plugin when enabled.
 * **Meta Description Generation** – Generates meta description suggestions and integrates them with several SEO plugins.
 * **Revision Change Summary** – Summarizes what changed between two revisions of a post in plain language, on the visual and classic revisions screens.
+* **Site Agent** – Adds a conversational assistant under Tools that reads site information and proposes changes. Actions are ordinary WordPress Abilities, every write is reviewed and approved before it runs, and conversations are saved for later.
 * **Slug Generation** – Suggests SEO-friendly permalink slugs from the permalink popover or the pre-publish panel.
 * **Suggest Reply** – Adds a "Suggest Reply" action to the Comments screen and Activity widget to draft replies to comments.
 * **Text to Speech** – Generates an audio version of a post that visitors can listen to instead of reading.
@@ -73,7 +74,6 @@ We're actively developing new features to enhance your WordPress workflow:
 
 * **AI Playground** – Experiment with different AI models and providers.
 * **Content Assistant** – AI-powered writing and editing in Gutenberg.
-* **Site Agent** – Natural language WordPress administration.
 * **Workflow Automation** – AI-driven task automation.
 
 **Roadmap**
@@ -225,6 +225,12 @@ Go to `Plugins` and deactivate AI. If you can't reach the admin, deactivate it w
 30. Developer Tool: Export and Import settings options.
 
 == Changelog ==
+
+= Unreleased =
+
+**Added**
+
+- New experiment, Site Agent, that adds a conversational assistant under Tools. Actions are ordinary WordPress Abilities, so each keeps its own schema, permission callback, validation, and execution hook. The agent adds a reviewed ability allowlist, a propose-then-approve boundary for writes, editable proposals that show current and proposed values, persistent named conversations, and an audit trail. Every write is stored as a server-side proposal and executes only after an authenticated person reviews the exact stored values and approves it. Every executed ability and decision is recorded in the AI request log as a `site_agent` row. The experiment and its write gate are disabled by default.
 
 = 1.5.0 - 2026-10-29 =
 

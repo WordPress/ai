@@ -76,6 +76,7 @@ Everything is opt-in and off by default. Features are stable and supported; Expe
 * **[MCP Access](docs/experiments/mcp-adapter.md)** - Controls which abilities AI agents can use over the Model Context Protocol (MCP). Installs and activates the MCP Adapter plugin when enabled.
 * **[Meta Description Generation](docs/experiments/meta-description.md)** - Generates meta description suggestions and integrates those with various SEO plugins.
 * **[Revision Change Summary](docs/experiments/revision-change-summary.md)** - Summarizes what changed between two revisions of a post in plain language, on the visual and classic revisions screens.
+* **[Site Agent](docs/experiments/site-agent.md)** - Adds a conversational assistant under Tools that reads site information and proposes changes. Actions are ordinary WordPress Abilities, and every write is reviewed and approved before it runs.
 * **[Slug Generation](docs/experiments/slug-generation.md)** - Suggests SEO-friendly permalink slugs from post title or content, in the permalink popover and the pre-publish panel.
 * **[Suggest Reply](docs/experiments/suggest-reply.md)** - Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to quickly generate comment reply suggestions.
 * **[Text to Speech](docs/experiments/text-to-speech.md)** - Generates an audio version of a post that visitors can listen to instead of reading.
@@ -108,7 +109,6 @@ Overview of planned features:
 
 * **AI Playground** – Experiment with different AI models and providers.
 * **Content Assistant** – AI-powered writing and editing in Gutenberg.
-* **Site Agent** – Natural language WordPress administration.
 * **Workflow Automation** – AI-driven task automation.
 
 ## Developer Experience

@@ -30,7 +30,7 @@ export interface LogEntryContext extends Record< string, unknown > {
 export interface LogEntry {
 	id: string;
 	timestamp: string;
-	type: 'ai_client' | 'mcp_tool' | 'ability';
+	type: 'ai_client' | 'mcp_tool' | 'ability' | 'site_agent';
 	operation: string;
 	provider: string | null;
 	model: string | null;
@@ -39,7 +39,7 @@ export interface LogEntry {
 	tokens_output: number | null;
 	tokens_total: number | null;
 	tokens_per_second: number | null;
-	status: 'success' | 'error' | 'timeout';
+	status: 'success' | 'error' | 'timeout' | 'denied';
 	error_message: string | null;
 	user_id: number | null;
 	context: LogEntryContext | null;

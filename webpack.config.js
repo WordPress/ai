@@ -185,6 +185,11 @@ module.exports = {
 			'src/experiments/block-container-label-generation',
 			'index.tsx'
 		),
+		'experiments/site-agent': path.resolve(
+			process.cwd(),
+			'src/experiments/site-agent',
+			'index.tsx'
+		),
 	},
 
 	plugins: [

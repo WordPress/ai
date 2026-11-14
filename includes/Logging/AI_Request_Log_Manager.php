@@ -204,14 +204,17 @@ class AI_Request_Log_Manager {
 	 *
 	 * `ai_client` covers generations made through the AI Client SDK. `mcp_tool`
 	 * and `ability` are for consumers that surface abilities themselves, such as
-	 * an MCP server or a direct ability invocation.
+	 * an MCP server or a direct ability invocation. `site_agent` records the
+	 * Site Agent's own tool calls and action decisions, so its audit trail can
+	 * be filtered without joining it to every other ability consumer.
 	 *
 	 * @since 1.3.0
+	 * @since x.x.x Added the `site_agent` type.
 	 *
 	 * @return list<string> Supported log types.
 	 */
 	public static function get_types(): array {
-		return array( 'ai_client', 'mcp_tool', 'ability' );
+		return array( 'ai_client', 'mcp_tool', 'ability', 'site_agent' );
 	}
 
 	/**
