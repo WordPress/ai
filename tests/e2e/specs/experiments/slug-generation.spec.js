@@ -27,34 +27,21 @@ const openPermalinkPopover = async ( editor, page ) => {
 	// Ensure the sidebar is visible.
 	await editor.openDocumentSettingsSidebar();
 
-	const popoverLocator = page.locator(
-		'.components-popover .editor-post-url, .components-dropdown__content .editor-post-url'
-	);
+	const slugHeading = page.getByRole( 'heading', {
+		name: 'Slug',
+		exact: true,
+	} );
 
-	// Only click toggle if popover is not already visible.
-	if ( ! ( await popoverLocator.first().isVisible() ) ) {
-		// The permalink section is accessed via the "Link" or "URL" panel in the
-		// post settings sidebar. In the block editor it renders as a button that
-		// toggles the popover.
-		const linkButton = page.locator(
-			'.editor-post-url__toggle, .editor-post-url__toggle-button, button.editor-post-url__hostname, button.editor-post-url__panel-toggle, .editor-post-url button, [aria-label*="URL"], [aria-label*="Permalink"], [aria-label*="Link"]'
-		);
-
-		// Wait for the slug panel toggle to render (it may take a moment after save).
-		await expect( linkButton.first() ).toBeVisible( { timeout: 10000 } );
-		await linkButton.first().click();
+	// Only open the popover if its heading is not already visible.
+	if ( ! ( await slugHeading.isVisible() ) ) {
+		const linkButton = page.getByRole( 'button', {
+			name: /^Change (link|slug):/i,
+		} );
+		await expect( linkButton ).toBeVisible( { timeout: 10000 } );
+		await linkButton.click();
 	}
 
-	// Wait for the popover content to appear.
-	await expect(
-		page
-			.locator(
-				'.components-popover .editor-post-url, .components-dropdown__content .editor-post-url, .editor-post-url'
-			)
-			.first()
-	).toBeVisible( {
-		timeout: 10000,
-	} );
+	await expect( slugHeading ).toBeVisible( { timeout: 10000 } );
 };
 
 test.describe( 'Slug Generation Experiment', () => {
@@ -185,9 +172,11 @@ test.describe( 'Slug Generation Experiment', () => {
 		// Open the permalink popover.
 		await openPermalinkPopover( editor, page );
 
-		// The slug generation container should not be present.
+		// The slug generation button should not be present.
 		await expect(
-			page.locator( '.ai-slug-generation-container' )
+			page.getByRole( 'button', {
+				name: /^(Generate|Regenerate) Slug$/i,
+			} )
 		).not.toBeVisible();
 	} );
 
@@ -246,8 +235,8 @@ test.describe( 'Slug Generation Experiment', () => {
 		await modal.getByRole( 'button', { name: 'Close' } ).click();
 		await openPermalinkPopover( editor, page );
 		await expect(
-			page.locator( '.editor-post-url input[type="text"]' ).first()
-		).not.toHaveValue( /!/ );
+			page.getByRole( 'button', { name: /^Change (link|slug):/i } )
+		).not.toHaveText( /!/ );
 	} );
 
 	test( 'An edited slug is normalized when applied from the modal', async ( {
@@ -297,8 +286,8 @@ test.describe( 'Slug Generation Experiment', () => {
 
 		await openPermalinkPopover( editor, page );
 		await expect(
-			page.locator( '.editor-post-url input[type="text"]' ).first()
-		).toHaveValue( /my-custom-slug/ );
+			page.getByRole( 'button', { name: /^Change (link|slug):/i } )
+		).toHaveText( /my-custom-slug/ );
 	} );
 
 	test( 'Pre-publish panel shows Applied after applying an edited slug', async ( {
@@ -331,7 +320,10 @@ test.describe( 'Slug Generation Experiment', () => {
 
 		// Wait for suggestions to load. Scope all queries to the panel so
 		// other sidebar buttons can never make the locators ambiguous.
-		const panel = page.locator( '.ai-slug-prepublish-content' );
+		const panel = page.getByRole( 'region', {
+			name: 'Editor publish',
+			exact: true,
+		} );
 		const customizeInput = panel.getByLabel( 'Customize slug' );
 		await expect( customizeInput ).toBeVisible( { timeout: 15000 } );
 
@@ -404,8 +396,8 @@ test.describe( 'Slug Generation Experiment', () => {
 
 		await openPermalinkPopover( editor, page );
 		await expect(
-			page.locator( '.editor-post-url input[type="text"]' ).first()
-		).toHaveValue( /^новости-дня(-\d+)?$/ );
+			page.getByRole( 'button', { name: /^Change (link|slug):/i } )
+		).toHaveText( /^новости-дня(-\d+)?$/ );
 
 		// After saving, the slug comes back percent-encoded from the REST API.
 		// The pre-publish panel shows it as written and marks it as applied.
@@ -416,7 +408,10 @@ test.describe( 'Slug Generation Experiment', () => {
 			.click();
 		await page.getByRole( 'button', { name: /Suggest Slugs/i } ).click();
 
-		const panel = page.locator( '.ai-slug-prepublish-content' );
+		const panel = page.getByRole( 'region', {
+			name: 'Editor publish',
+			exact: true,
+		} );
 		await expect( panel.getByText( /^новости-дня(-\d+)?$/ ) ).toBeVisible();
 
 		await page
