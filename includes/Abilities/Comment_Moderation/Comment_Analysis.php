@@ -351,6 +351,8 @@ class Comment_Analysis extends Abstract_Ability {
 	/**
 	 * Analyzes a draft from a trusted internal caller without reading or saving a comment.
 	 *
+	 * @since x.x.x
+	 *
 	 * @param string $text Draft text.
 	 * @return array{toxicity_score: float, sentiment: string}|\WP_Error Draft analysis.
 	 */
@@ -403,6 +405,8 @@ class Comment_Analysis extends Abstract_Ability {
 
 	/**
 	 * Generates and parses a structured analysis.
+	 *
+	 * @since x.x.x
 	 *
 	 * @param \WP_AI_Client_Prompt_Builder|\WP_Error $prompt_builder Configured prompt builder.
 	 * @return array<string, mixed>|\WP_Error Parsed analysis.
