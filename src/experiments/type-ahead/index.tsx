@@ -39,14 +39,18 @@ const bootstrap = ( settings: TypeAheadSettings ) => {
 
 	const withTypeAhead = createHigherOrderComponent(
 		( BlockEdit: ComponentType< any > ) => {
-			return ( props: any ) => (
-				<TypeAheadBlock
-					BlockEdit={ BlockEdit }
-					blockProps={ props }
-					settings={ settings }
-					allowedBlocks={ allowedBlocks }
-				/>
-			);
+			// Only wrap allowed blocks, so other blocks (such as Columns or
+			// Group) don't attach listeners or send requests.
+			return ( props: any ) =>
+				allowedBlocks.has( props.name ) ? (
+					<TypeAheadBlock
+						BlockEdit={ BlockEdit }
+						blockProps={ props }
+						settings={ settings }
+					/>
+				) : (
+					<BlockEdit { ...props } />
+				);
 		},
 		'withAITypeAhead'
 	);
