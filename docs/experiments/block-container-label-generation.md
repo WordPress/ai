@@ -253,7 +253,7 @@ The system instruction guides the model to:
 ### Limitations
 
 - Labels are generated one block at a time, with one request per block.
-- If a request fails, the run stops and the remaining blocks are not labeled. Labels already applied are kept, and clicking the button again labels only the blocks that are still unlabeled.
+- If a request fails, that block is skipped and the run continues. When the run ends, an error notice shows how many blocks failed and the last error message. Clicking the button again labels only the blocks that are still unlabeled.
 - Each applied label is a separate undo step.
 - The Rename modal button is attached through DOM observation and assumes the standard Rename modal markup.
 - The output of the ability is sanitized with `sanitize_text_field()` and stripped of surrounding `"`/`'` characters.
