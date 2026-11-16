@@ -74,6 +74,64 @@ test.describe( 'Type-ahead Text Experiment', () => {
 		await editor.saveDraft();
 	} );
 
+	test( 'Sends one request for a paragraph nested in other blocks', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await enableExperiment( admin, page, 'Type-ahead Text' );
+
+		let requests = 0;
+		await page.route(
+			/\/wp-abilities\/v1\/abilities\/ai\/type-ahead\/run/,
+			( route ) => {
+				requests++;
+				return route.fulfill( {
+					json: {
+						suggestion: 'This is a test suggestion.',
+						confidence: 1,
+					},
+				} );
+			}
+		);
+
+		await admin.createNewPost();
+		await editor.insertBlock( {
+			name: 'core/group',
+			innerBlocks: [
+				{
+					name: 'core/columns',
+					innerBlocks: [
+						{
+							name: 'core/column',
+							innerBlocks: [
+								{
+									name: 'core/paragraph',
+									attributes: {
+										content:
+											'This paragraph needs more text.',
+									},
+								},
+							],
+						},
+					],
+				},
+			],
+		} );
+
+		// Put the caret at the start, where suggestions only come from the shortcut.
+		await editor.canvas
+			.getByRole( 'document', { name: 'Block: Paragraph' } )
+			.click( { position: { x: 5, y: 5 } } );
+
+		await page.keyboard.press( 'Control+Space' );
+
+		await expect( editor.canvas.getByRole( 'status' ) ).toHaveText(
+			/This is a test suggestion\./
+		);
+		expect( requests ).toBe( 1 );
+	} );
+
 	test( 'Ensure the Type-ahead Text Experiment UI is not visible when the experiment is disabled', async ( {
 		admin,
 		editor,
