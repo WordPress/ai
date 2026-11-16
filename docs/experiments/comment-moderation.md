@@ -31,7 +31,7 @@ The **Value** score rates how relevant and substantive a comment is to the post 
 
 In **Settings → AI**, turn on **Advanced settings**, then enable **Check comments before submission** under **Comment Moderation**. This setting is off by default. It applies to standard WordPress comment forms in classic and block themes. Guests are included when the site allows guest comments and **Automatically moderate guest comments** is enabled.
 
-The form sends only the draft text to the configured AI provider after the reader pauses for 1.5 seconds or tries to submit text that hasn't been checked. It skips short drafts during typing and reuses the result for unchanged text. When the sentiment is negative and the toxicity score reaches **Draft toxicity threshold (%)** (70% by default), the form asks the reader to revise their comment. Editing lets them check the new text.
+The form sends only the draft text to the configured AI provider after the reader pauses for 1.5 seconds or tries to submit text that hasn't been checked. Drafts shorter than 20 characters are checked on submit. The form reuses the result for unchanged text. When the sentiment is negative and the toxicity score reaches **Draft toxicity threshold (%)** (70% by default), the form asks the reader to revise their comment. Editing lets them check the new text.
 
 Readers can still submit if the check fails, times out, or reaches the server's request limit. The draft threshold only applies to the browser form. WordPress still accepts submissions made without JavaScript and the automatic moderation rule below applies to eligible comments after they're saved.
 
