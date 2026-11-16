@@ -67,7 +67,7 @@ test.describe( 'Comment draft moderation', () => {
 		);
 	} );
 
-	test( 'sends toxic comments to Pending Moderation with JavaScript disabled @webkit', async ( {
+	test( 'sends toxic comments to Pending Moderation with JavaScript disabled', async ( {
 		browser,
 		page,
 		requestUtils,
@@ -101,7 +101,7 @@ test.describe( 'Comment draft moderation', () => {
 		}
 	} );
 
-	test( 'blocks a toxic draft after a pause and submits a revision without checking it twice @webkit', async ( {
+	test( 'blocks a toxic draft after a pause and submits a revision without checking it twice', async ( {
 		page,
 		requestUtils,
 	} ) => {
@@ -139,7 +139,7 @@ test.describe( 'Comment draft moderation', () => {
 		expect( drafts ).toEqual( [ toxic, constructive ] );
 	} );
 
-	test( 'checks a fast submit and checks a revised draft before submitting @webkit', async ( {
+	test( 'checks a fast submit and checks a revised draft before submitting', async ( {
 		page,
 		requestUtils,
 	} ) => {
@@ -165,7 +165,7 @@ test.describe( 'Comment draft moderation', () => {
 		).toBeVisible();
 	} );
 
-	test( 'posts normally when the draft endpoint fails @webkit', async ( {
+	test( 'posts normally when the draft endpoint fails', async ( {
 		page,
 		requestUtils,
 	} ) => {
@@ -184,7 +184,7 @@ test.describe( 'Comment draft moderation', () => {
 		expect( calls ).toBe( 1 );
 	} );
 
-	test( 'waits for the check already running for the submitted text @webkit', async ( {
+	test( 'waits for the check already running for the submitted text', async ( {
 		page,
 		requestUtils,
 	} ) => {
@@ -218,7 +218,7 @@ test.describe( 'Comment draft moderation', () => {
 		expect( calls ).toBe( 1 );
 	} );
 
-	test( 'ignores an old response after the reader changes the draft @webkit', async ( {
+	test( 'ignores an old response after the reader changes the draft', async ( {
 		page,
 		requestUtils,
 	} ) => {
@@ -248,7 +248,7 @@ test.describe( 'Comment draft moderation', () => {
 		await expect( page.locator( '.comment-content' ) ).toHaveCount( 0 );
 	} );
 
-	test( 'lets a reader submit when the draft check times out @webkit', async ( {
+	test( 'lets a reader submit when the draft check times out', async ( {
 		page,
 		requestUtils,
 	} ) => {
@@ -270,7 +270,7 @@ test.describe( 'Comment draft moderation', () => {
 		expect( calls ).toBe( 1 );
 	} );
 
-	test( 'bounds the submit wait when an older draft check is still running @webkit', async ( {
+	test( 'bounds the submit wait when an older draft check is still running', async ( {
 		page,
 		requestUtils,
 	} ) => {
@@ -326,7 +326,7 @@ test.describe( 'Comment draft moderation', () => {
 		).toBeVisible();
 	} );
 
-	test( 'applies the configured threshold only to the form @webkit', async ( {
+	test( 'applies the configured threshold only to the form', async ( {
 		page,
 		requestUtils,
 	} ) => {
@@ -342,7 +342,7 @@ test.describe( 'Comment draft moderation', () => {
 		).toBeVisible();
 	} );
 
-	test( 'checks guest drafts in the core block form @webkit', async ( {
+	test( 'checks guest drafts in the core block form', async ( {
 		browser,
 		requestUtils,
 	} ) => {
@@ -367,7 +367,7 @@ test.describe( 'Comment draft moderation', () => {
 		}
 	} );
 
-	test( 'leaves the comment form alone when draft checks are off @webkit', async ( {
+	test( 'leaves the comment form alone when draft checks are off', async ( {
 		page,
 		requestUtils,
 	} ) => {
@@ -423,7 +423,7 @@ test.describe( 'Comment draft moderation', () => {
 		}
 	} );
 
-	test( 'retries a failed background check when the reader submits @webkit', async ( {
+	test( 'retries a failed background check when the reader submits', async ( {
 		page,
 		requestUtils,
 	} ) => {
