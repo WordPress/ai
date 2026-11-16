@@ -146,6 +146,8 @@ class Comment_Moderation extends Abstract_Feature {
 
 	/**
 	 * Minimum toxicity score, as a percentage, for blocking a draft in the form.
+	 *
+	 * @since x.x.x
 	 */
 	public const DEFAULT_DRAFT_TOXICITY_THRESHOLD = 70;
 
@@ -479,6 +481,8 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Checks whether to enable analysis in public comment forms.
 	 *
+	 * @since x.x.x
+	 *
 	 * @return bool Whether the administrator opted in.
 	 */
 	private function should_check_drafts(): bool {
@@ -487,6 +491,8 @@ class Comment_Moderation extends Abstract_Feature {
 
 	/**
 	 * Normalizes the draft threshold to a percentage between 1 and 100.
+	 *
+	 * @since x.x.x
 	 *
 	 * @param mixed $value Saved setting value.
 	 * @return int Draft toxicity threshold.
@@ -497,6 +503,8 @@ class Comment_Moderation extends Abstract_Feature {
 
 	/**
 	 * Returns the draft toxicity threshold on the model's 0 to 1 scale.
+	 *
+	 * @since x.x.x
 	 *
 	 * @return float Draft toxicity threshold.
 	 */

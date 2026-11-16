@@ -21,37 +21,53 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Adds the optional draft check to eligible comment forms.
+ *
+ * @since x.x.x
  */
 final class Draft_Check {
 
 	/**
 	 * REST route used by the comment form.
+	 *
+	 * @since x.x.x
 	 */
 	private const ROUTE = '/comment-draft-check';
 
 	/**
 	 * Maximum draft size in bytes. Matches the limit for saved comments in core.
+	 *
+	 * @since x.x.x
 	 */
 	private const MAX_BYTES = 65525;
 
 	/**
 	 * Maximum provider calls per minute per visitor.
+	 *
+	 * @since x.x.x
 	 */
 	private const VISITOR_LIMIT = 20;
 
 	/**
 	 * Maximum provider calls per minute across the site.
+	 *
+	 * @since x.x.x
 	 */
 	private const SITE_LIMIT = 90;
 
 	/**
 	 * Owning experiment.
 	 *
+	 * @since x.x.x
+	 *
 	 * @var \WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation
 	 */
 	private Comment_Moderation $experiment;
 
 	/**
+	 * Creates a draft checker for the Comment Moderation experiment.
+	 *
+	 * @since x.x.x
+	 *
 	 * @param \WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation $experiment Owning experiment.
 	 */
 	public function __construct( Comment_Moderation $experiment ) {
@@ -60,6 +76,8 @@ final class Draft_Check {
 
 	/**
 	 * Enqueues the script and marks an eligible form for enhancement.
+	 *
+	 * @since x.x.x
 	 *
 	 * @param int $post_id Post the comment form is for.
 	 */
@@ -79,6 +97,8 @@ final class Draft_Check {
 
 	/**
 	 * Registers the draft check endpoint separately from the moderator ability.
+	 *
+	 * @since x.x.x
 	 */
 	public function register_route(): void {
 		register_rest_route(
@@ -106,6 +126,8 @@ final class Draft_Check {
 	/**
 	 * Validates the origin and the visitor's ability to comment on the post.
 	 *
+	 * @since x.x.x
+	 *
 	 * @param \WP_REST_Request $request REST request.
 	 * @return bool Whether draft analysis is permitted.
 	 */
@@ -123,6 +145,8 @@ final class Draft_Check {
 
 	/**
 	 * Checks whether a reader can use draft analysis for this post.
+	 *
+	 * @since x.x.x
 	 *
 	 * @param int $post_id Post ID.
 	 * @return bool Whether the comment form is eligible.
@@ -143,6 +167,8 @@ final class Draft_Check {
 
 	/**
 	 * Returns whether the exact draft should be blocked by the browser.
+	 *
+	 * @since x.x.x
 	 *
 	 * @param \WP_REST_Request $request REST request.
 	 * @return array{blocked: bool}|\WP_Error Draft verdict or error.
@@ -181,6 +207,8 @@ final class Draft_Check {
 
 	/**
 	 * Limits calls per visitor and across the site. The lock protects counter updates only.
+	 *
+	 * @since x.x.x
 	 *
 	 * @return bool Whether a request slot is available.
 	 */
