@@ -110,7 +110,7 @@ class Job_Manager {
 	 * Every post meta key the experiment writes.
 	 *
 	 * @since x.x.x
-	 * @var string[]
+	 * @var list<string>
 	 */
 	public const META_KEYS = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
 		self::META_AUDIO_ID,
