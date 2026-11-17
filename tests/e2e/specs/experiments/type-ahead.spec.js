@@ -74,10 +74,46 @@ test.describe( 'Type-ahead Text Experiment', () => {
 		await editor.saveDraft();
 	} );
 
+	test( 'Can request a suggestion with the access + G shortcut', async ( {
+		admin,
+		editor,
+		page,
+		pageUtils,
+	} ) => {
+		await enableExperiment( admin, page, 'Type-ahead Text' );
+		await admin.createNewPost();
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: { content: 'This paragraph needs more text.' },
+		} );
+
+		// Put the caret at the start, where suggestions only come from the shortcut.
+		await editor.canvas
+			.getByRole( 'document', { name: 'Block: Paragraph' } )
+			.click( { position: { x: 5, y: 5 } } );
+
+		const status = editor.canvas.getByRole( 'status' );
+		await expect( status ).toHaveText( '' );
+
+		// Ctrl + Option + G on macOS, Shift + Alt + G elsewhere.
+		await pageUtils.pressKeys( 'access+g' );
+
+		await expect( status ).toHaveText( /This is a test suggestion\./ );
+
+		// The shortcut is listed in the Keyboard shortcuts modal.
+		await pageUtils.pressKeys( 'access+h' );
+		await expect(
+			page
+				.getByRole( 'dialog', { name: 'Keyboard shortcuts' } )
+				.getByText( 'Ask for a type-ahead suggestion.' )
+		).toBeVisible();
+	} );
+
 	test( 'Sends one request for a paragraph nested in other blocks', async ( {
 		admin,
 		editor,
 		page,
+		pageUtils,
 	} ) => {
 		await enableExperiment( admin, page, 'Type-ahead Text' );
 
@@ -124,7 +160,7 @@ test.describe( 'Type-ahead Text Experiment', () => {
 			.getByRole( 'document', { name: 'Block: Paragraph' } )
 			.click( { position: { x: 5, y: 5 } } );
 
-		await page.keyboard.press( 'Control+Space' );
+		await pageUtils.pressKeys( 'access+g' );
 
 		await expect( editor.canvas.getByRole( 'status' ) ).toHaveText(
 			/This is a test suggestion\./

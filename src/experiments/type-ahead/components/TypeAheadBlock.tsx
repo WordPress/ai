@@ -12,6 +12,7 @@ import type { ComponentType } from 'react';
  */
 import { VisuallyHidden } from '@wordpress/components';
 import { useCallback, useEffect } from '@wordpress/element';
+import { isKeyboardEvent } from '@wordpress/keycodes';
 
 /**
  * Internal dependencies
@@ -288,10 +289,9 @@ const TypeAheadBlock = ( {
 				return;
 			}
 
-			if (
-				( event.metaKey || event.ctrlKey ) &&
-				event.code === 'Space'
-			) {
+			// Ctrl + Option + G on macOS, Shift + Alt + G elsewhere. Registered
+			// in index.tsx so it shows in the Keyboard shortcuts modal.
+			if ( isKeyboardEvent.access( event, 'g' ) ) {
 				event.preventDefault();
 				triggerManualFetch();
 			}
