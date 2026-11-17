@@ -5,7 +5,7 @@
 /**
  * WordPress dependencies
  */
-import { Button, Notice, Spinner, ToggleControl } from '@wordpress/components';
+import { Button, Notice, ToggleControl } from '@wordpress/components';
 import { useRef, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import { audio } from '@wordpress/icons';
@@ -67,29 +67,6 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 			}
 		};
 
-	if ( isGenerating ) {
-		return (
-			<div className="ai-text-to-speech-panel__content">
-				<div className="ai-text-to-speech-panel__loading">
-					<Spinner />
-					<span>
-						{ status && status.total > 0
-							? sprintf(
-									/* translators: 1: number of chunks processed, 2: total number of chunks */
-									__(
-										'Generating audio… (%1$d of %2$d)',
-										'ai'
-									),
-									status.done,
-									status.total
-							  )
-							: __( 'Generating audio…', 'ai' ) }
-					</span>
-				</div>
-			</div>
-		);
-	}
-
 	if ( hasLostContact ) {
 		return (
 			<div className="ai-text-to-speech-panel__content">
@@ -113,6 +90,22 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 		);
 	}
 
+	let generateLabel: string = hasAudio
+		? __( 'Regenerate Audio', 'ai' )
+		: __( 'Generate Audio', 'ai' );
+
+	if ( isGenerating ) {
+		generateLabel =
+			status && status.total > 0
+				? sprintf(
+						/* translators: 1: number of chunks processed, 2: total number of chunks */
+						__( 'Generating audio… (%1$d of %2$d)', 'ai' ),
+						status.done,
+						status.total
+				  )
+				: __( 'Generating audio…', 'ai' );
+	}
+
 	return (
 		<div className="ai-text-to-speech-panel__content">
 			{ status?.status === 'error' && status.error && (
@@ -130,7 +123,7 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 				</Notice>
 			) }
 
-			{ hasAudio && audioUrl && (
+			{ hasAudio && ! isGenerating && audioUrl && (
 				<audio
 					className="ai-text-to-speech-panel__preview"
 					controls
@@ -139,7 +132,7 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 				/>
 			) }
 
-			{ hasAudio && (
+			{ hasAudio && ! isGenerating && (
 				<ToggleControl
 					label={ __(
 						'Display audio player on the front end',
@@ -154,21 +147,22 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 				__next40pxDefaultSize
 				variant="secondary"
 				onClick={ () => {
-					shouldFocusGenerate.current = true;
 					setConfirmingDelete( false );
 					handleGenerate();
 				} }
 				ref={ focusWhenFlagged( shouldFocusGenerate ) }
 				icon={ audio }
-				disabled={ ! hasTtsSupport || isBlockedByUnsavedChanges }
+				isBusy={ isGenerating }
+				disabled={
+					isGenerating || ! hasTtsSupport || isBlockedByUnsavedChanges
+				}
 				accessibleWhenDisabled
 			>
-				{ hasAudio
-					? __( 'Regenerate Audio', 'ai' )
-					: __( 'Generate Audio', 'ai' ) }
+				{ generateLabel }
 			</Button>
 
 			{ hasAudio &&
+				! isGenerating &&
 				( confirmingDelete ? (
 					<div className="ai-text-to-speech-panel__confirm">
 						<span>
@@ -232,7 +226,7 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 				</p>
 			) }
 
-			{ hasAudio && (
+			{ hasAudio && ! isGenerating && (
 				<p className="ai-text-to-speech-panel__help">
 					{ __(
 						'Regenerating deletes the current audio and creates a new version.',

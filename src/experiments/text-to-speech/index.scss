@@ -26,16 +26,6 @@
 		}
 	}
 
-	&__loading {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-
-		.components-spinner {
-			margin: 0;
-		}
-	}
-
 	&__preview {
 		width: 100%;
 	}
