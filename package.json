@@ -61,7 +61,7 @@
 		"@wordpress/prettier-config": "4.57.0",
 		"@wordpress/scripts": "36.1.0",
 		"@wordpress/theme": "4.0.0",
-		"concurrently": "10.0.6",
+		"concurrently": "10.0.7",
 		"filenamify": "7.0.3",
 		"typescript": "5.9.3",
 		"webpack-remove-empty-scripts": "1.1.1"
@@ -91,6 +91,8 @@
 		"@wordpress/html-entities": "4.57.0",
 		"@wordpress/i18n": "6.17.0",
 		"@wordpress/icons": "12.2.0",
+		"@wordpress/keyboard-shortcuts": "5.57.0",
+		"@wordpress/keycodes": "4.55.0",
 		"@wordpress/notices": "5.44.0",
 		"@wordpress/plugins": "7.44.0",
 		"@wordpress/primitives": "4.45.0",

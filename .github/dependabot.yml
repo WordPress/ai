@@ -86,6 +86,8 @@ updates:
       - dependency-name: '@wordpress/hooks'
       - dependency-name: '@wordpress/i18n'
       - dependency-name: '@wordpress/icons'
+      - dependency-name: '@wordpress/keyboard-shortcuts'
+      - dependency-name: '@wordpress/keycodes'
       - dependency-name: '@wordpress/notices'
       - dependency-name: '@wordpress/plugins'
       - dependency-name: '@wordpress/primitives'
