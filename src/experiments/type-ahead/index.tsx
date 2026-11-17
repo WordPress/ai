@@ -61,8 +61,14 @@ const bootstrap = ( settings: TypeAheadSettings ) => {
 	addFilter( 'editor.BlockEdit', 'ai/type-ahead', withTypeAhead );
 
 	// List the manual trigger in the editor's Keyboard shortcuts modal. The
-	// key press itself is handled in TypeAheadBlock.
-	dispatch( keyboardShortcutsStore ).registerShortcut( {
+	// key press itself is handled in TypeAheadBlock. The cast is needed because
+	// `@wordpress/keyboard-shortcuts` is typed against a newer `@wordpress/data`
+	// than the plugin uses.
+	(
+		dispatch( keyboardShortcutsStore ) as unknown as {
+			registerShortcut: ( shortcut: object ) => void;
+		}
+	 ).registerShortcut( {
 		name: 'ai/type-ahead-suggestion',
 		category: 'block',
 		description: __( 'Ask for a type-ahead suggestion.', 'ai' ),
