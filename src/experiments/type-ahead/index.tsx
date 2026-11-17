@@ -11,7 +11,10 @@ import type { ComponentType } from 'react';
  * WordPress dependencies
  */
 import { createHigherOrderComponent } from '@wordpress/compose';
+import { dispatch } from '@wordpress/data';
 import { addFilter } from '@wordpress/hooks';
+import { __ } from '@wordpress/i18n';
+import { store as keyboardShortcutsStore } from '@wordpress/keyboard-shortcuts';
 
 /**
  * Internal dependencies
@@ -56,6 +59,24 @@ const bootstrap = ( settings: TypeAheadSettings ) => {
 	);
 
 	addFilter( 'editor.BlockEdit', 'ai/type-ahead', withTypeAhead );
+
+	// List the manual trigger in the editor's Keyboard shortcuts modal. The
+	// key press itself is handled in TypeAheadBlock. The cast is needed because
+	// `@wordpress/keyboard-shortcuts` is typed against a newer `@wordpress/data`
+	// than the plugin uses.
+	(
+		dispatch( keyboardShortcutsStore ) as unknown as {
+			registerShortcut: ( shortcut: object ) => void;
+		}
+	 ).registerShortcut( {
+		name: 'ai/type-ahead-suggestion',
+		category: 'block',
+		description: __( 'Ask for a type-ahead suggestion.', 'ai' ),
+		keyCombination: {
+			modifier: 'access',
+			character: 'g',
+		},
+	} );
 };
 
 const settings = window.aiTypeAheadData;
