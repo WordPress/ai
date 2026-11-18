@@ -524,6 +524,25 @@ test.describe( 'AI Workspace update proposals', () => {
 			'Review 3 changes'
 		);
 
+		// Update proposals keep their checked default, and share bulk selection.
+		const selectNone = card.getByRole( 'button', {
+			name: 'Select none',
+			exact: true,
+		} );
+		await expect( card.getByRole( 'status' ) ).toHaveText(
+			'3 items selected'
+		);
+		await selectNone.click();
+		await expect(
+			card.getByRole( 'button', { name: 'Apply 0 changes', exact: true } )
+		).toBeDisabled();
+		await card
+			.getByRole( 'button', { name: 'Select all', exact: true } )
+			.click();
+		await expect( card.getByRole( 'status' ) ).toHaveText(
+			'3 items selected'
+		);
+
 		// Content is rendered, not shown as markup, on both sides.
 		const content = cardItem( card, 'Content of “Hello world!”' );
 		await expect(
