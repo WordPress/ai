@@ -2,7 +2,7 @@
 
 This directory contains a copy of the Secrets API runtime, bundled so the Key Encryption experiment works on WordPress versions before 7.2 without requiring users to install a separate plugin. On WordPress 7.2 and later, core provides the API and this copy is never loaded.
 
-- **`src/wp-includes/`:** WordPress core trunk at [r64690](https://core.trac.wordpress.org/changeset/64690) (`fb78023b06` in `wordpress-develop`), which follows the Secrets API's introduction in [r64337](https://core.trac.wordpress.org/changeset/64337) ([#66187](https://core.trac.wordpress.org/ticket/66187)).
+- **`src/wp-includes/`:** WordPress core trunk at [r65395](https://core.trac.wordpress.org/changeset/65395) (`0b25c195` in `wordpress-develop`), which follows the Secrets API's introduction in [r64337](https://core.trac.wordpress.org/changeset/64337) ([#66187](https://core.trac.wordpress.org/ticket/66187)).
 - **`plugin/class-secrets-api-legacy-reader.php`:** [ericmann/secrets-api](https://github.com/ericmann/secrets-api) at `93be262cf25d1a1829ff30edb5881091597d0d76`. This reader is not part of core.
 - **License:** GPL-2.0-or-later. Original copyright © Eric Mann / WordPress Core Contributors.
 
@@ -22,9 +22,9 @@ The core API implementation, plus the one feature-plugin file needed to read key
 | `src/wp-includes/secrets.php` | `src/wp-includes/secrets.php` |
 | `src/wp-includes/secrets/class-wp-secret.php` | `src/wp-includes/secrets/class-wp-secret.php` |
 | `src/wp-includes/secrets/class-wp-secret-version.php` | `src/wp-includes/secrets/class-wp-secret-version.php` |
-| `src/wp-includes/secrets/interface-wp-secrets-provider.php` | `src/wp-includes/secrets/interface-wp-secrets-provider.php` |
-| `src/wp-includes/secrets/interface-wp-secrets-keyring.php` | `src/wp-includes/secrets/interface-wp-secrets-keyring.php` |
-| `src/wp-includes/secrets/interface-wp-secrets-store.php` | `src/wp-includes/secrets/interface-wp-secrets-store.php` |
+| `src/wp-includes/secrets/class-wp-secrets-provider.php` | `src/wp-includes/secrets/class-wp-secrets-provider.php` |
+| `src/wp-includes/secrets/class-wp-secrets-keyring.php` | `src/wp-includes/secrets/class-wp-secrets-keyring.php` |
+| `src/wp-includes/secrets/class-wp-secrets-store.php` | `src/wp-includes/secrets/class-wp-secrets-store.php` |
 | `src/wp-includes/secrets/class-wp-secrets-config-key-provider.php` | `src/wp-includes/secrets/class-wp-secrets-config-key-provider.php` |
 | `src/wp-includes/secrets/class-wp-secrets-broken-keyring.php` | `src/wp-includes/secrets/class-wp-secrets-broken-keyring.php` |
 | `src/wp-includes/secrets/class-wp-secrets-cipher.php` | `src/wp-includes/secrets/class-wp-secrets-cipher.php` |

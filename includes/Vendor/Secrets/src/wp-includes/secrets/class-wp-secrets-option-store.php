@@ -25,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * @since 7.2.0
  */
-final class WP_Secrets_Option_Store implements WP_Secrets_Store {
+final class WP_Secrets_Option_Store extends WP_Secrets_Store {
 
 	/**
 	 * Option name prefix for site-scope secrets.
@@ -128,8 +128,10 @@ final class WP_Secrets_Option_Store implements WP_Secrets_Store {
 			return true;
 		}
 
-		// delete_*_option() also returns false when the option never existed.
-		// Deleting something already absent is not a failure.
+		/*
+		 * delete_*_option() also returns false when the option never existed.
+		 * Deleting something already absent is not a failure.
+		 */
 		$still_exists = null !== ( $network ? get_site_option( $option_name, null ) : get_option( $option_name, null ) );
 
 		if ( ! $still_exists ) {
@@ -194,7 +196,6 @@ final class WP_Secrets_Option_Store implements WP_Secrets_Store {
 
 		return $names;
 	}
-
 
 	/**
 	 * Builds the option name a secret is stored under.

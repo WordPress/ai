@@ -81,7 +81,7 @@ final class Secrets_Bridge {
 			$default_hook = "default_option_{$setting_name}";
 
 			if ( false === has_filter( $write_hook, array( $this, 'on_write' ) ) ) {
-				add_filter( $write_hook, array( $this, 'on_write' ), 10, 1 );
+				add_filter( $write_hook, array( $this, 'on_write' ), 10, 2 );
 			}
 
 			if ( false === has_filter( $read_hook, array( $this, 'on_read' ) ) ) {
@@ -182,11 +182,12 @@ final class Secrets_Bridge {
 			return 0;
 		}
 
+		$count = $this->recover_salt_wrapped_secrets();
+
 		// Tear down the transparent filters first so the plaintext writes below are not
 		// immediately re-encrypted by `on_write`.
 		$this->unregister_option_filters();
 
-		$count = 0;
 		foreach ( $this->get_connector_setting_names() as $connector_id => $setting_name ) {
 			// An undecryptable secret is left in place so it can be recovered by restoring the
 			// original keys, rather than blocking the rest of the reversal (or plugin deactivation).
@@ -208,15 +209,20 @@ final class Secrets_Bridge {
 	/**
 	 * Filter callback for `pre_update_option_{$setting_name}`.
 	 *
-	 * Stores the secret out-of-band and forces the wp_options row to remain empty. If the secret
-	 * cannot be stored, the value is written as plaintext so the user's key is not lost.
+	 * Stores the secret out-of-band and forces the wp_options row to remain empty. If the Secrets
+	 * API cannot be used, such as without `WP_SECRETS_KEY`, the value is written as plaintext so
+	 * the user's key is not lost. If the Secrets API works but does not store the value, the
+	 * stored key is kept and nothing is written in plaintext.
 	 *
 	 * @since 1.1.0
+	 * @since x.x.x Keeps the stored key when a usable Secrets API does not store the new one.
 	 *
-	 * @param mixed $value New value being written.
-	 * @return string Empty when the value was stored as a secret, otherwise the value itself.
+	 * @param mixed $value     New value being written.
+	 * @param mixed $old_value The value currently stored in the option.
+	 * @return mixed Empty when the value was stored as a secret, the value itself when the Secrets
+	 *               API cannot be used, or the old value when the Secrets API did not store it.
 	 */
-	public function on_write( $value ): string {
+	public function on_write( $value, $old_value = '' ) {
 		if ( ! is_string( $value ) || '' === $value ) {
 			$this->delete_secret_for_current_filter();
 			return '';
@@ -233,12 +239,25 @@ final class Secrets_Bridge {
 			return $value;
 		}
 
-		if ( $this->set_secret( $this->secret_key( $connector_id ), $value ) ) {
+		$secret_key = $this->secret_key( $connector_id );
+
+		if ( $this->set_secret( $secret_key, $value ) ) {
 			return '';
 		}
 
+		if ( $this->is_secrets_api_usable() ) {
+			/*
+			 * The Secrets API works on this site but did not store the key: its provider is
+			 * read-only, as on a host that manages secrets itself, or the write failed. Writing
+			 * the key to the option would leave it unencrypted where the site expects it to be
+			 * protected, and deleting the stored secret would lose a working key. Keep both.
+			 */
+			$this->record_unstored( $secret_key );
+			return $old_value;
+		}
+
 		// Drop any previously stored secret so it cannot shadow the plaintext key on read.
-		$this->delete_secret( $this->secret_key( $connector_id ) );
+		$this->delete_secret( $secret_key );
 		return $value;
 	}
 
@@ -345,6 +364,117 @@ final class Secrets_Bridge {
 	}
 
 	/**
+	 * Returns whether the Secrets API can store and read secrets right now.
+	 *
+	 * @since x.x.x
+	 */
+	public function is_secrets_api_usable(): bool {
+		if ( ! $this->is_secrets_manager_available() ) {
+			return false;
+		}
+
+		// A Secrets API from before `wp_is_secrets_api_available()` reports problems per call.
+		return ! function_exists( 'wp_is_secrets_api_available' ) || wp_is_secrets_api_available();
+	}
+
+	/**
+	 * Recovers secrets whose root key is wrapped under the WordPress salts.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return int Number of keys restored to plaintext.
+	 */
+	public function recover_salt_wrapped_secrets(): int {
+		if (
+			! function_exists( 'wp_is_secrets_api_available' )
+			|| wp_using_secrets_dropin()
+			|| $this->is_secrets_api_usable()
+			|| false === get_site_option( \WP_Secrets_Key_Manager::ROOT_KEY_OPTION )
+		) {
+			return 0;
+		}
+
+		$salt_keyring     = new Salt_Keyring();
+		$salt_key_manager = new \WP_Secrets_Key_Manager( $salt_keyring );
+		$root_key         = $salt_key_manager->get_root_key( false );
+
+		if ( is_wp_error( $root_key ) ) {
+			return 0;
+		}
+
+		wp_secrets_memzero( $root_key );
+
+		$config_keyring = new \WP_Secrets_Config_Key_Provider();
+		$usable_status  = array( \WP_Secrets_Config_Key_Provider::KEY_STATUS_BASE64, \WP_Secrets_Config_Key_Provider::KEY_STATUS_LEGACY );
+
+		if ( in_array( $config_keyring->get_key_status(), $usable_status, true ) ) {
+			$rotated = $salt_key_manager->rotate_site_key( $salt_keyring, $config_keyring );
+
+			if ( is_wp_error( $rotated ) ) {
+				wp_trigger_error(
+					__METHOD__,
+					sprintf(
+						/* translators: %s: Error message. */
+						__( 'The Secrets API root key could not be re-wrapped under WP_SECRETS_KEY: %s', 'ai' ),
+						$rotated->get_error_message()
+					),
+					E_USER_WARNING
+				);
+			}
+
+			return 0;
+		}
+
+		$stored = wp_list_secrets( self::SECRET_NAMESPACE );
+
+		if ( is_wp_error( $stored ) || empty( $stored ) ) {
+			return 0;
+		}
+
+		$provider = new \WP_Secrets_Libsodium_Provider( new \WP_Secrets_Option_Store(), $salt_key_manager );
+		$names    = wp_list_pluck( $stored, 'name' );
+
+		$this->unregister_option_filters();
+
+		$count = 0;
+		foreach ( $this->get_connector_setting_names() as $connector_id => $setting_name ) {
+			$secret_key = $this->secret_key( $connector_id );
+
+			if ( ! in_array( $secret_key, $names, true ) ) {
+				continue;
+			}
+
+			$secret = $provider->get( $secret_key, \WP_Secret_Version::CURRENT );
+
+			if ( ! $secret instanceof \WP_Secret ) {
+				continue;
+			}
+
+			$plaintext = $secret->reveal();
+
+			if ( ! is_string( $plaintext ) || '' === $plaintext ) {
+				continue;
+			}
+
+			update_option( $setting_name, $plaintext );
+
+			// Delete the secret only once the plaintext key reads back intact.
+			if ( $this->read_raw_option( $setting_name ) !== $plaintext ) {
+				continue;
+			}
+
+			$provider->delete( $secret_key );
+			++$count;
+		}
+
+		wp_cache_delete( 'alloptions', 'options' );
+
+		$this->register_option_filters();
+
+		return $count;
+	}
+
+	/**
 	 * Retrieves a secret value from the Secrets API, or from a pre-1.5.0 row.
 	 *
 	 * A pre-1.5.0 row is moved to the Secrets API on read.
@@ -361,13 +491,15 @@ final class Secrets_Bridge {
 
 		if ( function_exists( 'wp_get_secret' ) ) {
 			$secret = wp_get_secret( $secret_key );
+			if ( is_object( $secret ) && method_exists( $secret, 'reveal' ) ) {
+				$secret = $secret->reveal();
+			}
+
 			if ( is_wp_error( $secret ) ) {
-				// Stored, but not readable: the site key or salts changed, or a drop-in is broken.
+				// Stored, but not readable: WP_SECRETS_KEY changed, or a drop-in is broken.
 				$unreadable = $secret;
-			} elseif ( is_object( $secret ) && method_exists( $secret, 'reveal' ) ) {
-				unset( $this->unreadable[ $secret_key ] );
-				return $secret->reveal();
 			} elseif ( is_string( $secret ) && '' !== $secret ) {
+				unset( $this->unreadable[ $secret_key ] );
 				return $secret;
 			}
 		}
@@ -525,12 +657,31 @@ final class Secrets_Bridge {
 			__METHOD__,
 			sprintf(
 				/* translators: 1: Secret name, 2: Error code. */
-				__( 'The secret "%1$s" is stored but could not be read (%2$s). Restore the site key or salts it was stored with, or save the key again.', 'ai' ),
+				__( 'The secret "%1$s" is stored but could not be read (%2$s). Restore the WP_SECRETS_KEY value it was stored with, or save the key again.', 'ai' ),
 				$secret_key,
 				$error->get_error_code()
 			),
 			E_USER_WARNING
 		);
+	}
+
+	/**
+	 * Warns that a key was not saved because the Secrets API did not store it.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $secret_key Namespaced secret key.
+	 */
+	private function record_unstored( string $secret_key ): void {
+		if ( function_exists( 'wp_secrets_provider_is_writable' ) && ! wp_secrets_provider_is_writable() ) {
+			/* translators: %s: Secret name. */
+			$message = __( 'The key for "%s" was not saved. Secrets on this site are managed outside WordPress, so set it there.', 'ai' );
+		} else {
+			/* translators: %s: Secret name. */
+			$message = __( 'The key for "%s" was not saved because it could not be stored as a secret. The previous key is unchanged. Try saving it again.', 'ai' );
+		}
+
+		wp_trigger_error( __METHOD__, sprintf( $message, $secret_key ), E_USER_WARNING );
 	}
 
 	/**
