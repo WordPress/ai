@@ -6,7 +6,7 @@ import { useSelect, useDispatch, select } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { store as noticesStore } from '@wordpress/notices';
-import { __, sprintf } from '@wordpress/i18n';
+import { __, _n, sprintf } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
@@ -74,6 +74,9 @@ export function useBlockContainerLabelGeneration(): UseBlockContainerLabelGenera
 		setTotal( candidates.length );
 		setProgress( 0 );
 
+		let failedCount = 0;
+		let lastError: unknown = null;
+
 		for ( const candidate of candidates ) {
 			try {
 				setActiveClientId( candidate.clientId );
@@ -114,11 +117,36 @@ export function useBlockContainerLabelGeneration(): UseBlockContainerLabelGenera
 						name: label,
 					},
 				} );
+			} catch ( error ) {
+				// Skip this block so one failed request, such as a 429 rate
+				// limit, doesn't stop the rest of the run.
+				failedCount++;
+				lastError = error;
 			} finally {
 				setProgress( ( currentProgress ) => currentProgress + 1 );
 			}
 		}
 		setActiveClientId( null );
+
+		if ( failedCount > 0 ) {
+			noticeDispatch.createErrorNotice(
+				sprintf(
+					/* translators: 1: number of blocks that failed, 2: total number of blocks, 3: error message. */
+					_n(
+						'Could not generate a label for %1$d of %2$d block. %3$s',
+						'Could not generate labels for %1$d of %2$d blocks. %3$s',
+						candidates.length,
+						'ai'
+					),
+					failedCount,
+					candidates.length,
+					getErrorMessage( lastError )
+				),
+				{
+					id: BLOCK_CONTAINER_LABEL_GENERATION_NOTICE_ID,
+				}
+			);
+		}
 	};
 
 	const generate = async () => {

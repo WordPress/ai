@@ -26,31 +26,56 @@ type MediaData = {
 	enabled: boolean;
 };
 
-type WordPressMedia = {
-	media?: {
-		view?: {
-			Modal: {
-				prototype: {
-					on: ( event: string, cb: () => void ) => void;
-				};
-			};
-		};
-		frame?: { on: ( event: string, cb: unknown ) => void };
-		frames?: {
-			edit?: { on: ( event: string, cb: unknown ) => void };
-		};
-	};
-	Uploader?: { queue?: { on: ( event: string, cb: unknown ) => void } };
-};
-
 declare global {
 	interface Window {
 		aiAltTextGenerationMediaData?: MediaData;
-		wp?: WordPressMedia;
-		jQuery?: ( selector: Document | Element | string ) => {
-			ready: ( fn: () => void ) => void;
-		};
 	}
+}
+
+const GENERATE_BUTTON_SELECTOR = '#ai-alt-text-generate-button';
+const MODAL_ALT_TEXT_SELECTOR =
+	'#attachment-details-two-column-alt-text, #attachment-details-alt-text';
+const EDIT_SCREEN_ALT_TEXT_SELECTOR = '#attachment_alt';
+
+/**
+ * Finds the alt text field that belongs to a Generate button.
+ *
+ * Closed media modals can stay in the DOM, so the lookup is limited to the
+ * button's own modal.
+ *
+ * @since x.x.x
+ *
+ * @param button The Generate button.
+ * @return The alt text field, or null if none is found.
+ */
+function getAltTextField(
+	button: HTMLButtonElement
+): HTMLTextAreaElement | null {
+	const modal = button.closest( '.media-modal' );
+
+	return modal
+		? modal.querySelector< HTMLTextAreaElement >( MODAL_ALT_TEXT_SELECTOR )
+		: document.querySelector< HTMLTextAreaElement >(
+				EDIT_SCREEN_ALT_TEXT_SELECTOR
+		  );
+}
+
+/**
+ * Updates the button label based on the alt text field value.
+ *
+ * @since 0.3.0
+ *
+ * @param button The Generate button.
+ * @param field  The alt text field.
+ */
+function updateButtonLabel(
+	button: HTMLButtonElement,
+	field: HTMLTextAreaElement
+): void {
+	button.textContent =
+		field.value.trim().length > 0
+			? __( 'Regenerate', 'ai' )
+			: __( 'Generate', 'ai' );
 }
 
 class AltTextMediaControls {
@@ -59,34 +84,28 @@ class AltTextMediaControls {
 	private button: HTMLButtonElement | null = null;
 	private spinner: HTMLSpanElement | null = null;
 	private status: HTMLParagraphElement | null = null;
-	private isGenerating = false;
 
 	/**
 	 * Constructs a new AltTextMediaControls instance.
 	 *
 	 * @since 0.3.0
+	 *
+	 * @param button The Generate button that was clicked.
 	 */
-	public constructor() {
+	public constructor( button: HTMLButtonElement ) {
+		const postID = button.getAttribute( 'data-attachment-id' );
+
 		this.context = {
-			getAttachmentId: () => null,
+			getAttachmentId: () => ( postID ? parseInt( postID, 10 ) : null ),
 			getImageUrl: () => null,
 		};
-		const textarea =
-			document.querySelector< HTMLTextAreaElement >(
-				'#attachment-details-two-column-alt-text'
-			) ??
-			document.querySelector< HTMLTextAreaElement >(
-				'#attachment-details-alt-text'
-			) ??
-			document.querySelector< HTMLTextAreaElement >( '#attachment_alt' );
-		const container = document.querySelector< HTMLDivElement >(
+
+		const textarea = getAltTextField( button );
+		const container = button.closest< HTMLDivElement >(
 			'.ai-alt-text-media-actions'
 		);
-		const button = document.querySelector< HTMLButtonElement >(
-			'#ai-alt-text-generate-button'
-		);
 
-		if ( ! textarea || ! container || ! button ) {
+		if ( ! textarea || ! container ) {
 			return;
 		}
 
@@ -95,55 +114,18 @@ class AltTextMediaControls {
 		this.spinner = container.querySelector< HTMLSpanElement >( '.spinner' );
 		this.status =
 			container.querySelector< HTMLParagraphElement >( '.description' );
-
-		button.addEventListener( 'click', ( e ) => {
-			const postID = ( e.target as HTMLButtonElement ).getAttribute(
-				'data-attachment-id'
-			);
-
-			if ( postID ) {
-				this.context = {
-					getAttachmentId: () => parseInt( postID, 10 ),
-					getImageUrl: () => null,
-				};
-			}
-
-			void this.handleGenerate();
-		} );
-
-		textarea.addEventListener( 'input', () => {
-			this.updateButtonLabel();
-		} );
-	}
-
-	/**
-	 * Updates the button label based on the textarea value.
-	 *
-	 * @since 0.3.0
-	 */
-	private updateButtonLabel(): void {
-		if ( ! this.textarea || ! this.button ) {
-			return;
-		}
-
-		const hasAlt = this.textarea.value.trim().length > 0;
-		this.button.textContent = hasAlt
-			? __( 'Regenerate', 'ai' )
-			: __( 'Generate', 'ai' );
 	}
 
 	/**
 	 * Handles the generate button click.
 	 *
+	 * The button stays disabled until the request finishes, which blocks
+	 * repeat clicks.
+	 *
 	 * @since 0.3.0
 	 */
-	private async handleGenerate(): Promise< void > {
-		if (
-			this.isGenerating ||
-			! this.textarea ||
-			! this.button ||
-			! this.spinner
-		) {
+	public async handleGenerate(): Promise< void > {
+		if ( ! this.textarea || ! this.button || ! this.spinner ) {
 			return;
 		}
 
@@ -158,7 +140,6 @@ class AltTextMediaControls {
 			return;
 		}
 
-		this.isGenerating = true;
 		this.button.disabled = true;
 		this.spinner.classList.add( 'is-active' );
 		this.setStatus( __( 'Generating alt text…', 'ai' ) );
@@ -191,10 +172,9 @@ class AltTextMediaControls {
 			);
 			this.setStatus( message, true );
 		} finally {
-			this.isGenerating = false;
 			this.button.disabled = false;
 			this.spinner.classList.remove( 'is-active' );
-			this.updateButtonLabel();
+			updateButtonLabel( this.button, this.textarea );
 		}
 	}
 
@@ -236,62 +216,44 @@ async function requestAltText(
 	);
 }
 
-/**
- * Initializes the AltTextMediaControls instance.
- *
- * @since 0.3.0
- */
-function initAltTextMediaControls(): void {
-	new AltTextMediaControls();
-}
+if ( window.aiAltTextGenerationMediaData?.enabled ) {
+	// One listener on the document handles every Generate button, on the
+	// attachment edit screen and in any media modal, including buttons
+	// rendered later. Binding per modal stacked handlers when a modal was
+	// reused, so one click sent several requests.
+	document.addEventListener( 'click', ( event ) => {
+		const button =
+			event.target instanceof Element
+				? event.target.closest< HTMLButtonElement >(
+						GENERATE_BUTTON_SELECTOR
+				  )
+				: null;
 
-// Purposely using document.ready here as domReady fires before wp.media is fully loaded.
-window.jQuery?.( document ).ready( function () {
-	const data = window.aiAltTextGenerationMediaData;
-
-	if ( ! data?.enabled ) {
-		return;
-	}
-
-	// When on the attachment edit screen.
-	if ( document.querySelector( '#ai_alt_text_generation' ) ) {
-		initAltTextMediaControls();
-	}
-
-	const { wp: wpMedia } = window;
-
-	if ( ! wpMedia?.media ) {
-		return;
-	}
-
-	// When selecting an image in the media modal.
-	wpMedia.media?.view?.Modal?.prototype?.on( 'open', function () {
-		wpMedia?.media?.frame?.on(
-			'selection:toggle',
-			initAltTextMediaControls
-		);
-	} );
-
-	// The edit attachment frame is created lazily when the modal opens.
-	let isEditAttachmentRefreshBound = false;
-
-	// Initialize controls the first time the attachment edit modal opens, then
-	// bind the edit frame refresh event once for later attachment changes.
-	wpMedia.media?.frame?.on( 'edit:attachment', () => {
-		if ( ! isEditAttachmentRefreshBound ) {
-			initAltTextMediaControls();
-
-			// Fired when the edit modal refreshes for next/previous navigation,
-			// and when the same edit frame is reused after reopening the modal.
-			wpMedia.media?.frames?.edit?.on(
-				'refresh',
-				initAltTextMediaControls
-			);
-
-			isEditAttachmentRefreshBound = true;
+		if ( button ) {
+			void new AltTextMediaControls( button ).handleGenerate();
 		}
 	} );
 
-	// For newly uploaded media.
-	wpMedia.Uploader?.queue?.on( 'reset', initAltTextMediaControls );
-} );
+	// Keep the button label in sync when the alt text is edited by hand.
+	document.addEventListener( 'input', ( event ) => {
+		const field = event.target;
+
+		if (
+			! ( field instanceof HTMLTextAreaElement ) ||
+			! field.matches(
+				`${ MODAL_ALT_TEXT_SELECTOR }, ${ EDIT_SCREEN_ALT_TEXT_SELECTOR }`
+			)
+		) {
+			return;
+		}
+
+		const scope: ParentNode = field.closest( '.media-modal' ) ?? document;
+		const button = scope.querySelector< HTMLButtonElement >(
+			GENERATE_BUTTON_SELECTOR
+		);
+
+		if ( button ) {
+			updateButtonLabel( button, field );
+		}
+	} );
+}
