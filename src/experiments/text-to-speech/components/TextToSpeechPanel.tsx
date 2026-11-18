@@ -31,6 +31,22 @@ const getSettings = (): TextToSpeechData => {
 };
 
 /**
+ * Focuses a button when it mounts, but only if focus was lost to the body.
+ *
+ * Defined outside the component so the ref is stable and only runs on mount.
+ *
+ * @param {HTMLButtonElement|null} node The button element.
+ */
+const focusIfLost = ( node: HTMLButtonElement | null ): void => {
+	if (
+		node &&
+		node.ownerDocument.activeElement === node.ownerDocument.body
+	) {
+		node.focus();
+	}
+};
+
+/**
  * Panel component with the generate button, progress, preview, and the
  * front-end display toggle.
  *
@@ -66,12 +82,9 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 			}
 
 			flag.current = false;
-			const { activeElement } = node.ownerDocument;
 
 			// Only restore focus if it was lost; don't pull the user back from elsewhere.
-			if ( activeElement === node.ownerDocument.body ) {
-				node.focus();
-			}
+			focusIfLost( node );
 		};
 
 	if ( hasLostContact ) {
@@ -90,6 +103,7 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 						shouldFocusGenerate.current = true;
 						handleCheckAgain();
 					} }
+					ref={ focusIfLost }
 				>
 					{ __( 'Check again', 'ai' ) }
 				</Button>
