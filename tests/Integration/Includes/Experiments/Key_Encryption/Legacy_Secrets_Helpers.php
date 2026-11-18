@@ -14,14 +14,14 @@ use WordPress\AI\Experiments\Key_Encryption\Secrets_Bridge;
 /**
  * Seals legacy `_secret_*` rows so tests can migrate them.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 trait Legacy_Secrets_Helpers {
 
 	/**
 	 * Stores a secret as a pre-1.5.0 row, creating the master key if needed.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $secret_key Namespaced secret key.
 	 * @param string $value      Plaintext secret value.
@@ -43,7 +43,7 @@ trait Legacy_Secrets_Helpers {
 	/**
 	 * Encrypts a value as base64( nonce . secretbox ).
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $plaintext The value.
 	 * @param string $key       32-byte key.
@@ -59,7 +59,7 @@ trait Legacy_Secrets_Helpers {
 	/**
 	 * Decrypts a base64( nonce . secretbox ) record.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $record The record.
 	 * @param string $key    32-byte key.

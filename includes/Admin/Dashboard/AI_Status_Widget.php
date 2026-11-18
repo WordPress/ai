@@ -179,7 +179,7 @@ class AI_Status_Widget {
 	 * enabled, otherwise summarized into a count. Disabled items
 	 * are always summarized.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<\WordPress\AI\Contracts\Feature> $features Registered features.
 	 * @param string                                 $type     Feature type, either 'feature' or 'experiment'.

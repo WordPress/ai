@@ -115,7 +115,7 @@ class Ability_Handler {
 	 *
 	 * The category label is sent unescaped, since the client renders it as text.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string,mixed> $ability      A formatted ability.
 	 * @param bool                $with_details Optional. Whether to add the schemas, raw

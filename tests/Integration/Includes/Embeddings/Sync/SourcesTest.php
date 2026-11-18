@@ -14,7 +14,7 @@ use WordPress\AI\Embeddings\Sync\Term_Source;
 /**
  * Post_Source and Term_Source test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  *
  * @covers \WordPress\AI\Embeddings\Sync\Post_Source
  * @covers \WordPress\AI\Embeddings\Sync\Term_Source
@@ -24,7 +24,7 @@ class SourcesTest extends WP_UnitTestCase {
 	/**
 	 * Tests post indexability across statuses, passwords and the filter.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_post_indexability(): void {
 		$source    = new Post_Source();
@@ -52,7 +52,7 @@ class SourcesTest extends WP_UnitTestCase {
 	/**
 	 * Tests the post text representation and its filter.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_post_text_is_title_and_normalized_content(): void {
 		$source  = new Post_Source();
@@ -73,7 +73,7 @@ class SourcesTest extends WP_UnitTestCase {
 	/**
 	 * Tests keyset paging over indexable posts of the given types.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_post_ids_after_pages_indexable_posts_in_id_order(): void {
 		$source = new Post_Source();
@@ -95,7 +95,7 @@ class SourcesTest extends WP_UnitTestCase {
 	/**
 	 * Tests indexable counts per post type.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_post_count_indexable(): void {
 		$source = new Post_Source();
@@ -113,7 +113,7 @@ class SourcesTest extends WP_UnitTestCase {
 	/**
 	 * Tests the term source end to end.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_term_source(): void {
 		$source = new Term_Source();

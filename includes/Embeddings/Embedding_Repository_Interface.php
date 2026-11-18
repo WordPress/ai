@@ -100,7 +100,7 @@ interface Embedding_Repository_Interface {
 	/**
 	 * Returns the stored content hashes for the given objects, keyed by object ID.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string    $object_type Object type.
 	 * @param list<int> $object_ids  Candidate object IDs. Keep to a few hundred per call.
@@ -113,7 +113,7 @@ interface Embedding_Repository_Interface {
 	/**
 	 * Replaces every stored chunk of one object for one model.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string                                          $object_type Object type.
 	 * @param int                                             $object_id   Object ID.
@@ -132,7 +132,7 @@ interface Embedding_Repository_Interface {
 	/**
 	 * Replaces every stored chunk of one object for one model, without reading the rows back.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string                                          $object_type Object type.
 	 * @param int                                             $object_id   Object ID.
@@ -164,7 +164,7 @@ interface Embedding_Repository_Interface {
 	/**
 	 * Returns the IDs of objects that have stored vectors for a model, after a cursor, ascending.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $object_type Object type.
 	 * @param string $provider    Provider ID.
@@ -192,7 +192,7 @@ interface Embedding_Repository_Interface {
 	/**
 	 * Counts indexed objects per subtype for one model and object type.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $object_type Object type.
 	 * @param string $provider    Provider ID.

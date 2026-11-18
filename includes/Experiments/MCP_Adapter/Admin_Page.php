@@ -9,6 +9,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\MCP_Adapter;
 
+use WordPress\AI\Admin\Tools_Page;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -16,13 +18,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Registers and renders the MCP Access admin page.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Admin_Page {
 	/**
 	 * The admin page slug.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @var string
 	 */
 	public const PAGE_SLUG = 'ai-mcp-access';
@@ -30,7 +32,7 @@ class Admin_Page {
 	/**
 	 * Initializes the admin page hooks.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function init(): void {
 		add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
@@ -39,15 +41,13 @@ class Admin_Page {
 	/**
 	 * Adds the Tools submenu page.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function add_admin_menu(): void {
-		add_submenu_page(
-			'tools.php',
-			__( 'MCP Access', 'ai' ),
-			__( 'MCP Access', 'ai' ),
-			'manage_options',
+		Tools_Page::add_page(
 			self::PAGE_SLUG,
+			__( 'MCP Access', 'ai' ),
+			__( 'Choose which WordPress abilities AI agents can access through the Model Context Protocol.', 'ai' ),
 			array( $this, 'render_page' )
 		);
 	}
@@ -55,7 +55,7 @@ class Admin_Page {
 	/**
 	 * Renders the page mount point for the React app.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function render_page(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {

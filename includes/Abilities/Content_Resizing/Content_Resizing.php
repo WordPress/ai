@@ -15,6 +15,7 @@ use WordPress\AI\Experiments\Content_Resizing\Content_Resizing as Content_Resizi
 
 use function WordPress\AI\count_characters_excluding_spaces;
 use function WordPress\AI\get_min_content_length;
+use function WordPress\AI\kses_post_keep_rgb_colors;
 
 /**
  * Content resizing WordPress Ability.
@@ -145,7 +146,7 @@ class Content_Resizing extends Abstract_Ability {
 		}
 
 		// Return the resized content in the format the Ability expects.
-		return wp_kses_post( $result );
+		return kses_post_keep_rgb_colors( $result );
 	}
 
 	/**

@@ -13,7 +13,7 @@ use WordPress\AI\Experiments\Markdown_Feeds\Markdown_Comment_Renderer;
 /**
  * Markdown_Comment_Renderer test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Markdown_Comment_RendererTest extends WP_UnitTestCase {
 

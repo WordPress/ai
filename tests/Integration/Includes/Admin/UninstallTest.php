@@ -15,6 +15,7 @@ use WordPress\AI\Experiments\C2pa_Monitor\C2pa_Monitor;
 use WordPress\AI\Experiments\C2pa_Monitor\Sidecar_Writer;
 use WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation;
 use WordPress\AI\Experiments\Key_Encryption\Secrets_Bridge;
+use WordPress\AI\Experiments\Text_To_Speech\Job_Manager;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
 use WordPress\AI\Tests\Integration\Includes\Experiments\Key_Encryption\Legacy_Secrets_Helpers;
 
@@ -90,6 +91,13 @@ class UninstallTest extends WP_UnitTestCase {
 	 * @var int
 	 */
 	private int $user_id;
+
+	/**
+	 * Post seeded with Text to Speech post meta.
+	 *
+	 * @var int
+	 */
+	private int $post_id;
 
 	/**
 	 * Attachment seeded with C2PA Monitor post meta.
@@ -190,6 +198,12 @@ class UninstallTest extends WP_UnitTestCase {
 		$this->attachment_id = self::factory()->post->create( array( 'post_type' => 'attachment' ) );
 		update_post_meta( $this->attachment_id, C2pa_Monitor::POSTMETA_KEY, (string) wp_json_encode( array( 'c2pa' => array( 'present' => true ) ) ) );
 		update_post_meta( $this->attachment_id, C2pa_Monitor::SORT_META_KEY, '1' );
+
+		// Text to Speech: the job state and audio link stored on a post.
+		$this->post_id = self::factory()->post->create();
+		foreach ( Job_Manager::META_KEYS as $meta_key ) {
+			update_post_meta( $this->post_id, $meta_key, '1' );
+		}
 
 		// Comment Moderation: the analysis results stored on a comment.
 		$this->comment_id = self::factory()->comment->create();
@@ -427,6 +441,10 @@ class UninstallTest extends WP_UnitTestCase {
 		$this->assertSame( '', get_post_meta( $this->attachment_id, C2pa_Monitor::POSTMETA_KEY, true ), 'C2PA scan record post meta should be deleted.' );
 		$this->assertSame( '', get_post_meta( $this->attachment_id, C2pa_Monitor::SORT_META_KEY, true ), 'C2PA sort helper post meta should be deleted.' );
 
+		foreach ( Job_Manager::META_KEYS as $meta_key ) {
+			$this->assertFalse( metadata_exists( 'post', $this->post_id, $meta_key ), "Text to Speech meta {$meta_key} should be deleted." );
+		}
+
 		foreach ( self::COMMENT_MODERATION_META as $meta_key ) {
 			$this->assertFalse( metadata_exists( 'comment', $this->comment_id, $meta_key ), "Comment Moderation meta {$meta_key} should be deleted." );
 		}
@@ -438,7 +456,7 @@ class UninstallTest extends WP_UnitTestCase {
 	 * Tests that the sidecar directory survives when it holds files the plugin
 	 * did not write, while the plugin's own sidecars are still removed.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_uninstall_preserves_foreign_files_in_sidecar_directory(): void {
 		$this->seed_data();
@@ -457,7 +475,7 @@ class UninstallTest extends WP_UnitTestCase {
 	/**
 	 * Tests that uninstall drops the embedding sync queue table and clears its cron event.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_uninstall_removes_embedding_sync_data(): void {
 		$queue_schema = new Sync_Queue_Schema();
@@ -517,6 +535,9 @@ class UninstallTest extends WP_UnitTestCase {
 		$this->assertNotFalse( wp_next_scheduled( self::CLEANUP_HOOK ), 'Scheduled cleanup should be preserved when filtered out.' );
 		$this->assertSame( 'signature', get_user_meta( $this->user_id, 'wpai_connector_approval_notice_dismissed', true ), 'User meta should be preserved when filtered out.' );
 		$this->assertNotSame( '', get_post_meta( $this->attachment_id, C2pa_Monitor::POSTMETA_KEY, true ), 'C2PA post meta should be preserved when filtered out.' );
+		foreach ( Job_Manager::META_KEYS as $meta_key ) {
+			$this->assertSame( '1', get_post_meta( $this->post_id, $meta_key, true ), "Text to Speech meta {$meta_key} should be preserved when filtered out." );
+		}
 		$this->assertSame( '1', get_comment_meta( $this->comment_id, Comment_Moderation::META_TOXICITY_SCORE, true ), 'Comment Moderation meta should be preserved when filtered out.' );
 		$this->assertFileExists( $this->sidecar_path( $this->attachment_id . '.jpeg.c2pa' ), 'C2PA sidecars should be preserved when filtered out.' );
 	}
@@ -639,7 +660,7 @@ class UninstallTest extends WP_UnitTestCase {
 	/**
 	 * Tests that Secrets API records in the ai namespace are deleted during uninstall.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_uninstall_deletes_secrets_api_secrets(): void {
 		if ( ! function_exists( 'wp_set_secret' ) ) {
@@ -657,7 +678,7 @@ class UninstallTest extends WP_UnitTestCase {
 	/**
 	 * Tests that encrypted connector keys are restored to plaintext before the secrets are deleted.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_uninstall_restores_encrypted_keys(): void {
 		$this->seed_encrypted_key( 'sk-uninstall' );
@@ -673,7 +694,7 @@ class UninstallTest extends WP_UnitTestCase {
 	/**
 	 * Tests that keys encrypted before 1.5.0 are restored to plaintext too.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_uninstall_restores_legacy_encrypted_keys(): void {
 		$this->register_test_connector();
@@ -689,7 +710,7 @@ class UninstallTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a secret that cannot be decrypted does not stop the cleanup.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_uninstall_continues_when_a_key_cannot_be_decrypted(): void {
 		$this->seed_encrypted_key( 'sk-uninstall' );
@@ -717,7 +738,7 @@ class UninstallTest extends WP_UnitTestCase {
 	/**
 	 * Tests that encrypted connector keys are restored even when a developer opts out via the filter.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_uninstall_restores_encrypted_keys_when_filtered_out(): void {
 		$this->seed_encrypted_key( 'sk-uninstall' );
@@ -736,7 +757,7 @@ class UninstallTest extends WP_UnitTestCase {
 	 *
 	 * @group ms-required
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_uninstall_restores_encrypted_keys_on_all_sites_on_multisite(): void {
 		if ( ! is_multisite() ) {

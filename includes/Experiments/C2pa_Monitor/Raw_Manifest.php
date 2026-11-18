@@ -16,17 +16,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Immutable descriptor for an extracted C2PA manifest store.
  *
- * Carries the raw bytes alongside size + content hash. PR 1 does not decode
- * JUMBF or CBOR; downstream consumers receive `bytes` verbatim and may parse
- * them out of band.
+ * Carries the raw bytes alongside size + content hash. The bytes are kept
+ * verbatim; Manifest_Decoder parses them into the record's `c2pa.decoded`.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 final class Raw_Manifest {
 	/**
 	 * Image container format (jpeg, png, webp).
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var string
 	 */
@@ -35,7 +34,7 @@ final class Raw_Manifest {
 	/**
 	 * Container label, e.g. 'APP11/JUMBF', 'PNG/caBX', 'WebP/C2PA'.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var string
 	 */
@@ -44,7 +43,7 @@ final class Raw_Manifest {
 	/**
 	 * SHA-256 of the raw manifest bytes (lowercase hex).
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var string
 	 */
@@ -53,7 +52,7 @@ final class Raw_Manifest {
 	/**
 	 * Length of the raw manifest bytes in octets.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var int
 	 */
@@ -62,7 +61,7 @@ final class Raw_Manifest {
 	/**
 	 * Raw manifest store bytes.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var string
 	 */

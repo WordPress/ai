@@ -11,7 +11,7 @@
  * it returns abilities to the defaults the adapter serves on its own.
  *
  * @package WordPress\AI\Experiments\MCP_Adapter
- * @since x.x.x
+ * @since 1.5.0
  */
 
 declare( strict_types=1 );
@@ -29,7 +29,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * MCP Adapter Experiment Class.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class MCP_Adapter extends Abstract_Feature {
 	/**
@@ -75,7 +75,7 @@ class MCP_Adapter extends Abstract_Feature {
 	/**
 	 * Registers the settings REST routes.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function register_rest_routes(): void {
 		( new Settings_Controller() )->register_routes();
@@ -84,7 +84,7 @@ class MCP_Adapter extends Abstract_Feature {
 	/**
 	 * Enqueues the MCP Access screen assets.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $hook_suffix The current admin page hook suffix.
 	 */

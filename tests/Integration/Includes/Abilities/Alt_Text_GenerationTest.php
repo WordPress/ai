@@ -1544,4 +1544,42 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 			'The HTTP API should not follow redirects, since each hop is validated and pinned here instead.'
 		);
 	}
+
+	/**
+	 * Test that an uploads URL is read from disk only for an attachment the user can edit.
+	 *
+	 * A disk read skips the web server's access rules, so a URL must not grant more
+	 * than passing the same attachment by ID would.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_image_url_reads_disk_only_for_editable_attachments(): void {
+		$png_path = __DIR__ . '/../../../data/sample.png';
+		$editor   = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$author   = self::factory()->user->create( array( 'role' => 'author' ) );
+
+		wp_set_current_user( $editor );
+		$editor_attachment = self::factory()->attachment->create_upload_object( $png_path, 0 );
+
+		wp_set_current_user( $author );
+		$author_attachment = self::factory()->attachment->create_upload_object( $png_path, 0 );
+
+		$method = new \ReflectionMethod( $this->ability, 'get_image_reference' );
+		$method->setAccessible( true );
+
+		// Any URL not read from disk falls back to HTTP, which fails here.
+		$block_http = static function () {
+			return new WP_Error( 'http_request_failed', 'Blocked in tests.' );
+		};
+		add_filter( 'pre_http_request', $block_http );
+
+		$others = $method->invoke( $this->ability, array( 'image_url' => wp_get_attachment_url( $editor_attachment ) ) );
+		$own    = $method->invoke( $this->ability, array( 'image_url' => wp_get_attachment_url( $author_attachment ) ) );
+
+		remove_filter( 'pre_http_request', $block_http );
+
+		$this->assertWPError( $others, 'Another user\'s attachment the author cannot edit must not be read from disk.' );
+		$this->assertIsArray( $own, 'The author\'s own attachment should still be read from disk.' );
+		$this->assertStringStartsWith( 'data:image/png;base64,', $own['reference'], 'The own attachment should be sent as a data URI.' );
+	}
 }

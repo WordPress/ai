@@ -13,7 +13,7 @@ use WordPress\AI\Embeddings\Sync\Sync_Queue;
 /**
  * Sync_Queue test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  *
  * @covers \WordPress\AI\Embeddings\Sync\Sync_Queue
  * @covers \WordPress\AI\Embeddings\Sync\Sync_Queue_Item
@@ -32,7 +32,7 @@ class Sync_QueueTest extends WP_UnitTestCase {
 	/**
 	 * Creates the tables once for the class.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public static function wpSetUpBeforeClass(): void {
 		self::create_sync_tables();
@@ -41,7 +41,7 @@ class Sync_QueueTest extends WP_UnitTestCase {
 	/**
 	 * Drops the tables after the class.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public static function wpTearDownAfterClass(): void {
 		self::drop_sync_tables();
@@ -50,7 +50,7 @@ class Sync_QueueTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function setUp(): void {
 		parent::setUp();
@@ -61,7 +61,7 @@ class Sync_QueueTest extends WP_UnitTestCase {
 	/**
 	 * Tests that repeated enqueues of one object collapse into one row with a rising version.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_repeated_enqueues_collapse_into_one_row(): void {
 		$this->queue->enqueue( 'post', 5 );
@@ -79,7 +79,7 @@ class Sync_QueueTest extends WP_UnitTestCase {
 	/**
 	 * Tests that only due pending rows are claimed, oldest first.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_claim_due_returns_due_pending_rows_oldest_first(): void {
 		$now = time();
@@ -97,7 +97,7 @@ class Sync_QueueTest extends WP_UnitTestCase {
 	/**
 	 * Tests that completing with a stale version keeps the row: a save that happened mid-run wins.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_complete_with_a_stale_version_keeps_the_row(): void {
 		$this->queue->enqueue( 'post', 5 );
@@ -112,7 +112,7 @@ class Sync_QueueTest extends WP_UnitTestCase {
 	/**
 	 * Tests that completing with the current version deletes the row.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_complete_deletes_the_row(): void {
 		$this->queue->enqueue( 'post', 5 );
@@ -124,7 +124,7 @@ class Sync_QueueTest extends WP_UnitTestCase {
 	/**
 	 * Tests that deferring charges an attempt and hides the row until it is due.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_defer_charges_an_attempt_and_delays(): void {
 		$now = time();
@@ -142,7 +142,7 @@ class Sync_QueueTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a failure update is version guarded too, so a fresh edit is never pushed back.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_defer_with_a_stale_version_is_ignored(): void {
 		$now = time();
@@ -158,7 +158,7 @@ class Sync_QueueTest extends WP_UnitTestCase {
 	/**
 	 * Tests that postponing does not charge an attempt.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_postpone_does_not_charge_an_attempt(): void {
 		$now = time();
@@ -172,7 +172,7 @@ class Sync_QueueTest extends WP_UnitTestCase {
 	/**
 	 * Tests that only pending rows due within the window are released.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_release_until_makes_rows_due_within_the_window(): void {
 		$now = time();
@@ -192,7 +192,7 @@ class Sync_QueueTest extends WP_UnitTestCase {
 	/**
 	 * Tests the failed lifecycle: fail, count, retry, and a new edit reviving a failed row.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_failed_rows_are_counted_skipped_and_retryable(): void {
 		$this->queue->enqueue( 'post', 5 );
@@ -232,7 +232,7 @@ class Sync_QueueTest extends WP_UnitTestCase {
 	/**
 	 * Tests removing an object's row regardless of version.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_remove_object(): void {
 		$this->queue->enqueue( 'post', 5 );

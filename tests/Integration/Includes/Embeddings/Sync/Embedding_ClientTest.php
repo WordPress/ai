@@ -22,7 +22,7 @@ use WordPress\AiClient\Providers\Http\Exception\ServerException;
 /**
  * Embedding_Client test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  *
  * @covers \WordPress\AI\Embeddings\Sync\Embedding_Client
  * @covers \WordPress\AI\Embeddings\Sync\Embedding_Client_Exception
@@ -39,7 +39,7 @@ class Embedding_ClientTest extends WP_UnitTestCase {
 	/**
 	 * Tests the classification table from the spec (§9).
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @dataProvider data_classification
 	 *
@@ -53,7 +53,7 @@ class Embedding_ClientTest extends WP_UnitTestCase {
 	/**
 	 * Data provider for classification.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, array{0: \Throwable, 1: string}> Cases.
 	 */
@@ -80,7 +80,7 @@ class Embedding_ClientTest extends WP_UnitTestCase {
 	 *
 	 * The SDK resolves the provider before it sends anything, so this path never reaches the network.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_embed_with_unregistered_provider_throws_provider_error(): void {
 		$this->block_http_requests();
@@ -99,7 +99,7 @@ class Embedding_ClientTest extends WP_UnitTestCase {
 	/**
 	 * Tests that embedding no inputs returns nothing without any request.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_embed_with_no_inputs_returns_empty_without_a_request(): void {
 		$this->block_http_requests();
@@ -111,7 +111,7 @@ class Embedding_ClientTest extends WP_UnitTestCase {
 	/**
 	 * Starts counting and blocking outbound HTTP requests for the rest of the test.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	private function block_http_requests(): void {
 		$this->http_requests = 0;
@@ -122,7 +122,7 @@ class Embedding_ClientTest extends WP_UnitTestCase {
 	/**
 	 * Records an attempted HTTP request and short-circuits it.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return \WP_Error The error returned instead of performing the request.
 	 */
@@ -135,7 +135,7 @@ class Embedding_ClientTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the raw message is the SDK's original, unescaped text, or the decoded message without one.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_raw_message_prefers_the_original(): void {
 		$original  = new RuntimeException( 'Model "x" isn\'t <available> & failed' );

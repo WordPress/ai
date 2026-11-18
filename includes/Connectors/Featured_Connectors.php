@@ -4,7 +4,7 @@
  *
  * @package WordPress\AI\Connectors
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 
 declare( strict_types=1 );
@@ -28,14 +28,14 @@ defined( 'ABSPATH' ) || exit;
  *
  * @see docs/FEATURED_CONNECTORS.md
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 final class Featured_Connectors {
 
 	/**
 	 * Registers the hooks.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function init(): void {
 		add_action( 'wp_connectors_init', array( $this, 'register_connectors' ) );
@@ -47,7 +47,7 @@ final class Featured_Connectors {
 	/**
 	 * Sorts the connectors on the Connectors screen by name.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string, mixed> $data Script module data.
 	 * @return array<string, mixed> Script module data with connectors sorted by name.
@@ -81,7 +81,7 @@ final class Featured_Connectors {
 	/**
 	 * Registers a placeholder connector for each featured connector.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WP_Connector_Registry $registry Connector registry instance.
 	 */
@@ -103,7 +103,7 @@ final class Featured_Connectors {
 	/**
 	 * Returns the featured connectors, keyed by AI Client provider ID.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, array{name: string, description: string, plugin_file: string, credentials_url?: string, logo_url?: string}> The featured connectors.
 	 */
@@ -134,7 +134,7 @@ final class Featured_Connectors {
 		 * Client. Entries with an invalid ID, name or plugin file are skipped
 		 * and trigger a _doing_it_wrong() notice.
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param array<string, array<string, string>> $connectors {
 		 *     Featured connectors, keyed by AI Client provider ID.
@@ -225,19 +225,19 @@ final class Featured_Connectors {
 	/**
 	 * Triggers a _doing_it_wrong() notice for invalid output.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $message Notice message.
 	 */
 	private static function doing_it_wrong( string $message ): void {
-		_doing_it_wrong( self::class . '::get_featured_connectors', esc_html( $message ), 'x.x.x' );
+		_doing_it_wrong( self::class . '::get_featured_connectors', esc_html( $message ), '1.5.0' );
 	}
 
 	/**
 	 * Builds the connector registry arguments for a featured connector.
 	 *
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string                                                                                              $connector_id Connector ID.
 	 * @param array{name: string, description: string, plugin_file: string, credentials_url?: string, logo_url?: string} $connector    Featured connector data.
@@ -280,7 +280,7 @@ final class Featured_Connectors {
 	/**
 	 * Returns the API key setting, constant and environment variable names for an AI provider.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $connector_id Connector ID.
 	 * @return array{setting_name: string, constant_name: string, env_var_name: string} The names.

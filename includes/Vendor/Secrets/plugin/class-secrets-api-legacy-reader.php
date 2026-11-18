@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Read-only access to the earlier prototype's on-disk format.
  *
- * Never writes, never deletes -- this class exists purely so
+ * Never writes, never deletes – this class exists purely so
  * Secrets_API_Migrator can read a value out of the old format to write it into the
  * new one. All legacy crypto is isolated here specifically so it can be deleted in
  * one commit when the compatibility window closes.
@@ -22,11 +22,11 @@ if ( ! defined( 'ABSPATH' ) ) {
  * - Secret option: '_secret_{key}'.
  * - Master key option: '_secrets_master_key'.
  * - Cipher: sodium_crypto_secretbox (XSalsa20-Poly1305).
- * - Record: base64( nonce . ciphertext ) -- a single string, not an array. No AAD.
+ * - Record: base64( nonce . ciphertext ) – a single string, not an array. No AAD.
  * - Site key: sodium_crypto_generichash( $material, '', 32 ), where $material is
  *   the literal WP_SECRETS_KEY string if defined, or LOGGED_IN_KEY . LOGGED_IN_SALT.
  *
- * Critically, legacy always hashes WP_SECRETS_KEY's literal string form -- there is
+ * Critically, legacy always hashes WP_SECRETS_KEY's literal string form – there is
  * no "raw base64-32 bytes" path here at all, unlike the new format's key provider.
  * A site with WP_SECRETS_KEY defined is therefore not automatically compatible
  * between the two formats even when the constant happens to be valid base64-32; the
@@ -36,13 +36,13 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Because of that asymmetry, this reader does not assume the currently-defined
  * constants describe how existing records were sealed. It tries every site key the
  * legacy system could have used and keeps whichever one actually opens the master
- * key record -- see unwrap_master_key() for why that is safe and why it matters.
+ * key record – see unwrap_master_key() for why that is safe and why it matters.
  *
  * Deliberately does not reject the wp-config-sample.php placeholder the way
  * WP_Secrets_Config_Key_Provider does: that check is a hardening this project added
  * to the new format, not something the legacy system ever did. A site that
  * legitimately encrypted a value under a placeholder-derived key on the old system
- * must still be able to read it back here -- refusing it would break exactly the
+ * must still be able to read it back here – refusing it would break exactly the
  * migration this class exists to support, not improve security for a record that
  * already exists.
  */
@@ -56,7 +56,9 @@ final class Secrets_API_Legacy_Reader {
 	 * Lists every legacy secret's bare key name. Still read-only: a listing, not a
 	 * value.
 	 *
-	 * @return array|WP_Error List of bare key names on success. WP_Error on failure.
+	 * @global wpdb $wpdb WordPress database abstraction object.
+	 *
+	 * @return string[]|WP_Error List of bare key names on success. WP_Error on failure.
 	 */
 	public function list_keys() {
 		global $wpdb;
@@ -77,6 +79,10 @@ final class Secrets_API_Legacy_Reader {
 		$keys = array();
 
 		foreach ( $option_names as $option_name ) {
+			if ( ! is_string( $option_name ) ) {
+				continue;
+			}
+
 			$keys[] = substr( $option_name, strlen( self::SECRET_OPTION_PREFIX ) );
 		}
 
@@ -87,12 +93,12 @@ final class Secrets_API_Legacy_Reader {
 	 * Reads and decrypts a legacy secret.
 	 *
 	 * @param string $key The legacy secret's bare key name (e.g. 'api_key' for the
-	 *                     option '_secret_api_key') -- legacy names are not
-	 *                     namespaced the way new-format names are.
+	 *                    option '_secret_api_key') – legacy names are not
+	 *                    namespaced the way new-format names are.
 	 *
 	 * @return string|WP_Error Plaintext on success. WP_Error on failure.
 	 */
-	public function get( $key ) {
+	public function get( string $key ) {
 		$wrapped_master = get_option( self::MASTER_KEY_OPTION );
 
 		if ( ! is_string( $wrapped_master ) || '' === $wrapped_master ) {
@@ -152,7 +158,7 @@ final class Secrets_API_Legacy_Reader {
 	 * @return string|WP_Error Raw 32-byte master key, or WP_Error if no candidate
 	 *                          opened it.
 	 */
-	private function unwrap_master_key( $wrapped_master ) {
+	private function unwrap_master_key( string $wrapped_master ) {
 		$candidates = $this->candidate_site_keys();
 
 		if ( is_wp_error( $candidates ) ) {
@@ -171,7 +177,7 @@ final class Secrets_API_Legacy_Reader {
 
 		return new WP_Error(
 			'legacy_master_key_unwrap_failed',
-			__( 'The legacy master key could not be unwrapped. Neither WP_SECRETS_KEY nor the LOGGED_IN_KEY/LOGGED_IN_SALT fallback produced the key it was sealed under -- check that this site still has the same wp-config.php values it had when the legacy secrets were written.', 'secrets-api' )
+			__( 'The legacy master key could not be unwrapped. Neither WP_SECRETS_KEY nor the LOGGED_IN_KEY/LOGGED_IN_SALT fallback produced the key it was sealed under. Check that this site still has the same wp-config.php values it had when the legacy secrets were written.', 'secrets-api' )
 		);
 	}
 
@@ -179,11 +185,11 @@ final class Secrets_API_Legacy_Reader {
 	 * Every site key the legacy system could have wrapped the master key under, in
 	 * the order they are worth trying.
 	 *
-	 * Legacy always hashed the *literal* WP_SECRETS_KEY string -- there is no
+	 * Legacy always hashed the *literal* WP_SECRETS_KEY string – there is no
 	 * raw-base64-bytes candidate here, because the legacy system never produced
 	 * one. See this class's docblock.
 	 *
-	 * @return array|WP_Error List of raw 32-byte candidate keys.
+	 * @return string[]|WP_Error List of raw 32-byte candidate keys.
 	 */
 	private function candidate_site_keys() {
 		$candidates = array();
@@ -235,7 +241,7 @@ final class Secrets_API_Legacy_Reader {
 	 *
 	 * @return string|WP_Error
 	 */
-	private function open( $encoded, $key ) {
+	private function open( string $encoded, string $key ) {
 		$raw = base64_decode( $encoded, true ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode -- decoding a legacy encrypted record, not obfuscating code.
 
 		if ( false === $raw || strlen( $raw ) <= SODIUM_CRYPTO_SECRETBOX_NONCEBYTES ) {

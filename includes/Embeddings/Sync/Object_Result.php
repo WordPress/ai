@@ -14,42 +14,42 @@ defined( 'ABSPATH' ) || exit;
 /**
  * What happened to one object across every target that covers it.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 final class Object_Result {
 
 	/**
 	 * At least one target was embedded and none failed or was deferred.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const DONE = 'done';
 
 	/**
 	 * Nothing to do: every target's hash matched, or no target covers the object.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const SKIPPED = 'skipped';
 
 	/**
 	 * The object should have no vectors, and they were deleted.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const REMOVED = 'removed';
 
 	/**
 	 * A provider is paused; retry after `get_retry_at()` without charging an attempt.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const DEFERRED = 'deferred';
 
 	/**
 	 * A target failed; see `get_error_class()`.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const FAILED = 'failed';
 
@@ -84,7 +84,7 @@ final class Object_Result {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string      $status      Status.
 	 * @param string|null $error_class Failure class.
@@ -101,7 +101,7 @@ final class Object_Result {
 	/**
 	 * Creates a DONE result.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return self The result.
 	 */
@@ -112,7 +112,7 @@ final class Object_Result {
 	/**
 	 * Creates a SKIPPED result.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return self The result.
 	 */
@@ -123,7 +123,7 @@ final class Object_Result {
 	/**
 	 * Creates a REMOVED result.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return self The result.
 	 */
@@ -134,7 +134,7 @@ final class Object_Result {
 	/**
 	 * Creates a DEFERRED result.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $retry_at Unix time to retry.
 	 * @return self The result.
@@ -146,7 +146,7 @@ final class Object_Result {
 	/**
 	 * Creates a FAILED result.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $error_class An Embedding_Client_Exception class constant.
 	 * @param string $message     Failure message.
@@ -159,7 +159,7 @@ final class Object_Result {
 	/**
 	 * Returns the status.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return string One of the class constants.
 	 */
@@ -170,7 +170,7 @@ final class Object_Result {
 	/**
 	 * Returns the failure class.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return string|null The class, or null unless FAILED.
 	 */
@@ -181,7 +181,7 @@ final class Object_Result {
 	/**
 	 * Returns the failure message.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return string The message, or an empty string.
 	 */
@@ -192,7 +192,7 @@ final class Object_Result {
 	/**
 	 * Returns the retry time.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return int|null Unix time, or null unless DEFERRED.
 	 */

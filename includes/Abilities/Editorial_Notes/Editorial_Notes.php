@@ -14,6 +14,7 @@ use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Experiments\Editorial_Notes\Editorial_Notes as Editorial_Notes_Experiment;
 
 use function WordPress\AI\normalize_content;
+use function WordPress\AI\sanitize_plain_text;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -339,7 +340,7 @@ class Editorial_Notes extends Abstract_Ability {
 			}
 
 			$review_type = sanitize_text_field( $item['review_type'] );
-			$text        = sanitize_text_field( $item['text'] );
+			$text        = sanitize_plain_text( $item['text'] );
 			$priority    = absint( $item['priority'] ?? 5 );
 
 			// Skip if we already have a suggestion for this review type in existing Notes.
@@ -409,7 +410,7 @@ class Editorial_Notes extends Abstract_Ability {
 		$prompt_parts[] = '<review-types>' . implode( ', ', $review_types ) . '</review-types>';
 
 		if ( ! empty( $existing_notes ) ) {
-			$prompt_parts[] = '<existing-notes>' . implode( "\n\n", array_map( 'sanitize_text_field', $existing_notes ) ) . '</existing-notes>';
+			$prompt_parts[] = '<existing-notes>' . implode( "\n\n", array_map( static fn( string $note ): string => sanitize_plain_text( $note ), $existing_notes ) ) . '</existing-notes>';
 		}
 
 		return implode( "\n", $prompt_parts );

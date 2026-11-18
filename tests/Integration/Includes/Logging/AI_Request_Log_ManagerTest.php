@@ -281,7 +281,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Inserts a log entry with a timestamp the given number of days in the past.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $days_ago How many days old the entry should be.
 	 */
@@ -304,7 +304,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that delete_logs_older_than only deletes entries older than the threshold.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_delete_logs_older_than_deletes_only_older_entries(): void {
 		$this->insert_log_days_ago( 400 );
@@ -329,7 +329,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that delete_logs_older_than returns 0 when no entries are old enough.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_delete_logs_older_than_returns_zero_when_nothing_is_old_enough(): void {
 		$this->insert_log_days_ago( 10 );
@@ -341,7 +341,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that delete_logs_older_than ignores the retention filter.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_delete_logs_older_than_ignores_retention_filter(): void {
 		add_filter(
@@ -361,7 +361,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that delete_logs_older_than invalidates caches when entries are deleted.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_delete_logs_older_than_invalidates_caches(): void {
 		$this->insert_log_days_ago( 60 );
@@ -378,7 +378,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that delete_logs_older_than leaves caches alone when nothing is deleted.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_delete_logs_older_than_keeps_caches_when_nothing_deleted(): void {
 		$this->insert_log_days_ago( 10 );
@@ -397,7 +397,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	 * so it avoids writing anything (such as transients) that would leak into
 	 * later tests. setUp() recreates the table state for later tests.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @dataProvider data_delete_all_days
 	 *
@@ -414,7 +414,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Data provider for test_delete_logs_older_than_non_positive_deletes_all().
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, array{0: int}>
 	 */

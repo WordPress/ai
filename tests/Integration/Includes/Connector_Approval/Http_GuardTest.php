@@ -341,7 +341,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Test that registering the guard hooks both the HTTP and REST filters.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_register_adds_filters() {
 		$guard = $this->guard();
@@ -357,7 +357,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Test that REST errors are left alone when nothing was blocked.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_explain_blocked_rest_error_ignores_errors_without_a_block() {
 		$error = new WP_Error( 'unsupported_model', 'Original message.' );
@@ -368,7 +368,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Test that successful REST responses are left alone after a block.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_explain_blocked_rest_error_ignores_successful_responses() {
 		$guard = $this->guard();
@@ -382,7 +382,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Test that an administrator is told to approve the blocked connector.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_explain_blocked_rest_error_tells_admins_to_approve() {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
@@ -410,7 +410,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Test that a user who can't approve connectors is told to ask an administrator.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_explain_blocked_rest_error_tells_others_to_ask_an_admin() {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
@@ -429,7 +429,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Test that a block only explains the first REST error that follows it.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_explain_blocked_rest_error_only_applies_once() {
 		$guard = $this->guard();
@@ -444,7 +444,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Sends a request carrying the test credential through the guard so it is blocked.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WordPress\AI\Connector_Approval\Http_Guard $guard Guard to block with.
 	 */

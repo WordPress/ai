@@ -77,6 +77,7 @@ class Content_Translation extends Abstract_Feature {
 			array(
 				'label'         => $this->get_label(),
 				'description'   => $this->get_description(),
+				'category'      => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'ability_class' => Content_Translation_Ability::class,
 			)
 		);

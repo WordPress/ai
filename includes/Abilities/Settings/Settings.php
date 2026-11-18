@@ -34,10 +34,14 @@ defined( 'ABSPATH' ) || exit;
  * so the two implementations stay in sync. Differences from the core class are marked with
  * `// Plugin:` comments. Additionally, all user-facing strings use the 'ai' text domain.
  *
+ * Plugin: last synced from WordPress core r64346. Core r64500 is not ported: it replaces
+ * the permission callback with `required_capabilities`, which WordPress before 7.2 does
+ * not support.
+ *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
  * @since 1.1.0
- * @since x.x.x Synced with the WordPress core class `WP_Abilities_Settings`.
+ * @since 1.5.0 Synced with the WordPress core class `WP_Abilities_Settings`.
  */
 final class Settings {
 
@@ -63,7 +67,8 @@ final class Settings {
 	 * Plugin: this method has no equivalent in the core class. In core, register() is
 	 * invoked directly from wp_register_core_abilities() (already on the
 	 * `wp_abilities_api_init` hook). The plugin instead hooks register() slightly later
-	 * (priority 11) so it can override any core-provided copy.
+	 * (priority 11) so it runs after core and can stand down when core already provides
+	 * the ability.
 	 *
 	 * @since 1.1.0
 	 */
@@ -80,17 +85,19 @@ final class Settings {
 	 * @since 1.1.0
 	 * @since 1.2.0 Ensures core's initial settings are registered before taking the snapshot.
 	 * @since 1.4.0 Preserves $new_allowed_options to prevent polluting options.php form handling.
-	 * @since x.x.x Registers nothing when no setting is exposed to abilities.
+	 * @since 1.5.0 Registers nothing when no setting is exposed to abilities.
+	 * @since x.x.x Registers nothing when core already provides the ability.
 	 */
 	public function register(): void {
+		// Plugin: stand down when core (WordPress 7.2+) already provides the ability, so
+		// core's version and its security fixes stay in effect.
+		if ( wp_has_ability( 'core/settings-get' ) ) {
+			return;
+		}
+
 		// Plugin: core does this in _wp_register_initial_settings_for_abilities(), hooked to
 		// `wp_abilities_api_init` at priority 1.
 		$this->register_initial_settings_for_abilities();
-
-		// Plugin: unregister any core-provided copy first so the plugin's version wins.
-		if ( wp_has_ability( 'core/settings-get' ) ) {
-			wp_unregister_ability( 'core/settings-get' );
-		}
 
 		$this->exposed_settings = $this->get_exposed_settings();
 		if ( empty( $this->exposed_settings ) ) {
@@ -112,7 +119,7 @@ final class Settings {
 	 *
 	 * Plugin: mirrors the core function `_wp_register_initial_settings_for_abilities()`.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	private function register_initial_settings_for_abilities(): void {
 		if ( did_action( 'rest_api_init' ) && ! doing_action( 'rest_api_init' ) ) {
@@ -152,6 +159,7 @@ final class Settings {
 				'execute_callback'    => function ( $input = array() ): array {
 					return $this->execute_settings_get( $input );
 				},
+				// Plugin: core uses `required_capabilities`, which WordPress before 7.2 does not support.
 				'permission_callback' => function (): bool {
 					return $this->check_permission();
 				},
@@ -173,7 +181,7 @@ final class Settings {
 	 * Executes the `core/settings-get` ability.
 	 *
 	 * @since 1.1.0
-	 * @since x.x.x Leaves out a setting whose value does not match its schema.
+	 * @since 1.5.0 Leaves out a setting whose value does not match its schema.
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return array<string, mixed> Map of exposed setting name to current value.
@@ -283,7 +291,7 @@ final class Settings {
 	 * No setting is marked required because the `group` and `fields` inputs let the caller
 	 * request any subset, and a setting whose value does not match its schema is left out.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, mixed> The output JSON Schema.
 	 */
@@ -307,7 +315,7 @@ final class Settings {
 	 * Two settings exposed under the same name trigger a notice, and the later one is exposed.
 	 *
 	 * @since 1.1.0
-	 * @since x.x.x A setting exposed with `true` uses its `show_in_rest` name and schema.
+	 * @since 1.5.0 A setting exposed with `true` uses its `show_in_rest` name and schema.
 	 *
 	 * @return array<string, array{option: string, group: string, default: mixed, schema: array<string, mixed>}> Settings keyed by exposed name.
 	 */
@@ -339,7 +347,7 @@ final class Settings {
 						esc_html( $exposed_name ),
 						esc_html( $settings[ $exposed_name ]['option'] )
 					),
-					'x.x.x'
+					'1.5.0'
 				);
 			}
 
@@ -361,7 +369,7 @@ final class Settings {
 	 * REST API: it uses the `name` and `schema` from `show_in_rest`. An array is used
 	 * as is.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string, mixed> $args The setting registration arguments.
 	 * @return array<string, mixed> The exposure arguments, with optional `name` and `schema` keys.
@@ -381,7 +389,7 @@ final class Settings {
 	 * unless the schema allows them.
 	 *
 	 * @since 1.1.0
-	 * @since x.x.x Objects reject properties they do not declare, unless the schema allows them.
+	 * @since 1.5.0 Objects reject properties they do not declare, unless the schema allows them.
 	 *
 	 * @param array<string, mixed> $args The setting registration arguments.
 	 * @param array<string, mixed> $show The exposure arguments, see get_exposure_args().

@@ -43,12 +43,14 @@ defined( 'ABSPATH' ) || exit;
  * so the two implementations stay in sync. Differences from the core class are marked with
  * `// Plugin:` comments. Additionally, all user-facing strings use the 'ai' text domain.
  *
+ * Plugin: last synced from WordPress core r65002.
+ *
  * Plugin: init() is also public. It hooks register() into the Abilities API.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
  * @since 1.2.0
- * @since x.x.x Synced with the WordPress core class `WP_Abilities_Users`.
+ * @since 1.5.0 Synced with the WordPress core class `WP_Abilities_Users`.
  */
 final class Users {
 
@@ -85,7 +87,7 @@ final class Users {
 	 * The lists filter the results but do not order them, as in the REST users controller,
 	 * so results keep WP_User_Query's default order, by login.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @var array<string, string>
 	 */
 	private const IDENTIFIER_LISTS = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
@@ -114,7 +116,8 @@ final class Users {
 	 * Plugin: this method has no equivalent in the core class. In core, register() is
 	 * invoked directly from wp_register_core_abilities() (already on the
 	 * `wp_abilities_api_init` hook). The plugin instead hooks register() slightly later
-	 * (priority 11) so it can override any core-provided copy.
+	 * (priority 11) so it runs after core and can stand down when core already provides
+	 * the ability.
 	 *
 	 * @since 1.2.0
 	 */
@@ -141,12 +144,14 @@ final class Users {
 	 *
 	 * @since 1.2.0
 	 * @since 1.4.0 Renamed from `core/read-users`.
-	 * @since x.x.x Synced with WordPress core. The `core/read-users` alias is removed.
+	 * @since 1.5.0 Synced with WordPress core. The `core/read-users` alias is removed.
+	 * @since x.x.x Registers nothing when core already provides the ability.
 	 */
 	private function register_users_query(): void {
-		// Plugin: unregister any core-provided copy first so the plugin's version wins.
+		// Plugin: stand down when core (WordPress 7.2+) already provides the ability, so
+		// core's version and its security fixes stay in effect.
 		if ( wp_has_ability( 'core/users-query' ) ) {
-			wp_unregister_ability( 'core/users-query' );
+			return;
 		}
 
 		wp_register_ability(
@@ -361,7 +366,7 @@ final class Users {
 	 * empty string. Only the REST run controller converts input to the schema types, so
 	 * callers that bypass it, such as a direct WP_Ability::execute() call, can pass any of them.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<mixed> $input The ability input.
 	 * @param string       $key   The member name.
@@ -386,7 +391,7 @@ final class Users {
 	 * Anything else, such as a fraction, is rejected rather than coerced: a malformed ID would
 	 * otherwise resolve to another user.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param mixed $value The raw input value.
 	 * @param int   $min   The smallest acceptable value.
@@ -588,7 +593,7 @@ final class Users {
 	 * such as `registered`, `registered.site` and `registered.gmt`. Requesting a field
 	 * returns all of its sub-fields, while a sub-field path returns only that sub-field.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return string[] The field paths.
 	 */
@@ -612,7 +617,7 @@ final class Users {
 	 * `registered.gmt`, is requested, and a path such as `registered.gmt` is requested
 	 * when it or its whole field is.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string   $path   The field path, such as `registered` or `registered.gmt`.
 	 * @param string[] $fields The requested field paths.
@@ -631,7 +636,7 @@ final class Users {
 	 * number, is dropped rather than truncated or made positive, which would read it as the
 	 * ID of another user.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param mixed $value Raw value.
 	 * @return int[] Unique user IDs.
@@ -652,8 +657,10 @@ final class Users {
 	 * Accepts arrays and CSV strings, which it parses with wp_parse_list(), as schema
 	 * validation does. Schema validation accepts a CSV string for an array, and only the
 	 * REST run controller converts input to the schema types, so callers that bypass it,
-	 * such as a direct WP_Ability::execute() call, can pass one. Empty and duplicate
-	 * items need no handling here, because validation has already rejected them.
+	 * such as a direct WP_Ability::execute() call, can pass one. Empty strings name
+	 * nothing, so they are dropped, and a list that holds only empty strings comes back
+	 * empty. Duplicate items need no handling here, because validation has already
+	 * rejected them.
 	 *
 	 * @since 1.2.0
 	 *
@@ -665,7 +672,12 @@ final class Users {
 			return array();
 		}
 
-		return array_values( array_filter( wp_parse_list( $value ), 'is_string' ) );
+		return array_values(
+			array_filter(
+				wp_parse_list( $value ),
+				static fn( $item ) => is_string( $item ) && '' !== $item
+			)
+		);
 	}
 
 	/**
@@ -743,7 +755,8 @@ final class Users {
 							'minItems'    => 1,
 							'maxItems'    => self::MAX_PER_PAGE,
 							'items'       => array(
-								'type' => 'string',
+								'type'      => 'string',
+								'minLength' => 1,
 							),
 							'description' => __( 'Limit results to users with these slugs. If `pagination.per_page` is omitted, every matching user is returned on the first page.', 'ai' ),
 						),
@@ -753,7 +766,8 @@ final class Users {
 							'minItems'    => 1,
 							'maxItems'    => self::MAX_PER_PAGE,
 							'items'       => array(
-								'type' => 'string',
+								'type'      => 'string',
+								'minLength' => 1,
 							),
 							'description' => __( 'Limit results to users with these usernames. Requires permission to list users. If `pagination.per_page` is omitted, every matching user is returned on the first page.', 'ai' ),
 						),
@@ -973,7 +987,7 @@ final class Users {
 	 * The `user_registered` column holds the date in GMT, so it is parsed as UTC
 	 * whatever the PHP default timezone is, then converted to the given timezone.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WP_User      $user     The user object.
 	 * @param \DateTimeZone $timezone The timezone to format the date in.
@@ -1000,7 +1014,7 @@ final class Users {
 	/**
 	 * Builds the ability output for a page of formatted users.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<int, array<string, mixed>> $items       The formatted users on the page.
 	 * @param int                              $total       Total number of users across all pages.
@@ -1023,7 +1037,7 @@ final class Users {
 	 * A page that does not exist is reported as not found rather than as an empty list,
 	 * so callers can tell it apart from a request that matches no users.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return \WP_Error The invalid page number error.
 	 */
@@ -1042,7 +1056,7 @@ final class Users {
 	 * input path to the message under `params`, so callers can tell which filter failed
 	 * without parsing the translated message.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $param   The filter's input path, such as `where[ids]`.
 	 * @param string $message The error message.

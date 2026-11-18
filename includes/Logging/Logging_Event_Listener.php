@@ -23,7 +23,7 @@ defined( 'ABSPATH' ) || exit;
  * Known limitation: core only fires the after-events on success, so failed
  * generations from custom-transport providers are not captured here.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Logging_Event_Listener {
 
@@ -44,7 +44,7 @@ class Logging_Event_Listener {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WordPress\AI\Logging\AI_Request_Log_Manager $log_manager The log manager.
 	 */
@@ -55,7 +55,7 @@ class Logging_Event_Listener {
 	/**
 	 * Registers the generation lifecycle listeners.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function register(): void {
 		add_action( 'wp_ai_client_before_generate_result', array( $this, 'handle_before_generate' ) );
@@ -68,7 +68,7 @@ class Logging_Event_Listener {
 	/**
 	 * Starts tracking a generation.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param object $event The before-generate event.
 	 */
@@ -91,7 +91,7 @@ class Logging_Event_Listener {
 	/**
 	 * Marks the innermost generation as logged when a row is written for its provider.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string               $log_id The log identifier.
 	 * @param array<string, mixed> $data   The logged row.
@@ -109,7 +109,7 @@ class Logging_Event_Listener {
 	/**
 	 * Logs a completed generation unless another path already logged it.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param object $event The after-generate event.
 	 */
@@ -152,7 +152,7 @@ class Logging_Event_Listener {
 	/**
 	 * Finds the in-flight generation that was started for the given model.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WordPress\AiClient\Providers\Models\Contracts\ModelInterface $model The model from the after-event.
 	 * @return int|null The stack index, or null when the generation is not tracked.

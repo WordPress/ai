@@ -16,7 +16,7 @@ use WordPress\AI\Experiments\C2pa_Monitor\Sidecar_Writer;
 /**
  * Verifies the sidecar layout, hardening files, and round-trip of the bytes.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Sidecar_WriterTest extends WP_UnitTestCase {
 	/**

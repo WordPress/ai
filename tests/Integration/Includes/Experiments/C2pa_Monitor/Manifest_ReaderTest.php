@@ -20,7 +20,7 @@ require_once __DIR__ . '/Fixtures.php';
  * Verifies Manifest_Reader returns a Raw_Manifest with a stable hash and that
  * the reported byte length matches the input payload.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Manifest_ReaderTest extends WP_UnitTestCase {
 	/**

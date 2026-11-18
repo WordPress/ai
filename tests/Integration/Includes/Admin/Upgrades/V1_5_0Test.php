@@ -17,7 +17,7 @@ use WordPress\AI\Tests\Integration\Includes\Experiments\Key_Encryption\Legacy_Se
  *
  * @covers \WordPress\AI\Admin\Upgrades\V1_5_0
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class V1_5_0Test extends WP_UnitTestCase {
 
@@ -30,7 +30,7 @@ class V1_5_0Test extends WP_UnitTestCase {
 	/**
 	 * Cleans up options written by the tests.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function tearDown(): void {
 		delete_option( self::LEGACY_ROW );
@@ -44,7 +44,7 @@ class V1_5_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that run() returns true on success.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_run_returns_success(): void {
 		$this->assertTrue( ( new V1_5_0( '1.4.0' ) )->run() );
@@ -53,7 +53,7 @@ class V1_5_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that upgrade() skips when db_version is empty (new install).
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_upgrade_skips_when_db_version_is_empty(): void {
 		$this->assertTrue( ( new V1_5_0( '' ) )->run() );
@@ -62,7 +62,7 @@ class V1_5_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that run() skips upgrade when the db version is already current.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_run_skips_when_already_upgraded(): void {
 		Key_Encryption::get_bridge()->ensure_secrets_api();
@@ -77,7 +77,7 @@ class V1_5_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that upgrade() migrates legacy secrets when the global Secrets API is available.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_upgrade_migrates_legacy_secret(): void {
 		Key_Encryption::get_bridge()->ensure_secrets_api();

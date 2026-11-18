@@ -15,14 +15,14 @@ use function WordPress\AI\get_ai_connectors;
 /**
  * Featured_Connectors test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Featured_ConnectorsTest extends WP_UnitTestCase {
 
 	/**
 	 * Skips the test when the connector registry is not available.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -37,7 +37,7 @@ class Featured_ConnectorsTest extends WP_UnitTestCase {
 	/**
 	 * Removes test filters.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function tearDown(): void {
 		remove_all_filters( 'wpai_featured_connectors' );
@@ -47,7 +47,7 @@ class Featured_ConnectorsTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the default list features Mistral and Vercel AI Gateway.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_default_featured_connectors() {
 		$connectors = ( new Featured_Connectors() )->get_featured_connectors();
@@ -62,7 +62,7 @@ class Featured_ConnectorsTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the bundled logos exist.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_bundled_logos_exist() {
 		$this->assertFileExists( WPAI_PLUGIN_DIR . 'assets/images/connectors/vercel-ai-gateway.svg' );
@@ -72,7 +72,7 @@ class Featured_ConnectorsTest extends WP_UnitTestCase {
 	/**
 	 * Tests that featured connectors are registered as installable AI provider connectors.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_register_connectors_adds_placeholders() {
 		$registry = new WP_Connector_Registry();
@@ -98,7 +98,7 @@ class Featured_ConnectorsTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the placeholder reports the plugin as inactive while its provider is not registered.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_placeholder_is_inactive_without_provider() {
 		$registry = new WP_Connector_Registry();
@@ -113,7 +113,7 @@ class Featured_ConnectorsTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a connector core already registered is left as it is.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_register_connectors_skips_registered_connectors() {
 		$registry = new WP_Connector_Registry();
@@ -135,7 +135,7 @@ class Featured_ConnectorsTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the filter can remove all featured connectors.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_filter_can_remove_all_connectors() {
 		add_filter( 'wpai_featured_connectors', '__return_empty_array' );
@@ -150,7 +150,7 @@ class Featured_ConnectorsTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the filter can add a connector and that invalid entries are skipped.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_filter_can_add_connectors_and_skips_invalid_entries() {
 		$this->setExpectedIncorrectUsage( Featured_Connectors::class . '::get_featured_connectors' );
@@ -204,7 +204,7 @@ class Featured_ConnectorsTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a non-array filter result features nothing.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_non_array_filter_result_features_nothing() {
 		$this->setExpectedIncorrectUsage( Featured_Connectors::class . '::get_featured_connectors' );
@@ -217,7 +217,7 @@ class Featured_ConnectorsTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the API key names match the ones core gives its default AI providers.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_api_key_names_match_core() {
 		foreach ( array( 'anthropic', 'google', 'openai' ) as $connector_id ) {
@@ -238,7 +238,7 @@ class Featured_ConnectorsTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the Connectors screen data is sorted by connector name.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_sort_connectors_by_name() {
 		$data = array(
@@ -263,7 +263,7 @@ class Featured_ConnectorsTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the Connectors screen sorts the live connectors by name.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_connectors_screen_data_is_sorted_by_name() {
 		$data  = apply_filters( 'script_module_data_options-connectors-wp-admin', array() ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound, WordPress.NamingConventions.ValidHookName.UseUnderscores -- Core hook.
@@ -279,7 +279,7 @@ class Featured_ConnectorsTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the featured connectors are registered on the live registry.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_featured_connectors_registered_on_init() {
 		$this->assertTrue( wp_is_connector_registered( 'ai_gateway' ) );
@@ -289,7 +289,7 @@ class Featured_ConnectorsTest extends WP_UnitTestCase {
 	/**
 	 * Tests that placeholders are not counted as usable AI connectors.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_placeholders_are_not_active_ai_connectors() {
 		$active = get_ai_connectors();

@@ -42,7 +42,7 @@ export function useSlugSource(): SlugSource & { currentSlug: string } {
 			postId: editor.getCurrentPostId(),
 			title: ( editor.getEditedPostAttribute( 'title' ) as string ) ?? '',
 			content: ( editor.getEditedPostContent() as string ) ?? '',
-			currentSlug: rawSlug || generatedSlug,
+			currentSlug: safeDecodeURIComponent( rawSlug || generatedSlug ),
 		};
 	}, [] );
 }
@@ -79,12 +79,6 @@ export function applySlug( slug: string ): string {
  * same way instead of silently applying something else — or, for input that
  * normalizes to nothing, silently applying nothing at all.
  *
- * Percent-encoded slugs (how non-Latin suggestions are stored after
- * `sanitize_title()`) are excluded from the normalization preview:
- * `cleanForSlug()` does not account for octets, so previewing its output would
- * advertise a garbled slug for a suggestion the user never edited. Input that
- * cannot become a slug at all is still explained, encoded or not.
- *
  * @param slug The current value of the slug text control.
  * @return The normalized slug and, when it differs from the input, a help text.
  */
@@ -98,20 +92,11 @@ export function describeSlugApplication( slug: string ): {
 		return { cleanedSlug };
 	}
 
-	/*
-	 * Checked before the percent-encoded exclusion below, so input that cannot
-	 * be applied is always explained rather than leaving Apply disabled with no
-	 * reason given.
-	 */
 	if ( ! cleanedSlug ) {
 		return {
 			cleanedSlug,
 			help: __( 'This text cannot be used as a slug.', 'ai' ),
 		};
-	}
-
-	if ( safeDecodeURIComponent( slug ) !== slug ) {
-		return { cleanedSlug };
 	}
 
 	return {
@@ -197,7 +182,8 @@ export function useSlugGeneration( {
 					);
 				}
 
-				setSuggestions( response.slugs );
+				// Non-Latin slugs come back percent-encoded from `sanitize_title()`.
+				setSuggestions( response.slugs.map( safeDecodeURIComponent ) );
 			} catch ( error: any ) {
 				const message =
 					typeof error === 'string'

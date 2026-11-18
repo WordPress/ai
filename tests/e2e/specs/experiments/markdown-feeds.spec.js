@@ -9,6 +9,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 const {
 	disableExperiment,
 	enableExperiment,
+	visitSettingsPage,
 } = require( '../../utils/helpers' );
 
 test.describe( 'Markdown Feeds Experiment', () => {
@@ -72,5 +73,40 @@ test.describe( 'Markdown Feeds Experiment', () => {
 		// Ensure the feed returns a 404.
 		const response = await page.goto( '/feed/markdown' );
 		expect( response.status() ).toBe( 404 );
+	} );
+} );
+
+test.describe( 'Markdown Feeds conflict notice', () => {
+	const notice = /Also active and serving Markdown: Hello Dolly\./;
+
+	test.afterAll( async ( { requestUtils } ) => {
+		await requestUtils.deactivatePlugin( 'hello-dolly' );
+	} );
+
+	test( 'Does not show a notice when no other Markdown plugin is active', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		await requestUtils.deactivatePlugin( 'hello-dolly' );
+		await visitSettingsPage( admin );
+
+		const toggle = page.getByRole( 'checkbox', { name: 'Markdown Feeds' } );
+		await expect( toggle ).toBeVisible( { timeout: 10000 } );
+		await expect( page.getByText( notice ) ).toHaveCount( 0 );
+	} );
+
+	test( 'Names another active Markdown plugin', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		await requestUtils.activatePlugin( 'hello-dolly' );
+		await visitSettingsPage( admin );
+
+		const toggle = page.getByRole( 'checkbox', { name: 'Markdown Feeds' } );
+		await expect( toggle ).toBeVisible( { timeout: 10000 } );
+		await expect( page.getByText( notice ) ).toBeVisible();
+		await expect( toggle ).toHaveAccessibleDescription( notice );
 	} );
 } );

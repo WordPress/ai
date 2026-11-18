@@ -62,6 +62,7 @@ Everything is opt-in and off by default. Features are stable and supported; Expe
 * **[Comment Moderation](docs/experiments/comment-moderation.md)** (runs automatically) - Automatically moderate comments based on toxicity detection and sentiment analysis, and give each comment a value score. Includes guest comments by default.
 * **[Connector Approval](docs/experiments/connector-approval.md)** - Require explicit administrator approval before plugins or themes can use AI connectors configured on this site.
 * **[Content Classification](docs/experiments/content-classification.md)** – Suggests relevant tags and categories to organize content.
+* **[Content Gap Suggestions](docs/experiments/content-gap-suggestions.md)** - Suggests new post ideas on the dashboard from search patterns in a connected analytics plugin (Jetpack Stats only for now), creating drafts for review.
 * **[Content Resizing](docs/experiments/content-resizing.md)** - Shorten, expand, or rephrase selected block content.
 * **[Content Summarization](docs/experiments/summarization.md)** - Summarizes long-form content into digestible overviews.
 * **[Content Translation](docs/experiments/content-translation.md)** - Translates paragraph and heading blocks, and optionally the post title, into a selected language from the post editor.
@@ -70,15 +71,17 @@ Everything is opt-in and off by default. Features are stable and supported; Expe
 * **[Editorial Notes](docs/experiments/editorial-notes.md)** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
 * **[Editorial Updates](docs/experiments/editorial-updates.md)** - Apply pending editorial notes to content and save the post, without a preview.
 * **[Excerpt Generation](docs/experiments/excerpt-generation.md)** - Generates excerpt suggestions from content.
-* **[Key Encryption](docs/experiments/key-encryption.md)** - Encrypts AI provider API keys at rest using bundled libsodium encryption. Keys are transparently decrypted on read and re-encrypted on write. Disabling the experiment or deactivating the plugin restores plaintext keys.
+* **[Key Encryption](docs/experiments/key-encryption.md)** - Encrypts AI provider API keys at rest using bundled libsodium encryption. Keys are transparently decrypted on read and re-encrypted on write. Requires `WP_SECRETS_KEY` in `wp-config.php`. Disabling the experiment or deactivating the plugin restores plaintext keys.
 * **[Markdown Feeds](docs/experiments/markdown-feeds.md)** - Serves your public content as Markdown for AI agents and other machine readers.
 * **[MCP Access](docs/experiments/mcp-adapter.md)** - Controls which abilities AI agents can use over the Model Context Protocol (MCP). Installs and activates the MCP Adapter plugin when enabled.
 * **[Meta Description Generation](docs/experiments/meta-description.md)** - Generates meta description suggestions and integrates those with various SEO plugins.
 * **[Revision Change Summary](docs/experiments/revision-change-summary.md)** - Summarizes what changed between two revisions of a post in plain language, on the visual and classic revisions screens.
 * **[Slug Generation](docs/experiments/slug-generation.md)** - Suggests SEO-friendly permalink slugs from post title or content, in the permalink popover and the pre-publish panel.
 * **[Suggest Reply](docs/experiments/suggest-reply.md)** - Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to quickly generate comment reply suggestions.
+* **[Text to Speech](docs/experiments/text-to-speech.md)** - Generates an audio version of a post that visitors can listen to instead of reading.
 * **[Title Generation](docs/experiments/title-generation.md)** -  Generates title suggestions from content.
 * **[Type-ahead Text](docs/experiments/type-ahead.md)** (runs automatically) – Contextual type-ahead assistance for suggestions while typing.
+* **[WebMCP](docs/experiments/webmcp.md)** - Lets an agent browser work in the block editor through WebMCP, with every change visible on the page as it happens.
 
 ### Under the Hood
 

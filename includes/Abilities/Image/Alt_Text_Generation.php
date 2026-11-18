@@ -16,6 +16,7 @@ use WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation as Alt_Text
 
 use function WordPress\AI\get_preferred_vision_models;
 use function WordPress\AI\normalize_content;
+use function WordPress\AI\sanitize_plain_text;
 
 /**
  * Alt text generation WordPress Ability.
@@ -179,7 +180,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 		$result = $this->generate_alt_text(
 			$image_reference,
 			normalize_content( $args['context'] ),
-			sanitize_textarea_field( $args['image_meta'] )
+			sanitize_plain_text( $args['image_meta'], true )
 		);
 
 		if ( is_wp_error( $result ) ) {
@@ -196,7 +197,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 
 		// Return the alt text in the format the Ability expects.
 		return array(
-			'alt_text'      => sanitize_text_field( $result ),
+			'alt_text'      => sanitize_plain_text( $result ),
 			'is_decorative' => false,
 		);
 	}
@@ -228,13 +229,12 @@ class Alt_Text_Generation extends Abstract_Ability {
 				return $this->prepare_reference_result( $args['image_url'] );
 			}
 
-			// Try to map the URL to a local path.
-			$path = $this->maybe_map_url_to_local_path( $args['image_url'] );
+			// Read local uploads only for attachments the user could also pass by ID.
+			if ( $this->maybe_map_url_to_local_path( $args['image_url'] ) ) {
+				$attachment_id = attachment_url_to_postid( $args['image_url'] ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.attachment_url_to_postid_attachment_url_to_postid -- Only runs for uploads URLs, once per request.
 
-			if ( $path ) {
-				$data_uri = $this->file_to_data_uri( $path );
-				if ( $data_uri ) {
-					return $this->prepare_reference_result( $data_uri );
+				if ( $attachment_id && current_user_can( 'edit_post', $attachment_id ) ) {
+					return $this->get_attachment_reference( $attachment_id );
 				}
 			}
 

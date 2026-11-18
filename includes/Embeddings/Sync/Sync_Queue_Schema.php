@@ -14,7 +14,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Handles creation of the embedding sync queue table.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Sync_Queue_Schema {
 	// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
@@ -22,14 +22,14 @@ class Sync_Queue_Schema {
 	/**
 	 * Database table name (without prefix).
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const TABLE_NAME = 'wpai_embedding_queue';
 
 	/**
 	 * Option key storing the synchronized schema version.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const SCHEMA_VERSION_OPTION = 'wpai_embedding_queue_schema_version';
 
@@ -41,7 +41,7 @@ class Sync_Queue_Schema {
 	/**
 	 * Ensures the queue table exists at the current schema version.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function maybe_upgrade_table(): void {
 		if ( $this->is_version_current() && $this->table_exists() ) {
@@ -60,7 +60,7 @@ class Sync_Queue_Schema {
 	/**
 	 * Checks whether the stored schema version is the current one.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return bool True when the stored version is current.
 	 */
@@ -71,7 +71,7 @@ class Sync_Queue_Schema {
 	/**
 	 * Returns the full table name with prefix.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return string The prefixed table name.
 	 */
@@ -84,7 +84,7 @@ class Sync_Queue_Schema {
 	/**
 	 * Checks whether the queue table exists.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return bool True when the table exists.
 	 */
@@ -99,7 +99,7 @@ class Sync_Queue_Schema {
 	/**
 	 * Drops the table and forgets the schema version.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function drop_table(): void {
 		global $wpdb;
@@ -113,7 +113,7 @@ class Sync_Queue_Schema {
 	/**
 	 * Creates the queue table, or brings an existing one up to the current definition.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	private function create_table(): void {
 		global $wpdb;

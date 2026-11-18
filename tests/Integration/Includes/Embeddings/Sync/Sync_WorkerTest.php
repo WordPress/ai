@@ -26,7 +26,7 @@ use WordPress\AI\Embeddings\Sync\Term_Source;
 /**
  * Sync_Worker test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  *
  * @covers \WordPress\AI\Embeddings\Sync\Sync_Worker
  */
@@ -89,7 +89,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Creates the tables once for the class.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public static function wpSetUpBeforeClass(): void {
 		self::create_sync_tables();
@@ -98,7 +98,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Drops the tables after the class.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public static function wpTearDownAfterClass(): void {
 		self::drop_sync_tables();
@@ -107,7 +107,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function setUp(): void {
 		parent::setUp();
@@ -134,7 +134,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Builds the worker under test.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WordPress\AI\Background\Lock|null                $lock    Optional. Lock. Default a new one.
 	 * @param \WordPress\AI\Embeddings\Sync\Orphan_Sweeper|null $sweeper Optional. Sweeper. Default one over the test's sources.
@@ -161,7 +161,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Returns the sources the worker is built with.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, \WordPress\AI\Embeddings\Sync\Embedding_Source_Interface> Sources keyed by object type.
 	 */
@@ -175,7 +175,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Stores a one-chunk vector for this test's model.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int    $post_id Post ID.
 	 * @param string $subtype Optional. Post type. Default 'post'.
@@ -187,7 +187,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that with no consumers the worker does nothing and unschedules itself.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_no_consumers_means_no_work(): void {
 		$this->registry->unregister( 'test' );
@@ -202,7 +202,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a second runner bails while the lock is held.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_bails_when_the_lock_is_held(): void {
 		$held = new Lock( Sync_Worker::LOCK_NAME );
@@ -221,7 +221,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	 *
 	 * A lock holder that dies without unwinding never reschedules, so the bailing run must.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_bailing_on_a_held_lock_schedules_a_retry_after_the_ttl(): void {
 		$held = new Lock( Sync_Worker::LOCK_NAME );
@@ -243,7 +243,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	 *
 	 * If the process dies mid-run (no finally), this event is what restarts sync.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_watchdog_is_scheduled_while_the_lock_is_held(): void {
 		$this->queue->enqueue( 'post', self::factory()->post->create() );
@@ -267,7 +267,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a run leaving only later work replaces its watchdog with that work's time.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_run_with_later_work_replaces_the_watchdog(): void {
 		$later = time() + HOUR_IN_SECONDS;
@@ -281,7 +281,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that one object whose text preparation throws is charged an attempt while the rest are embedded.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_throwing_object_is_charged_and_the_rest_are_embedded(): void {
 		$bad  = self::factory()->post->create();
@@ -316,7 +316,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that an unexpected error inside a run is reported, not thrown, and the lock is released.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_unexpected_error_is_reported_and_the_lock_released(): void {
 		$this->queue->enqueue( 'post', self::factory()->post->create() );
@@ -349,7 +349,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	 * Without the backoff, a persistent error (here a broken orphan sweep query) would be retried
 	 * on every cron tick.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_failed_run_backs_off_before_the_next_run(): void {
 		global $wpdb;
@@ -386,7 +386,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Tests the happy path: queued post embedded, row removed, last run recorded.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_processes_the_queue(): void {
 		$post_id = self::factory()->post->create();
@@ -410,7 +410,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Review focus 5: an object deleted after queueing is cleaned up without an API call.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_object_deleted_after_queueing_is_removed_without_api_call(): void {
 		$this->queue->enqueue( 'post', 999999 );
@@ -430,7 +430,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Tests transient retries up to the cap, then failure.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_transient_failures_retry_then_fail(): void {
 		add_filter( 'wpai_embedding_sync_max_attempts', static fn(): int => 2 );
@@ -465,7 +465,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that an item error fails at once.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_item_error_fails_immediately(): void {
 		$this->client->failures = array( new Embedding_Client_Exception( 'Bad Request (400)', Embedding_Client_Exception::ITEM ) );
@@ -485,7 +485,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a rate limit postpones without charging and schedules the next run after the pause.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_rate_limit_postpones_without_charging(): void {
 		$this->client->failures = array( new Embedding_Client_Exception( 'Too Many Requests (429)', Embedding_Client_Exception::RATE_LIMITED ) );
@@ -503,7 +503,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that an edit made while the worker was embedding is embedded in the same run.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_edit_during_processing_is_embedded_in_the_same_run(): void {
 		$post_id                 = self::factory()->post->create( array( 'post_content' => 'Original.' ) );
@@ -545,7 +545,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that existing content is not touched until a backfill is started.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_existing_content_waits_for_an_explicit_backfill(): void {
 		self::factory()->post->create_many( 3 );
@@ -558,7 +558,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Tests a full backfill across several batches.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_backfill_runs_to_completion(): void {
 		add_filter( 'wpai_embedding_sync_batch_size', static fn(): int => 2 );
@@ -582,7 +582,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a rate-limited backfill resumes without re-embedding finished objects.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_backfill_resumes_after_a_rate_limit(): void {
 		add_filter( 'wpai_embedding_sync_batch_size', static fn(): int => 2 );
@@ -612,7 +612,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a subtype added while a backfill is running is backfilled below the cursor too.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_subtype_added_mid_backfill_is_backfilled(): void {
 		$page_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
@@ -641,7 +641,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that backfill failures go to the queue and the cursor moves on.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_backfill_failures_are_queued(): void {
 		$this->client->failures = array( new Embedding_Client_Exception( 'Server error (503)', Embedding_Client_Exception::TRANSIENT ) );
@@ -664,7 +664,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	 * Failures before the deferral point are queued once and the cursor moves past them; a failure
 	 * after it is left for the batch to be redone, so it is not queued yet.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_backfill_queues_only_failures_before_the_deferral_point(): void {
 		add_filter( 'wpai_embedding_sync_batch_size', static fn(): int => 3 );
@@ -710,7 +710,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a batch cut by the budget after a failed first request still makes progress.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_backfill_failure_before_the_deadline_is_queued_and_passed(): void {
 		add_filter( 'wpai_embedding_sync_request_max_inputs', static fn(): int => 1 );
@@ -759,7 +759,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a tripped circuit breaker on a backfill queues the streak and moves past it.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_backfill_breaker_streak_is_queued_and_passed(): void {
 		add_filter( 'wpai_embedding_sync_batch_size', static fn(): int => 5 );
@@ -808,7 +808,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a tripped circuit breaker charges queued rows, so the attempt cap ends the loop.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_queue_breaker_streak_is_charged_until_it_fails(): void {
 		add_filter( 'wpai_embedding_sync_max_attempts', static fn(): int => 3 );
@@ -859,7 +859,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	 * Each run's split settles at least its first object, so the cursor moves on every run instead
 	 * of the same batch being deferred forever.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_backfill_split_past_the_deadline_advances_every_run(): void {
 		add_filter( 'wpai_embedding_sync_batch_size', static fn(): int => 3 );
@@ -908,7 +908,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	 * Fixture posts left by other classes may sit at lower IDs, so the first batch is exactly the
 	 * test's posts.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param list<int> $ids The test's post IDs.
 	 */
@@ -922,7 +922,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Makes the fake client reject any request containing "BAD" as a bad input.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	private function reject_bad_inputs(): void {
 		$this->client->fail_when = static function ( array $inputs ) {
@@ -939,7 +939,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * A backfill batch cut by the deadline resumes without re-embedding.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_backfill_batch_cut_by_deadline_resumes_without_reembedding(): void {
 		add_filter( 'wpai_embedding_sync_request_max_inputs', static fn(): int => 1 );
@@ -979,7 +979,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the worker stops once another runner has taken the lock over.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_stops_when_the_lock_is_lost(): void {
 		add_filter( 'wpai_embedding_sync_batch_size', static fn(): int => 1 );
@@ -992,7 +992,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 			/**
 			 * Reports the lock as taken over by another runner.
 			 *
-			 * @since x.x.x
+			 * @since 1.5.0
 			 *
 			 * @param int|null $now Optional. Unix time. Default now.
 			 * @return bool Always false.
@@ -1013,7 +1013,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that waking or scheduling the next run keeps the earlier of the scheduled run and the due time.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @dataProvider data_earlier_run_wins
 	 *
@@ -1046,7 +1046,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Data provider for competing run times.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, array{0: string, 1: int, 2: int|null, 3: bool}> Cases.
 	 */
@@ -1062,7 +1062,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a model-scoped pause holds the backfill and sets the next run time.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_model_scoped_pause_holds_the_backfill(): void {
 		self::factory()->post->create();
@@ -1083,7 +1083,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a pause on another model of the same provider does not hold the backfill.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_pause_on_another_model_does_not_hold_the_backfill(): void {
 		$post_id = self::factory()->post->create();
@@ -1104,7 +1104,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a backfill sweeps orphaned vectors before it is marked complete.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_backfill_sweeps_orphans_before_completing(): void {
 		$draft_id = self::factory()->post->create( array( 'post_status' => 'draft' ) );
@@ -1134,7 +1134,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	 * first sweep batch, so the cancel lands after exactly one batch and before the worker's
 	 * `is_running()` check for the next one.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_cancelled_sweep_resumes_from_its_cursor(): void {
 		add_filter( 'wpai_embedding_sync_sweep_batch_size', static fn(): int => 1 );
@@ -1202,7 +1202,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	 *
 	 * The sweep sends no API requests, so a pause has nothing to protect.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_paused_target_sweeps_once_the_embedding_pass_is_done(): void {
 		$draft_id = self::factory()->post->create( array( 'post_status' => 'draft' ) );
@@ -1228,7 +1228,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 /**
  * Sweeper that records the cursor of every sweep call.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Recording_Orphan_Sweeper extends Orphan_Sweeper {
 
@@ -1242,7 +1242,7 @@ class Recording_Orphan_Sweeper extends Orphan_Sweeper {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target $target      The target.
 	 * @param string                                         $object_type Object type with a source.
@@ -1262,14 +1262,14 @@ class Recording_Orphan_Sweeper extends Orphan_Sweeper {
 /**
  * Processor that treats any run deadline as already passed, as if the first request had spent the budget.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Past_Deadline_Object_Processor extends Object_Processor {
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string                                              $object_type Object type.
 	 * @param list<int>                                           $object_ids  Object IDs.

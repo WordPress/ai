@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "bbf6d040b7ce91e6ff301efe777b27d4",
+    "content-hash": "59239f0c4aed43086cbfb53cd373bd0b",
     "packages": [],
     "packages-dev": [
         {
@@ -651,16 +651,16 @@
         },
         {
             "name": "phpcompatibility/phpcompatibility-paragonie",
-            "version": "2.0.0-alpha2",
+            "version": "2.0.0-alpha3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/PHPCompatibility/PHPCompatibilityParagonie.git",
-                "reference": "7a979711c87d8202b52f56c56bd719d09d8ed7f5"
+                "reference": "aa2baa7027d2491732420d0cffc12a749e89e97c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/PHPCompatibility/PHPCompatibilityParagonie/zipball/7a979711c87d8202b52f56c56bd719d09d8ed7f5",
-                "reference": "7a979711c87d8202b52f56c56bd719d09d8ed7f5",
+                "url": "https://api.github.com/repos/PHPCompatibility/PHPCompatibilityParagonie/zipball/aa2baa7027d2491732420d0cffc12a749e89e97c",
+                "reference": "aa2baa7027d2491732420d0cffc12a749e89e97c",
                 "shasum": ""
             },
             "require": {
@@ -718,20 +718,20 @@
                     "type": "thanks_dev"
                 }
             ],
-            "time": "2025-11-29T13:09:49+00:00"
+            "time": "2026-11-17T20:00:34+00:00"
         },
         {
             "name": "phpcompatibility/phpcompatibility-wp",
-            "version": "3.0.0-alpha2",
+            "version": "3.0.0-alpha3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/PHPCompatibility/PHPCompatibilityWP.git",
-                "reference": "bd53f24e7528422ac51d64dc8d53e8d4c4a877b3"
+                "reference": "b475f1d61eb600b72e93f640d1265639c8fc3610"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/PHPCompatibility/PHPCompatibilityWP/zipball/bd53f24e7528422ac51d64dc8d53e8d4c4a877b3",
-                "reference": "bd53f24e7528422ac51d64dc8d53e8d4c4a877b3",
+                "url": "https://api.github.com/repos/PHPCompatibility/PHPCompatibilityWP/zipball/b475f1d61eb600b72e93f640d1265639c8fc3610",
+                "reference": "b475f1d61eb600b72e93f640d1265639c8fc3610",
                 "shasum": ""
             },
             "require": {
@@ -785,7 +785,7 @@
                     "type": "thanks_dev"
                 }
             ],
-            "time": "2025-12-16T13:35:20+00:00"
+            "time": "2026-11-17T21:25:26+00:00"
         },
         {
             "name": "phpcsstandards/phpcsextra",
@@ -1012,16 +1012,16 @@
         },
         {
             "name": "phpstan/php-8-stubs",
-            "version": "0.4.43",
+            "version": "0.4.44",
             "source": {
                 "type": "git",
                 "url": "https://github.com/phpstan/php-8-stubs.git",
-                "reference": "47d572570d71b2de6d882974c3a2e530cffce481"
+                "reference": "5283c0d4934990a21857511eea10019fe7b03c7a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phpstan/php-8-stubs/zipball/47d572570d71b2de6d882974c3a2e530cffce481",
-                "reference": "47d572570d71b2de6d882974c3a2e530cffce481",
+                "url": "https://api.github.com/repos/phpstan/php-8-stubs/zipball/5283c0d4934990a21857511eea10019fe7b03c7a",
+                "reference": "5283c0d4934990a21857511eea10019fe7b03c7a",
                 "shasum": ""
             },
             "type": "library",
@@ -1038,9 +1038,9 @@
             "description": "PHP stubs extracted from php-src",
             "support": {
                 "issues": "https://github.com/phpstan/php-8-stubs/issues",
-                "source": "https://github.com/phpstan/php-8-stubs/tree/0.4.43"
+                "source": "https://github.com/phpstan/php-8-stubs/tree/0.4.44"
             },
-            "time": "2026-09-25T00:34:48+00:00"
+            "time": "2026-10-28T00:25:02+00:00"
         },
         {
             "name": "phpstan/phpdoc-parser",
@@ -1091,11 +1091,11 @@
         },
         {
             "name": "phpstan/phpstan",
-            "version": "2.3.1",
+            "version": "2.3.5",
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phpstan/phpstan/zipball/6155239b488e95d26d1ebd95c6b4bb294d7f09db",
-                "reference": "6155239b488e95d26d1ebd95c6b4bb294d7f09db",
+                "url": "https://api.github.com/repos/phpstan/phpstan/zipball/645a1bd6bead15fc1b8474137467961d0fa30a79",
+                "reference": "645a1bd6bead15fc1b8474137467961d0fa30a79",
                 "shasum": ""
             },
             "require": {
@@ -1151,7 +1151,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-10-08T21:09:11+00:00"
+            "time": "2026-11-03T12:14:22+00:00"
         },
         {
             "name": "phpstan/phpstan-deprecation-rules",
@@ -3084,7 +3084,7 @@
         },
         {
             "name": "wp-phpunit/wp-phpunit",
-            "version": "7.1.1",
+            "version": "7.1.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/wp-phpunit/wp-phpunit.git",

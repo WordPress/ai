@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * injected into that meta key at registration time, so the adapter's default
  * server picks them up without the two plugins depending on each other.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 final class Exposure_Overrides {
 	/**
@@ -30,7 +30,7 @@ final class Exposure_Overrides {
 	 * Map of ability name => bool (true: exposed, false: hidden). Abilities
 	 * not present in the map keep their registration-time default.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @var string
 	 */
 	public const OPTION_NAME = 'wpai_mcp_exposed_abilities';
@@ -38,7 +38,7 @@ final class Exposure_Overrides {
 	/**
 	 * Ability namespace reserved for the adapter's own default-server tools.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @var string
 	 */
 	public const ADAPTER_NAMESPACE = 'mcp-adapter';
@@ -46,7 +46,7 @@ final class Exposure_Overrides {
 	/**
 	 * Ability namespace of this plugin's own abilities.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @var string
 	 */
 	public const PLUGIN_NAMESPACE = 'ai';
@@ -58,7 +58,7 @@ final class Exposure_Overrides {
 	 * and integers go through rest_sanitize_boolean(), anything else falls
 	 * back to truthiness so corrupted option values can never fatal.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param mixed $value The raw flag value.
 	 *
@@ -79,7 +79,7 @@ final class Exposure_Overrides {
 	/**
 	 * Checks whether an ability belongs to the adapter's reserved namespace.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $name Ability name.
 	 *
@@ -92,7 +92,7 @@ final class Exposure_Overrides {
 	/**
 	 * Checks whether an ability belongs to this plugin's namespace.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $name Ability name.
 	 *
@@ -105,7 +105,7 @@ final class Exposure_Overrides {
 	/**
 	 * Checks whether ability meta marks a deprecated alias.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string, mixed> $meta Ability meta.
 	 *
@@ -122,7 +122,7 @@ final class Exposure_Overrides {
 	 * recoverable for the settings screen even though the override is baked
 	 * into the registered ability's meta.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @var array<string, bool>
 	 */
 	private static array $registration_defaults = array();
@@ -130,7 +130,7 @@ final class Exposure_Overrides {
 	/**
 	 * Filters ability registration args to apply the experiment's exposure.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string, mixed> $args Ability registration args.
 	 * @param string               $name Ability name.
@@ -171,7 +171,7 @@ final class Exposure_Overrides {
 	 * plugin's abilities only register while the feature providing them is
 	 * enabled, so they are exposed. Other abilities keep the default they declare.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string               $name Ability name.
 	 * @param array<string, mixed> $meta Ability meta from the registration args.
@@ -196,7 +196,7 @@ final class Exposure_Overrides {
 	 * Only available for abilities whose exposure the experiment set during
 	 * registration in the current request.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $name Ability name.
 	 *
@@ -212,7 +212,7 @@ final class Exposure_Overrides {
 	 * Delegates to the adapter's `McpAbilityExposure` when available, with a
 	 * matching local fallback.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string, mixed> $meta Ability meta.
 	 *
@@ -239,7 +239,7 @@ final class Exposure_Overrides {
 	/**
 	 * Returns the stored exposure overrides.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, bool> Map of ability name => exposed flag.
 	 */
@@ -283,7 +283,7 @@ final class Exposure_Overrides {
 	 * A `null` value removes the override for that ability, restoring the
 	 * ability's registration-time default.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string, bool|null> $changes Map of ability name => exposed flag or null.
 	 */

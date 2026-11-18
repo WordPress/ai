@@ -103,7 +103,7 @@ All three abilities can be called directly via REST API, making them useful for 
      - Uses AI with a dedicated system instruction to generate an optimized image generation prompt
      - Returns a plain text prompt string suitable for image generation models
    - **Image Generation** (via `ai/image-generation`):
-     - Accepts `prompt` (string) as required input and optional `reference` (base64-encoded string) for image editing
+     - Accepts `prompt` (string) as required input and optional `reference` (base64-encoded image data URI, e.g. `data:image/png;base64,...`) for image editing
      - If `reference` is provided, uses it as a reference image for editing
      - Uses AI image generation models (via `get_preferred_image_models()`)
      - Sets request timeout to 90 seconds for longer generation times
@@ -157,7 +157,7 @@ array(
         'reference' => array(
             'type'              => 'string',
             'sanitize_callback' => 'sanitize_text_field',
-            'description'       => 'Optional base64-encoded image to use as a reference for editing.',
+            'description'       => 'Optional reference image for edits, as a base64-encoded image data URI (e.g. data:image/png;base64,...).',
         ),
     ),
     'required'   => array( 'prompt' ),

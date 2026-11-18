@@ -28,13 +28,13 @@ if ( ! defined( 'ABSPATH' ) ) {
  * for every uploaded image. The capture is read-only, fail-open, and never
  * blocks the upload pipeline.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class C2pa_Monitor extends Abstract_Feature {
 	/**
 	 * Postmeta key used to store the structured monitor record.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var string
 	 */
@@ -47,7 +47,7 @@ class C2pa_Monitor extends Abstract_Feature {
 	 * Written alongside POSTMETA_KEY so the Media Library can ORDER BY it.
 	 * Not written when no scan record exists (unsupported MIME / pre-existing upload).
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var string
 	 */
@@ -56,7 +56,7 @@ class C2pa_Monitor extends Abstract_Feature {
 	/**
 	 * Schema version for the postmeta record. Increment on breaking changes.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var int
 	 */
@@ -65,7 +65,7 @@ class C2pa_Monitor extends Abstract_Feature {
 	/**
 	 * Hard cap on a single image scan. Files larger than this are skipped.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var int
 	 */
@@ -84,7 +84,7 @@ class C2pa_Monitor extends Abstract_Feature {
 	 *
 	 * @see https://github.com/perma-id/w3id.org/pull/6376 w3id.org redirect registration.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var string
 	 */
@@ -146,7 +146,7 @@ class C2pa_Monitor extends Abstract_Feature {
 	 * wp_register_style with a false src is the canonical way to attach
 	 * inline-only styles without registering a real file.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return void
 	 */
@@ -196,7 +196,7 @@ class C2pa_Monitor extends Abstract_Feature {
 	/**
 	 * Enqueues the Media Library grid indicator script and styles.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function enqueue_media_assets(): void {
 		Asset_Loader::enqueue_script( 'c2pa_monitor_grid', 'experiments/c2pa-monitor-grid' );
@@ -206,7 +206,7 @@ class C2pa_Monitor extends Abstract_Feature {
 	/**
 	 * Registers the C2PA status column in the Media Library list table.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string, string> $columns Existing columns.
 	 * @return array<string, string>
@@ -219,7 +219,7 @@ class C2pa_Monitor extends Abstract_Feature {
 	/**
 	 * Returns whether C2PA data was detected for the given attachment.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $post_id The attachment post ID.
 	 * @return bool|null True when detected, false when scanned and not found,
@@ -248,7 +248,7 @@ class C2pa_Monitor extends Abstract_Feature {
 	 * enough room for a visible help text paragraph; the CSS tooltip is best
 	 * reserved for the compact Media Library list table column.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int  $post_id      The attachment post ID.
 	 * @param bool $with_tooltip Whether to emit the data-wpai-tooltip attribute.
@@ -359,7 +359,7 @@ class C2pa_Monitor extends Abstract_Feature {
 	 * self-explanatory in context and a missing explanation is less confusing
 	 * than a generic one.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $post_id The attachment post ID.
 	 * @return string Plain text (already escaped via esc_html__()).
@@ -396,7 +396,7 @@ class C2pa_Monitor extends Abstract_Feature {
 	 * - "Unchecked" when no scan record exists (e.g. uploaded before the experiment
 	 *   was enabled, or a non-image MIME type).
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $column_name The column being rendered.
 	 * @param int    $post_id     The attachment post ID.
@@ -430,7 +430,7 @@ class C2pa_Monitor extends Abstract_Feature {
 	 * the tooltip's `position:absolute` positioning gets clipped by the media
 	 * modal's overflow container.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string, mixed> $form_fields Existing form fields.
 	 * @param \WP_Post             $post        The attachment post object.
@@ -457,7 +457,7 @@ class C2pa_Monitor extends Abstract_Feature {
 	 * Fires on the `add_meta_boxes_attachment` action, which runs when loading
 	 * the classic `post.php?post=<id>&action=edit` screen for an attachment.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WP_Post $post The attachment post object.
 	 * @return void
@@ -483,7 +483,7 @@ class C2pa_Monitor extends Abstract_Feature {
 	 * Outputs the status badge without the CSS tooltip (which is reserved for
 	 * the compact list table column), followed by a visible help text paragraph.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WP_Post $post The attachment post object.
 	 * @return void
@@ -504,7 +504,7 @@ class C2pa_Monitor extends Abstract_Feature {
 	/**
 	 * Exposes the C2PA detection status to the media modal and grid view.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string, mixed> $response   Attachment data prepared for JS.
 	 * @param \WP_Post             $attachment The attachment post object.
@@ -527,7 +527,7 @@ class C2pa_Monitor extends Abstract_Feature {
 	/**
 	 * Marks the Content Credentials column as sortable.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string, string|array<int, string|bool>> $columns Sortable columns map.
 	 * @return array<string, string|array<int, string|bool>>
@@ -546,7 +546,7 @@ class C2pa_Monitor extends Abstract_Feature {
 	 * (no sort meta row) appear last. A named clause with `compare => 'EXISTS'`
 	 * uses a LEFT JOIN so rows without the meta key are still returned.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WP_Query $query The current query.
 	 * @return void
@@ -569,7 +569,7 @@ class C2pa_Monitor extends Abstract_Feature {
 	 * attachments (NULL) to -1, placing them last on a DESC sort and first on
 	 * ASC. The handler is only active on the Media Library list screen.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string, string> $clauses   SQL clause fragments.
 	 * @param \WP_Query             $query     The current query.
@@ -619,7 +619,7 @@ class C2pa_Monitor extends Abstract_Feature {
 	 * Postmeta is removed automatically by WordPress core on delete. This handler
 	 * cleans up the corresponding file in the ai-c2pa uploads subdirectory.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $attachment_id The attachment post ID that is being deleted.
 	 * @return void
@@ -637,7 +637,7 @@ class C2pa_Monitor extends Abstract_Feature {
 	 * never throws, never returns an error, and never blocks the upload.
 	 * Unsupported MIME types are left untouched: no postmeta is written.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $attachment_id The newly created attachment ID.
 	 * @return void
@@ -741,6 +741,9 @@ class C2pa_Monitor extends Abstract_Feature {
 					'message' => $e->getMessage(),
 				);
 			}
+
+			// Decode failures land in $errors and leave the raw capture intact.
+			$c2pa['decoded'] = ( new Manifest_Decoder() )->decode( $manifest->bytes, $errors );
 		} catch ( \RuntimeException $e ) {
 			$errors[] = array(
 				'stage'   => 'scan',
@@ -778,7 +781,7 @@ class C2pa_Monitor extends Abstract_Feature {
 	/**
 	 * Returns true for image MIME types this experiment knows how to inspect.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $mime MIME type.
 	 * @return bool
@@ -797,7 +800,7 @@ class C2pa_Monitor extends Abstract_Feature {
 	 * Falls back to get_attached_file() when wp_get_original_image_path() does
 	 * not return a usable path (non-image attachments, edited media, etc.).
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $attachment_id Attachment ID.
 	 * @return string Absolute filesystem path, or empty string when unresolved.
@@ -816,7 +819,7 @@ class C2pa_Monitor extends Abstract_Feature {
 	 * Returns the path relative to the uploads basedir, or the absolute path
 	 * if it lives outside uploads.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $absolute Absolute path.
 	 * @return string Relative path or original absolute path.

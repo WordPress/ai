@@ -196,7 +196,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test add_bulk_actions() does not offer the action to users who cannot moderate.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_add_bulk_actions_omits_analyze_for_users_without_moderate_comments() {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'contributor' ) ) );
@@ -261,7 +261,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test handle_bulk_action() rejects users without the moderate_comments capability.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_handle_bulk_action_denies_users_without_moderate_comments() {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'contributor' ) ) );
@@ -283,7 +283,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test handle_bulk_action() skips comments the current user cannot edit.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_handle_bulk_action_skips_comments_the_user_cannot_edit() {
 		add_role(
@@ -727,7 +727,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test moderate_comment() skips pingbacks, trackbacks, and block editor notes.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @dataProvider data_non_moderated_comment_types
 	 *
@@ -752,7 +752,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Data provider of comment types that are not automatically moderated.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, array{string}> Comment types to skip.
 	 */
@@ -767,7 +767,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test moderate_comment() treats an empty comment type as a regular comment.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_moderate_comment_analyzes_comments_with_empty_type() {
 		$comment_id = $this->create_comment_without_hooks( 0, '' );
@@ -786,7 +786,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test the moderated comment types can be extended by filter.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_moderate_comment_types_are_filterable() {
 		$comment_id = $this->create_comment_without_hooks( 0, 'review' );

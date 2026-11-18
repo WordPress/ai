@@ -16,28 +16,28 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Splits text into overlapping character chunks.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Text_Chunker {
 
 	/**
 	 * Version of the chunking rules.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const VERSION = '1';
 
 	/**
 	 * Default maximum characters per chunk.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const DEFAULT_SIZE = 750;
 
 	/**
 	 * Default characters of overlap between consecutive chunks.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const DEFAULT_OVERLAP = 125;
 
@@ -58,7 +58,7 @@ class Text_Chunker {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $size    Optional. Maximum characters per chunk. Default 750.
 	 * @param int $overlap Optional. Characters of overlap between chunks; must be smaller than $size. Default 125.
@@ -81,7 +81,7 @@ class Text_Chunker {
 	/**
 	 * Splits text into overlapping chunks.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $text Text to chunk.
 	 * @return list<string> Chunks, or an empty list when the text is empty or whitespace-only.
@@ -129,7 +129,7 @@ class Text_Chunker {
 	/**
 	 * Finds a preferred end offset within a chunk window.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $window Candidate chunk window.
 	 * @return int End offset relative to the window start, from 1 to the window length.

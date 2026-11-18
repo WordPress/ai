@@ -16,7 +16,7 @@ use WordPress\AI\Features\Registry;
 /**
  * Revision_Change_Summary experiment test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Revision_Change_SummaryTest extends WP_UnitTestCase {
 
@@ -30,7 +30,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -50,7 +50,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -75,7 +75,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the experiment is listed in the default experiment classes.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_experiment_is_registered() {
 		$this->assertInstanceOf( Revision_Change_Summary::class, $this->registry->get_feature( 'revision-change-summary' ) );
@@ -86,7 +86,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	 *
 	 * This is the positive case the skip tests below are checked against.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_enqueue_assets_on_post_editor() {
 		$experiment = new Revision_Change_Summary();
@@ -100,7 +100,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the editor script skips post types without revisions.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_enqueue_assets_skips_post_type_without_revisions() {
 		register_post_type(
@@ -127,7 +127,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the editor script skips posts with revisions turned off.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_enqueue_assets_skips_post_with_revisions_turned_off() {
 		$experiment = new Revision_Change_Summary();
@@ -148,7 +148,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	 *
 	 * Core still shows autosaves on the classic revisions screen in that case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_classic_assets_skip_post_with_revisions_turned_off() {
 		$experiment = new Revision_Change_Summary();
@@ -167,7 +167,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the classic script loads on the revisions screen.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_classic_assets_load_on_revisions_screen() {
 		$experiment = new Revision_Change_Summary();
@@ -188,7 +188,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the classic script skips users who can't edit the post.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_classic_assets_skip_users_who_cannot_edit() {
 		$experiment = new Revision_Change_Summary();

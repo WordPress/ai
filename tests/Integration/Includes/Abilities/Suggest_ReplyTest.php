@@ -342,7 +342,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_post_context() returns the title and excerpt of a public post.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_get_post_context_returns_title_and_excerpt_for_public_post() {
 		$post_id = self::factory()->post->create(
@@ -364,7 +364,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_post_context() returns no context for a password-protected post.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_get_post_context_is_empty_for_password_protected_post() {
 		$post_id = self::factory()->post->create(
@@ -388,7 +388,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_post_context() returns no context for non-public post statuses.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @dataProvider data_non_public_post_statuses
 	 *
@@ -416,7 +416,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Data provider of non-public post statuses.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, array{string}> Post statuses that must not supply context.
 	 */
@@ -431,7 +431,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_post_context() returns no context for a post type that is not publicly viewable.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_get_post_context_is_empty_for_non_viewable_post_type() {
 		register_post_type( 'wpai_internal_memo', array( 'public' => false ) );
@@ -461,7 +461,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Test that the post context gate can be overridden by filter.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_get_post_context_gate_is_filterable() {
 		$post_id = self::factory()->post->create(
@@ -557,5 +557,40 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 
 		$this->assertInstanceOf( \WP_Error::class, $result );
 		$this->assertSame( 'post_not_found', $result->get_error_code() );
+	}
+
+	/**
+	 * Test that generate_reply() keeps percent signs in the AI response.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_generate_reply_keeps_percent_signs(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_reply' );
+		$method->setAccessible( true );
+
+		$mock_builder = $this->getMockBuilder( \WP_AI_Client_Prompt_Builder::class )
+			->disableOriginalConstructor()
+			->addMethods( array( 'is_supported_for_text_generation', 'generate_text' ) )
+			->getMock();
+
+		$mock_builder->method( 'is_supported_for_text_generation' )
+			->willReturn( true );
+
+		$mock_builder->method( 'generate_text' )
+			->willReturn( "Teşekkürler! Tüm ürünlerde %50 indirim var.\n\nTişörtler %100 pamuk." );
+
+		add_filter(
+			'wpai_suggest_reply_prompt_builder',
+			static function () use ( $mock_builder ) {
+				return $mock_builder;
+			}
+		);
+
+		$result = $method->invoke( $this->ability, 'İndirim ne kadar?' );
+
+		remove_all_filters( 'wpai_suggest_reply_prompt_builder' );
+
+		$this->assertSame( "Teşekkürler! Tüm ürünlerde %50 indirim var.\n\nTişörtler %100 pamuk.", $result );
 	}
 }

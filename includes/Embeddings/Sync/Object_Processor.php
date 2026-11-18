@@ -21,35 +21,35 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Text → chunks → hash → skip or embed → store, for every target covering each object.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Object_Processor {
 
 	/**
 	 * Default cap on chunks embedded per object.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const DEFAULT_MAX_CHUNKS = 50;
 
 	/**
 	 * Default cap on inputs per API request.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const DEFAULT_MAX_INPUTS = 100;
 
 	/**
 	 * Cap on characters per API request.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const MAX_REQUEST_CHARS = 200000;
 
 	/**
 	 * Retries rejected in a row before the model is treated as misconfigured and paused.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const CIRCUIT_BREAKER_THRESHOLD = 3;
 
@@ -112,7 +112,7 @@ class Object_Processor {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WordPress\AI\Embeddings\Sync\Consumer_Registry                         $registry   Consumer registry.
 	 * @param array<string, \WordPress\AI\Embeddings\Sync\Embedding_Source_Interface> $sources    Sources keyed by object type.
@@ -140,7 +140,7 @@ class Object_Processor {
 	/**
 	 * Returns the content hash stored for a text.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string   $text       The object's full text.
 	 * @param int      $max_chunks The chunk cap in force.
@@ -154,7 +154,7 @@ class Object_Processor {
 	/**
 	 * Processes a batch of objects of one type.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string                                              $object_type Object type.
 	 * @param list<int>                                           $object_ids  Object IDs.
@@ -228,7 +228,7 @@ class Object_Processor {
 	/**
 	 * Reads and chunks one object's text, or settles it without embedding.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Source_Interface $source      The object's source.
 	 * @param string                                                   $object_type Object type.
@@ -268,7 +268,7 @@ class Object_Processor {
 	/**
 	 * Processes covered objects for one target.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string                                                             $object_type Object type.
 	 * @param array<int, array{subtype: string, chunks: list<string>, text: string}> $prepared    Prepared objects keyed by ID.
@@ -344,7 +344,7 @@ class Object_Processor {
 	/**
 	 * Packs whole objects into requests capped by input count and characters.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<int, array{subtype: string, chunks: list<string>, hash: string}> $pending Objects to embed.
 	 * @return list<array<int, array{subtype: string, chunks: list<string>, hash: string}>> Request groups.
@@ -353,7 +353,7 @@ class Object_Processor {
 		/**
 		 * Filters the maximum number of inputs sent in one embedding request.
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param int $max_inputs Maximum inputs. Default 100.
 		 */
@@ -389,7 +389,7 @@ class Object_Processor {
 	/**
 	 * Embeds one request group and stores the results.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string                                                             $object_type Object type.
 	 * @param array<int, array{subtype: string, chunks: list<string>, hash: string}> $group       Objects in the request.
@@ -455,7 +455,7 @@ class Object_Processor {
 	/**
 	 * Turns a classified failure into results.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string                                                             $object_type Object type.
 	 * @param array<int, array{subtype: string, chunks: list<string>, hash: string}> $group       Objects in the failed request.
@@ -563,7 +563,7 @@ class Object_Processor {
 	/**
 	 * Stores one object's vectors.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string                                                   $object_type Object type.
 	 * @param int                                                      $object_id   Object ID.
@@ -604,7 +604,7 @@ class Object_Processor {
 			 * An exception thrown by a callback is caught and reported as a warning; the object
 			 * still counts as indexed and the batch carries on.
 			 *
-			 * @since x.x.x
+			 * @since 1.5.0
 			 *
 			 * @param string                                         $object_type Object type.
 			 * @param int                                            $object_id   Object ID.
@@ -634,7 +634,7 @@ class Object_Processor {
 	/**
 	 * Deletes an object's vectors for every model.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $object_type Object type.
 	 * @param int    $object_id   Object ID.
@@ -653,7 +653,7 @@ class Object_Processor {
 	/**
 	 * Combines per-target outcomes into one result for the object.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param list<\WordPress\AI\Embeddings\Sync\Object_Result> $outcomes Per-target outcomes.
 	 * @return \WordPress\AI\Embeddings\Sync\Object_Result The combined result.
@@ -693,7 +693,7 @@ class Object_Processor {
 	/**
 	 * Checks whether the run's deadline has passed, once at least one request has been sent.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return bool True when no further request should be sent.
 	 */
@@ -704,7 +704,7 @@ class Object_Processor {
 	/**
 	 * Returns the chunk cap.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return int Maximum chunks embedded per object.
 	 */
@@ -712,7 +712,7 @@ class Object_Processor {
 		/**
 		 * Filters the maximum number of chunks embedded per object.
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param int $max_chunks Maximum chunks. Default 50.
 		 */
