@@ -838,8 +838,8 @@ export default function ConfirmProposal( {
 	const selectionControl = proposal.items.length >= 3 && (
 		<div className="ai-workspace__proposal-actions">
 			<Button
-				variant="tertiary"
-				size="compact"
+				variant="link"
+				isDestructive={ allSelected }
 				disabled={
 					'working' === state || 'pending' !== proposal.status
 				}
