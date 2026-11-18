@@ -19,7 +19,7 @@ import {
 } from '../../utils/helpers';
 
 const EXPERIMENT_LABEL = 'AI Workspace';
-const WORKSPACE_PAGE = 'tools.php?page=ai-workspace';
+const WORKSPACE_PAGE = 'admin.php?page=ai-workspace';
 
 /*
  * The `workspace-code` scenario answers with one 40-line html block and one

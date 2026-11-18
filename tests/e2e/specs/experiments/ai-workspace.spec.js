@@ -9,7 +9,7 @@ import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 import { disableExperiment, enableExperiment } from '../../utils/helpers';
 
 const EXPERIMENT_LABEL = 'AI Workspace';
-const WORKSPACE_PAGE = 'tools.php?page=ai-workspace';
+const WORKSPACE_PAGE = 'admin.php?page=ai-workspace';
 
 // The mocked OpenAI responses fixture answers every workspace turn with this
 // text (see tests/e2e-testing/responses/OpenAI/responses.json).
@@ -43,7 +43,7 @@ test.describe( 'AI Workspace transcript', () => {
 		).toHaveCount( 1 );
 		await expect(
 			page
-				.getByRole( 'complementary', { name: 'Chats' } )
+				.getByRole( 'complementary', { name: 'Spaces' } )
 				.getByRole( 'button', { name: 'New space' } )
 		).toBeVisible();
 	} );

@@ -86,13 +86,27 @@ final class Admin_Page {
 	private const MAX_SEED_TITLE_LENGTH = 200;
 
 	/**
-	 * Parent menu used to anchor this page.
+	 * Position in the admin menu.
+	 *
+	 * Below Settings, so a top-level entry does not push Posts and Pages down
+	 * for everyone who never opens it.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var int
+	 */
+	private const MENU_POSITION = 81;
+
+	/**
+	 * Admin bar node the workspace entry hangs under.
+	 *
+	 * Core adds it at priority 70; the workspace entry is added after.
 	 *
 	 * @since x.x.x
 	 *
 	 * @var string
 	 */
-	private const PARENT_SLUG = 'tools.php';
+	private const NEW_CONTENT_NODE = 'new-content';
 
 	/**
 	 * Script and style handle, without the Asset_Loader prefix.
@@ -118,7 +132,8 @@ final class Admin_Page {
 	 * @since x.x.x
 	 */
 	public function register(): void {
-		add_action( 'admin_menu', array( $this, 'add_submenu' ) );
+		add_action( 'admin_menu', array( $this, 'add_menu' ) );
+		add_action( 'admin_bar_menu', array( $this, 'add_new_content_node' ), 80 );
 	}
 
 	/**
@@ -129,22 +144,26 @@ final class Admin_Page {
 	 * @return string The admin URL for the workspace screen.
 	 */
 	public static function url(): string {
-		return admin_url( self::PARENT_SLUG . '?page=' . self::PAGE_SLUG );
+		return admin_url( 'admin.php?page=' . self::PAGE_SLUG );
 	}
 
 	/**
-	 * Adds the submenu entry under Tools.
+	 * Adds the top-level Workspace menu.
+	 *
+	 * Labelled "Workspace" rather than "AI", which the plugin's settings page
+	 * already uses.
 	 *
 	 * @since x.x.x
 	 */
-	public function add_submenu(): void {
-		$page_hook = add_submenu_page(
-			self::PARENT_SLUG,
+	public function add_menu(): void {
+		$page_hook = add_menu_page(
 			__( 'AI Workspace', 'ai' ),
-			__( 'AI Workspace', 'ai' ),
+			__( 'Workspace', 'ai' ),
 			'manage_options',
 			self::PAGE_SLUG,
-			array( $this, 'render' )
+			array( $this, 'render' ),
+			'dashicons-format-chat',
+			self::MENU_POSITION
 		);
 
 		if ( ! $page_hook ) {
@@ -152,6 +171,31 @@ final class Admin_Page {
 		}
 
 		add_action( "load-{$page_hook}", array( $this, 'on_load' ) );
+	}
+
+	/**
+	 * Adds Workspace to the admin bar's New menu.
+	 *
+	 * The workspace URL with no `chat` parameter opens a new space, so the
+	 * entry needs nothing beyond the page URL.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Admin_Bar $admin_bar The admin bar.
+	 */
+	public function add_new_content_node( \WP_Admin_Bar $admin_bar ): void {
+		if ( ! current_user_can( 'manage_options' ) || ! $admin_bar->get_node( self::NEW_CONTENT_NODE ) ) {
+			return;
+		}
+
+		$admin_bar->add_node(
+			array(
+				'parent' => self::NEW_CONTENT_NODE,
+				'id'     => 'new-' . self::PAGE_SLUG,
+				'title'  => __( 'Workspace', 'ai' ),
+				'href'   => self::url(),
+			)
+		);
 	}
 
 	/**

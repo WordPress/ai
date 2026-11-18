@@ -151,7 +151,7 @@ test.describe( 'AI Workspace stored chats', () => {
 		expect( chatFromUrl( '?page=ai-workspace' ) ).toBe( '' );
 
 		const href =
-			'https://example.test/wp-admin/tools.php?page=ai-workspace';
+			'https://example.test/wp-admin/admin.php?page=ai-workspace';
 
 		expect( urlForChat( href, 'abc-123' ) ).toBe( href + '&chat=abc-123' );
 		expect( urlForChat( href + '&chat=abc-123', '' ) ).toBe( href );

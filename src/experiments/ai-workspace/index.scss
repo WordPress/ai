@@ -749,3 +749,15 @@ $code-line-height: 18px;
 	display: flex;
 	gap: var(--wpds-dimension-gap-sm);
 }
+
+/*
+ * The unavailable notice sits in the same centred column as the one on the AI
+ * settings screen (routes/ai-home/style.scss), rather than spanning the frame.
+ */
+.ai-workspace__unavailable {
+	box-sizing: border-box;
+	width: 100%;
+	max-width: 680px;
+	margin: 0 auto;
+	padding: 24px;
+}

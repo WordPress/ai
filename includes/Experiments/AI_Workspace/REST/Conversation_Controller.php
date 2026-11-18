@@ -257,7 +257,7 @@ final class Conversation_Controller {
 		if ( null === $name && null === $archived ) {
 			return new WP_Error(
 				'workspace_conversation_nothing_to_update',
-				__( 'Give the chat a new name, or say whether it is archived.', 'ai' ),
+				__( 'Give the space a new name, or say whether it is archived.', 'ai' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -268,7 +268,7 @@ final class Conversation_Controller {
 			if ( '' === $name ) {
 				return new WP_Error(
 					'workspace_conversation_empty_name',
-					__( 'A chat needs a name.', 'ai' ),
+					__( 'A space needs a name.', 'ai' ),
 					array( 'status' => 400 )
 				);
 			}
@@ -513,7 +513,7 @@ final class Conversation_Controller {
 	private function not_saved(): WP_Error {
 		return new WP_Error(
 			'workspace_conversation_not_saved',
-			__( 'The chat could not be saved.', 'ai' ),
+			__( 'The space could not be saved.', 'ai' ),
 			array( 'status' => 500 )
 		);
 	}

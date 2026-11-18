@@ -345,7 +345,7 @@ final class Proposal_Controller {
 
 			return new WP_Error(
 				'workspace_proposal_chat_deleted',
-				__( 'The chat this proposal belongs to was deleted, so it can no longer be approved.', 'ai' ),
+				__( 'The space this proposal belongs to was deleted, so it can no longer be approved.', 'ai' ),
 				array( 'status' => 410 )
 			);
 		}

@@ -347,7 +347,7 @@ final class Turn_Controller {
 		if ( '' !== $new_id && '' !== $conversation_id ) {
 			return new WP_Error(
 				'workspace_new_conversation_id_conflict',
-				__( 'A new chat ID is only for a chat that does not exist yet.', 'ai' ),
+				__( 'A new space ID is only for a space that does not exist yet.', 'ai' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -546,7 +546,7 @@ final class Turn_Controller {
 			if ( '' !== $new_id && null !== $this->store->get( $new_id, $user_id ) ) {
 				return new WP_Error(
 					'workspace_conversation_exists',
-					__( 'A chat with that ID already exists.', 'ai' ),
+					__( 'A space with that ID already exists.', 'ai' ),
 					array( 'status' => 409 )
 				);
 			}

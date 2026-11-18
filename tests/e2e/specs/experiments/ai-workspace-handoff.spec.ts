@@ -116,7 +116,7 @@ test.describe( 'AI Workspace block editor handoff', () => {
 		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 
 		await admin.visitAdminPage(
-			'tools.php',
+			'admin.php',
 			'page=ai-workspace&wpai-post=99999999'
 		);
 

@@ -157,7 +157,7 @@ class Conversation_PrivacyTest extends WP_UnitTestCase {
 		$key        = 'wp_privacy_personal_data_exporters' === $filter ? 'exporter_friendly_name' : 'eraser_friendly_name';
 
 		$this->assertArrayHasKey( Conversation_Privacy::ID, $registered );
-		$this->assertSame( 'AI chats', $registered[ Conversation_Privacy::ID ][ $key ] );
+		$this->assertSame( 'AI Workspace spaces', $registered[ Conversation_Privacy::ID ][ $key ] );
 
 		return $registered[ Conversation_Privacy::ID ]['callback'];
 	}
@@ -250,7 +250,7 @@ class Conversation_PrivacyTest extends WP_UnitTestCase {
 		$by_id = array();
 		foreach ( $export['data'] as $item ) {
 			$this->assertSame( Conversation_Privacy::ID, $item['group_id'] );
-			$this->assertSame( 'AI chats', $item['group_label'] );
+			$this->assertSame( 'AI Workspace spaces', $item['group_label'] );
 			$by_id[ $item['item_id'] ] = $this->fields( $item );
 		}
 

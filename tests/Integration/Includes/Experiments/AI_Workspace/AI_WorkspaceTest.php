@@ -33,8 +33,8 @@ class AI_WorkspaceTest extends WP_UnitTestCase {
 
 		update_option( 'wpai_feature_ai-workspace_enabled', true );
 
-		// Ensure a clean Tools submenu for reachability assertions.
-		unset( $GLOBALS['submenu']['tools.php'] );
+		// Ensure a clean top-level menu for reachability assertions.
+		$GLOBALS['menu'] = array(); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Isolating the menu global between tests.
 	}
 
 	/**
@@ -45,7 +45,7 @@ class AI_WorkspaceTest extends WP_UnitTestCase {
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
 		unset( $GLOBALS['current_screen'] );
-		unset( $GLOBALS['submenu']['tools.php'] );
+		$GLOBALS['menu'] = array(); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Isolating the menu global between tests.
 		delete_option( 'wpai_feature_ai-workspace_enabled' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 		remove_all_filters( 'wpai_feature_ai-workspace_enabled' );
@@ -68,16 +68,20 @@ class AI_WorkspaceTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Returns the registered Tools submenu slugs.
+	 * Returns the workspace's top-level menu entry, or null when none is registered.
 	 *
 	 * @since x.x.x
 	 *
-	 * @return array<int, string> The submenu slugs registered under Tools.
+	 * @return array<int, mixed>|null The menu entry.
 	 */
-	private function get_tools_submenu_slugs(): array {
-		$tools_submenus = $GLOBALS['submenu']['tools.php'] ?? array();
+	private function get_workspace_menu_entry(): ?array {
+		foreach ( (array) ( $GLOBALS['menu'] ?? array() ) as $item ) {
+			if ( Admin_Page::PAGE_SLUG === ( $item[2] ?? '' ) ) {
+				return $item;
+			}
+		}
 
-		return array_map( 'strval', array_column( $tools_submenus, 2 ) );
+		return null;
 	}
 
 	/**
@@ -111,7 +115,11 @@ class AI_WorkspaceTest extends WP_UnitTestCase {
 
 		do_action( 'admin_menu' );
 
-		$this->assertContains( Admin_Page::PAGE_SLUG, $this->get_tools_submenu_slugs() );
+		$this->assertNotNull( $this->get_workspace_menu_entry(), 'An enabled experiment registers the top-level Workspace menu.' );
+		$this->assertNotFalse(
+			has_action( get_plugin_page_hookname( Admin_Page::PAGE_SLUG, '' ) ),
+			'An administrator gets the page callback, so the screen renders.'
+		);
 
 		ob_start();
 		( new Admin_Page() )->render();
@@ -168,7 +176,7 @@ class AI_WorkspaceTest extends WP_UnitTestCase {
 
 		do_action( 'admin_menu' );
 
-		$this->assertNotContains( Admin_Page::PAGE_SLUG, $this->get_tools_submenu_slugs() );
+		$this->assertNull( $this->get_workspace_menu_entry(), 'A disabled experiment registers no menu entry at all.' );
 	}
 
 	/**
@@ -218,7 +226,7 @@ class AI_WorkspaceTest extends WP_UnitTestCase {
 	 *
 	 * @since x.x.x
 	 */
-	public function test_menu_entry_is_not_registered_for_subscriber() {
+	public function test_menu_entry_is_not_reachable_for_subscriber() {
 		wp_set_current_user( $this->factory->user->create( array( 'role' => 'subscriber' ) ) );
 
 		$registry   = $this->boot_loader();
@@ -229,7 +237,20 @@ class AI_WorkspaceTest extends WP_UnitTestCase {
 
 		do_action( 'admin_menu' );
 
-		$this->assertNotContains( Admin_Page::PAGE_SLUG, $this->get_tools_submenu_slugs() );
+		/*
+		 * add_menu_page() adds the entry whatever the capability, unlike the
+		 * submenu this replaced, and leaves hiding it to the menu renderer. So
+		 * a subscriber is kept out by the capability: the entry demands one
+		 * they lack, and the page callback is never hooked for them.
+		 */
+		$entry = $this->get_workspace_menu_entry();
+
+		$this->assertNotNull( $entry, 'The top-level entry is registered regardless of capability.' );
+		$this->assertFalse( current_user_can( $entry[1] ), 'A subscriber lacks the capability the Workspace menu requires.' );
+		$this->assertFalse(
+			has_action( get_plugin_page_hookname( Admin_Page::PAGE_SLUG, '' ) ),
+			'The page callback is not hooked for a subscriber, so the screen cannot render for them.'
+		);
 	}
 
 	/**
@@ -247,7 +268,7 @@ class AI_WorkspaceTest extends WP_UnitTestCase {
 	 */
 	public function test_the_screen_does_not_hide_the_admin_menu() {
 		$page = new Admin_Page();
-		set_current_screen( 'tools_page_ai-workspace' );
+		set_current_screen( 'toplevel_page_ai-workspace' );
 
 		$page->on_load();
 
@@ -282,7 +303,7 @@ class AI_WorkspaceTest extends WP_UnitTestCase {
 	 */
 	public function test_the_frame_class_is_added_on_the_workspace_screen_only() {
 		$page = new Admin_Page();
-		set_current_screen( 'tools_page_ai-workspace' );
+		set_current_screen( 'toplevel_page_ai-workspace' );
 
 		$page->register();
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
@@ -294,13 +315,97 @@ class AI_WorkspaceTest extends WP_UnitTestCase {
 			'Before the workspace screen loads, no screen carries the frame class.'
 		);
 
-		do_action( 'load-' . get_plugin_page_hookname( Admin_Page::PAGE_SLUG, 'tools.php' ) );
+		do_action( 'load-' . get_plugin_page_hookname( Admin_Page::PAGE_SLUG, '' ) );
 
 		$this->assertStringContainsString( Admin_Page::FRAME_BODY_CLASS, apply_filters( 'admin_body_class', '' ) );
 
 		remove_filter( 'admin_body_class', array( $page, 'add_frame_body_class' ) );
 		remove_action( 'admin_enqueue_scripts', array( $page, 'enqueue_assets' ) );
-		remove_action( 'admin_menu', array( $page, 'add_submenu' ) );
+		remove_action( 'admin_menu', array( $page, 'add_menu' ) );
+		remove_action( 'admin_bar_menu', array( $page, 'add_new_content_node' ), 80 );
+	}
+
+	/**
+	 * The workspace is a top-level menu labelled "Workspace", low in the menu.
+	 *
+	 * "Workspace" rather than "AI", which the settings page already uses, and
+	 * below Settings so it does not push Posts and Pages down.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_the_workspace_is_a_top_level_menu() {
+		global $menu;
+
+		$page = new Admin_Page();
+		set_current_screen( 'dashboard' );
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+
+		$page->add_menu();
+
+		$entry = null;
+		foreach ( (array) $menu as $position => $item ) {
+			if ( Admin_Page::PAGE_SLUG === ( $item[2] ?? '' ) ) {
+				$entry = array( 'position' => $position ) + $item;
+			}
+		}
+
+		$this->assertNotNull( $entry, 'The workspace must be a top-level menu, not a submenu of Tools.' );
+		$this->assertSame( 'Workspace', $entry[0], 'The menu is labelled Workspace, since the settings page already uses AI.' );
+		$this->assertSame( 'dashicons-format-chat', $entry[6], 'The menu carries the chat icon.' );
+		$this->assertGreaterThan( 80, $entry['position'], 'The menu sits below Settings, so Posts and Pages keep their place.' );
+		$this->assertSame(
+			admin_url( 'admin.php?page=' . Admin_Page::PAGE_SLUG ),
+			Admin_Page::url(),
+			'Every link to the workspace is built from the top-level page URL.'
+		);
+	}
+
+	/**
+	 * The admin bar's New menu opens a new space.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_new_menu_opens_a_new_space_for_administrators() {
+		require_once ABSPATH . WPINC . '/class-wp-admin-bar.php';
+
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+
+		$bar = new \WP_Admin_Bar();
+		$bar->add_node( array( 'id' => 'new-content', 'title' => 'New' ) );
+
+		( new Admin_Page() )->add_new_content_node( $bar );
+
+		$node = $bar->get_node( 'new-' . Admin_Page::PAGE_SLUG );
+
+		$this->assertNotNull( $node, 'Administrators get a Workspace entry under New.' );
+		$this->assertSame( 'new-content', $node->parent, 'The entry sits under the New menu.' );
+		$this->assertSame( 'Workspace', $node->title, 'The entry is labelled Workspace.' );
+		$this->assertSame(
+			Admin_Page::url(),
+			$node->href,
+			'The entry opens the workspace with no space selected, which starts a new one.'
+		);
+	}
+
+	/**
+	 * The New menu entry follows the screen's own capability.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_new_menu_entry_is_hidden_without_manage_options() {
+		require_once ABSPATH . WPINC . '/class-wp-admin-bar.php';
+
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
+
+		$bar = new \WP_Admin_Bar();
+		$bar->add_node( array( 'id' => 'new-content', 'title' => 'New' ) );
+
+		( new Admin_Page() )->add_new_content_node( $bar );
+
+		$this->assertNull(
+			$bar->get_node( 'new-' . Admin_Page::PAGE_SLUG ),
+			'A user who cannot open the workspace must not be offered a link to it.'
+		);
 	}
 
 	/**

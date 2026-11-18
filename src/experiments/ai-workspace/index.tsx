@@ -16,6 +16,7 @@ import './index.scss';
  */
 import { Page } from '@wordpress/admin-ui';
 import { Button, Notice } from '@wordpress/components';
+import { Notice as UINotice } from '@wordpress/ui';
 import { useInstanceId } from '@wordpress/compose';
 import domReady from '@wordpress/dom-ready';
 import {
@@ -133,23 +134,21 @@ function UnavailableState( {
 		return null;
 	}
 
+	// The same notice, at the same width, as the AI settings screen, so the
+	// two places that send someone to the Connectors screen read alike.
 	return (
-		<Notice
-			status={ message.status }
-			isDismissible={ false }
-			actions={
-				connectorsUrl
-					? [
-							{
-								label: __( 'Manage Connectors', 'ai' ),
-								url: connectorsUrl,
-							},
-					  ]
-					: []
-			}
-		>
-			<p>{ message.body }</p>
-		</Notice>
+		<div className="ai-workspace__unavailable">
+			<UINotice.Root intent={ message.status }>
+				<UINotice.Description>{ message.body }</UINotice.Description>
+				{ connectorsUrl && (
+					<UINotice.Actions>
+						<UINotice.ActionLink href={ connectorsUrl }>
+							{ __( 'Manage Connectors', 'ai' ) }
+						</UINotice.ActionLink>
+					</UINotice.Actions>
+				) }
+			</UINotice.Root>
+		</div>
 	);
 }
 
@@ -300,8 +299,8 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 				clear();
 				setMissing(
 					'not-found' === result
-						? __( 'That chat was not found.', 'ai' )
-						: __( 'That chat could not be opened.', 'ai' )
+						? __( 'That space was not found.', 'ai' )
+						: __( 'That space could not be opened.', 'ai' )
 				);
 			}
 
@@ -407,7 +406,7 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 					aria-controls={ historyId }
 					onClick={ () => setHistoryOpen( ( current ) => ! current ) }
 				>
-					{ __( 'Chats', 'ai' ) }
+					{ __( 'Spaces', 'ai' ) }
 				</Button>
 			}
 		>
@@ -420,7 +419,7 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 						( narrow ? ' is-drawer' : '' ) +
 						( historyOpen ? ' is-open' : '' )
 					}
-					aria-label={ __( 'Chats', 'ai' ) }
+					aria-label={ __( 'Spaces', 'ai' ) }
 					hidden={ ! historyOpen }
 				>
 					<ChatHistory

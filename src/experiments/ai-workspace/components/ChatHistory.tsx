@@ -138,7 +138,7 @@ function ChatRow( {
 					__next40pxDefaultSize
 					__nextHasNoMarginBottom
 					ref={ field }
-					label={ __( 'Chat name', 'ai' ) }
+					label={ __( 'Space name', 'ai' ) }
 					hideLabelFromVision
 					value={ name }
 					onChange={ setName }
@@ -308,7 +308,7 @@ export default function ChatHistory( {
 					: null;
 
 			if ( typeof saved !== 'string' ) {
-				setNotice( __( 'The chat could not be renamed.', 'ai' ) );
+				setNotice( __( 'The space could not be renamed.', 'ai' ) );
 				return;
 			}
 
@@ -331,8 +331,8 @@ export default function ChatHistory( {
 			if ( ! ok ) {
 				setNotice(
 					chat.archived
-						? __( 'The chat could not be restored.', 'ai' )
-						: __( 'The chat could not be archived.', 'ai' )
+						? __( 'The space could not be restored.', 'ai' )
+						: __( 'The space could not be archived.', 'ai' )
 				);
 				return;
 			}
@@ -351,7 +351,7 @@ export default function ChatHistory( {
 			const { ok } = await request( rest, '/' + chat.id, 'DELETE' );
 
 			if ( ! ok ) {
-				setNotice( __( 'The chat could not be deleted.', 'ai' ) );
+				setNotice( __( 'The space could not be deleted.', 'ai' ) );
 				return;
 			}
 
@@ -370,13 +370,13 @@ export default function ChatHistory( {
 		body = (
 			<p className="ai-workspace__history-state">
 				<Spinner />
-				{ __( 'Loading chats…', 'ai' ) }
+				{ __( 'Loading spaces…', 'ai' ) }
 			</p>
 		);
 	} else if ( 'error' === state ) {
 		body = (
 			<Notice status="error" isDismissible={ false }>
-				<p>{ __( 'Your chats could not be loaded.', 'ai' ) }</p>
+				<p>{ __( 'Your spaces could not be loaded.', 'ai' ) }</p>
 				<Button
 					variant="secondary"
 					size="compact"
@@ -390,8 +390,8 @@ export default function ChatHistory( {
 		body = (
 			<p className="ai-workspace__history-state">
 				{ archived
-					? __( 'No archived chats.', 'ai' )
-					: __( 'No chats yet.', 'ai' ) }
+					? __( 'No archived spaces.', 'ai' )
+					: __( 'No spaces yet.', 'ai' ) }
 			</p>
 		);
 	} else {

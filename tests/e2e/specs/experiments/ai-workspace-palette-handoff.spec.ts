@@ -209,7 +209,7 @@ test.describe( 'AI Workspace handoff from the command palette', () => {
 		 * own fuzzy matching take minutes. The cap is the server's either way.
 		 */
 		await admin.visitAdminPage(
-			'tools.php',
+			'admin.php',
 			`page=ai-workspace&wpai-prompt=${ 'a'.repeat( 2000 ) }`
 		);
 
@@ -225,7 +225,7 @@ test.describe( 'AI Workspace handoff from the command palette', () => {
 		const notice = page.locator( '.ai-workspace__prefill-notice' );
 
 		await admin.visitAdminPage(
-			'tools.php',
+			'admin.php',
 			'page=ai-workspace&wpai-prompt=summarise my drafts'
 		);
 
@@ -245,7 +245,7 @@ test.describe( 'AI Workspace handoff from the command palette', () => {
 		admin,
 		page,
 	} ) => {
-		await admin.visitAdminPage( 'tools.php', 'page=ai-workspace' );
+		await admin.visitAdminPage( 'admin.php', 'page=ai-workspace' );
 
 		await expect(
 			page.getByLabel( 'Message', { exact: true } )

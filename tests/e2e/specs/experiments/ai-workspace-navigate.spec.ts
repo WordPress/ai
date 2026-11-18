@@ -24,7 +24,7 @@ import {
 } from '../../utils/helpers';
 
 const EXPERIMENT_LABEL = 'AI Workspace';
-const WORKSPACE_PAGE = 'tools.php?page=ai-workspace';
+const WORKSPACE_PAGE = 'admin.php?page=ai-workspace';
 
 test.describe( 'AI Workspace navigation', () => {
 	test.beforeEach( async ( { admin, page, requestUtils } ) => {

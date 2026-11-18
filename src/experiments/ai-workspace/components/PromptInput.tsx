@@ -70,7 +70,7 @@ export default function PromptInput( {
 				ref={ inputRef }
 				label={ __( 'Message', 'ai' ) }
 				placeholder={ __(
-					'Ask about your site or describe what you want to make. ⌘/Ctrl + Enter to send',
+					'Ask about your site or describe what you want to make. ⌘/Ctrl + Enter to send.',
 					'ai'
 				) }
 				// The placeholder is the one visible hint, and it is gone once

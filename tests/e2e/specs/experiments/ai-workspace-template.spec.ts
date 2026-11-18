@@ -27,7 +27,7 @@ import {
 } from '../../utils/helpers';
 
 const EXPERIMENT_LABEL = 'AI Workspace';
-const WORKSPACE_PAGE = 'tools.php?page=ai-workspace';
+const WORKSPACE_PAGE = 'admin.php?page=ai-workspace';
 const BLOCK_THEME = 'twentytwentyfive';
 const CLASSIC_THEME = 'twentytwentyone';
 

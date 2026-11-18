@@ -69,7 +69,7 @@ final class Conversation_Privacy {
 		$exporters = is_array( $exporters ) ? $exporters : array();
 
 		$exporters[ self::ID ] = array(
-			'exporter_friendly_name' => __( 'AI chats', 'ai' ),
+			'exporter_friendly_name' => __( 'AI Workspace spaces', 'ai' ),
 			'callback'               => array( self::class, 'export' ),
 		);
 
@@ -88,7 +88,7 @@ final class Conversation_Privacy {
 		$erasers = is_array( $erasers ) ? $erasers : array();
 
 		$erasers[ self::ID ] = array(
-			'eraser_friendly_name' => __( 'AI chats', 'ai' ),
+			'eraser_friendly_name' => __( 'AI Workspace spaces', 'ai' ),
 			'callback'             => array( self::class, 'erase' ),
 		);
 
@@ -134,8 +134,8 @@ final class Conversation_Privacy {
 
 			$data[] = array(
 				'group_id'          => self::ID,
-				'group_label'       => __( 'AI chats', 'ai' ),
-				'group_description' => __( 'Your saved chats with the AI Workspace assistant.', 'ai' ),
+				'group_label'       => __( 'AI Workspace spaces', 'ai' ),
+				'group_description' => __( 'Your saved spaces in the AI Workspace.', 'ai' ),
 				'item_id'           => 'wpai-chat-' . $post->post_name,
 				'data'              => self::fields( $post ),
 			);

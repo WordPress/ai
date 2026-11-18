@@ -37,7 +37,7 @@ import {
 } from '../../utils/helpers';
 
 const EXPERIMENT_LABEL = 'AI Workspace';
-const WORKSPACE_PAGE = 'tools.php?page=ai-workspace';
+const WORKSPACE_PAGE = 'admin.php?page=ai-workspace';
 const FIRST_POST = 1;
 const NEW_TITLE = 'Welcome to the site';
 const NEW_TAGLINE = 'Notes on getting started with WordPress';

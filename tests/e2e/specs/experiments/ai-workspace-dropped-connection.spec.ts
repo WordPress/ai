@@ -22,7 +22,7 @@ import {
 import { disableExperiment, enableExperiment } from '../../utils/helpers';
 
 const EXPERIMENT_LABEL = 'AI Workspace';
-const WORKSPACE_PAGE = 'tools.php?page=ai-workspace';
+const WORKSPACE_PAGE = 'admin.php?page=ai-workspace';
 
 // The mocked OpenAI responses fixture answers every plain turn with this text.
 const MOCKED_RESPONSE =
@@ -140,7 +140,7 @@ test.describe( 'AI Workspace turn with a dropped connection', () => {
 			timeout: 30000,
 		} );
 
-		const panel = page.getByRole( 'complementary', { name: 'Chats' } );
+		const panel = page.getByRole( 'complementary', { name: 'Spaces' } );
 
 		await expect(
 			panel.getByRole( 'button', {

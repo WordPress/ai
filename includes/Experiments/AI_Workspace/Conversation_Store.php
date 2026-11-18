@@ -177,8 +177,8 @@ final class Conversation_Store {
 				self::POST_TYPE,
 				array(
 					'labels'              => array(
-						'name'          => __( 'Workspace chats', 'ai' ),
-						'singular_name' => __( 'Workspace chat', 'ai' ),
+						'name'          => __( 'Spaces', 'ai' ),
+						'singular_name' => __( 'Space', 'ai' ),
 					),
 					'public'              => false,
 					'publicly_queryable'  => false,
@@ -748,7 +748,7 @@ final class Conversation_Store {
 			? self::name_from_message( $first['prompt'] )
 			: '';
 
-		return '' === $name ? __( 'New chat', 'ai' ) : $name;
+		return '' === $name ? __( 'New space', 'ai' ) : $name;
 	}
 
 	/**

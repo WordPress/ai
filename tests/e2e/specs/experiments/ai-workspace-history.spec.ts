@@ -27,7 +27,7 @@ import {
 } from '../../utils/helpers';
 
 const EXPERIMENT_LABEL = 'AI Workspace';
-const WORKSPACE_PAGE = 'tools.php?page=ai-workspace';
+const WORKSPACE_PAGE = 'admin.php?page=ai-workspace';
 
 // The mocked OpenAI responses fixture answers every plain turn with this text.
 const MOCKED_RESPONSE =
@@ -93,9 +93,9 @@ test.describe( 'AI Workspace chat history', () => {
 	} ) => {
 		await admin.visitAdminPage( WORKSPACE_PAGE );
 
-		const panel = page.getByRole( 'complementary', { name: 'Chats' } );
+		const panel = page.getByRole( 'complementary', { name: 'Spaces' } );
 
-		await expect( panel ).toContainText( 'No chats yet.' );
+		await expect( panel ).toContainText( 'No spaces yet.' );
 	} );
 
 	test( 'starts a new chat, then finds the old one and carries on in it', async ( {
@@ -107,7 +107,7 @@ test.describe( 'AI Workspace chat history', () => {
 		await sendAndWait( page, 'Plan the spring newsletter' );
 		await sendAndWait( page, 'And the summer one' );
 
-		const panel = page.getByRole( 'complementary', { name: 'Chats' } );
+		const panel = page.getByRole( 'complementary', { name: 'Spaces' } );
 		const row = panel.getByRole( 'button', {
 			name: 'Plan the spring newsletter',
 			exact: true,
@@ -149,14 +149,14 @@ test.describe( 'AI Workspace chat history', () => {
 		await admin.visitAdminPage( WORKSPACE_PAGE );
 		await sendAndWait( page, 'Original name' );
 
-		const panel = page.getByRole( 'complementary', { name: 'Chats' } );
+		const panel = page.getByRole( 'complementary', { name: 'Spaces' } );
 
 		await panel
 			.getByRole( 'button', { name: 'Actions for “Original name”' } )
 			.click();
 		await page.getByRole( 'menuitem', { name: 'Rename' } ).click();
 
-		const field = panel.getByRole( 'textbox', { name: 'Chat name' } );
+		const field = panel.getByRole( 'textbox', { name: 'Space name' } );
 
 		await field.fill( 'Launch plan' );
 		await field.press( 'Enter' );
@@ -187,7 +187,7 @@ test.describe( 'AI Workspace chat history', () => {
 		await admin.visitAdminPage( WORKSPACE_PAGE );
 		await sendAndWait( page, 'Old idea' );
 
-		const panel = page.getByRole( 'complementary', { name: 'Chats' } );
+		const panel = page.getByRole( 'complementary', { name: 'Spaces' } );
 
 		await panel
 			.getByRole( 'button', { name: 'Actions for “Old idea”' } )
@@ -208,7 +208,7 @@ test.describe( 'AI Workspace chat history', () => {
 			.click();
 		await page.getByRole( 'menuitem', { name: 'Restore' } ).click();
 
-		await expect( panel ).toContainText( 'No archived chats.' );
+		await expect( panel ).toContainText( 'No archived spaces.' );
 
 		await panel.getByRole( 'button', { name: 'Archived' } ).click();
 		await expect(
@@ -220,7 +220,7 @@ test.describe( 'AI Workspace chat history', () => {
 		await admin.visitAdminPage( WORKSPACE_PAGE );
 		await sendAndWait( page, 'Throwaway' );
 
-		const panel = page.getByRole( 'complementary', { name: 'Chats' } );
+		const panel = page.getByRole( 'complementary', { name: 'Spaces' } );
 		const row = panel.getByRole( 'button', {
 			name: 'Throwaway',
 			exact: true,
@@ -242,7 +242,7 @@ test.describe( 'AI Workspace chat history', () => {
 			.click();
 
 		await expect( row ).toHaveCount( 0 );
-		await expect( panel ).toContainText( 'No chats yet.' );
+		await expect( panel ).toContainText( 'No spaces yet.' );
 
 		// The chat on screen was the one deleted, so the screen starts afresh.
 		await expect( page.locator( '.ai-workspace__empty' ) ).toBeVisible();
@@ -271,7 +271,7 @@ test.describe( 'AI Workspace chat history', () => {
 
 		await expect(
 			page.locator( '.components-notice__content', {
-				hasText: 'That chat could not be opened.',
+				hasText: 'That space could not be opened.',
 			} )
 		).toBeVisible( { timeout: 30000 } );
 		await expect( page ).toHaveURL( /[?&]chat=[A-Za-z0-9-]+/ );
@@ -286,7 +286,7 @@ test.describe( 'AI Workspace chat history', () => {
 		await admin.visitAdminPage( WORKSPACE_PAGE );
 		await sendAndWait( page, 'A chat to come back to' );
 
-		const panel = page.getByRole( 'complementary', { name: 'Chats' } );
+		const panel = page.getByRole( 'complementary', { name: 'Spaces' } );
 
 		await panel.getByRole( 'button', { name: 'New space' } ).click();
 
@@ -364,7 +364,7 @@ test.describe( 'AI Workspace chat history', () => {
 		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 2 );
 
 		await page
-			.getByRole( 'complementary', { name: 'Chats' } )
+			.getByRole( 'complementary', { name: 'Spaces' } )
 			.getByRole( 'button', { name: 'New space' } )
 			.click();
 
@@ -386,7 +386,7 @@ test.describe( 'AI Workspace chat history', () => {
 
 		await expect(
 			page.locator( '.components-notice__content', {
-				hasText: 'That chat was not found.',
+				hasText: 'That space was not found.',
 			} )
 		).toBeVisible( { timeout: 30000 } );
 		await expect( page.locator( '.ai-workspace__empty' ) ).toBeVisible();
@@ -399,8 +399,8 @@ test.describe( 'AI Workspace chat history', () => {
 		await page.setViewportSize( { width: 390, height: 800 } );
 		await admin.visitAdminPage( WORKSPACE_PAGE );
 
-		const toggle = page.getByRole( 'button', { name: 'Chats' } );
-		const panel = page.getByRole( 'complementary', { name: 'Chats' } );
+		const toggle = page.getByRole( 'button', { name: 'Spaces' } );
+		const panel = page.getByRole( 'complementary', { name: 'Spaces' } );
 
 		await expect( toggle ).toHaveAttribute( 'aria-expanded', 'false' );
 		await expect( panel ).toBeHidden();
@@ -459,7 +459,7 @@ test.describe( 'AI Workspace chat history with proposals', () => {
 			page.getByRole( 'link', { name: 'Open draft' } )
 		).toBeVisible();
 
-		const panel = page.getByRole( 'complementary', { name: 'Chats' } );
+		const panel = page.getByRole( 'complementary', { name: 'Spaces' } );
 
 		await panel.getByRole( 'button', { name: 'New space' } ).click();
 		await panel
