@@ -277,6 +277,7 @@ The plugin also includes the following action hooks:
 The plugin also includes the following filters:
 
 - `wpai_featured_connectors`: Filters the Connector plugins featured on `Settings -> Connectors`. See [Featured Connector Plugins](FEATURED_CONNECTORS.md#changing-the-featured-list).
+- `wpai_onboarding_use_cases`: Filters the use cases offered by the Get started guide on `Settings -> AI`. Each use case has an `id`, `label`, `description`, a `sprite` pose, the `features` it turns on, an optional `addon` for tools that run on their own, and an optional `try` pointer. Features that are not registered are dropped.
 
 ### Editorial Guidelines
 

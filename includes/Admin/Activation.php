@@ -11,6 +11,7 @@ declare( strict_types=1 );
 namespace WordPress\AI\Admin;
 
 use WordPress\AI\Experiments\Key_Encryption\Key_Encryption;
+use WordPress\AI\Onboarding\Onboarding;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
@@ -38,5 +39,13 @@ final class Activation {
 
 		// Schedule the Key Encryption experiment to re-encrypt plaintext keys on the next request.
 		Key_Encryption::for_each_site( true === $network_wide, array( Key_Encryption::class, 'flag_resume_migration' ) );
+
+		// Welcome a newly activated site to the Get started guide. A network-wide
+		// activation is left alone so the notice does not appear on every site.
+		if ( true === $network_wide ) {
+			return;
+		}
+
+		Onboarding::flag_welcome();
 	}
 }

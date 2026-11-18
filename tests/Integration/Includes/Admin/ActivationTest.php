@@ -10,6 +10,7 @@ namespace WordPress\AI\Tests\Integration\Admin;
 use WP_UnitTestCase;
 use WordPress\AI\Admin\Activation;
 use WordPress\AI\Experiments\Key_Encryption\Key_Encryption;
+use WordPress\AI\Onboarding\Onboarding;
 
 /**
  * Activation test case.
@@ -38,6 +39,7 @@ class ActivationTest extends WP_UnitTestCase {
 	public function tearDown(): void {
 		delete_option( 'wpai_version' );
 		delete_option( Key_Encryption::RESUME_MIGRATION_OPTION );
+		delete_option( Onboarding::OPTION_WELCOME );
 
 		parent::tearDown();
 	}
@@ -62,6 +64,28 @@ class ActivationTest extends WP_UnitTestCase {
 		Activation::activation_callback();
 
 		$this->assertSame( '1', get_option( Key_Encryption::RESUME_MIGRATION_OPTION ) );
+	}
+
+	/**
+	 * Tests that activation_callback() flags the site for the Get started welcome notice.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_activation_callback_flags_onboarding_welcome() {
+		Activation::activation_callback();
+
+		$this->assertSame( '1', get_option( Onboarding::OPTION_WELCOME ) );
+	}
+
+	/**
+	 * Tests that a network-wide activation does not flag the welcome notice.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_network_wide_activation_does_not_flag_onboarding_welcome() {
+		Activation::activation_callback( true );
+
+		$this->assertFalse( get_option( Onboarding::OPTION_WELCOME ) );
 	}
 
 	/**

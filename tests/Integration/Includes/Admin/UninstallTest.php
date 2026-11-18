@@ -192,6 +192,8 @@ class UninstallTest extends WP_UnitTestCase {
 		// User meta owned by the plugin.
 		$this->user_id = self::factory()->user->create();
 		update_user_meta( $this->user_id, 'wpai_connector_approval_notice_dismissed', 'signature' );
+		update_user_meta( $this->user_id, 'wpai_onboarding_guide_hidden', '1' );
+		update_user_meta( $this->user_id, 'wpai_onboarding_welcome_dismissed', '1' );
 
 		// C2PA Monitor: the scan record, its sort helper key, and a sidecar file
 		// with the hardening files the writer drops alongside it.
@@ -340,6 +342,8 @@ class UninstallTest extends WP_UnitTestCase {
 
 		if ( isset( $this->user_id ) ) {
 			delete_user_meta( $this->user_id, 'wpai_connector_approval_notice_dismissed' );
+			delete_user_meta( $this->user_id, 'wpai_onboarding_guide_hidden' );
+			delete_user_meta( $this->user_id, 'wpai_onboarding_welcome_dismissed' );
 			self::delete_user( $this->user_id );
 		}
 
@@ -437,6 +441,8 @@ class UninstallTest extends WP_UnitTestCase {
 		);
 
 		$this->assertSame( '', get_user_meta( $this->user_id, 'wpai_connector_approval_notice_dismissed', true ), 'Connector approval user meta should be deleted.' );
+		$this->assertEmpty( get_user_meta( $this->user_id, 'wpai_onboarding_guide_hidden', true ), 'Get started guide hidden user meta should be deleted.' );
+		$this->assertSame( '', get_user_meta( $this->user_id, 'wpai_onboarding_welcome_dismissed', true ), 'Get started welcome user meta should be deleted.' );
 
 		$this->assertSame( '', get_post_meta( $this->attachment_id, C2pa_Monitor::POSTMETA_KEY, true ), 'C2PA scan record post meta should be deleted.' );
 		$this->assertSame( '', get_post_meta( $this->attachment_id, C2pa_Monitor::SORT_META_KEY, true ), 'C2PA sort helper post meta should be deleted.' );
@@ -534,6 +540,7 @@ class UninstallTest extends WP_UnitTestCase {
 		$this->assertSame( 'value', get_transient( 'wpai_test_transient' ), 'Transients should be preserved when filtered out.' );
 		$this->assertNotFalse( wp_next_scheduled( self::CLEANUP_HOOK ), 'Scheduled cleanup should be preserved when filtered out.' );
 		$this->assertSame( 'signature', get_user_meta( $this->user_id, 'wpai_connector_approval_notice_dismissed', true ), 'User meta should be preserved when filtered out.' );
+		$this->assertSame( '1', get_user_meta( $this->user_id, 'wpai_onboarding_welcome_dismissed', true ), 'Get started user meta should be preserved when filtered out.' );
 		$this->assertNotSame( '', get_post_meta( $this->attachment_id, C2pa_Monitor::POSTMETA_KEY, true ), 'C2PA post meta should be preserved when filtered out.' );
 		foreach ( Job_Manager::META_KEYS as $meta_key ) {
 			$this->assertSame( '1', get_post_meta( $this->post_id, $meta_key, true ), "Text to Speech meta {$meta_key} should be preserved when filtered out." );
