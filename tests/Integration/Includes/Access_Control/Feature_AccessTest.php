@@ -262,6 +262,7 @@ class Feature_AccessTest extends WP_UnitTestCase {
 			array(
 				'label'         => $name,
 				'description'   => 'Access control fixture.',
+				'category'      => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'ability_class' => Access_Fixture_Ability::class,
 				'meta'          => array(
 					'show_in_rest'                   => true,
