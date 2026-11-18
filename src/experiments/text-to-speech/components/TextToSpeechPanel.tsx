@@ -61,9 +61,16 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 	const focusWhenFlagged =
 		( flag: { current: boolean } ) =>
 		( node: HTMLButtonElement | null ) => {
-			if ( flag.current && node ) {
+			if ( ! flag.current || ! node ) {
+				return;
+			}
+
+			flag.current = false;
+			const { activeElement } = node.ownerDocument;
+
+			// Only restore focus if it was lost; don't pull the user back from elsewhere.
+			if ( activeElement === node.ownerDocument.body ) {
 				node.focus();
-				flag.current = false;
 			}
 		};
 
