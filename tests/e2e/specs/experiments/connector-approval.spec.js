@@ -37,10 +37,12 @@ test.describe( 'Connector Approval Experiment', () => {
 
 		// Ensure there's a page under Tools.
 		await expect(
-			page.locator( '#adminmenu' ).getByRole( 'link', {
-				name: 'Connector Approvals',
-				exact: true,
-			} )
+			page
+				.getByRole( 'navigation', { name: 'Main menu', exact: true } )
+				.getByRole( 'link', {
+					name: 'Connector Approvals',
+					exact: true,
+				} )
 		).toBeVisible();
 
 		// Visit the Connector Approval page.
@@ -54,35 +56,17 @@ test.describe( 'Connector Approval Experiment', () => {
 			} )
 		).toBeVisible();
 
-		// Ensure the Approval matrix table is visible.
-		await expect(
-			page
-				.locator( '.ai-connector-approval__matrix' )
-				.getByRole( 'table' )
-		).toBeVisible();
+		// Wait for the approval matrix and its labelled toggle to finish loading.
+		const aiOpenAiToggle = page.getByRole( 'checkbox', {
+			name: 'Allow AI to use OpenAI',
+			exact: true,
+		} );
+		const approvalMatrix = page
+			.getByRole( 'table' )
+			.filter( { has: aiOpenAiToggle } );
+		await expect( approvalMatrix ).toBeVisible();
 
 		// Remove any previous approvals.
-		const aiMatrixRow = page
-			.locator( '.ai-connector-approval__matrix tbody tr' )
-			.filter( {
-				has: page.locator( 'code', { hasText: 'ai/ai.php' } ),
-			} );
-
-		const openAiColumnIndex = await page
-			.locator( '.ai-connector-approval__matrix thead th', {
-				hasText: 'OpenAI',
-			} )
-			.first()
-			.evaluate( ( cell ) =>
-				Array.from( cell.parentElement.children ).indexOf( cell )
-			);
-
-		const aiOpenAiToggle = aiMatrixRow.locator(
-			`td:nth-child(${
-				openAiColumnIndex + 1
-			}) input.components-form-toggle__input`
-		);
-
 		if ( await aiOpenAiToggle.isChecked() ) {
 			await aiOpenAiToggle.click( { force: true } );
 			await expect( aiOpenAiToggle ).not.toBeChecked();
@@ -90,11 +74,17 @@ test.describe( 'Connector Approval Experiment', () => {
 
 		// Trigger a fresh request if no pending row exists yet.
 		const pendingRow = page
-			.locator( 'table.widefat.striped tbody tr' )
+			.getByRole( 'row' )
+			.filter( { has: page.getByText( 'ai/ai.php', { exact: true } ) } )
 			.filter( {
-				has: page.locator( 'code', { hasText: 'ai/ai.php' } ),
+				has: page.getByRole( 'cell', { name: 'OpenAI', exact: true } ),
 			} )
-			.filter( { hasText: 'OpenAI' } );
+			.filter( {
+				has: page.getByRole( 'button', {
+					name: 'Approve',
+					exact: true,
+				} ),
+			} );
 
 		if ( ( await pendingRow.count() ) === 0 ) {
 			await admin.visitAdminPage( 'index.php' );
@@ -106,10 +96,13 @@ test.describe( 'Connector Approval Experiment', () => {
 		await admin.visitAdminPage( 'tools.php' );
 
 		// Ensure the admin notice is visible and has the correct text.
-		await expect( page.locator( '.notice-warning' ) ).toBeVisible();
-		await expect( page.locator( '.notice-warning p' ) ).toHaveText(
-			/1 plugin or theme is requesting access to an AI connector./
-		);
+		await expect(
+			page
+				.getByRole( 'main' )
+				.getByText(
+					'1 plugin or theme is requesting access to an AI connector.'
+				)
+		).toBeVisible();
 
 		await admin.visitAdminPage( 'tools.php?page=ai-connector-approval' );
 
@@ -117,14 +110,7 @@ test.describe( 'Connector Approval Experiment', () => {
 		await expect( pendingRow ).toHaveCount( 1 );
 		await pendingRow.getByRole( 'button', { name: 'Approve' } ).click();
 
-		await expect(
-			page
-				.locator( 'table.widefat.striped tbody tr' )
-				.filter( {
-					has: page.locator( 'code', { hasText: 'ai/ai.php' } ),
-				} )
-				.filter( { hasText: 'OpenAI' } )
-		).toHaveCount( 0 );
+		await expect( pendingRow ).toHaveCount( 0 );
 
 		await expect(
 			page.getByLabel( 'Allow AI to use OpenAI', { exact: true } )
@@ -142,10 +128,12 @@ test.describe( 'Connector Approval Experiment', () => {
 
 		// Ensure there's not a page under Tools.
 		await expect(
-			page.locator( '#adminmenu' ).getByRole( 'link', {
-				name: 'Connector Approvals',
-				exact: true,
-			} )
+			page
+				.getByRole( 'navigation', { name: 'Main menu', exact: true } )
+				.getByRole( 'link', {
+					name: 'Connector Approvals',
+					exact: true,
+				} )
 		).not.toBeVisible();
 	} );
 
@@ -161,19 +149,14 @@ test.describe( 'Connector Approval Experiment', () => {
 		// Visit the Connector Approval page.
 		await admin.visitAdminPage( 'tools.php?page=ai-connector-approval' );
 
-		// Ensure the Connector Approval page has finished mounting and hydrating
-		// its state from the REST API before interacting with the matrix below.
-		await expect(
-			page.locator( '#ai-connector-approval-root' )
-		).toBeVisible();
-		await expect(
-			page.locator( '.ai-connector-approval__matrix table' )
-		).toBeVisible();
-
-		// Remove approval for OpenAI for the AI plugin.
-		const aiOpenAiToggle = page.getByLabel( 'Allow AI to use OpenAI', {
+		// Wait for the approval matrix to finish loading before changing approval.
+		const aiOpenAiToggle = page.getByRole( 'checkbox', {
+			name: 'Allow AI to use OpenAI',
 			exact: true,
 		} );
+		await expect(
+			page.getByRole( 'table' ).filter( { has: aiOpenAiToggle } )
+		).toBeVisible();
 
 		if ( await aiOpenAiToggle.isChecked() ) {
 			await aiOpenAiToggle.click( { force: true } );
@@ -213,10 +196,12 @@ test.describe( 'Connector Approval Experiment', () => {
 
 		// Ensure the approval error notice appears.
 		await expect(
-			page.locator( '.components-notice.is-error', {
-				hasText:
+			page
+				.getByRole( 'main' )
+				.getByText(
 					'The OpenAI connector is pending approval. Please approve it under Tools > Connector Approvals.',
-			} )
+					{ exact: true }
+				)
 		).toBeVisible();
 	} );
 } );
