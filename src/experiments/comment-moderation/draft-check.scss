@@ -1,0 +1,11 @@
+.wpai-comment-draft-notice {
+	font-size: 0.875em;
+}
+
+.wpai-comment-draft-status:not(:empty) {
+	margin-block-end: 1em;
+}
+
+.wpai-comment-draft-status .components-notice.is-error {
+	border-inline-start-color: #d63638;
+}

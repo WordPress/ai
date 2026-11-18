@@ -8,9 +8,9 @@ The Comment Moderation experiment adds sentiment, toxicity, and value analysis t
 
 - **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
 - **Runs without a user action:** Yes, once enabled
-- **When it runs:** Automatically, on each new comment, including guest comments by default. You can also run it from the "Analyze Sentiment, Toxicity, and Value" row action or bulk action in Comments
-- **Sent to your AI provider:** Comment text, author name, and a post excerpt
-- **Requests and data:** One request per new comment
+- **When it runs:** On new comments and when requested in Comments. If draft checks are enabled, it also runs while readers write or submit a comment.
+- **Sent to your AI provider:** Comment text, author name, and post context for saved comments. Only comment text for drafts.
+- **Requests and data:** One request per new comment, plus optional requests for drafts as readers revise them.
 - **Good to know:** Comments already marked as spam or trash are skipped. Comments from logged-in users are always checked; turn off "Automatically moderate guest comments" to stop checking guest comments. A comment is held for moderation when it scores as toxic and negative.
 
 ## Overview
@@ -27,7 +27,15 @@ The **Value** score rates how relevant and substantive a comment is to the post 
 - Automatically moderates newly created comments when analysis indicates high risk
 - Uses one shared ability (`ai/comment-analysis`) for both automated and manual workflows
 
-**Automatic moderation rule (default):**
+### Check drafts on the comment form
+
+In **Settings → AI**, turn on **Advanced settings**, then enable **Check comments before submission** under **Comment Moderation**. This setting is off by default. It applies to standard WordPress comment forms in classic and block themes. Guests are included when the site allows guest comments and **Automatically moderate guest comments** is enabled.
+
+The form sends only the draft text to the configured AI provider after the reader pauses for 1.5 seconds or tries to submit text that hasn't been checked. Drafts shorter than 20 characters are checked on submit. The form reuses the result for unchanged text. When the sentiment is negative and the toxicity score reaches **Draft toxicity threshold (%)** (70% by default), the form asks the reader to revise their comment. Editing lets them check the new text.
+
+Readers can still submit if the check fails, times out, or reaches the server's request limit. The draft threshold only applies to the browser form. WordPress still accepts submissions made without JavaScript and the automatic moderation rule below applies to eligible comments after they're saved.
+
+### Automatic moderation rule
 
 - If `toxicity_score >= 0.7` **and** `sentiment === 'negative'`, the comment is set to pending moderation (`comment_approved = '0'`).
 - Only regular comments are analyzed automatically. Pingbacks, trackbacks, and block editor notes (including AI-authored Editorial Notes) are skipped.

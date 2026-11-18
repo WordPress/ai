@@ -12,6 +12,7 @@ namespace WordPress\AI\Abilities\Comment_Moderation;
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation;
+use WordPress\AiClient\Providers\Http\DTO\RequestOptions;
 
 use function WordPress\AI\get_preferred_models_for_text_generation;
 use function WordPress\AI\is_post_publicly_readable;
@@ -342,7 +343,75 @@ class Comment_Analysis extends Abstract_Ability {
 
 		$prompt         = $this->filter_prompt( $prompt, $content, $author );
 		$prompt_builder = $this->get_prompt_builder( $prompt );
+		$parsed         = $this->generate_analysis( $prompt_builder );
 
+		return is_wp_error( $parsed ) ? $parsed : $this->sanitize_analysis_result( $parsed );
+	}
+
+	/**
+	 * Analyzes a draft from a trusted internal caller without reading or saving a comment.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $text Draft text.
+	 * @return array{toxicity_score: float, sentiment: string}|\WP_Error Draft analysis.
+	 */
+	public function analyze_draft( string $text ) {
+		$schema = array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'toxicity_score' => array( 'type' => 'number' ),
+				'sentiment'      => array(
+					'type' => 'string',
+					'enum' => array_keys( Comment_Moderation::get_sentiment_config() ),
+				),
+			),
+			'required'             => array( 'toxicity_score', 'sentiment' ),
+			'additionalProperties' => false,
+		);
+
+		$prompt  = '<comment>' . $this->escape_prompt_value( $text ) . '</comment>';
+		$options = new RequestOptions();
+		$options->setTimeout( 4 );
+		$builder = wp_ai_client_prompt( $prompt )
+			->using_system_instruction( $this->get_system_instruction( 'draft-system-instruction.php' ) )
+			->using_request_options( $options )
+			->using_max_tokens( 512 )
+			->as_json_response( $schema );
+		$builder = $this->filter_prompt_builder( $builder, Comment_Moderation::class, get_preferred_models_for_text_generation(), $prompt );
+		$builder = $this->ensure_text_generation_supported(
+			$builder,
+			__( 'Draft analysis requires an AI connector that supports text generation.', 'ai' )
+		);
+		$result  = $this->generate_analysis( $builder );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		$score     = $result['toxicity_score'] ?? null;
+		$sentiment = $result['sentiment'] ?? null;
+		if (
+			( ! is_int( $score ) && ! is_float( $score ) ) || $score < 0 || $score > 1 ||
+			! in_array( $sentiment, $schema['properties']['sentiment']['enum'], true )
+		) {
+			return new WP_Error( 'invalid_draft_analysis', __( 'The AI provider returned an invalid draft analysis.', 'ai' ) );
+		}
+
+		return array(
+			'toxicity_score' => (float) $score,
+			'sentiment'      => $sentiment,
+		);
+	}
+
+	/**
+	 * Generates and parses a structured analysis.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_AI_Client_Prompt_Builder|\WP_Error $prompt_builder Configured prompt builder.
+	 * @return array<string, mixed>|\WP_Error Parsed analysis.
+	 */
+	private function generate_analysis( $prompt_builder ) {
 		if ( is_wp_error( $prompt_builder ) ) {
 			return $prompt_builder;
 		}
@@ -363,7 +432,7 @@ class Comment_Analysis extends Abstract_Ability {
 			);
 		}
 
-		return $this->sanitize_analysis_result( $parsed );
+		return $parsed;
 	}
 
 	/**
