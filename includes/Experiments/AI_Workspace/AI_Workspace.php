@@ -103,10 +103,11 @@ class AI_Workspace extends Abstract_Feature {
 	 */
 	protected function load_metadata(): array {
 		return array(
-			'label'       => __( 'AI Workspace', 'ai' ),
-			'description' => __( 'Adds a dedicated AI Workspace screen under Tools, where you hold a multi-step conversation about your own site. The assistant searches and reads your content under your own capabilities, answers questions about the site, and changes nothing until you approve a proposal showing the exact values that will be written: new drafts and templates, or changes to a post or the site title and tagline. It also adds AI suggestions and an "Ask in AI Workspace" row to the Command Palette.', 'ai' ),
-			'category'    => Experiment_Category::ADMIN,
-			'capability'  => 'text_generation',
+			'label'          => __( 'AI Workspace', 'ai' ),
+			'description'    => __( 'Adds a dedicated AI Workspace screen under Tools, where you hold a multi-step conversation about your own site. The assistant searches and reads your content under your own capabilities, answers questions about the site, and changes nothing until you approve a proposal showing the exact values that will be written: new drafts and templates, or changes to a post or the site title and tagline. It also adds AI suggestions and an "Ask in AI Workspace" row to the Command Palette.', 'ai' ),
+			'category'       => Experiment_Category::ADMIN,
+			'access_control' => true,
+			'capability'     => 'text_generation',
 		);
 	}
 
@@ -114,9 +115,6 @@ class AI_Workspace extends Abstract_Feature {
 	 * {@inheritDoc}
 	 */
 	public function register(): void {
-		$this->admin_page = new Admin_Page();
-		$this->admin_page->register();
-
 		/*
 		 * The search ability queries the post types marked `show_in_abilities`, so the
 		 * curated core post types have to be exposed before the ability registers and
@@ -238,18 +236,30 @@ class AI_Workspace extends Abstract_Feature {
 		( new Conversation_Controller() )->init();
 
 		/*
+		 * The command palette's AI fallback. When the palette finds nothing for
+		 * a search, the loader asks the model which of the palette's own
+		 * commands answer it.
+		 */
+		add_action( 'wp_abilities_api_init', array( $this, 'register_command_palette_ability' ) );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function register_ui(): void {
+		$this->admin_page = new Admin_Page();
+		$this->admin_page->register();
+
+		/*
 		 * The way in from the post editor. It is registered here rather than on
 		 * the admin page, because the action lives on a screen the admin page
 		 * never loads on.
 		 */
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_editor_assets' ) );
 
-		/*
-		 * The command palette's AI fallback. When the palette finds nothing for
-		 * a search, the loader asks the model which of the palette's own
-		 * commands answer it. It runs after the palette is enqueued.
-		 */
-		add_action( 'wp_abilities_api_init', array( $this, 'register_command_palette_ability' ) );
+		// The palette's AI loader. It runs after the palette is enqueued.
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_command_palette_assets' ), 20 );
 	}
 

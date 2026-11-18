@@ -7,8 +7,14 @@
 
 namespace WordPress\AI\Tests\Integration\Experiments\AI_Workspace;
 
+use WP_REST_Request;
 use WP_UnitTestCase;
+use WordPress\AI\Access_Control\Feature_Access;
+use WordPress\AI\Experiments\AI_Workspace\AI_Workspace;
 use WordPress\AI\Experiments\AI_Workspace\Admin_Page;
+use WordPress\AI\Experiments\AI_Workspace\REST\Conversation_Controller;
+use WordPress\AI\Experiments\AI_Workspace\REST\Proposal_Controller;
+use WordPress\AI\Experiments\AI_Workspace\REST\Turn_Controller;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
 
@@ -41,6 +47,8 @@ class AI_WorkspaceTest extends WP_UnitTestCase {
 		wp_set_current_user( 0 );
 		unset( $GLOBALS['current_screen'] );
 		delete_option( 'wpai_feature_ai-workspace_enabled' );
+		delete_option( Feature_Access::enabled_option( AI_Workspace::get_id() ) );
+		delete_option( Feature_Access::roles_option( AI_Workspace::get_id() ) );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 		remove_all_filters( 'wpai_feature_ai-workspace_enabled' );
 		parent::tearDown();
@@ -319,6 +327,60 @@ class AI_WorkspaceTest extends WP_UnitTestCase {
 		$this->assertIsArray( $decoded['seed'] );
 
 		return $decoded['seed'];
+	}
+
+	/**
+	 * Returns one request for each workspace route.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string, 1: string, 2: array<string, mixed>}> Method, route and body.
+	 */
+	public function data_workspace_routes(): array {
+		return array(
+			'send a message'    => array( 'POST', '/ai/v1/workspace/messages', array( 'message' => 'Hello' ) ),
+			'read a turn state' => array( 'GET', '/ai/v1/workspace/messages/3f2b8c1e-4d5a-4b6c-8d7e-9f0a1b2c3d4e', array() ),
+			'read a proposal'   => array( 'GET', '/ai/v1/workspace/proposals/abc', array() ),
+			'list spaces'       => array( 'GET', '/ai/v1/workspace/conversations', array() ),
+		);
+	}
+
+	/**
+	 * An administrator left out of the feature's access list is refused on every route.
+	 *
+	 * The routes are not abilities, so the ability-level gate does not cover them.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_workspace_routes
+	 *
+	 * @param string               $method The HTTP method.
+	 * @param string               $route  The route.
+	 * @param array<string, mixed> $body   The request body.
+	 */
+	public function test_routes_refuse_an_administrator_without_feature_access( string $method, string $route, array $body ): void {
+		update_option( Feature_Access::enabled_option( AI_Workspace::get_id() ), true );
+		update_option( Feature_Access::roles_option( AI_Workspace::get_id() ), array( 'editor' ) );
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+
+		global $wp_rest_server;
+		$wp_rest_server = null; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited, WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Rebuilding the REST server for this test.
+		rest_get_server();
+		( new Turn_Controller() )->register_routes();
+		( new Proposal_Controller() )->register_routes();
+		( new Conversation_Controller() )->register_routes();
+
+		$request = new WP_REST_Request( $method, $route );
+		if ( array() !== $body ) {
+			$request->set_body_params( $body );
+		}
+
+		$response = rest_do_request( $request );
+
+		$wp_rest_server = null; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited, WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Resetting the REST server after the test.
+
+		$this->assertSame( 403, $response->get_status() );
+		$this->assertSame( 'wpai_feature_access_denied', $response->get_data()['code'] );
 	}
 
 	/**

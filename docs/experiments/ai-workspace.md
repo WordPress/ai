@@ -8,7 +8,7 @@ The AI Workspace experiment adds a conversation surface on a dedicated admin scr
 
 ### For End Users
 
-Enable the experiment at `Settings → AI` and open `Tools → AI Workspace`. The screen requires `manage_options`, and the menu entry is not shown to users who lack it.
+Enable the experiment at `Settings → AI` and open `Tools → AI Workspace`. The screen requires `manage_options`, and the menu entry is not shown to users who lack it. The workspace supports [access controls](../admin/access-controls.md): when they are on, an administrator who is not allowed gets no menu entry, no editor or Command Palette entry points, and a `wpai_feature_access_denied` error from every workspace route.
 
 **Key features:**
 

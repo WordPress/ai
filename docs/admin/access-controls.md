@@ -47,7 +47,7 @@ A user without access gets a `wpai_feature_access_denied` error (HTTP 401 when l
 
 ### Which features support it
 
-Only features whose `access_control` metadata is `true` show these controls. Access control is opt-in. Every built-in feature outside the **Admin** category opts in, and so do Comment Moderation and Suggest Reply. Other admin features already require `manage_options`. Third-party features must set `'access_control' => true` to opt in.
+Only features whose `access_control` metadata is `true` show these controls. Access control is opt-in. Every built-in feature outside the **Admin** category opts in, and so do Comment Moderation, Suggest Reply and AI Workspace. Other admin features already require `manage_options`. AI Workspace requires `manage_options` too, and access control narrows which administrators can use it. Third-party features must set `'access_control' => true` to opt in.
 
 ### Settings export and import
 

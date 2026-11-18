@@ -13,6 +13,8 @@ use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_REST_Server;
+use WordPress\AI\Access_Control\Feature_Access;
+use WordPress\AI\Experiments\AI_Workspace\AI_Workspace;
 use WordPress\AI\Experiments\AI_Workspace\Conversation_Store;
 use WordPress\AI\Experiments\AI_Workspace\Model_Client_Interface;
 use WordPress\AI\Experiments\AI_Workspace\Prompt_Model_Client;
@@ -304,6 +306,15 @@ final class Turn_Controller {
 			return new WP_Error(
 				'rest_forbidden',
 				__( 'You do not have permission to use the AI Workspace.', 'ai' ),
+				array( 'status' => rest_authorization_required_code() )
+			);
+		}
+
+		// The routes are not abilities, so they apply the feature's access control themselves.
+		if ( ! current_user_can( Feature_Access::CAPABILITY, AI_Workspace::get_id() ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Plugin meta capability, mapped in Feature_Access::map_meta_cap().
+			return new WP_Error(
+				'wpai_feature_access_denied',
+				esc_html__( 'You do not have permission to use this feature.', 'ai' ),
 				array( 'status' => rest_authorization_required_code() )
 			);
 		}
