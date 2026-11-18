@@ -11,7 +11,7 @@ The Alt Text Generation experiment adds an AI-powered "Generate Alt Text" experi
 - **When it runs:** When you click Generate Alt Text or run the bulk action, and automatically when you import an image made with Image Generation
 - **Sent to your AI provider:** The image, plus post content when used in the editor
 - **Requests and data:** One request per image
-- **Good to know:** The bulk action and the `wp ai alt-text generate` WP-CLI command save alt text directly, without a preview.
+- **Good to know:** The bulk action and the `wp ai alt-text generate` WP-CLI command save alt text directly, without a preview. The bulk action skips images identified as decorative, so their existing alt text is kept.
 
 ## Overview
 
@@ -25,7 +25,7 @@ When enabled, the Alt Text Generation experiment adds "Generate/Regenerate Alt T
   - If AI determines the image is decorative, the panel suggests marking it decorative instead of applying alt text, with a **Mark as decorative** action that enables the core Image block setting.
 - **Media modal:** When inserting or editing an image via the media library modal (block editor, classic editor, or site editor), a Generate/Regenerate button appears next to the Alt Text field. Generated text is written into the field and core saves it when the modal is closed.
 - **Attachment edit screen:** When editing an individual attachment (`Media → Library → Edit`), an "AI Alt Text" meta box or field provides the same Generate/Regenerate button.
-- **Bulk action (Media Library list view):** In the list view of the Media Library, a "Generate Alt Text" option appears in the Bulk Actions dropdown. Select multiple images, choose the action, and click Apply. A progress notice tracks generation for each image, and query args are automatically stripped from the URL after completion to prevent re-triggering on refresh.
+- **Bulk action (Media Library list view):** In the list view of the Media Library, a "Generate Alt Text" option appears in the Bulk Actions dropdown. Select multiple images, choose the action, and click Apply. A progress notice tracks generation for each image, and query args are automatically stripped from the URL after completion to prevent re-triggering on refresh. Images the AI identifies as decorative are not updated, so their existing alt text is kept. The final notice lists their attachment IDs, separately from any failures.
 
 **Key Features:**
 
@@ -86,7 +86,7 @@ The ability can be called directly via REST API for automation, bulk processing,
    - The media script waits for `.ai-alt-text-media-actions` and the corresponding alt textarea (injected by the PHP meta box or `attachment_fields_to_edit`). It attaches a click handler to the Generate button, reads `data-attachment-id`, and calls `runAbility( 'ai/alt-text-generation', { attachment_id } )`. On success it sets the textarea value and dispatches `input`/`change` so core persists the value.
 
 4. **Bulk action (DOM):**
-   - `src/experiments/alt-text-generation/bulk.ts` reads `window.aiAltTextGenerationBulkData.attachmentIds`, creates a dismissible admin notice, and iterates over each ID sequentially. For each ID it calls `runAbility( 'ai/alt-text-generation', { attachment_id } )` and then updates the attachment via `apiFetch( { path: '/wp/v2/media/{id}', method: 'POST', data: { alt_text } } )`. Failed IDs are tracked and reported in the final notice. When `truncatedCount` is non-zero the script also shows a warning notice naming how many images the batch cap dropped. After processing, `window.history.replaceState()` strips the query args (including `_wpai_bulk_nonce`) from the URL to prevent re-triggering on page refresh or browser navigation.
+   - `src/experiments/alt-text-generation/bulk.ts` reads `window.aiAltTextGenerationBulkData.attachmentIds`, creates a dismissible admin notice, and iterates over each ID sequentially. For each ID it calls `runAbility( 'ai/alt-text-generation', { attachment_id } )`. If the result is decorative (`is_decorative: true`), the attachment is not updated, because saving the empty `alt_text` would erase the existing alt text; the ID is tracked as decorative instead. Otherwise it updates the attachment via `apiFetch( { path: '/wp/v2/media/{id}', method: 'POST', data: { alt_text } } )`. Failed and decorative IDs are reported separately in the final notice, and only saved images count as generated. When `truncatedCount` is non-zero the script also shows a warning notice naming how many images the batch cap dropped. After processing, `window.history.replaceState()` strips the query args (including `_wpai_bulk_nonce`) from the URL to prevent re-triggering on page refresh or browser navigation.
 
 5. **Ability execution flow:**
    - **Resolve image:** If `attachment_id` is set, load the attachment file or image URL and convert to a data URI. If `image_url` is set, accept data URIs as-is, read local upload URLs from the filesystem only when they belong to an attachment the user can edit, otherwise download the URL to a temp file and convert to a data URI.
@@ -326,6 +326,7 @@ Values below 1 are clamped to 1. The same filter governs the bulk summarization 
    - Choose "Generate Alt Text" from the Bulk Actions dropdown and click Apply
    - Confirm a progress notice appears ("Generating alt text: 0 / N…") and updates as each image is processed
    - After completion, verify the notice shows the final count and that the URL no longer contains `wpai_bulk_alt_text`, `wpai_attachment_ids`, or `_wpai_bulk_nonce` query args
+   - If an image is identified as decorative, confirm its existing alt text is unchanged and the notice lists it as decorative with its attachment ID
    - Hand-editing those query args onto an `upload.php` URL (or following such a URL from another site) must *not* start a run, since the nonce will not verify
    - Refresh the page and confirm generation does not re-trigger
 

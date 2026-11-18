@@ -545,6 +545,55 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		expect( page.url() ).not.toContain( 'wpai_attachment_ids' );
 	} );
 
+	test( 'Bulk action keeps existing alt text for decorative images', async ( {
+		admin,
+		requestUtils,
+		page,
+	} ) => {
+		await enableExperiment( admin, page, 'Alt Text Generation' );
+
+		const media = await requestUtils.uploadMedia( TEST_IMAGE_PATH );
+		const altText = 'Hand-written alt text';
+
+		try {
+			await requestUtils.rest( {
+				method: 'POST',
+				path: `/wp/v2/media/${ media.id }`,
+				data: { alt_text: altText },
+			} );
+
+			// Mock the AI response to return the decorative result.
+			await page.route(
+				/\/wp-abilities\/v1\/abilities\/ai\/alt-text-generation\/run/,
+				( route ) =>
+					route.fulfill( {
+						json: { alt_text: '', is_decorative: true },
+					} )
+			);
+
+			await admin.visitAdminPage( 'upload.php', 'mode=list' );
+			await page.locator( `#cb-select-${ media.id }` ).check();
+			await page
+				.getByLabel( 'Select bulk action' )
+				.first()
+				.selectOption( 'wpai_generate_alt_text' );
+			await page.getByRole( 'button', { name: 'Apply' } ).first().click();
+
+			const notice = page.locator( '.notice p', {
+				hasText: /Alt text generated/,
+			} );
+			await expect( notice ).toBeVisible( { timeout: 60000 } );
+
+			const updated = await requestUtils.rest( {
+				path: `/wp/v2/media/${ media.id }`,
+			} );
+			expect( updated.alt_text ).toBe( altText );
+			await expect( notice ).toContainText( 'identified as decorative' );
+		} finally {
+			await requestUtils.deleteMedia( media.id );
+		}
+	} );
+
 	test( 'Bulk action shows an error notice when no provider is configured', async ( {
 		admin,
 		requestUtils,

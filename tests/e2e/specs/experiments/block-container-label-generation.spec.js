@@ -94,6 +94,84 @@ test.describe( 'Block Container Label Generation Experiment', () => {
 		await expect( groupRow ).toBeVisible( { timeout: 15000 } );
 	} );
 
+	test( 'Continues generating block labels in List View when one request fails', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await enableExperiment(
+			admin,
+			page,
+			'Block Container Label Generation'
+		);
+
+		await admin.createNewPost();
+		await insertGroupWithParagraph( editor, LONG_TEXT );
+		await insertGroupWithParagraph( editor, LONG_TEXT );
+
+		// The first request fails with a rate limit, the second succeeds.
+		let requests = 0;
+		await page.route(
+			( url ) =>
+				url.href.includes( 'wp-abilities' ) &&
+				url.href.includes( 'block-container-label-generation' ),
+			async ( route ) => {
+				requests++;
+
+				if ( requests === 1 ) {
+					await route.fulfill( {
+						status: 429,
+						contentType: 'application/json',
+						body: JSON.stringify( {
+							code: 'rest_rate_limited',
+							message: 'Rate limit reached.',
+							data: { status: 429 },
+						} ),
+					} );
+					return;
+				}
+
+				await route.fulfill( {
+					contentType: 'application/json',
+					body: JSON.stringify( 'Second group label' ),
+				} );
+			}
+		);
+
+		await openListView( page );
+		await page
+			.getByRole( 'button', {
+				name: 'Generate Block Labels',
+				exact: true,
+			} )
+			.click();
+
+		// The second group still gets its label.
+		const secondGroupRow = page
+			.getByRole( 'treegrid', { name: 'Block navigation structure' } )
+			.getByText( 'Second group label', { exact: true } );
+
+		await expect( secondGroupRow ).toBeVisible( { timeout: 15000 } );
+
+		// The failure is reported once the run ends.
+		const noticeContent = () =>
+			page.evaluate(
+				( id ) =>
+					window.wp.data
+						.select( 'core/notices' )
+						.getNotices()
+						.find( ( notice ) => notice.id === id )?.content,
+				'ai-block-container-label-generation-notice'
+			);
+
+		await expect
+			.poll( noticeContent )
+			.toBe(
+				'Could not generate labels for 1 of 2 blocks. Rate limit reached.'
+			);
+		expect( requests ).toBe( 2 );
+	} );
+
 	test( 'Generate button in List View is disabled when container block content is too short', async ( {
 		admin,
 		editor,
