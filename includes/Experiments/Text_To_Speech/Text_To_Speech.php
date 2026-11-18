@@ -40,11 +40,12 @@ class Text_To_Speech extends Abstract_Feature {
 	 */
 	protected function load_metadata(): array {
 		return array(
-			'label'       => __( 'Text to Speech', 'ai' ),
-			'description' => __( 'Generates an audio version of post content so visitors can listen instead of read. Requires an AI connector that includes support for text to speech models.', 'ai' ),
-			'category'    => Experiment_Category::EDITOR,
-			'capability'  => 'text_to_speech_conversion',
-			'usage'       => array(
+			'label'          => __( 'Text to Speech', 'ai' ),
+			'description'    => __( 'Generates an audio version of post content so visitors can listen instead of read. Requires an AI connector that includes support for text to speech models.', 'ai' ),
+			'category'       => Experiment_Category::EDITOR,
+			'access_control' => true,
+			'capability'     => 'text_to_speech_conversion',
+			'usage'          => array(
 				'trigger'  => 'on_demand',
 				'runs'     => __( 'When you click Generate Audio or Regenerate Audio in the editor, then in the background until the audio is done', 'ai' ),
 				'sends'    => __( 'The post title and saved post content as plain text, plus the chosen voice', 'ai' ),
@@ -62,11 +63,19 @@ class Text_To_Speech extends Abstract_Feature {
 
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'rest_api_init', array( $this, 'register_rest_routes' ) );
-		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ), 5 );
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_frontend_assets' ) );
 		add_action( Job_Manager::CRON_HOOK, array( $this, 'process_chunk' ) );
 		add_filter( 'the_content', array( $this, 'render_audio_player' ) );
 		add_action( 'wp_after_insert_post', array( $this, 'sync_audio_visibility' ) );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function register_ui(): void {
+		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ), 5 );
 	}
 
 	/**
@@ -133,7 +142,7 @@ class Text_To_Speech extends Abstract_Feature {
 	 * @since 1.5.0
 	 */
 	public function register_abilities(): void {
-		wp_register_ability(
+		$this->register_feature_ability(
 			'ai/speech-generation',
 			array(
 				'label'         => __( 'Speech Generation', 'ai' ),

@@ -42,10 +42,11 @@ class Suggest_Reply extends Abstract_Feature {
 	 */
 	protected function load_metadata(): array {
 		return array(
-			'label'       => __( 'Suggest Reply', 'ai' ),
-			'description' => __( 'Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to quickly generate comment reply suggestions.', 'ai' ),
-			'category'    => Experiment_Category::ADMIN,
-			'usage'       => array(
+			'label'          => __( 'Suggest Reply', 'ai' ),
+			'description'    => __( 'Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to quickly generate comment reply suggestions.', 'ai' ),
+			'category'       => Experiment_Category::ADMIN,
+			'access_control' => true,
+			'usage'          => array(
 				'trigger'  => 'on_demand',
 				'runs'     => __( 'When you click Suggest reply', 'ai' ),
 				'sends'    => __( 'Comment text, author name, post title, and excerpt', 'ai' ),
@@ -61,6 +62,14 @@ class Suggest_Reply extends Abstract_Feature {
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function register_ui(): void {
 		add_filter( 'comment_row_actions', array( $this, 'add_row_action' ), 10, 2 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 	}
@@ -71,7 +80,7 @@ class Suggest_Reply extends Abstract_Feature {
 	 * @since 1.2.0
 	 */
 	public function register_abilities(): void {
-		wp_register_ability(
+		$this->register_feature_ability(
 			'ai/suggest-reply',
 			array(
 				'label'         => __( 'Reply Suggestion', 'ai' ),

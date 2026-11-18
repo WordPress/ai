@@ -107,6 +107,31 @@ abstract class Abstract_Ability extends WP_Ability {
 	abstract protected function permission_callback( $input );
 
 	/**
+	 * {@inheritDoc}
+	 *
+	 * Back-fills the core `wp_ability_permission_result` filter on WordPress
+	 * versions that predate it (< 7.1), so authorization layers hooked to it
+	 * apply on every supported version. Remove once the minimum is 7.1.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input Optional. The input data for permission checking.
+	 * @return bool|\WP_Error Whether the ability has the necessary permission.
+	 */
+	public function check_permissions( $input = null ) {
+		$result = parent::check_permissions( $input );
+
+		if ( version_compare( get_bloginfo( 'version' ), '7.1-alpha', '>=' ) ) {
+			return $result;
+		}
+
+		/** This filter is documented in wp-includes/abilities-api/class-wp-ability.php */
+		$filtered = apply_filters( 'wp_ability_permission_result', $result, $this->get_name(), $input, $this ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Back-fills the core hook on WordPress < 7.1.
+
+		return is_bool( $filtered ) || is_wp_error( $filtered ) ? $filtered : false;
+	}
+
+	/**
 	 * Returns the meta of the ability.
 	 *
 	 * @since 0.1.0
