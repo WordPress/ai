@@ -72,7 +72,7 @@ const payloadRow = ( list, slug ) =>
  * pretty permalinks (`/wp-json/ai/v1/...`) or plain ones (`?rest_route=...`).
  *
  * @param {string} route The route path, such as `/ai/v1/abilities/surface`.
- * @return {Function} A URL predicate for `page.route()` and `waitForResponse()`.
+ * @return {(url: URL|string) => boolean} A URL predicate for `page.route()` and `waitForResponse()`.
  */
 const restRoute = ( route ) => {
 	const pattern = new RegExp(

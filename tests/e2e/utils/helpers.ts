@@ -510,7 +510,7 @@ export const activateMockScenario = async (
 		method: 'POST',
 		data: { scenario },
 	} );
-}
+};
 
 /**
  * Resets a feature's access control settings to their defaults.
