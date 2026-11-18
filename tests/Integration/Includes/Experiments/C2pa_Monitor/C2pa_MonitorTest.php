@@ -964,4 +964,158 @@ class C2pa_MonitorTest extends WP_UnitTestCase {
 		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_c2pa-monitor_enabled' );
 	}
+
+	/**
+	 * A site operator can opt in a publicly reachable attachment URL for CAI Verify.
+	 */
+	public function test_verify_link_uses_filtered_public_source_url(): void {
+		$attachment_id = $this->create_image_attachment();
+		$record        = array(
+			'@context'       => array( 'https://schema.org/' ),
+			'schema_version' => 1,
+			'captured_at'    => '2026-01-01T00:00:00Z',
+			'duration_ms'    => 0,
+			'source'         => array(),
+			'traditional'    => array(),
+			'c2pa'           => array( 'present' => true, 'format' => 'jpeg' ),
+			'errors'         => array(),
+		);
+		update_post_meta( $attachment_id, C2pa_Monitor::POSTMETA_KEY, wp_json_encode( $record ) );
+
+		$filter = static function ( string $public_url, int $post_id, $original_url ) use ( $attachment_id ): string {
+			self::assertSame( '', $public_url );
+			self::assertSame( $attachment_id, $post_id );
+			self::assertSame( wp_get_original_image_url( $attachment_id ), $original_url );
+			return 'https://media.example.com/credentialed.jpg?version=2&variant=original';
+		};
+		add_filter( 'wpai_c2pa_public_verify_url', $filter, 10, 3 );
+
+		ob_start();
+		$this->feature->render_media_column( 'wpai_c2pa', $attachment_id );
+		$out = ob_get_clean();
+
+		remove_filter( 'wpai_c2pa_public_verify_url', $filter, 10 );
+		$this->assertStringContainsString( 'source=https%3A%2F%2Fmedia.example.com%2Fcredentialed.jpg%3Fversion%3D2%26variant%3Doriginal', $out );
+	}
+
+	/**
+	 * Invalid or non-public filter values preserve the bare CAI Verify link.
+	 */
+	public function test_verify_link_rejects_invalid_source_url(): void {
+		$attachment_id = $this->create_image_attachment();
+		$record        = array(
+			'@context'       => array( 'https://schema.org/' ),
+			'schema_version' => 1,
+			'captured_at'    => '2026-01-01T00:00:00Z',
+			'duration_ms'    => 0,
+			'source'         => array(),
+			'traditional'    => array(),
+			'c2pa'           => array( 'present' => true, 'format' => 'jpeg' ),
+			'errors'         => array(),
+		);
+		update_post_meta( $attachment_id, C2pa_Monitor::POSTMETA_KEY, wp_json_encode( $record ) );
+
+		$filter = static function (): string {
+			return 'ftp://media.example.com/credentialed.jpg';
+		};
+		add_filter( 'wpai_c2pa_public_verify_url', $filter );
+
+		ob_start();
+		$this->feature->render_media_column( 'wpai_c2pa', $attachment_id );
+		$out = ob_get_clean();
+
+		remove_filter( 'wpai_c2pa_public_verify_url', $filter );
+		$this->assertStringContainsString( 'href="https://verify.contentauthenticity.org/"', $out );
+		$this->assertStringNotContainsString( 'source=', $out );
+	}
+
+	/**
+	 * Non-public media cases for the verify link.
+	 *
+	 * @return array<string, array{0: array<string, mixed>|null, 1: array<string, mixed>}>
+	 */
+	public function data_non_public_media(): array {
+		return array(
+			'draft parent'              => array( array( 'post_status' => 'draft' ), array() ),
+			'password-protected parent' => array(
+				array(
+					'post_status'   => 'publish',
+					'post_password' => 'secret',
+				),
+				array(),
+			),
+			'unattached private media'  => array( null, array( 'post_status' => 'private' ) ),
+		);
+	}
+
+	/**
+	 * Non-public media never pre-fills the external verifier.
+	 *
+	 * @dataProvider data_non_public_media
+	 *
+	 * @param array<string, mixed>|null $parent_args     Parent post args, or null for unattached media.
+	 * @param array<string, mixed>      $attachment_args Attachment overrides.
+	 */
+	public function test_verify_link_rejects_source_for_non_public_media( ?array $parent_args, array $attachment_args ): void {
+		if ( null !== $parent_args ) {
+			$attachment_args['post_parent'] = (int) $this->factory->post->create( $parent_args );
+		}
+		$attachment_id = $this->create_image_attachment( $attachment_args );
+		$record        = array(
+			'@context'       => array( 'https://schema.org/' ),
+			'schema_version' => 1,
+			'captured_at'    => '2026-01-01T00:00:00Z',
+			'duration_ms'    => 0,
+			'source'         => array(),
+			'traditional'    => array(),
+			'c2pa'           => array( 'present' => true, 'format' => 'jpeg' ),
+			'errors'         => array(),
+		);
+		update_post_meta( $attachment_id, C2pa_Monitor::POSTMETA_KEY, wp_json_encode( $record ) );
+
+		$filter = static function (): string {
+			return 'https://media.example.com/credentialed.jpg';
+		};
+		add_filter( 'wpai_c2pa_public_verify_url', $filter );
+
+		ob_start();
+		$this->feature->render_media_column( 'wpai_c2pa', $attachment_id );
+		$out = ob_get_clean();
+
+		remove_filter( 'wpai_c2pa_public_verify_url', $filter );
+		$this->assertStringContainsString( 'href="https://verify.contentauthenticity.org/"', $out );
+		$this->assertStringNotContainsString( 'source=', $out );
+	}
+
+	/**
+	 * Help text reflects whether the external verifier receives a source URL.
+	 */
+	public function test_verify_help_text_describes_prefilled_source(): void {
+		$attachment_id = $this->create_image_attachment();
+		$post          = get_post( $attachment_id );
+		$record        = array(
+			'@context'       => array( 'https://schema.org/' ),
+			'schema_version' => 1,
+			'captured_at'    => '2026-01-01T00:00:00Z',
+			'duration_ms'    => 0,
+			'source'         => array(),
+			'traditional'    => array(),
+			'c2pa'           => array( 'present' => true, 'format' => 'jpeg' ),
+			'errors'         => array(),
+		);
+		update_post_meta( $attachment_id, C2pa_Monitor::POSTMETA_KEY, wp_json_encode( $record ) );
+
+		$filter = static function (): string {
+			return 'https://media.example.com/credentialed.jpg';
+		};
+		add_filter( 'wpai_c2pa_public_verify_url', $filter );
+
+		ob_start();
+		$this->feature->render_attachment_meta_box( $post );
+		$out = ob_get_clean();
+
+		remove_filter( 'wpai_c2pa_public_verify_url', $filter );
+		$this->assertStringContainsString( 'original image URL is pre-filled', $out );
+		$this->assertStringNotContainsString( 'download the original image', $out );
+	}
 }

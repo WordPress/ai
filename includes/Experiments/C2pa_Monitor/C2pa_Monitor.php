@@ -17,6 +17,8 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
 
+use function WordPress\AI\is_post_publicly_readable;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -39,6 +41,15 @@ class C2pa_Monitor extends Abstract_Feature {
 	 * @var string
 	 */
 	public const POSTMETA_KEY = '_wpai_monitor_record';
+
+	/**
+	 * Content Authenticity Initiative Verify tool URL.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const VERIFY_TOOL_URL = 'https://verify.contentauthenticity.org/';
 
 	/**
 	 * Postmeta key used for sortable column ordering.
@@ -264,7 +275,7 @@ class C2pa_Monitor extends Abstract_Feature {
 			$tooltip = $with_tooltip
 				? ' data-wpai-tooltip="' . esc_attr__( 'Unverified — credentials were detected but have not been validated. Click to open the Content Authenticity Initiative verify tool.', 'ai' ) . '"'
 				: '';
-			return '<a href="https://verify.contentauthenticity.org/" target="_blank" rel="noopener noreferrer"'
+			return '<a href="' . esc_url( $this->get_verify_tool_url( $post_id ) ) . '" target="_blank" rel="noopener noreferrer"'
 				. ' style="color:#2271b1;text-decoration:none"'
 				. $tooltip . '>'
 				. '&#10003; ' . esc_html__( 'Credentials found', 'ai' )
@@ -277,6 +288,65 @@ class C2pa_Monitor extends Abstract_Feature {
 		return '<span style="color:#666"' . $tooltip . '>'
 			. esc_html__( 'No credentials', 'ai' )
 			. '</span>';
+	}
+
+	/**
+	 * Returns the CAI Verify tool URL for an attachment.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $post_id The attachment post ID.
+	 * @return string The CAI Verify tool URL.
+	 */
+	private function get_verify_tool_url( int $post_id ): string {
+		$verify_tool_url = self::VERIFY_TOOL_URL;
+		$attachment      = get_post( $post_id );
+		if ( ! $attachment ) {
+			return $verify_tool_url;
+		}
+
+		// Never pre-fill media that isn't public: a private attachment, or one
+		// attached to a draft, private, password-protected or non-viewable post.
+		$parent = $attachment->post_parent ? get_post( $attachment->post_parent ) : null;
+		if (
+			! is_post_publicly_viewable( $attachment )
+			|| ( $parent && ! is_post_publicly_readable( $parent ) )
+		) {
+			return $verify_tool_url;
+		}
+
+		/**
+		 * Filters the publicly reachable attachment URL sent to the CAI Verify tool.
+		 *
+		 * The URL is fetched by the Content Authenticity Initiative's servers. Only
+		 * return a URL that loads without authentication and serves the original
+		 * uploaded bytes, or the tool will report that no credentials were found.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param string       $public_url   The publicly reachable attachment URL, or an empty string.
+		 * @param int          $post_id      The attachment post ID.
+		 * @param string|false $original_url URL of the originally uploaded file, from wp_get_original_image_url().
+		 */
+		$public_url = apply_filters( 'wpai_c2pa_public_verify_url', '', $post_id, wp_get_original_image_url( $post_id ) );
+		if ( ! is_string( $public_url ) || '' === trim( $public_url ) ) {
+			return $verify_tool_url;
+		}
+
+		$public_url = trim( $public_url );
+		$url_parts  = wp_parse_url( $public_url );
+		if (
+			! is_array( $url_parts )
+			|| empty( $url_parts['scheme'] )
+			|| ! in_array( strtolower( (string) $url_parts['scheme'] ), array( 'http', 'https' ), true )
+			|| empty( $url_parts['host'] )
+			|| isset( $url_parts['user'] )
+			|| isset( $url_parts['pass'] )
+		) {
+			return $verify_tool_url;
+		}
+
+		return add_query_arg( 'source', rawurlencode( $public_url ), $verify_tool_url );
 	}
 
 	/**
@@ -302,6 +372,13 @@ class C2pa_Monitor extends Abstract_Feature {
 		}
 
 		if ( $present ) {
+			if ( self::VERIFY_TOOL_URL !== $this->get_verify_tool_url( $post_id ) ) {
+				return esc_html__(
+					'C2PA Content Credentials were detected in this file. The original image URL is pre-filled in the Content Authenticity Initiative verify tool.',
+					'ai'
+				);
+			}
+
 			return esc_html__(
 				'C2PA Content Credentials were detected in this file. To verify them, download the original image and drag it into the Content Authenticity Initiative verify tool.',
 				'ai'
