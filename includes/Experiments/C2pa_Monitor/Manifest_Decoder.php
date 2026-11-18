@@ -203,12 +203,23 @@ class Manifest_Decoder {
 				}
 
 				$value = $this->decode_cbor_box( $bytes, $assertion, 'decode_assertion', $errors );
-				if ( ! is_array( $value ) || ! isset( $value['actions'] ) || ! is_array( $value['actions'] ) ) {
+				if ( null === $value ) {
 					continue;
 				}
 
+				if ( ! is_array( $value ) || ! isset( $value['actions'] ) || ! is_array( $value['actions'] ) ) {
+					$errors[] = array(
+						'stage'   => 'decode_assertion',
+						/* translators: %s: C2PA assertion label, e.g. c2pa.actions.v2. */
+						'message' => sprintf( esc_html__( '%s has no actions list.', 'ai' ), esc_html( (string) self::clean_string( $assertion['label'] ) ) ),
+					);
+					continue;
+				}
+
+				$agents = isset( $value['softwareAgents'] ) && is_array( $value['softwareAgents'] ) ? $value['softwareAgents'] : array();
+
 				foreach ( $value['actions'] as $entry ) {
-					$action = self::normalize_action( $entry );
+					$action = self::normalize_action( $entry, $agents );
 					if ( null === $action ) {
 						continue;
 					}
@@ -236,6 +247,8 @@ class Manifest_Decoder {
 	 * @return mixed Decoded value, or null when there is no CBOR box or it fails to decode.
 	 */
 	private function decode_cbor_box( string $bytes, array $superbox, string $stage, array &$errors ) {
+		$label = esc_html( (string) self::clean_string( $superbox['label'] ) );
+
 		foreach ( $superbox['boxes'] as $box ) {
 			if ( 'cbor' !== $box['type'] ) {
 				continue;
@@ -246,7 +259,7 @@ class Manifest_Decoder {
 			} catch ( \UnexpectedValueException $e ) {
 				$errors[] = array(
 					'stage'   => $stage,
-					'message' => esc_html( (string) $superbox['label'] ) . ': ' . $e->getMessage(),
+					'message' => $label . ': ' . $e->getMessage(),
 				);
 				return null;
 			}
@@ -255,7 +268,7 @@ class Manifest_Decoder {
 		$errors[] = array(
 			'stage'   => $stage,
 			/* translators: %s: C2PA box label, e.g. c2pa.claim.v2. */
-			'message' => sprintf( esc_html__( '%s has no CBOR content box.', 'ai' ), esc_html( (string) $superbox['label'] ) ),
+			'message' => sprintf( esc_html__( '%s has no CBOR content box.', 'ai' ), $label ),
 		);
 		return null;
 	}
@@ -316,10 +329,11 @@ class Manifest_Decoder {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param mixed $entry Raw action map.
+	 * @param mixed                   $entry  Raw action map.
+	 * @param array<int|string, mixed> $agents The assertion's `softwareAgents` list.
 	 * @return array{action: string, when: string|null, softwareAgent: array{name: string, version: string|null}|null, digitalSourceType: string|null}|null
 	 */
-	private static function normalize_action( $entry ): ?array {
+	private static function normalize_action( $entry, array $agents ): ?array {
 		if ( ! is_array( $entry ) ) {
 			return null;
 		}
@@ -329,10 +343,15 @@ class Manifest_Decoder {
 			return null;
 		}
 
+		$agent = $entry['softwareAgent'] ?? null;
+		if ( null === $agent && isset( $entry['softwareAgentIndex'] ) && is_int( $entry['softwareAgentIndex'] ) ) {
+			$agent = $agents[ $entry['softwareAgentIndex'] ] ?? null;
+		}
+
 		return array(
 			'action'            => $action,
 			'when'              => self::clean_string( $entry['when'] ?? null ),
-			'softwareAgent'     => self::generator_info( $entry['softwareAgent'] ?? null ),
+			'softwareAgent'     => self::generator_info( $agent ),
 			'digitalSourceType' => self::clean_string( $entry['digitalSourceType'] ?? null ),
 		);
 	}
@@ -366,7 +385,7 @@ class Manifest_Decoder {
 	 * @return string|null
 	 */
 	private static function clean_string( $value ): ?string {
-		if ( ! is_string( $value ) || '' === $value || 1 !== preg_match( '//u', $value ) ) {
+		if ( ! is_string( $value ) || '' === $value || ! wp_is_valid_utf8( $value ) ) {
 			return null;
 		}
 

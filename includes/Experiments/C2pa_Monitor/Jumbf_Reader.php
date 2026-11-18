@@ -154,7 +154,7 @@ class Jumbf_Reader {
 			$label_end   = false === $terminator || $terminator > $end ? $end : $terminator;
 			$label       = (string) substr( $this->bytes, $label_start, $label_end - $label_start );
 
-			if ( 1 !== preg_match( '//u', $label ) ) {
+			if ( ! wp_is_valid_utf8( $label ) ) {
 				$label = null;
 			}
 		}

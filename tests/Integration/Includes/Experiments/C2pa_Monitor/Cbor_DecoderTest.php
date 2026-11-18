@@ -161,6 +161,15 @@ class Cbor_DecoderTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Item counts are bounded, since each item costs far more memory than its
+	 * encoded byte and a 16 MB manifest could otherwise exhaust memory.
+	 */
+	public function test_rejects_too_many_items(): void {
+		$this->expectException( \UnexpectedValueException::class );
+		$this->decode_hex( '9a00002711' . str_repeat( '00', 10001 ) );
+	}
+
+	/**
 	 * Empty input and out-of-range windows are rejected.
 	 */
 	public function test_rejects_empty_and_out_of_range_input(): void {

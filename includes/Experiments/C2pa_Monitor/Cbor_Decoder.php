@@ -29,6 +29,16 @@ class Cbor_Decoder {
 	private const MAX_DEPTH = 32;
 
 	/**
+	 * Most data items to decode per call.
+	 *
+	 * Each item becomes a PHP value tens of times larger than its encoding,
+	 * so this bounds memory, not just the declared lengths.
+	 *
+	 * @var int
+	 */
+	private const MAX_ITEMS = 10000;
+
+	/**
 	 * Buffer being decoded.
 	 *
 	 * @var string
@@ -48,6 +58,13 @@ class Cbor_Decoder {
 	 * @var int
 	 */
 	private int $end = 0;
+
+	/**
+	 * Data items decoded so far.
+	 *
+	 * @var int
+	 */
+	private int $items = 0;
 
 	/**
 	 * Decodes the first CBOR data item in $bytes[$offset, $offset + $length).
@@ -72,6 +89,7 @@ class Cbor_Decoder {
 		$this->bytes  = $bytes;
 		$this->offset = $offset;
 		$this->end    = $end;
+		$this->items  = 0;
 
 		return $this->read_item( 0 );
 	}
@@ -87,6 +105,10 @@ class Cbor_Decoder {
 	 * @throws \UnexpectedValueException When the item is malformed, truncated or exceeds a bound.
 	 */
 	private function read_item( int $depth ) {
+		if ( ++$this->items > self::MAX_ITEMS ) {
+			throw new \UnexpectedValueException( esc_html__( 'The CBOR data contains too many items.', 'ai' ) );
+		}
+
 		if ( $depth > self::MAX_DEPTH ) {
 			throw new \UnexpectedValueException( esc_html__( 'The CBOR data is nested too deeply.', 'ai' ) );
 		}
@@ -108,7 +130,7 @@ class Cbor_Decoder {
 
 			case 3:
 				$text = $this->take( $this->read_length( $info ) );
-				if ( 1 !== preg_match( '//u', $text ) ) {
+				if ( ! wp_is_valid_utf8( $text ) ) {
 					throw new \UnexpectedValueException( esc_html__( 'A CBOR text string is not valid UTF-8.', 'ai' ) );
 				}
 				return $text;
@@ -203,11 +225,11 @@ class Cbor_Decoder {
 			case 25:
 				return (int) $this->take_unpacked( 'n', 2 );
 			case 26:
-				return (int) $this->take_unpacked( 'N', 4 );
+				return $this->take_uint32();
 			case 27:
-				$high = (int) $this->take_unpacked( 'N', 4 );
-				$low  = (int) $this->take_unpacked( 'N', 4 );
-				if ( PHP_INT_SIZE >= 8 && $high <= 0x7FFFFFFF ) {
+				$high = $this->take_uint32();
+				$low  = $this->take_uint32();
+				if ( is_int( $high ) && is_int( $low ) && PHP_INT_SIZE >= 8 && $high <= 0x7FFFFFFF ) {
 					return ( $high << 32 ) | $low;
 				}
 				return $high * 4294967296.0 + $low;
@@ -256,6 +278,24 @@ class Cbor_Decoder {
 		$this->offset += $length;
 
 		return $chunk;
+	}
+
+	/**
+	 * Consumes a big-endian unsigned 32-bit integer at the cursor.
+	 *
+	 * On 32-bit PHP, unpack( 'N' ) returns values of 2^31 and above as negative
+	 * integers; those are returned as floats instead, so lengths never go negative.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return int|float
+	 *
+	 * @throws \UnexpectedValueException When fewer than 4 bytes remain.
+	 */
+	private function take_uint32() {
+		$value = (int) $this->take_unpacked( 'N', 4 );
+
+		return $value < 0 ? $value + 4294967296.0 : $value;
 	}
 
 	/**

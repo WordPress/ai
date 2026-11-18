@@ -117,11 +117,11 @@ The `@context` entry `https://w3id.org/openverifiable/v1` is a permanent [w3id.o
 
 When no manifest is found, `c2pa` collapses to `{ "present": false, "format": <detected or null> }` and no sidecar is written.
 
-`c2pa.decoded` is read from the active manifest (the last one in the store) and is `null` when the store cannot be parsed:
+`c2pa.decoded` is read from the active manifest (the last one in the store). It is `null` when the store cannot be parsed or contains no manifest, and on records captured before decoding was added (existing attachments are not re-scanned). A decode failure always adds a `decode_*` entry to `errors`, which tells the two apart.
 
 - `manifest_label` — label of the active manifest superbox.
 - `claim_generator` — `{ name, version }`, normalized from `claim_generator_info` (v2 claims, and v1 claims that carry it) or the v1 `claim_generator` string (as `name`, with `version: null`).
-- `actions` — every entry of the `c2pa.actions` / `c2pa.actions.v2` assertions (including `__N` instances), reduced to `action`, `when`, `softwareAgent` (normalized like `claim_generator`) and `digitalSourceType`. Other keys are dropped; missing or non-string values are `null`. Capped at 100 entries, and strings at 256 characters. Actions from created and gathered assertions are not distinguished, although only created assertions are attributed to the signer (C2PA §10.2.2); v1 claims have no such split.
+- `actions` — every entry of the `c2pa.actions` / `c2pa.actions.v2` assertions (including `__N` instances), reduced to `action`, `when`, `softwareAgent` (normalized like `claim_generator`, and resolved from the assertion's `softwareAgents` list when the action uses `softwareAgentIndex`) and `digitalSourceType`. Other keys are dropped; missing or non-string values are `null`. Capped at 100 entries, and strings at 256 characters. Actions from created and gathered assertions are not distinguished, although only created assertions are attributed to the signer (C2PA §10.2.2); v1 claims have no such split.
 - `digital_source_type` — the `digitalSourceType` of the `c2pa.created` action. Source types on other actions describe those actions, not the asset's origin, so they are not used here. `null` means the origin is not recorded in the active manifest, **not** that the asset is not AI-generated. This is common: edited assets start with `c2pa.opened` and keep their origin in the parent manifest, and update manifests cannot contain `c2pa.created` (C2PA §18.15.2, §11.2.3).
 
 These are **unverified claims read from the file** — no signature, certificate, or hash checks are made ([#954](https://github.com/WordPress/ai/issues/954), [#1071](https://github.com/WordPress/ai/issues/1071)). Per the [C2PA specification 2.4](https://spec.c2pa.org/specifications/specifications/2.4/specs/C2PA_Specification.html) §15.3, data from a manifest that has not been validated should not be displayed; if it is, the display must include both:
@@ -131,7 +131,7 @@ These are **unverified claims read from the file** — no signature, certificate
 
 The plugin cannot validate manifests yet, so this applies to everything in `c2pa.decoded`.
 
-Decode problems are reported in `errors` with stage `decode_jumbf`, `decode_claim`, or `decode_assertion`, and partial results are kept (e.g. actions still decode when the claim does not).
+Decode problems are reported in `errors` with stage `decode_jumbf`, `decode_claim`, or `decode_assertion` (including an actions assertion with no `actions` list), and partial results are kept (e.g. actions still decode when the claim does not).
 
 `traditional.*` are reserved for a future pass that promotes WordPress's existing EXIF / IPTC / XMP extraction into the same record.
 

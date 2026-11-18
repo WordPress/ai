@@ -249,8 +249,8 @@ class Manifest_DecoderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A generator map without a name, and an actions assertion without an
-	 * actions list, are skipped without errors.
+	 * A generator map without a name is skipped silently; an actions assertion
+	 * without an actions list is skipped and reported.
 	 */
 	public function test_skips_nameless_generator_and_actionless_assertion(): void {
 		$claim = Fixtures::cbor( array( 'claim_generator_info' => array( 'version' => '1.0' ) ) );
@@ -267,9 +267,69 @@ class Manifest_DecoderTest extends WP_UnitTestCase {
 
 		list( $decoded, $errors ) = $this->decode( $store );
 
-		$this->assertSame( array(), $errors );
+		$this->assertSame( array( 'decode_assertion' ), array_column( $errors, 'stage' ) );
+		$this->assertStringStartsWith( 'c2pa.actions.v2', $errors[0]['message'] );
 		$this->assertNull( $decoded['claim_generator'] );
 		$this->assertSame( array(), $decoded['actions'] );
+	}
+
+	/**
+	 * A v2 action may name its agent by index into the assertion's
+	 * softwareAgents list instead of inline (C2PA 2.2 §18.14.4.4).
+	 */
+	public function test_resolves_software_agent_index(): void {
+		$actions = Fixtures::cbor(
+			array(
+				'actions'        => array(
+					array(
+						'action'             => 'c2pa.created',
+						'softwareAgentIndex' => 1,
+					),
+					array(
+						'action'             => 'c2pa.edited',
+						'softwareAgentIndex' => 5,
+					),
+				),
+				'softwareAgents' => array(
+					array( 'name' => 'Unused Tool' ),
+					array(
+						'name'    => 'Image Model',
+						'version' => '3',
+					),
+				),
+			)
+		);
+		$store   = Fixtures::build_c2pa_store(
+			array( Fixtures::c2pa_manifest( 'urn:c2pa:active', 'c2pa.claim.v2', $this->v2_claim(), array( 'c2pa.actions.v2' => $actions ) ) )
+		);
+
+		list( $decoded, $errors ) = $this->decode( $store );
+
+		$this->assertSame( array(), $errors );
+		$this->assertSame(
+			array(
+				'name'    => 'Image Model',
+				'version' => '3',
+			),
+			$decoded['actions'][0]['softwareAgent']
+		);
+		$this->assertNull( $decoded['actions'][1]['softwareAgent'] );
+	}
+
+	/**
+	 * Box labels from the file are capped in error messages, like every
+	 * other stored string, so they cannot bloat the record.
+	 */
+	public function test_long_label_is_capped_in_errors(): void {
+		$label = 'c2pa.actions__' . str_repeat( '9', 100000 );
+		$store = Fixtures::build_c2pa_store(
+			array( Fixtures::c2pa_manifest( 'urn:c2pa:active', 'c2pa.claim.v2', $this->v2_claim(), array( $label => "\xFF" ) ) )
+		);
+
+		list( , $errors ) = $this->decode( $store );
+
+		$this->assertSame( array( 'decode_assertion' ), array_column( $errors, 'stage' ) );
+		$this->assertLessThan( 512, strlen( $errors[0]['message'] ) );
 	}
 
 	/**
