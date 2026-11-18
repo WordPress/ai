@@ -478,6 +478,7 @@ export default function McpAccessApp() {
 					onClick={ save }
 					isBusy={ isSaving }
 					disabled={ ! isDirty || isSaving }
+					accessibleWhenDisabled
 				>
 					{ __( 'Save changes', 'ai' ) }
 				</Button>

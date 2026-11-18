@@ -63,7 +63,8 @@ updates:
         update-types: [minor, patch]
 
     # WordPress packages are bundled with WordPress core, and bumped manually when the minimum supported version changes.
-    # `@wordpress/admin-ui` and `@wordpress/ui` are not bundled and can be updated independently.
+    # `@wordpress/admin-ui`, `@wordpress/dataviews` and `@wordpress/ui` are not provided by WordPress core. They are
+    # bundled into the plugin's own scripts and can be updated independently.
     # New WordPress packages should be added to the ignore list here.
     ignore:
       - dependency-name: '@wordpress/a11y'
@@ -76,7 +77,6 @@ updates:
       - dependency-name: '@wordpress/core-abilities'
       - dependency-name: '@wordpress/core-data'
       - dependency-name: '@wordpress/data'
-      - dependency-name: '@wordpress/dataviews'
       - dependency-name: '@wordpress/date'
       - dependency-name: '@wordpress/dom'
       - dependency-name: '@wordpress/dom-ready'
