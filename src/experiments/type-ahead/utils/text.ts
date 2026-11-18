@@ -5,7 +5,11 @@
 /**
  * Internal dependencies
  */
-import { LEADING_WHITESPACE_REGEX, WHITESPACE_REGEX } from '../constants';
+import {
+	LEADING_WHITESPACE_REGEX,
+	NO_SPACE_SCRIPT_REGEX,
+	WHITESPACE_REGEX,
+} from '../constants';
 
 /**
  * Converts HTML to plain text.
@@ -101,6 +105,17 @@ export const addLeadingSpaceIfNeeded = (
 	}
 
 	if ( LEADING_WHITESPACE_REGEX.test( text ) ) {
+		return text;
+	}
+
+	// No space between two characters of a script that does not use them.
+	// Array.from() keeps a surrogate pair (a rarer Han character) whole.
+	const lastPrecedingChar = Array.from( precedingText ).at( -1 ) ?? '';
+	const firstChar = Array.from( text ).at( 0 ) ?? '';
+	if (
+		NO_SPACE_SCRIPT_REGEX.test( lastPrecedingChar ) &&
+		NO_SPACE_SCRIPT_REGEX.test( firstChar )
+	) {
 		return text;
 	}
 
