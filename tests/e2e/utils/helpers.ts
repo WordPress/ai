@@ -482,7 +482,6 @@ export const clearCredentials = async ( requestUtils: RequestUtils ) => {
 };
 
 /**
-<<<<<<< HEAD
  * The call counts a mock scenario has served, keyed by `Provider/scenario`.
  */
 export type ScenarioReport = {
@@ -510,7 +509,10 @@ export const activateMockScenario = async (
 		path: '/ai-e2e/v1/mock/scenario',
 		method: 'POST',
 		data: { scenario },
-=======
+	} );
+}
+
+/**
  * Resets a feature's access control settings to their defaults.
  *
  * @param requestUtils The requestUtils fixture from the test context.
@@ -528,12 +530,10 @@ export const resetFeatureAccessSettings = async (
 			[ `wpai_feature_${ featureId }_roles` ]: null,
 			[ `wpai_feature_${ featureId }_users` ]: [],
 		},
->>>>>>> develop
 	} );
 };
 
 /**
-<<<<<<< HEAD
  * Deactivates whatever mock scenario is active.
  *
  * @param requestUtils The requestUtils fixture from the test context.
@@ -560,8 +560,6 @@ export const getMockScenarioReport = async (
 	} ) ) as ScenarioReport;
 
 /**
-=======
->>>>>>> develop
  * Enables the Model Selection feature via the Developer Tools menu.
  *
  * Opens the Developer Tools menu, checks whether Model Selection is already
