@@ -15,6 +15,8 @@ use WordPress\AI\Experiments\Content_Gap_Suggestions\Content_Gap_Suggestions as 
 use WordPress\AI\Stats\Search_Term_Filter;
 use WordPress\AI\Stats\Stats_Provider_Registry;
 
+use function WordPress\AI\sanitize_plain_text;
+
 /**
  * Content Gap Suggestions WordPress Ability.
  *
@@ -287,13 +289,19 @@ class Content_Gap_Suggestions extends Abstract_Ability {
 		$suggestions = array();
 
 		foreach ( $decoded['suggestions'] as $suggestion ) {
-			if ( ! is_array( $suggestion ) || empty( $suggestion['title'] ) || empty( $suggestion['outline'] ) ) {
+			if (
+				! is_array( $suggestion )
+				|| empty( $suggestion['title'] )
+				|| empty( $suggestion['outline'] )
+				|| ! is_string( $suggestion['title'] )
+				|| ! is_string( $suggestion['outline'] )
+			) {
 				continue;
 			}
 
 			$suggestions[] = array(
-				'title'   => sanitize_text_field( (string) $suggestion['title'] ),
-				'outline' => sanitize_textarea_field( (string) $suggestion['outline'] ),
+				'title'   => sanitize_text_field( $suggestion['title'] ),
+				'outline' => sanitize_plain_text( $suggestion['outline'], true ),
 			);
 
 			if ( count( $suggestions ) >= $limit ) {

@@ -112,8 +112,9 @@ class Settings_Registration {
 	 * @return mixed The unchanged response.
 	 */
 	public function maybe_extend_revalidation_timeout( $response, $server, $request ) {
+		// Match the route the way WP_REST_Server::match_request_to_handler() does, ignoring case.
 		if ( $request instanceof \WP_REST_Request
-			&& '/wp/v2/settings' === $request->get_route()
+			&& 1 === preg_match( '@^/wp/v2/settings$@i', $request->get_route() )
 			&& in_array( $request->get_method(), array( 'POST', 'PUT' ), true )
 		) {
 			add_filter( 'http_request_timeout', array( $this, 'extend_revalidation_timeout' ) ); // phpcs:ignore WordPressVIPMinimum.Hooks.RestrictedHooks.http_request_timeout

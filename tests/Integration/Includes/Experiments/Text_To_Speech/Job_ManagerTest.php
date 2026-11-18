@@ -13,6 +13,7 @@ use WordPress\AI\Background\Lock;
 use WordPress\AI\Experiments\Text_To_Speech\Audio_Combiner;
 use WordPress\AI\Experiments\Text_To_Speech\Job_Manager;
 use WordPress\AI\Experiments\Text_To_Speech\Speech_Generator;
+use WordPress\AI\Experiments\Text_To_Speech\Text_To_Speech;
 
 /**
  * Job_Manager test case.
@@ -364,16 +365,56 @@ class Job_ManagerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that the narration and the audio title leave out the title prefix
-	 * of a password-protected or private post.
+	 * Test that audio for an unpublished post is private, so core's Media
+	 * Library never lists it to users who cannot read the post, and that it
+	 * follows the post when it is published, including by cron, and unpublished.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_audio_is_private_until_the_post_is_published(): void {
+		( new Text_To_Speech() )->register();
+
+		$post_id = self::factory()->post->create(
+			array(
+				'post_content' => 'First sentence here. Second sentence here.',
+				'post_status'  => 'future',
+				'post_date'    => gmdate( 'Y-m-d H:i:s', time() + DAY_IN_SECONDS ),
+			)
+		);
+
+		$this->job_manager->start_job( $post_id, get_current_user_id() );
+		$this->run_all_chunk_events( $post_id );
+
+		$audio_id = $this->job_manager->get_status( $post_id )['audio_id'];
+		$this->assertGreaterThan( 0, $audio_id );
+		$this->assertSame( 'private', get_post( $audio_id )->post_status );
+
+		// Cron publishes scheduled posts through wp_publish_post().
+		wp_publish_post( $post_id );
+		$this->assertSame( 'inherit', get_post( $audio_id )->post_status );
+
+		wp_update_post(
+			array(
+				'ID'          => $post_id,
+				'post_status' => 'draft',
+			)
+		);
+		$this->assertSame( 'private', get_post( $audio_id )->post_status );
+	}
+
+	/**
+	 * Test that the audio title is the title the narration announces: without
+	 * the "Protected:" or "Private:" prefix, and with the character references
+	 * from the `the_title` filters decoded.
 	 *
 	 * @since x.x.x
 	 *
-	 * @dataProvider data_posts_with_title_prefix
+	 * @dataProvider data_narration_titles
 	 *
 	 * @param array<string, string> $post_args Arguments for the post.
+	 * @param string                $expected  The title the narration and the audio title use.
 	 */
-	public function test_title_leaves_out_visibility_prefix( array $post_args ): void {
+	public function test_audio_title_matches_the_narration_title( array $post_args, string $expected ): void {
 		$requested = array();
 
 		add_filter(
@@ -400,23 +441,24 @@ class Job_ManagerTest extends WP_UnitTestCase {
 		$this->job_manager->start_job( $post_id, get_current_user_id() );
 		$this->run_all_chunk_events( $post_id );
 
-		$this->assertSame( array( 'My Garden Diary. Tomatoes are ripe today.' ), $requested );
+		$this->assertSame( array( $expected . '. Tomatoes are ripe today.' ), $requested );
 
 		$audio_id = $this->job_manager->get_status( $post_id )['audio_id'];
-		$this->assertSame( 'Audio for “My Garden Diary”', get_post( $audio_id )->post_title );
+		$this->assertSame( 'Audio for “' . $expected . '”', get_post( $audio_id )->post_title );
 	}
 
 	/**
-	 * Data provider for test_title_leaves_out_visibility_prefix().
+	 * Data provider for test_audio_title_matches_the_narration_title().
 	 *
 	 * @since x.x.x
 	 *
-	 * @return array<string, array{0: array<string, string>}>
+	 * @return array<string, array{0: array<string, string>, 1: string}>
 	 */
-	public static function data_posts_with_title_prefix(): array {
+	public static function data_narration_titles(): array {
 		return array(
-			'password protected' => array( array( 'post_password' => 'secret' ) ),
-			'private'            => array( array( 'post_status' => 'private' ) ),
+			'password protected' => array( array( 'post_password' => 'secret' ), 'My Garden Diary' ),
+			'private'            => array( array( 'post_status' => 'private' ), 'My Garden Diary' ),
+			'texturized title'   => array( array( 'post_title' => "Kamran's Garden Diary" ), 'Kamran’s Garden Diary' ),
 		);
 	}
 
@@ -732,5 +774,23 @@ class Job_ManagerTest extends WP_UnitTestCase {
 
 		// No chunk event is left scheduled.
 		$this->assertFalse( wp_next_scheduled( Job_Manager::CRON_HOOK, array( $post_id ) ) );
+	}
+
+	/**
+	 * Tests that META_KEYS lists every post meta key constant, so uninstall and
+	 * delete_audio() remove a newly added key too.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_meta_keys_lists_every_meta_key_constant(): void {
+		$meta_constants = array_filter(
+			( new \ReflectionClass( Job_Manager::class ) )->getConstants(),
+			static function ( $value, string $name ): bool {
+				return 0 === strpos( $name, 'META_' ) && is_string( $value );
+			},
+			ARRAY_FILTER_USE_BOTH
+		);
+
+		$this->assertEqualsCanonicalizing( array_values( $meta_constants ), Job_Manager::META_KEYS );
 	}
 }

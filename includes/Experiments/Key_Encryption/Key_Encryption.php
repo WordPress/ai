@@ -97,7 +97,7 @@ class Key_Encryption extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Key Encryption', 'ai' ),
-			'description' => __( 'Encrypts AI provider API keys at rest using bundled libsodium encryption. Keys are transparently decrypted on read and re-encrypted on write. Disabling the experiment or deactivating the plugin restores plaintext keys.', 'ai' ),
+			'description' => __( 'Encrypts AI provider API keys at rest using bundled libsodium encryption. Keys are transparently decrypted on read and re-encrypted on write. Requires WP_SECRETS_KEY in wp-config.php. Disabling the experiment or deactivating the plugin restores plaintext keys.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'none',
 			'usage'       => array(
@@ -120,6 +120,8 @@ class Key_Encryption extends Abstract_Feature {
 		}
 
 		self::get_bridge()->register_option_filters();
+
+		add_action( 'admin_notices', array( self::class, 'render_unavailable_notice' ) );
 	}
 
 	/**
@@ -164,9 +166,71 @@ class Key_Encryption extends Abstract_Feature {
 		self::ensure_action( "update_option_{$individual}", array( self::class, 'handle_individual_toggle_update' ), 10, 2 );
 		self::ensure_action( "add_option_{$individual}", array( self::class, 'handle_individual_toggle_add' ), 10, 2 );
 
-		// Process any deferred re-encryption flagged by the activation hook. Priority 16 runs
-		// after `_wp_connectors_init` (priority 15), so `get_ai_connectors()` is populated.
+		// Recover secrets stored under the WordPress salts.
+		self::ensure_action( 'init', array( self::class, 'maybe_recover_secrets' ), 16, 0 );
 		self::ensure_action( 'init', array( self::class, 'maybe_resume_migration' ), 16, 0 );
+	}
+
+	/**
+	 * Recovers secrets stored under the WordPress salts.
+	 *
+	 * @since x.x.x
+	 */
+	public static function maybe_recover_secrets(): void {
+		if ( ! self::is_effectively_enabled() ) {
+			return;
+		}
+
+		$bridge = self::get_bridge();
+		$bridge->recover_salt_wrapped_secrets();
+
+		if ( $bridge->is_secrets_api_usable() || '1' === get_option( self::RESUME_MIGRATION_OPTION, '' ) ) {
+			return;
+		}
+
+		self::flag_resume_migration();
+	}
+
+	/**
+	 * Warns administrators that API keys are stored unencrypted if the Secrets API is unusable.
+	 *
+	 * @since x.x.x
+	 */
+	public static function render_unavailable_notice(): void {
+		if ( ! current_user_can( 'manage_options' ) || ! self::is_effectively_enabled() || self::get_bridge()->is_secrets_api_usable() ) {
+			return;
+		}
+
+		$key_is_missing = class_exists( 'WP_Secrets_Config_Key_Provider' )
+			&& ! wp_using_secrets_dropin()
+			&& in_array(
+				( new \WP_Secrets_Config_Key_Provider() )->get_key_status(),
+				array( \WP_Secrets_Config_Key_Provider::KEY_STATUS_UNDEFINED, \WP_Secrets_Config_Key_Provider::KEY_STATUS_UNUSABLE ),
+				true
+			);
+
+		if ( $key_is_missing ) {
+			$message = sprintf(
+				/* translators: 1: WP_SECRETS_KEY, 2: wp-config.php */
+				__( 'Key Encryption cannot encrypt your AI provider API keys, so new keys are stored unencrypted. Add a %1$s to %2$s, or restore its previous value if it was removed, and the keys will be encrypted on the next page load.', 'ai' ),
+				'<code>WP_SECRETS_KEY</code>',
+				'<code>wp-config.php</code>'
+			);
+		} else {
+			$message = sprintf(
+				/* translators: %s: WP_SECRETS_KEY */
+				__( 'Key Encryption cannot read or store encrypted AI provider API keys. If %s was changed or removed, restore its previous value.', 'ai' ),
+				'<code>WP_SECRETS_KEY</code>'
+			);
+		}
+
+		wp_admin_notice(
+			$message . ' <a href="https://github.com/WordPress/ai/blob/trunk/docs/experiments/key-encryption.md#requirements">' . esc_html__( 'Learn more about WP_SECRETS_KEY', 'ai' ) . '</a>',
+			array(
+				'type'               => 'warning',
+				'additional_classes' => array( 'wpai-key-encryption-notice' ),
+			)
+		);
 	}
 
 	/**
@@ -185,17 +249,24 @@ class Key_Encryption extends Abstract_Feature {
 	 * Consumes the deferred-migration flag and re-encrypts plaintext keys if effectively enabled.
 	 *
 	 * @since 1.1.0
+	 * @since x.x.x Keeps the flag while the Secrets API cannot store secrets.
 	 */
 	public static function maybe_resume_migration(): void {
 		if ( '1' !== get_option( self::RESUME_MIGRATION_OPTION, '' ) ) {
 			return;
 		}
 
-		delete_option( self::RESUME_MIGRATION_OPTION );
-
 		if ( ! self::is_effectively_enabled() ) {
+			delete_option( self::RESUME_MIGRATION_OPTION );
 			return;
 		}
+
+		// Keep the flag until the keys can be encrypted, such as once WP_SECRETS_KEY is added.
+		if ( ! self::get_bridge()->is_secrets_api_usable() ) {
+			return;
+		}
+
+		delete_option( self::RESUME_MIGRATION_OPTION );
 
 		self::get_bridge()->encrypt_all();
 	}

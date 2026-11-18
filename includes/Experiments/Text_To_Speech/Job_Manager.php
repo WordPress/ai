@@ -14,6 +14,7 @@ use WordPress\AI\Background\Lock;
 use WordPress\AI\Background\Scheduler;
 
 use function WordPress\AI\get_default_request_timeout;
+use function WordPress\AI\is_post_publicly_readable;
 use function WordPress\AI\normalize_content;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -104,6 +105,21 @@ class Job_Manager {
 	 * @var string
 	 */
 	public const META_JOB = '_wpai_tts_job';
+
+	/**
+	 * Every post meta key the experiment writes.
+	 *
+	 * @since x.x.x
+	 * @var list<string>
+	 */
+	public const META_KEYS = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+		self::META_AUDIO_ID,
+		self::META_STATUS,
+		self::META_ERROR,
+		self::META_UPDATED,
+		self::META_JOB,
+		self::META_DISPLAY,
+	);
 
 	/**
 	 * Filename prefix of the temp file a job appends chunks to, in the root
@@ -562,16 +578,7 @@ class Job_Manager {
 			wp_delete_attachment( $audio_id, true );
 		}
 
-		foreach (
-			array(
-				self::META_AUDIO_ID,
-				self::META_STATUS,
-				self::META_ERROR,
-				self::META_UPDATED,
-				self::META_JOB,
-				self::META_DISPLAY,
-			) as $meta_key
-		) {
+		foreach ( self::META_KEYS as $meta_key ) {
 			delete_post_meta( $post_id, $meta_key );
 		}
 
@@ -630,7 +637,7 @@ class Job_Manager {
 			'post_title'     => sprintf(
 				/* translators: %s: Post title. */
 				__( 'Audio for “%s”', 'ai' ),
-				$this->get_post_title( $post_id )
+				normalize_content( $this->get_post_title( $post_id ) )
 			),
 			'post_mime_type' => $mime_type,
 			'post_status'    => $this->get_audio_post_status( $post_id ),
@@ -669,7 +676,7 @@ class Job_Manager {
 	}
 
 	/**
-	 * Updates the post's audio attachment to match the post's password state.
+	 * Updates the post's audio attachment to match whether anyone may read the post.
 	 *
 	 * @since 1.5.0
 	 *
@@ -703,12 +710,12 @@ class Job_Manager {
 	 * @since 1.5.0
 	 *
 	 * @param int $post_id The post the audio belongs to.
-	 * @return string 'private' while the post has a password, otherwise 'inherit'.
+	 * @return string 'inherit' while anyone may read the post, otherwise 'private'.
 	 */
 	private function get_audio_post_status( int $post_id ): string {
 		$post = get_post( $post_id );
 
-		return $post && '' !== $post->post_password ? 'private' : 'inherit';
+		return $post && is_post_publicly_readable( $post ) ? 'inherit' : 'private';
 	}
 
 	/**

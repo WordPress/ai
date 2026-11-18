@@ -30,6 +30,14 @@ if ( false !== getenv( 'WP_TESTS_DIR' ) ) {
 	$_test_root = '/tmp/wordpress-tests-lib';
 }
 
+/*
+ * The Secrets API needs WP_SECRETS_KEY, which wp-tests-config.php may not define, so
+ * give the suite a fixed test key. Core's own test bootstrap does the same from 7.2.
+ */
+if ( ! defined( 'WP_SECRETS_KEY' ) ) {
+	define( 'WP_SECRETS_KEY', isset( $GLOBALS['__PHPUNIT_BOOTSTRAP'] ) ? '' : base64_encode( str_repeat( 'k', 32 ) ) );
+}
+
 // Give access to tests_add_filter() function.
 require_once $_test_root . '/includes/functions.php';
 
@@ -74,5 +82,17 @@ tests_add_filter(
 	5
 );
 
+/*
+ * wp-tests-config.php can define WP_SECRETS_KEY again, after the key above. Keep that
+ * warning quiet: an isolated test fails on any warning its child process prints.
+ */
+set_error_handler( // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_set_error_handler -- Only during the test bootstrap.
+	static function ( int $errno, string $errstr ): bool {
+		return 'Constant WP_SECRETS_KEY already defined' === $errstr;
+	}
+);
+
 // Start up the WP testing environment.
 require $_test_root . '/includes/bootstrap.php';
+
+restore_error_handler();

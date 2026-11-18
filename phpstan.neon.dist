@@ -19,6 +19,8 @@ parameters:
 			max: 80400
 		bootstrapFiles:
 				- ai.php
+				# Parent class of Key_Encryption\Salt_Keyring, which PHPStan reflects at runtime.
+				- includes/Vendor/Secrets/src/wp-includes/secrets/class-wp-secrets-keyring.php
 		paths:
 				- ai.php
 				- uninstall.php
@@ -65,4 +67,3 @@ parameters:
 			analyseAndScan:
 				- node_modules (?)
 				- includes/Vendor/AiClient/src/
-				- includes/Vendor/Secrets/src/

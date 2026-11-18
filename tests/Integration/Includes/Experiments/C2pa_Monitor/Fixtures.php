@@ -440,6 +440,142 @@ class Fixtures {
 	}
 
 	/**
+	 * Builds a C2PA manifest store holding $manifests, in order (the last one
+	 * is the active manifest).
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<string> $manifests Manifest superboxes from c2pa_manifest().
+	 * @return string Bytes of the complete JUMBF manifest store.
+	 */
+	public static function build_c2pa_store( array $manifests ): string {
+		return self::jumbf_superbox( '63327061', 'c2pa', $manifests );
+	}
+
+	/**
+	 * Builds a manifest superbox with an assertion store and a claim.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string                $label       Manifest label.
+	 * @param string                $claim_label Claim box label (c2pa.claim or c2pa.claim.v2).
+	 * @param string                $claim_cbor  CBOR-encoded claim.
+	 * @param array<string, string> $assertions  CBOR-encoded assertions keyed by label.
+	 * @return string
+	 */
+	public static function c2pa_manifest( string $label, string $claim_label, string $claim_cbor, array $assertions = array() ): string {
+		$assertion_boxes = array();
+		foreach ( $assertions as $assertion_label => $assertion_cbor ) {
+			$assertion_boxes[] = self::jumbf_superbox( '63626f72', $assertion_label, array( self::jumbf_box( 'cbor', $assertion_cbor ) ) );
+		}
+
+		return self::jumbf_superbox(
+			'63326d61',
+			$label,
+			array(
+				self::jumbf_superbox( '63326173', 'c2pa.assertions', $assertion_boxes ),
+				self::jumbf_superbox( '6332636c', $claim_label, array( self::jumbf_box( 'cbor', $claim_cbor ) ) ),
+			)
+		);
+	}
+
+	/**
+	 * Builds a JUMBF superbox: a `jumd` description box followed by $boxes.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string       $uuid_prefix First four bytes of the C2PA type UUID, as hex.
+	 * @param string       $label       Description box label.
+	 * @param list<string> $boxes       Encoded child boxes.
+	 * @return string
+	 */
+	public static function jumbf_superbox( string $uuid_prefix, string $label, array $boxes ): string {
+		$uuid = (string) hex2bin( $uuid_prefix . '00110010800000aa00389b71' );
+		$jumd = self::jumbf_box( 'jumd', $uuid . "\x03" . $label . "\x00" );
+		return self::jumbf_box( 'jumb', $jumd . implode( '', $boxes ) );
+	}
+
+	/**
+	 * Builds a single JUMBF box with a 32-bit LBox.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $type Four-byte box type.
+	 * @param string $data Box payload.
+	 * @return string
+	 */
+	public static function jumbf_box( string $type, string $data ): string {
+		return pack( 'N', 8 + strlen( $data ) ) . $type . $data;
+	}
+
+	/**
+	 * Encodes $value as CBOR for building claim and assertion fixtures.
+	 *
+	 * PHP strings become text strings, lists become arrays and other arrays
+	 * become maps. Pass an object with a `raw` property to splice in bytes
+	 * that are already CBOR-encoded (byte strings, tags, malformed data).
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $value Value to encode.
+	 * @return string
+	 */
+	public static function cbor( $value ): string {
+		if ( is_object( $value ) && isset( $value->raw ) ) {
+			return (string) $value->raw;
+		}
+		if ( null === $value ) {
+			return "\xF6";
+		}
+		if ( is_bool( $value ) ) {
+			return $value ? "\xF5" : "\xF4";
+		}
+		if ( is_int( $value ) ) {
+			return $value < 0 ? self::cbor_head( 1, -1 - $value ) : self::cbor_head( 0, $value );
+		}
+		if ( is_string( $value ) ) {
+			return self::cbor_head( 3, strlen( $value ) ) . $value;
+		}
+
+		$value = (array) $value;
+		if ( array_is_list( $value ) ) {
+			return self::cbor_head( 4, count( $value ) ) . implode( '', array_map( array( self::class, 'cbor' ), $value ) );
+		}
+
+		$out = self::cbor_head( 5, count( $value ) );
+		foreach ( $value as $key => $item ) {
+			$out .= self::cbor( $key ) . self::cbor( $item );
+		}
+		return $out;
+	}
+
+	/**
+	 * Encodes a CBOR initial byte and argument.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $major    Major type (0-7).
+	 * @param int $argument Argument value.
+	 * @return string
+	 */
+	public static function cbor_head( int $major, int $argument ): string {
+		$major <<= 5;
+		if ( $argument < 24 ) {
+			return chr( $major | $argument );
+		}
+		if ( $argument <= 0xFF ) {
+			return chr( $major | 24 ) . chr( $argument );
+		}
+		if ( $argument <= 0xFFFF ) {
+			return chr( $major | 25 ) . pack( 'n', $argument );
+		}
+		if ( $argument <= 0xFFFFFFFF ) {
+			return chr( $major | 26 ) . pack( 'N', $argument );
+		}
+		return chr( $major | 27 ) . pack( 'J', $argument );
+	}
+
+	/**
 	 * Builds a single PNG chunk: length, type, data, CRC32.
 	 *
 	 * @since 1.5.0

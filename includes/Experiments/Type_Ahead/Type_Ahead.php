@@ -62,7 +62,7 @@ class Type_Ahead extends Abstract_Feature {
 			'access_control' => true,
 			'usage'          => array(
 				'trigger'  => 'automatic',
-				'runs'     => __( 'Automatically, when you pause typing at the end of a paragraph. You can also press Cmd/Ctrl + Space to ask for a suggestion anywhere in a paragraph', 'ai' ),
+				'runs'     => __( 'Automatically, when you pause typing at the end of a paragraph. You can also press Ctrl + Option + G on macOS, or Shift + Alt + G on Windows and Linux, to ask for a suggestion anywhere in a paragraph', 'ai' ),
 				'sends'    => __( 'The current paragraph and the blocks around it', 'ai' ),
 				'requests' => __( 'One request per typing pause', 'ai' ),
 			),
@@ -99,6 +99,7 @@ class Type_Ahead extends Abstract_Feature {
 			array(
 				'label'         => $this->get_label(),
 				'description'   => $this->get_description(),
+				'category'      => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'ability_class' => Type_Ahead_Ability::class,
 			)
 		);
