@@ -887,7 +887,6 @@ export default function ConfirmProposal( {
 					) }
 				</p>
 
-				{ selectionControl }
 				{ proposal.items.map( ( item ) => (
 					<ProposedChange
 						key={ item.key }
@@ -926,6 +925,7 @@ export default function ConfirmProposal( {
 					>
 						{ __( 'Discard', 'ai' ) }
 					</Button>
+					{ selectionControl }
 				</div>
 			</section>
 		);
@@ -1009,7 +1009,6 @@ export default function ConfirmProposal( {
 					: __( 'Check the ones you want.', 'ai' ) }
 			</p>
 
-			{ selectionControl }
 			{ proposal.items.map( ( item ) => (
 				<div key={ item.key } className="ai-workspace__proposal-item">
 					<CheckboxControl
@@ -1071,6 +1070,7 @@ export default function ConfirmProposal( {
 				>
 					{ __( 'Discard', 'ai' ) }
 				</Button>
+				{ selectionControl }
 			</div>
 		</section>
 	);
