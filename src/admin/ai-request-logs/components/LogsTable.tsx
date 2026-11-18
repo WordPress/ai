@@ -20,6 +20,7 @@ import { rotateRight } from '@wordpress/icons';
  */
 import type { ProviderMetadata } from '../../types/providers';
 import { DEFAULT_VIEW_FIELDS } from '../query';
+import { getStatusLabel } from '../status';
 import type { FilterOptions, LogEntry, LogsQuery } from '../types';
 
 interface LogsTableProps {
@@ -637,7 +638,7 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 				label: __( 'Status', 'ai' ),
 				enableSorting: true,
 				elements: filterOptions.statuses.map( ( value ) => ( {
-					label: formatSelectLabel( value ),
+					label: getStatusLabel( value ),
 					value,
 				} ) ),
 				filterBy: {
@@ -649,7 +650,7 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 							item.status
 						) }` }
 					>
-						{ formatSelectLabel( item.status ) }
+						{ getStatusLabel( item.status ) }
 					</span>
 				),
 			},

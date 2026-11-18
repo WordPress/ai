@@ -9,6 +9,7 @@ import { __, sprintf } from '@wordpress/i18n';
  * Internal dependencies
  */
 import { useCopyToClipboardFeedback } from '../../../hooks/use-copy-to-clipboard-feedback';
+import { getStatusLabel } from '../status';
 import type { LogEntry } from '../types';
 
 interface LogDetailModalProps {
@@ -152,7 +153,8 @@ const LogDetailModal: React.FC< LogDetailModalProps > = ( {
 					<span
 						className={ `ai-request-logs__status ai-request-logs__status--${ log.status }` }
 					>
-						{ getStatusIcon( log.status ) } { log.status }
+						{ getStatusIcon( log.status ) }{ ' ' }
+						{ getStatusLabel( log.status ) }
 					</span>
 				</div>
 

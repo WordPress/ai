@@ -43,10 +43,11 @@ class Editorial_Updates extends Abstract_Feature {
 	 */
 	protected function load_metadata(): array {
 		return array(
-			'label'       => __( 'Editorial Updates', 'ai' ),
-			'description' => __( 'Applies pending editorial Notes to your content and saves the post, without a preview. Use revisions to review or undo the changes. Requires an AI connector that includes support for text generation models.', 'ai' ),
-			'category'    => Experiment_Category::EDITOR,
-			'usage'       => array(
+			'label'          => __( 'Editorial Updates', 'ai' ),
+			'description'    => __( 'Applies pending editorial Notes to your content and saves the post, without a preview. Use revisions to review or undo the changes. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'category'       => Experiment_Category::EDITOR,
+			'access_control' => true,
+			'usage'          => array(
 				'trigger'  => 'on_demand',
 				'runs'     => __( 'When you click Apply Editorial Updates, which also saves the post', 'ai' ),
 				'sends'    => __( 'Each block with pending Notes, with surrounding content', 'ai' ),
@@ -62,6 +63,14 @@ class Editorial_Updates extends Abstract_Feature {
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function register_ui(): void {
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ) );
 	}
 
@@ -71,7 +80,7 @@ class Editorial_Updates extends Abstract_Feature {
 	 * @since 0.8.0
 	 */
 	public function register_abilities(): void {
-		wp_register_ability(
+		$this->register_feature_ability(
 			'ai/' . $this->get_id(),
 			array(
 				'label'         => $this->get_label(),

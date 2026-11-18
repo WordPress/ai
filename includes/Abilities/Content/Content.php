@@ -1110,6 +1110,7 @@ final class Content {
 			),
 			'link'     => array(
 				'type'        => 'string',
+				'format'      => 'uri',
 				'description' => __( 'The permalink URL.', 'ai' ),
 			),
 			'title'    => array(
