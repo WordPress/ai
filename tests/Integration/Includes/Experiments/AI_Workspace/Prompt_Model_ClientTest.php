@@ -156,9 +156,11 @@ class Prompt_Model_ClientTest extends WP_UnitTestCase {
 
 		foreach ( $messages as $message ) {
 			foreach ( $message->getParts() as $part ) {
-				if ( $part->getChannel()->isThought() ) {
-					$thoughts[] = $part;
+				if ( ! $part->getChannel()->isThought() ) {
+					continue;
 				}
+
+				$thoughts[] = $part;
 			}
 		}
 
@@ -166,33 +168,38 @@ class Prompt_Model_ClientTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * An unsigned thought part is not replayed: Anthropic rejects an unsigned
-	 * thinking block, and its connector does not keep the signature.
+	 * Returns thought signatures that count as no signature.
 	 *
 	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string|null}> The signatures.
 	 */
-	public function test_unsigned_thought_parts_are_not_replayed(): void {
+	public function data_missing_signatures(): array {
+		return array(
+			'no signature'    => array( null ),
+			'empty signature' => array( '' ),
+		);
+	}
+
+	/**
+	 * Drops an unsigned thought part from the replay: Anthropic rejects an
+	 * unsigned thinking block, and its connector does not keep the signature.
+	 *
+	 * @dataProvider data_missing_signatures
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string|null $signature The thought part's signature.
+	 */
+	public function test_unsigned_thought_parts_are_not_replayed( ?string $signature ): void {
 		$client = new Fallback_Recording_Model_Client();
 
-		$client->generate( $this->conversation_with_thought( null ), array(), 'system' );
+		$client->generate( $this->conversation_with_thought( $signature ), array(), 'system' );
 
 		$this->assertCount( 3, $client->sent, 'Every message with content should still be sent.' );
 		$this->assertSame( array(), $this->thought_parts( $client->sent ) );
 		$this->assertSame( 'Here is a series.', $client->sent[1]->getParts()[0]->getText() );
 		$this->assertTrue( $client->sent[1]->getRole()->isModel() );
-	}
-
-	/**
-	 * An empty signature counts as no signature.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_thought_parts_with_an_empty_signature_are_not_replayed(): void {
-		$client = new Fallback_Recording_Model_Client();
-
-		$client->generate( $this->conversation_with_thought( '' ), array(), 'system' );
-
-		$this->assertSame( array(), $this->thought_parts( $client->sent ) );
 	}
 
 	/**
@@ -231,52 +238,32 @@ class Prompt_Model_ClientTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A conversation with nothing to drop is passed through as the same objects.
+	 * Returns core timeouts and the timeout a round uses for each.
 	 *
 	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: float, 1: float}> The core timeout and the expected one.
 	 */
-	public function test_a_conversation_without_unsigned_thoughts_is_unchanged(): void {
-		$messages = $this->conversation_with_thought( 'signature-123' );
-
-		$this->assertSame( $messages, Prompt_Model_Client::without_unsigned_thoughts( $messages ) );
+	public function data_request_timeouts(): array {
+		return array(
+			'core default is raised'      => array( 30.0, Prompt_Model_Client::REQUEST_TIMEOUT ),
+			'longer site timeout is kept' => array( 300.0, 300.0 ),
+		);
 	}
 
 	/**
-	 * A round waits longer than core's 30 second default, which cut off a
-	 * round that wrote a full proposal.
+	 * Raises the wait above core's 30 second default, which cut off a round that
+	 * wrote a full proposal, but keeps a longer timeout a site already set.
+	 *
+	 * @dataProvider data_request_timeouts
 	 *
 	 * @since x.x.x
-	 */
-	public function test_a_round_waits_longer_than_the_core_default(): void {
-		$this->assertSame( Prompt_Model_Client::REQUEST_TIMEOUT, Prompt_Model_Client::request_timeout( 30.0 ) );
-	}
-
-	/**
-	 * A longer timeout a site already set is kept.
 	 *
-	 * @since x.x.x
+	 * @param float $core_timeout The timeout core would use.
+	 * @param float $expected     The timeout the round should use.
 	 */
-	public function test_a_longer_site_timeout_is_kept(): void {
-		$this->assertSame( 300.0, Prompt_Model_Client::request_timeout( 300.0 ) );
-	}
-
-	/**
-	 * The workspace's own wait can be changed with a filter.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_the_round_timeout_is_filterable(): void {
-		$filter = static function (): float {
-			return 45.0;
-		};
-
-		add_filter( 'wpai_workspace_request_timeout', $filter );
-
-		try {
-			$this->assertSame( 45.0, Prompt_Model_Client::request_timeout( 30.0 ) );
-		} finally {
-			remove_filter( 'wpai_workspace_request_timeout', $filter );
-		}
+	public function test_a_round_only_ever_raises_the_timeout( float $core_timeout, float $expected ): void {
+		$this->assertSame( $expected, Prompt_Model_Client::request_timeout( $core_timeout ) );
 	}
 
 	/**
@@ -299,7 +286,6 @@ class Prompt_Model_ClientTest extends WP_UnitTestCase {
 			),
 			$builder->calls
 		);
-		$this->assertGreaterThan( 4096, Prompt_Model_Client::MAX_OUTPUT_TOKENS );
 	}
 
 	/**

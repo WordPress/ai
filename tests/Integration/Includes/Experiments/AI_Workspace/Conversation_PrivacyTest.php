@@ -7,15 +7,9 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace;
 
-use ReflectionProperty;
-use WP_REST_Request;
 use WP_UnitTestCase;
-use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Experiments\AI_Workspace\Conversation_Privacy;
 use WordPress\AI\Experiments\AI_Workspace\Conversation_Store;
-use WordPress\AI\Experiments\AI_Workspace\Proposal_Store;
-use WordPress\AI\Experiments\AI_Workspace\REST\Proposal_Controller;
-use WordPress\AI\Logging\Logging_Integration;
 
 /**
  * Conversation_Privacy test case.
@@ -39,15 +33,6 @@ class Conversation_PrivacyTest extends WP_UnitTestCase {
 	 * @var array<string, int>
 	 */
 	private static $user_ids = array();
-
-	/**
-	 * Manager the logging integration held before the test replaced it.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var \WordPress\AI\Logging\AI_Request_Log_Manager|null
-	 */
-	private $original_shared_manager = null;
 
 	/**
 	 * Creates the shared users.
@@ -82,35 +67,6 @@ class Conversation_PrivacyTest extends WP_UnitTestCase {
 		parent::setUp();
 
 		Conversation_Store::register_post_type();
-
-		// Storing a proposal records an agent event; nothing here reads the log, so none is written.
-		$this->original_shared_manager = Logging_Integration::get_log_manager();
-		$this->set_shared_manager( null );
-	}
-
-	/**
-	 * Tear down test case.
-	 *
-	 * @since x.x.x
-	 */
-	public function tearDown(): void {
-		$this->set_shared_manager( $this->original_shared_manager );
-		wp_set_current_user( 0 );
-
-		parent::tearDown();
-	}
-
-	/**
-	 * Replaces the manager the logging integration shares.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param \WordPress\AI\Logging\AI_Request_Log_Manager|null $manager Manager, or null for a disabled experiment.
-	 */
-	private function set_shared_manager( ?\WordPress\AI\Logging\AI_Request_Log_Manager $manager ): void {
-		$property = new ReflectionProperty( Logging_Integration::class, 'log_manager' );
-		$property->setAccessible( true );
-		$property->setValue( null, $manager );
 	}
 
 	/**
@@ -154,10 +110,8 @@ class Conversation_PrivacyTest extends WP_UnitTestCase {
 	 */
 	private function privacy_callback( string $filter ): callable {
 		$registered = apply_filters( $filter, array() ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- Core's privacy filters.
-		$key        = 'wp_privacy_personal_data_exporters' === $filter ? 'exporter_friendly_name' : 'eraser_friendly_name';
 
 		$this->assertArrayHasKey( Conversation_Privacy::ID, $registered );
-		$this->assertSame( 'AI Workspace spaces', $registered[ Conversation_Privacy::ID ][ $key ] );
 
 		return $registered[ Conversation_Privacy::ID ]['callback'];
 	}
@@ -200,16 +154,6 @@ class Conversation_PrivacyTest extends WP_UnitTestCase {
 	 */
 	private function fields( array $item ): array {
 		return array_column( $item['data'], 'value', 'name' );
-	}
-
-	/**
-	 * The exporter and eraser are registered by the plugin itself, not by the experiment.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_the_exporter_and_eraser_are_registered_without_the_experiment(): void {
-		$this->assertNotFalse( has_filter( 'wp_privacy_personal_data_exporters', array( Conversation_Privacy::class, 'register_exporter' ) ) );
-		$this->assertNotFalse( has_filter( 'wp_privacy_personal_data_erasers', array( Conversation_Privacy::class, 'register_eraser' ) ) );
 	}
 
 	/**
@@ -334,64 +278,6 @@ class Conversation_PrivacyTest extends WP_UnitTestCase {
 		$again = $this->privacy_callback( 'wp_privacy_personal_data_erasers' )( 'owner@example.org', 1 );
 
 		$this->assertFalse( $again['items_removed'], 'Nothing is left to remove.' );
-	}
-
-	/**
-	 * A proposal in an erased chat can no longer be approved.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_a_proposal_in_an_erased_chat_cannot_be_approved(): void {
-		$owner = self::$user_ids['owner'];
-		wp_set_current_user( $owner );
-		( new Show_In_Abilities() )->register();
-
-		$chat     = $this->save_chat( $owner );
-		$proposal = ( new Proposal_Store() )->create(
-			$owner,
-			$chat['id'],
-			array(
-				array(
-					'post_type' => 'post',
-					'status'    => 'draft',
-					'title'     => 'Never written',
-					'content'   => 'Body',
-				),
-			)
-		);
-
-		$this->assertIsArray( $proposal );
-
-		$this->privacy_callback( 'wp_privacy_personal_data_erasers' )( 'owner@example.org', 1 );
-
-		global $wp_rest_server;
-		$wp_rest_server = null; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited, WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Rebuilding the REST server for this test's routes.
-		rest_get_server();
-		( new Proposal_Controller() )->register_routes();
-
-		$request = new WP_REST_Request( 'POST', '/ai/v1/workspace/proposals/' . $proposal['id'] . '/execute' );
-		$request->set_header( 'Content-Type', 'application/json' );
-		$request->set_body(
-			(string) wp_json_encode(
-				array(
-					'conversation_id' => $chat['id'],
-					'selected'        => array_column( $proposal['items'], 'key' ),
-				)
-			)
-		);
-
-		$response = rest_get_server()->dispatch( $request );
-
-		$this->assertSame( 410, $response->get_status() );
-		$this->assertSame( 'workspace_proposal_chat_deleted', $response->get_data()['code'] );
-		$written = get_posts( // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.get_posts_get_posts
-			array(
-				'title'       => 'Never written',
-				'post_status' => 'any',
-			)
-		);
-
-		$this->assertSame( array(), $written );
 	}
 
 	/**

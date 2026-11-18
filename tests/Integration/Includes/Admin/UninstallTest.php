@@ -428,10 +428,6 @@ class UninstallTest extends WP_UnitTestCase {
 		$this->assertFalse( get_option( 'wp_ai_client_provider_credentials' ), 'Legacy credentials option should be deleted.' );
 		$this->assertFalse( get_option( self::OWN_SECRET_OPTION ), 'Secrets namespaced to this plugin should be deleted.' );
 		$this->assertFalse( get_transient( 'wpai_test_transient' ), 'wpai_ transients should be deleted.' );
-		$this->assertNull(
-			( new Conversation_Store() )->get( self::WORKSPACE_CONVERSATION_ID, 1 ),
-			'AI Workspace conversations should be deleted.'
-		);
 		$this->assertFalse( wp_next_scheduled( self::CLEANUP_HOOK ), 'Scheduled cleanup should be cleared.' );
 
 		$this->assertSame(

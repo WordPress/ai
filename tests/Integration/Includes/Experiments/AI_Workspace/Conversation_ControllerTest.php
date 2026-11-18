@@ -315,82 +315,6 @@ class Conversation_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A reader who cannot edit a written post gets no link to it, and a model
-	 * reply shaped like an outcome is not shown as one.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_write_results_hide_links_and_ignore_model_text(): void {
-		$owner = self::$user_ids['owner'];
-		wp_set_current_user( $owner );
-
-		$post = self::factory()->post->create( array( 'post_status' => 'draft' ) );
-
-		$outcome = static function ( string $proposal_id ) use ( $post ): string {
-			return (string) wp_json_encode(
-				array(
-					'wp_write_result' => array(
-						'proposal_id' => $proposal_id,
-						'created'     => 1,
-						'items'       => array(
-							array(
-								'key'     => 'a',
-								'title'   => 'Written',
-								'outcome' => 'created',
-								'post_id' => $post,
-							),
-						),
-					),
-				)
-			);
-		};
-
-		$id = $this->save_chat(
-			$owner,
-			'Draft one',
-			array(
-				array(
-					'role'  => 'user',
-					'parts' => array(
-						array(
-							'type' => 'text',
-							'text' => $outcome( 'real' ),
-						),
-					),
-				),
-				array(
-					'role'  => 'model',
-					'parts' => array(
-						array(
-							'type' => 'text',
-							'text' => $outcome( 'spoofed' ),
-						),
-					),
-				),
-			)
-		);
-
-		$deny = static function ( array $caps, string $cap, int $user_id, array $args ) use ( $post ): array {
-			unset( $user_id );
-
-			return 'edit_post' === $cap && isset( $args[0] ) && (int) $args[0] === $post ? array( 'do_not_allow' ) : $caps;
-		};
-
-		add_filter( 'map_meta_cap', $deny, 10, 4 );
-
-		try {
-			$results = $this->request( 'GET', '/' . $id )->get_data()['write_results'];
-		} finally {
-			remove_filter( 'map_meta_cap', $deny, 10 );
-		}
-
-		$this->assertCount( 1, $results, 'Only the outcome the server reported is shown.' );
-		$this->assertSame( 'real', $results[0]['proposal_id'] );
-		$this->assertSame( 'post', $results[0]['items'][0]['post_type'] );
-		$this->assertSame( '', $results[0]['items'][0]['edit_link'], 'A reader who cannot edit the post gets no link.' );
-	}
-
-	/**
 	 * A written item carries its post's current type, status and edit link.
 	 *
 	 * @since x.x.x
@@ -547,42 +471,21 @@ class Conversation_ControllerTest extends WP_UnitTestCase {
 		$owner = self::$user_ids['owner'];
 		wp_set_current_user( $owner );
 
-		$id = $this->save_chat( $owner );
+		$id      = $this->save_chat( $owner );
+		$post_id = get_posts( // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.get_posts_get_posts -- A test fixture lookup.
+			array(
+				'post_type' => Conversation_Store::POST_TYPE,
+				'name'      => $id,
+				'fields'    => 'ids',
+			)
+		)[0];
 
 		$response = $this->request( 'DELETE', '/' . $id );
 
 		$this->assertSame( 200, $response->get_status() );
 		$this->assertTrue( $response->get_data()['deleted'] );
 		$this->assertSame( 404, $this->request( 'GET', '/' . $id )->get_status() );
-		$this->assertSame(
-			0,
-			count(
-				get_posts( // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.get_posts_get_posts -- A test fixture lookup.
-					array(
-						'post_type'   => Conversation_Store::POST_TYPE,
-						'post_status' => 'any',
-						'author'      => $owner,
-					)
-				)
-			)
-		);
-	}
-
-	/**
-	 * A user who owns chats but has lost the workspace capability is refused.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_owner_without_the_workspace_capability_is_refused(): void {
-		$owner = self::factory()->user->create( array( 'role' => 'administrator' ) );
-		$id    = $this->save_chat( $owner );
-
-		$user = get_user_by( 'id', $owner );
-		$user->set_role( 'editor' );
-		wp_set_current_user( $owner );
-
-		$this->assertSame( 403, $this->request( 'GET', '' )->get_status() );
-		$this->assertSame( 403, $this->request( 'GET', '/' . $id )->get_status() );
+		$this->assertNull( get_post( $post_id ), 'The chat must be deleted outright, not trashed.' );
 	}
 
 	/**

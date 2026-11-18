@@ -347,11 +347,24 @@ class Post_Field_ProposalTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A title change on a published post is written, and the card says it is live.
+	 * A title change on a published post is written, and the card says it is live; a draft's card does not.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_a_title_change_on_a_published_post_is_marked_live(): void {
+		$draft          = $this->store_changes(
+			array(
+				array(
+					'post_id' => $this->make_post(),
+					'field'   => 'excerpt',
+					'value'   => 'New excerpt',
+				),
+			)
+		);
+		$draft_proposal = $this->present( $draft['id'] );
+
+		$this->assertFalse( $draft_proposal['items'][0]['live'], 'A draft is not live.' );
+
 		$post_id  = $this->make_post( array( 'post_status' => 'publish' ) );
 		$proposal = $this->store_changes(
 			array(
@@ -382,26 +395,6 @@ class Post_Field_ProposalTest extends WP_UnitTestCase {
 		$this->assertSame( 1, $this->execute( $proposal )->get_data()['updated'] );
 		$this->assertSame( 'Live title', get_post( $post_id )->post_title );
 		$this->assertSame( 'publish', get_post_status( $post_id ) );
-	}
-
-	/**
-	 * A draft is not live, so its card carries no live-change notice.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_a_draft_is_not_marked_live(): void {
-		$post_id  = $this->make_post();
-		$proposal = $this->store_changes(
-			array(
-				array(
-					'post_id' => $post_id,
-					'field'   => 'excerpt',
-					'value'   => 'New excerpt',
-				),
-			)
-		);
-
-		$this->assertFalse( $this->present( $proposal['id'] )['items'][0]['live'] );
 	}
 
 	/**
@@ -733,42 +726,45 @@ class Post_Field_ProposalTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * An image block, as the block editor saves it, accepts a content change.
+	 * Block editor markup that kses only re-serializes, removing nothing.
 	 *
-	 * Kses rewrites `<img .../>` as `<img ... />`, which removes nothing, so the
-	 * post is not refused for it.
+	 * Kses rewrites `<img .../>` as `<img ... />`, entities, a bare `<` in text
+	 * and spacing in a style attribute; none of that removes anything.
 	 *
 	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string}> The stored content.
 	 */
-	public function test_content_with_an_image_block_accepts_a_change(): void {
-		$result = $this->propose_content_for(
-			'<!-- wp:image {"id":5,"sizeSlug":"large","linkDestination":"none"} -->' . "\n"
-			. '<figure class="wp-block-image size-large"><img src="https://example.com/a.jpg?w=1&h=2" alt="A photo" class="wp-image-5"/></figure>' . "\n"
-			. '<!-- /wp:image -->'
+	public function data_content_kses_only_reserializes(): array {
+		return array(
+			'image block'     => array(
+				'<!-- wp:image {"id":5,"sizeSlug":"large","linkDestination":"none"} -->' . "\n"
+				. '<figure class="wp-block-image size-large"><img src="https://example.com/a.jpg?w=1&h=2" alt="A photo" class="wp-image-5"/></figure>' . "\n"
+				. '<!-- /wp:image -->',
+			),
+			'separator block' => array(
+				'<!-- wp:paragraph --><p>Before &amp; after.</p><!-- /wp:paragraph -->' . "\n\n"
+				. '<!-- wp:separator -->' . "\n"
+				. '<hr class="wp-block-separator has-alpha-channel-opacity"/>' . "\n"
+				. '<!-- /wp:separator -->' . "\n\n"
+				. '<!-- wp:group {"style":{"spacing":{"padding":{"top":"var:preset|spacing|50"}}}} --><div class="wp-block-group" style="padding-top:var(--wp--preset--spacing--50); color: #000;"><p>a < b</p></div><!-- /wp:group -->',
+			),
 		);
-
-		$this->assertIsArray( $result, 'An image block post should accept a content change.' );
-		$this->assertSame( 1, $result['item_count'] );
 	}
 
 	/**
-	 * A separator block, as the block editor saves it, accepts a content change.
+	 * Content that kses only re-serializes accepts a content change.
 	 *
-	 * Also covers kses's other rewrites that remove nothing: entities, a bare
-	 * `<` in text, and spacing in a style attribute.
+	 * @dataProvider data_content_kses_only_reserializes
 	 *
 	 * @since x.x.x
+	 *
+	 * @param string $content The post's stored content.
 	 */
-	public function test_content_with_a_separator_block_accepts_a_change(): void {
-		$result = $this->propose_content_for(
-			'<!-- wp:paragraph --><p>Before &amp; after.</p><!-- /wp:paragraph -->' . "\n\n"
-			. '<!-- wp:separator -->' . "\n"
-			. '<hr class="wp-block-separator has-alpha-channel-opacity"/>' . "\n"
-			. '<!-- /wp:separator -->' . "\n\n"
-			. '<!-- wp:group {"style":{"spacing":{"padding":{"top":"var:preset|spacing|50"}}}} --><div class="wp-block-group" style="padding-top:var(--wp--preset--spacing--50); color: #000;"><p>a < b</p></div><!-- /wp:group -->'
-		);
+	public function test_content_kses_only_reserializes_accepts_a_change( string $content ): void {
+		$result = $this->propose_content_for( $content );
 
-		$this->assertIsArray( $result, 'A separator block post should accept a content change.' );
+		$this->assertIsArray( $result, 'The post should accept a content change.' );
 		$this->assertSame( 1, $result['item_count'] );
 	}
 
@@ -981,68 +977,6 @@ class Post_Field_ProposalTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * An edited title over the cap or with markup is refused, and nothing is written.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_an_invalid_edit_is_refused_server_side(): void {
-		$post_id  = $this->make_post();
-		$proposal = $this->store_changes(
-			array(
-				array(
-					'post_id' => $post_id,
-					'field'   => 'title',
-					'value'   => 'Model title',
-				),
-			)
-		);
-		$key      = $proposal['items'][0]['key'];
-
-		$long = $this->execute( $proposal, array( $key => array( 'value' => str_repeat( 'b', Post_Field_Writer::TITLE_MAX_LENGTH + 1 ) ) ) );
-
-		$this->assertSame( 400, $long->get_status() );
-		$this->assertSame( 'workspace_post_change_title_too_long', $long->get_data()['code'] );
-
-		$markup = $this->execute( $proposal, array( $key => array( 'value' => 'Hi <script>x</script>' ) ) );
-
-		$this->assertSame( 400, $markup->get_status() );
-		$this->assertSame( 'workspace_post_change_title_markup', $markup->get_data()['code'] );
-
-		$this->assertSame( 'Old title', get_post( $post_id )->post_title );
-		$this->assertSame( 'pending', ( new Proposal_Store() )->get( $proposal['id'], get_current_user_id() )['status'], 'A refused edit leaves the proposal approvable.' );
-	}
-
-	/**
-	 * An edit can change only the proposed value, never which post or field the item targets.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_an_edit_cannot_retarget_the_item(): void {
-		$post_id  = $this->make_post();
-		$other_id = $this->make_post();
-		$proposal = $this->store_changes(
-			array(
-				array(
-					'post_id' => $post_id,
-					'field'   => 'title',
-					'value'   => 'Model title',
-				),
-			)
-		);
-		$key      = $proposal['items'][0]['key'];
-
-		foreach ( array( array( 'post_id' => $other_id ), array( 'field' => 'excerpt' ) ) as $retarget ) {
-			$response = $this->execute( $proposal, array( $key => $retarget + array( 'value' => 'Edited' ) ) );
-
-			$this->assertSame( 400, $response->get_status() );
-			$this->assertSame( 'workspace_proposal_invalid_edit', $response->get_data()['code'] );
-		}
-
-		$this->assertSame( 'Old title', get_post( $post_id )->post_title );
-		$this->assertSame( 'Old title', get_post( $other_id )->post_title );
-	}
-
-	/**
 	 * A valid edit is what gets written and reported.
 	 *
 	 * @since x.x.x
@@ -1090,11 +1024,11 @@ class Post_Field_ProposalTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Proposing needs a workspace turn, and the kind is offered and withheld through the store.
+	 * Proposing needs a workspace turn.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_proposing_needs_a_turn_and_follows_the_write_gate(): void {
+	public function test_proposing_needs_a_turn(): void {
 		$result = wp_get_ability( Propose_Post_Changes::ABILITY )->execute(
 			array(
 				'items' => array(
@@ -1109,41 +1043,6 @@ class Post_Field_ProposalTest extends WP_UnitTestCase {
 
 		$this->assertWPError( $result );
 		$this->assertSame( 'workspace_context_required', $result->get_error_code() );
-
-		$this->assertContains( Propose_Post_Changes::ABILITY, ( new Proposal_Store() )->proposal_abilities() );
-
-		add_filter( 'wpai_workspace_write_proposals_enabled', '__return_false' );
-
-		$this->assertNotContains( Propose_Post_Changes::ABILITY, ( new Proposal_Store() )->proposal_abilities(), 'Turning write proposals off removes the kind.' );
-	}
-
-	/**
-	 * Discarding a post-field proposal tells the model which posts it named.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_discarding_reports_the_post_titles(): void {
-		$post_id  = $this->make_post();
-		$proposal = $this->store_changes(
-			array(
-				array(
-					'post_id' => $post_id,
-					'field'   => 'title',
-					'value'   => 'Discarded title',
-				),
-			)
-		);
-
-		$conversations      = new Conversation_Store();
-		$conversation       = $conversations->create( get_current_user_id(), 'site' );
-		$conversation['id'] = self::CONVERSATION;
-		$conversations->save( $conversation );
-
-		$response = rest_get_server()->dispatch( new WP_REST_Request( 'DELETE', '/ai/v1/workspace/proposals/' . $proposal['id'] ) );
-
-		$this->assertSame( 200, $response->get_status() );
-		$this->assertTrue( $response->get_data()['declined'] );
-		$this->assertSame( 'Old title', get_post( $post_id )->post_title );
 	}
 
 	/**

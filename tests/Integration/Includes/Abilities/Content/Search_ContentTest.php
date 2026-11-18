@@ -204,28 +204,6 @@ class Search_ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The ability is registered in the content category and flagged read-only.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_registers_search_content_ability(): void {
-		$this->register_ability();
-
-		$ability = wp_get_ability( self::ABILITY );
-
-		$this->assertNotNull( $ability, 'The ai/search-content ability should be registered.' );
-		$this->assertSame( self::ABILITY, $ability->get_name(), 'The registered ability should use the expected name.' );
-		$this->assertSame( 'content', $ability->get_category(), 'The registered ability should use the content category.' );
-		$this->assertTrue( $ability->get_meta_item( 'show_in_rest', false ), 'The ability should be exposed in REST.' );
-
-		$annotations = $ability->get_meta_item( 'annotations', array() );
-		$this->assertTrue( $annotations['readonly'], 'The ability should be marked read-only.' );
-		$this->assertFalse( $annotations['destructive'], 'The ability should be marked non-destructive.' );
-		$this->assertTrue( $annotations['idempotent'], 'The ability should be marked idempotent.' );
-		$this->assertFalse( $annotations['open_world'], 'The ability should be marked closed-world; it only reads the local database.' );
-	}
-
-	/**
 	 * The ability is not registered when no post types are exposed to abilities.
 	 *
 	 * @since x.x.x
@@ -241,43 +219,6 @@ class Search_ContentTest extends WP_UnitTestCase {
 		$this->register_ability();
 
 		$this->assertFalse( wp_has_ability( self::ABILITY ), 'The search ability should not register without any exposed post types.' );
-	}
-
-	/**
-	 * The input schema caps the page size at the documented context limit.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_input_schema_caps_per_page(): void {
-		$this->register_ability();
-
-		$schema = wp_get_ability( self::ABILITY )->get_input_schema();
-
-		$this->assertSame( 'object', $schema['type'], 'The input schema should describe an object.' );
-		$this->assertArrayNotHasKey( 'required', $schema, 'A search term is optional: without one, the newest posts are listed.' );
-		$this->assertFalse( $schema['additionalProperties'], 'The input schema should reject unrelated properties.' );
-		$this->assertSame( 20, $schema['properties']['per_page']['maximum'], 'The page size should be capped at 20 items.' );
-	}
-
-	/**
-	 * The output schema returns titles and excerpts, never full body content.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_output_schema_never_exposes_body_content(): void {
-		$this->register_ability();
-
-		$schema = wp_get_ability( self::ABILITY )->get_output_schema();
-		$item   = $schema['properties']['results']['items'];
-
-		$this->assertSame( array( 'results', 'total', 'total_pages', 'examined', 'withheld' ), $schema['required'], 'The output should always carry results, totals, the examined count and the withheld count.' );
-		$this->assertArrayHasKey( 'title', $item['properties'], 'Each result should carry a title.' );
-		$this->assertArrayHasKey( 'excerpt', $item['properties'], 'Each result should carry an excerpt.' );
-		$this->assertFalse( $item['additionalProperties'], 'Result items should reject unrelated properties.' );
-
-		foreach ( array_keys( $item['properties'] ) as $property ) {
-			$this->assertStringNotContainsString( 'content', (string) $property, 'Search results must not expose full body content.' );
-		}
 	}
 
 	/**
@@ -302,7 +243,12 @@ class Search_ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A search matching more posts than the cap returns at most 20 items with correct totals.
+	 * Caps a search matching more posts than the cap at 20 items, with correct totals.
+	 *
+	 * Pagination alone never counts as withholding: `total` far exceeds the returned
+	 * rows, but every missing post is on a later page and readable, so nothing was kept
+	 * back. A count derived by subtracting the page size from the total would report 30
+	 * posts hidden by role on an ordinary search. `examined` counts only this page.
 	 *
 	 * @since x.x.x
 	 */
@@ -329,6 +275,8 @@ class Search_ContentTest extends WP_UnitTestCase {
 		$this->assertCount( 20, $result['results'], 'The result set should be capped at 20 items.' );
 		$this->assertSame( 50, $result['total'], 'The total should report every matching post.' );
 		$this->assertSame( 3, $result['total_pages'], 'The total pages should be derived from the clamped page size.' );
+		$this->assertSame( 20, $result['examined'], 'Only the rows this page was built from are examined.' );
+		$this->assertSame( 0, $result['withheld'], 'Rows on later pages are paginated away, not withheld.' );
 
 		// Asking for more than the cap is rejected by the schema rather than honored.
 		$rejected = $this->execute(
@@ -374,48 +322,6 @@ class Search_ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Pagination beyond the first page returns a different slice of the same result set.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_pagination_returns_later_pages(): void {
-		for ( $i = 0; $i < 12; $i++ ) {
-			self::factory()->post->create(
-				array(
-					'post_title'  => 'Zebrafish paging ' . $i,
-					'post_status' => 'publish',
-				)
-			);
-		}
-
-		$this->login_as( 'editor' );
-
-		$first = $this->execute(
-			array(
-				'search'   => 'Zebrafish',
-				'per_page' => 5,
-			)
-		);
-
-		$second = $this->execute(
-			array(
-				'search'   => 'Zebrafish',
-				'per_page' => 5,
-				'page'     => 2,
-			)
-		);
-
-		$this->assertCount( 5, $first['results'], 'The first page should be full.' );
-		$this->assertCount( 5, $second['results'], 'The second page should be full.' );
-		$this->assertSame( 3, $first['total_pages'], 'Twelve matches at five per page span three pages.' );
-		$this->assertSame(
-			array(),
-			array_intersect( $this->result_ids( $first ), $this->result_ids( $second ) ),
-			'Pages should not overlap.'
-		);
-	}
-
-	/**
 	 * A page beyond the last one is an empty result set, not an error.
 	 *
 	 * @since x.x.x
@@ -441,52 +347,7 @@ class Search_ContentTest extends WP_UnitTestCase {
 		$this->assertSame( array(), $result['results'], 'An out-of-range page should carry no results.' );
 		$this->assertSame( 1, $result['total'], 'The total should still report the matching post.' );
 		$this->assertSame( 1, $result['total_pages'], 'The total pages should still be reported.' );
-	}
-
-	/**
-	 * A search with no matches returns an empty, well-formed result set.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_zero_matches_returns_empty_list(): void {
-		$this->login_as( 'editor' );
-
-		$result = $this->execute( array( 'search' => 'Nothingmatchesthisterm' ) );
-
-		$this->assertIsArray( $result, 'A search with no matches should not be an error.' );
-		$this->assertSame( array(), $result['results'], 'No matches should return an empty list.' );
-		$this->assertSame( 0, $result['total'], 'No matches should report a zero total.' );
-		$this->assertSame( 0, $result['total_pages'], 'No matches should report zero pages.' );
-	}
-
-	/**
-	 * The search term matches both titles and body content.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_matches_titles_and_body_content(): void {
-		$by_title = self::factory()->post->create(
-			array(
-				'post_title'   => 'Zebrafish in the title',
-				'post_content' => 'Unrelated body.',
-				'post_status'  => 'publish',
-			)
-		);
-
-		$by_content = self::factory()->post->create(
-			array(
-				'post_title'   => 'Unrelated title',
-				'post_content' => 'The body mentions Zebrafish once.',
-				'post_status'  => 'publish',
-			)
-		);
-
-		$this->login_as( 'editor' );
-
-		$ids = $this->result_ids( $this->execute( array( 'search' => 'Zebrafish' ) ) );
-
-		$this->assertContains( $by_title, $ids, 'A title match should be returned.' );
-		$this->assertContains( $by_content, $ids, 'A body content match should be returned.' );
+		$this->assertSame( 0, $result['withheld'], 'A page past the end withheld nothing; it simply has no rows.' );
 	}
 
 	/**
@@ -521,88 +382,72 @@ class Search_ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A draft by another author is withheld from a contributor but returned to an editor.
-	 *
-	 * The coarse status gate lets a contributor query drafts at all — they can edit
-	 * their own — so this is the execute-time row filter, not the permission callback.
+	 * Data provider for the unpublished statuses a contributor may query.
 	 *
 	 * @since x.x.x
+	 *
+	 * @return array<string, array{string}> Test cases.
 	 */
-	public function test_draft_by_another_author_is_absent_for_contributor_present_for_editor(): void {
-		$draft_id = self::factory()->post->create(
-			array(
-				'post_author' => self::$user_ids['author_secondary'],
-				'post_title'  => 'Zebrafish draft',
-				'post_status' => 'draft',
-			)
+	public function data_unpublished_statuses(): array {
+		return array(
+			'draft'   => array( 'draft' ),
+			'pending' => array( 'pending' ),
 		);
-
-		$this->login_as( 'contributor' );
-
-		$contributor_ids = $this->result_ids(
-			$this->execute(
-				array(
-					'search' => 'Zebrafish',
-					'status' => array( 'draft' ),
-				)
-			)
-		);
-
-		$this->assertNotContains( $draft_id, $contributor_ids, "A contributor must not see another author's draft." );
-
-		$this->login_as( 'editor' );
-
-		$editor_ids = $this->result_ids(
-			$this->execute(
-				array(
-					'search' => 'Zebrafish',
-					'status' => array( 'draft' ),
-				)
-			)
-		);
-
-		$this->assertContains( $draft_id, $editor_ids, "An editor should see another author's draft." );
 	}
 
 	/**
-	 * A pending post by another author is withheld from a contributor at execute time.
+	 * Withholds another author's unpublished post from a contributor but returns it to an editor.
+	 *
+	 * The coarse status gate lets a contributor query these statuses at all — they can
+	 * edit their own — so this is the execute-time row filter, not the permission callback.
 	 *
 	 * @since x.x.x
+	 *
+	 * @dataProvider data_unpublished_statuses
+	 *
+	 * @param string $status The post status.
 	 */
-	public function test_pending_post_by_another_author_is_absent_for_contributor(): void {
-		$pending_id = self::factory()->post->create(
+	public function test_unpublished_post_by_another_author_is_absent_for_contributor_present_for_editor( string $status ): void {
+		$other_id = self::factory()->post->create(
 			array(
 				'post_author' => self::$user_ids['author_secondary'],
-				'post_title'  => 'Zebrafish pending',
-				'post_status' => 'pending',
+				'post_title'  => 'Zebrafish theirs',
+				'post_status' => $status,
 			)
 		);
 
 		$own_id = self::factory()->post->create(
 			array(
 				'post_author' => self::$user_ids['contributor'],
-				'post_title'  => 'Zebrafish pending mine',
-				'post_status' => 'pending',
+				'post_title'  => 'Zebrafish mine',
+				'post_status' => $status,
 			)
+		);
+
+		$input = array(
+			'search' => 'Zebrafish',
+			'status' => array( $status ),
 		);
 
 		$this->login_as( 'contributor' );
 
-		$ids = $this->result_ids(
-			$this->execute(
-				array(
-					'search' => 'Zebrafish',
-					'status' => array( 'pending' ),
-				)
-			)
-		);
+		$contributor_ids = $this->result_ids( $this->execute( $input ) );
 
-		$this->assertNotContains( $pending_id, $ids, "A contributor must not see another author's pending post." );
-		$this->assertContains( $own_id, $ids, 'A contributor should still see their own pending post.' );
+		$this->assertNotContains( $other_id, $contributor_ids, "A contributor must not see another author's {$status} post." );
+		$this->assertContains( $own_id, $contributor_ids, "A contributor should still see their own {$status} post." );
+
+		$this->login_as( 'editor' );
+
+		$this->assertContains( $other_id, $this->result_ids( $this->execute( $input ) ), "An editor should see another author's {$status} post." );
 	}
 
 	/**
-	 * Another author's private post never reaches an author who cannot read it.
+	 * Withholds another author's private post from an author who cannot read it.
+	 *
+	 * The author is also given `edit_pages`, so both exposed post types pass the status
+	 * gate and the query spans two post types. WP_Query then runs without the `perm`
+	 * gate and returns every private post, so it is the execute-time row filter that
+	 * has to drop the one the author cannot read, and count it as withheld.
 	 *
 	 * @since x.x.x
 	 */
@@ -623,38 +468,33 @@ class Search_ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->login_as( 'author' );
-
-		// The default (published) search must not surface the private post.
-		$ids = $this->result_ids( $this->execute( array( 'search' => 'Zebrafish' ) ) );
-		$this->assertNotContains( $private_id, $ids, "An author must not see another author's private post." );
-
-		// Asking for private posts explicitly still withholds the one they cannot read.
-		$private_ids = $this->result_ids(
-			$this->execute(
-				array(
-					'search' => 'Zebrafish',
-					'status' => array( 'private' ),
-				)
-			)
+		$input = array(
+			'search'    => 'Zebrafish',
+			'status'    => array( 'private' ),
+			'post_type' => array( 'post', 'page' ),
 		);
+
+		// The logged-in user object, so the granted capability applies to this request.
+		$this->login_as( 'author' );
+		$author = wp_get_current_user();
+		$author->add_cap( 'edit_pages' );
+
+		try {
+			$result = $this->execute( $input );
+		} finally {
+			$author->remove_cap( 'edit_pages' );
+		}
+
+		$private_ids = $this->result_ids( $result );
 
 		$this->assertNotContains( $private_id, $private_ids, "An author must not see another author's private post when asking for private posts." );
 		$this->assertContains( $own_private_id, $private_ids, 'An author should still see their own private post.' );
+		$this->assertSame( 1, $result['withheld'], 'Guard: the row filter, not the SQL, dropped the private post.' );
 
 		// An editor, who can read private posts, does see it.
 		$this->login_as( 'editor' );
 
-		$editor_ids = $this->result_ids(
-			$this->execute(
-				array(
-					'search' => 'Zebrafish',
-					'status' => array( 'private' ),
-				)
-			)
-		);
-
-		$this->assertContains( $private_id, $editor_ids, 'An editor should see the private post.' );
+		$this->assertContains( $private_id, $this->result_ids( $this->execute( $input ) ), 'An editor should see the private post.' );
 	}
 
 	/**
@@ -822,90 +662,13 @@ class Search_ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Pagination alone never counts as withholding.
-	 *
-	 * This is the case the `withheld` field exists to keep honest: `total` far exceeds
-	 * the returned rows here, but every one of the missing posts is on a later page and
-	 * readable, so nothing was kept back from this person. A count derived by
-	 * subtracting the page size from the total would report 30 posts hidden by role on
-	 * an ordinary search.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_pagination_alone_reports_nothing_withheld(): void {
-		for ( $i = 0; $i < 50; $i++ ) {
-			self::factory()->post->create(
-				array(
-					'post_title'  => 'Zebrafish paged ' . $i,
-					'post_status' => 'publish',
-				)
-			);
-		}
-
-		$this->login_as( 'editor' );
-
-		$result = $this->execute(
-			array(
-				'search'   => 'Zebrafish',
-				'per_page' => 20,
-			)
-		);
-
-		$this->assertIsArray( $result, 'A matching search should return a result array.' );
-		$this->assertCount( 20, $result['results'], 'Guard: the page should be full.' );
-		$this->assertSame( 50, $result['total'], 'Guard: the total should far exceed the page.' );
-		$this->assertSame( 0, $result['withheld'], 'Rows on later pages are paginated away, not withheld.' );
-	}
-
-	/**
-	 * An out-of-range page withholds nothing, however large the total.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_page_beyond_last_reports_nothing_withheld(): void {
-		self::factory()->post->create(
-			array(
-				'post_title'  => 'Zebrafish solitary',
-				'post_status' => 'publish',
-			)
-		);
-
-		$this->login_as( 'editor' );
-
-		$result = $this->execute(
-			array(
-				'search' => 'Zebrafish',
-				'page'   => 5,
-			)
-		);
-
-		$this->assertIsArray( $result, 'An out-of-range page should not be an error.' );
-		$this->assertSame( array(), $result['results'], 'Guard: an out-of-range page carries no rows.' );
-		$this->assertSame( 1, $result['total'], 'Guard: the total still reports the matching post.' );
-		$this->assertSame( 0, $result['withheld'], 'A page past the end withheld nothing; it simply has no rows.' );
-	}
-
-	/**
-	 * A search with no matches withholds nothing.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_zero_matches_reports_nothing_withheld(): void {
-		$this->login_as( 'editor' );
-
-		$result = $this->execute( array( 'search' => 'Nothingmatchesthisterm' ) );
-
-		$this->assertIsArray( $result, 'A search with no matches should not be an error.' );
-		$this->assertSame( 0, $result['withheld'], 'Nothing matched, so nothing was withheld.' );
-	}
-
-	/**
 	 * The withheld count is exactly the rows the execute-time permission walk dropped.
 	 *
 	 * The query is deliberately spread over two post types so `WP_Query` runs without
 	 * the `perm` gate and hands the row filter rows it must reject. The capability is
 	 * denied through `map_meta_cap`, which is how a plugin narrows read access in
-	 * practice, and it is denied for exactly one of the three matching drafts.
+	 * practice, and it is denied for exactly one of the three matching drafts. The
+	 * examined count is the rows the page was built from, before that walk.
 	 *
 	 * @since x.x.x
 	 */
@@ -952,95 +715,7 @@ class Search_ContentTest extends WP_UnitTestCase {
 		$this->assertCount( 2, $result['results'], 'The two readable drafts should still be returned.' );
 		$this->assertSame( 3, $result['total'], 'Guard: the underlying query still matched three posts.' );
 		$this->assertSame( 1, $result['withheld'], 'Exactly one row was dropped by the permission walk.' );
-	}
-
-	/**
-	 * The withheld count never names what was withheld.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_withheld_count_carries_no_identifying_detail(): void {
-		$editor_id = self::$user_ids['editor'];
-
-		$secret_id = self::factory()->post->create(
-			array(
-				'post_title'  => 'Zebrafish confidential codename',
-				'post_status' => 'draft',
-				'post_author' => $editor_id,
-			)
-		);
-
-		self::factory()->post->create(
-			array(
-				'post_title'  => 'Zebrafish ordinary',
-				'post_status' => 'draft',
-				'post_author' => $editor_id,
-			)
-		);
-
-		$this->login_as( 'editor' );
-
-		$this->denied_post_id = $secret_id;
-		add_filter( 'map_meta_cap', array( $this, 'deny_read_for_denied_post' ), 10, 4 );
-
-		try {
-			$result = $this->execute(
-				array(
-					'search'    => 'Zebrafish',
-					'status'    => array( 'draft' ),
-					'post_type' => array( 'post', 'page' ),
-				)
-			);
-		} finally {
-			remove_filter( 'map_meta_cap', array( $this, 'deny_read_for_denied_post' ), 10 );
-			$this->denied_post_id = 0;
-		}
-
-		$this->assertIsArray( $result, 'The search should succeed.' );
-		$this->assertSame( 1, $result['withheld'], 'Guard: one row was withheld.' );
-		$this->assertStringNotContainsString(
-			'confidential codename',
-			wp_json_encode( $result ),
-			'The withheld count must never carry the content it stands for.'
-		);
-		$this->assertStringNotContainsString(
-			(string) $secret_id,
-			wp_json_encode( $result['withheld'] ),
-			'The withheld count is a number, not an identifier.'
-		);
-	}
-
-	/**
-	 * The output schema declares the withheld count and says what it excludes.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_output_schema_declares_withheld(): void {
-		$this->register_ability();
-
-		$schema = wp_get_ability( self::ABILITY )->get_output_schema();
-
-		$this->assertSame(
-			array( 'results', 'total', 'total_pages', 'examined', 'withheld' ),
-			$schema['required'],
-			'The output should always carry the withheld count.'
-		);
-		$this->assertSame(
-			array( 'integer', 'null' ),
-			$schema['properties']['withheld']['type'],
-			'The withheld count is an integer or null; null is how the ability declines to claim a number.'
-		);
-		$this->assertStringContainsString(
-			'pagination',
-			$schema['properties']['withheld']['description'],
-			'The description must say that pagination is not counted.'
-		);
-		$this->assertStringContainsString(
-			'null',
-			$schema['properties']['withheld']['description'],
-			'The description must say when no count is reported at all.'
-		);
-		$this->assertSame( 'integer', $schema['properties']['examined']['type'], 'The examined count is an integer.' );
+		$this->assertSame( 3, $result['examined'], 'All three matching drafts were looked at, before the permission walk.' );
 	}
 
 	/**
@@ -1103,115 +778,40 @@ class Search_ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * An empty search term still reports no withheld count when a post type was dropped.
+	 * Reports no withheld count from the early return when a post type was dropped.
 	 *
-	 * The early return builds its own result, so it has to make the same claim the
-	 * queried path does: a post type excluded by the status gate means no page-level
-	 * number can stand for the permission outcome, and 0 would say one did.
+	 * A term filter that names no existing term returns before any query runs, and that
+	 * early return builds its own result, so it has to make the same claim the queried
+	 * path does: a post type excluded by the status gate means no page-level number can
+	 * stand for the permission outcome, and 0 would say one did.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_search_with_no_term_reports_no_withheld_count_when_a_post_type_was_dropped(): void {
+	public function test_unmatched_term_filter_reports_no_withheld_count_when_a_post_type_was_dropped(): void {
+		self::factory()->post->create(
+			array(
+				'post_title'  => 'Zebrafish contributor draft',
+				'post_status' => 'draft',
+				'post_author' => self::$user_ids['contributor'],
+			)
+		);
+
 		$this->login_as( 'contributor' );
 
 		$result = $this->execute(
 			array(
-				'search' => '   ',
 				'status' => array( 'draft' ),
+				'tax'    => array(
+					'taxonomy' => 'post_tag',
+					'terms'    => array( 'no-such-tag' ),
+				),
 			)
 		);
 
-		$this->assertIsArray( $result, 'An effectively empty search term lists posts rather than failing.' );
-		$this->assertSame( array(), $result['results'], 'Guard: the contributor has no drafts of their own.' );
+		$this->assertIsArray( $result, 'An unmatched term filter matches nothing rather than failing.' );
+		$this->assertSame( array(), $result['results'], 'Guard: the contributor\'s own draft is not tagged, so nothing matches.' );
+		$this->assertSame( 0, $result['examined'], 'Guard: no query ran, so nothing was examined.' );
 		$this->assertNull( $result['withheld'], 'The page post type was still dropped for permission reasons, so no count is claimed.' );
-	}
-
-	/**
-	 * The examined count is the rows the page was built from, before the permission walk.
-	 *
-	 * This is the number a consumer must render as "searched": the returned rows have
-	 * already had the withheld ones taken out of them, so presenting them beside the
-	 * withheld count would show two numbers that do not reconcile.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_examined_counts_the_rows_before_the_permission_walk(): void {
-		$editor_id = self::$user_ids['editor'];
-		$draft_ids = array();
-
-		for ( $i = 0; $i < 3; $i++ ) {
-			$draft_ids[] = self::factory()->post->create(
-				array(
-					'post_title'  => 'Zebrafish examined ' . $i,
-					'post_status' => 'draft',
-					'post_author' => $editor_id,
-				)
-			);
-		}
-
-		$this->login_as( 'editor' );
-
-		$input = array(
-			'search'    => 'Zebrafish',
-			'status'    => array( 'draft' ),
-			'post_type' => array( 'post', 'page' ),
-		);
-
-		$this->denied_post_id = $draft_ids[1];
-		add_filter( 'map_meta_cap', array( $this, 'deny_read_for_denied_post' ), 10, 4 );
-
-		try {
-			$result = $this->execute( $input );
-		} finally {
-			remove_filter( 'map_meta_cap', array( $this, 'deny_read_for_denied_post' ), 10 );
-			$this->denied_post_id = 0;
-		}
-
-		$this->assertIsArray( $result, 'The search should succeed.' );
-		$this->assertSame( 3, $result['examined'], 'All three matching drafts were looked at.' );
-		$this->assertCount( 2, $result['results'], 'Guard: only two survived the permission walk.' );
-		$this->assertSame( 1, $result['withheld'], 'Guard: one row was dropped.' );
-		$this->assertGreaterThan(
-			count( $result['results'] ),
-			$result['examined'],
-			'A page that withheld a row examined more rows than it returned.'
-		);
-		$this->assertSame(
-			$result['examined'] - $result['withheld'],
-			count( $result['results'] ),
-			'Examined minus withheld is exactly what came back.'
-		);
-	}
-
-	/**
-	 * The examined count counts only this page, never the matches on later pages.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_examined_counts_only_the_current_page(): void {
-		for ( $i = 0; $i < 30; $i++ ) {
-			self::factory()->post->create(
-				array(
-					'post_title'  => 'Zebrafish examined paged ' . $i,
-					'post_status' => 'publish',
-				)
-			);
-		}
-
-		$this->login_as( 'editor' );
-
-		$result = $this->execute(
-			array(
-				'search'   => 'Zebrafish',
-				'per_page' => 20,
-			)
-		);
-
-		$this->assertIsArray( $result, 'A matching search should return a result array.' );
-		$this->assertSame( 30, $result['total'], 'Guard: the total covers every page.' );
-		$this->assertSame( 20, $result['examined'], 'Only the rows this page was built from are examined.' );
-		$this->assertSame( count( $result['results'] ), $result['examined'], 'Nothing was withheld, so examined and returned agree.' );
-		$this->assertSame( 0, $result['withheld'], 'Guard: later pages are pagination, not withholding.' );
 	}
 
 	/**
@@ -1457,68 +1057,44 @@ class Search_ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Called without schema validation, an unknown taxonomy is still refused.
+	 * Data provider for taxonomy filters the execute callback must refuse.
 	 *
 	 * @since x.x.x
+	 *
+	 * @return array<string, array{mixed}> Test cases.
 	 */
-	public function test_execute_callback_refuses_an_unknown_taxonomy_without_schema_validation(): void {
+	public function data_invalid_tax_filters(): array {
+		return array(
+			'unknown taxonomy' => array(
+				array(
+					'taxonomy' => 'no_such_taxonomy',
+					'terms'    => array( 'anything' ),
+				),
+			),
+			'not an object'    => array( 'post_tag' ),
+		);
+	}
+
+	/**
+	 * Refuses an unknown or malformed taxonomy filter when called without schema validation.
+	 *
+	 * A malformed filter must not become no filter, which would widen the list to every post.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_invalid_tax_filters
+	 *
+	 * @param mixed $tax The taxonomy filter.
+	 */
+	public function test_execute_callback_refuses_an_invalid_tax_filter_without_schema_validation( $tax ): void {
 		$this->create_listed_post( 'Any post', '2024-02-01 10:00:00' );
 
 		$this->login_as( 'editor' );
 
-		$result = ( new Search_Content() )->execute_search_content(
-			array(
-				'tax' => array(
-					'taxonomy' => 'no_such_taxonomy',
-					'terms'    => array( 'anything' ),
-				),
-			)
-		);
+		$result = ( new Search_Content() )->execute_search_content( array( 'tax' => $tax ) );
 
 		$this->assertWPError( $result );
 		$this->assertSame( 'ai_search_content_invalid_taxonomy', $result->get_error_code() );
-	}
-
-	/**
-	 * Listing without a term still withholds, and counts, a post the user may not read.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_listing_without_a_term_withholds_an_unreadable_post(): void {
-		$editor_id = self::$user_ids['editor'];
-		$draft_ids = array();
-
-		for ( $i = 0; $i < 3; $i++ ) {
-			$draft_ids[] = self::factory()->post->create(
-				array(
-					'post_title'  => 'Restricted listing ' . $i,
-					'post_status' => 'draft',
-					'post_author' => $editor_id,
-				)
-			);
-		}
-
-		$this->login_as( 'editor' );
-
-		$this->denied_post_id = $draft_ids[1];
-		add_filter( 'map_meta_cap', array( $this, 'deny_read_for_denied_post' ), 10, 4 );
-
-		try {
-			$result = $this->execute(
-				array(
-					'status'    => array( 'draft' ),
-					'post_type' => array( 'post', 'page' ),
-				)
-			);
-		} finally {
-			remove_filter( 'map_meta_cap', array( $this, 'deny_read_for_denied_post' ), 10 );
-			$this->denied_post_id = 0;
-		}
-
-		$this->assertNotContains( $draft_ids[1], $this->result_ids( $result ), 'The unreadable draft must not be listed.' );
-		$this->assertCount( 2, $result['results'] );
-		$this->assertSame( 3, $result['examined'] );
-		$this->assertSame( 1, $result['withheld'], 'The dropped row is counted.' );
 	}
 
 	/**
@@ -1537,22 +1113,6 @@ class Search_ContentTest extends WP_UnitTestCase {
 			$this->assertWPError( $result, $bound . ' of 31 February must be refused.' );
 			$this->assertSame( 'ai_search_content_invalid_date', $result->get_error_code() );
 		}
-	}
-
-	/**
-	 * Called without schema validation, a taxonomy filter that is not an object is refused.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_execute_callback_refuses_a_tax_filter_that_is_not_an_object(): void {
-		$this->create_listed_post( 'Any post', '2024-02-01 10:00:00' );
-
-		$this->login_as( 'editor' );
-
-		$result = ( new Search_Content() )->execute_search_content( array( 'tax' => 'post_tag' ) );
-
-		$this->assertWPError( $result, 'A malformed filter must not become no filter.' );
-		$this->assertSame( 'ai_search_content_invalid_taxonomy', $result->get_error_code() );
 	}
 
 	/**

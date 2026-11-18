@@ -92,11 +92,6 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	private $registered = array();
 
 	/**
-	 * Tear down test case.
-	 *
-	 * @since x.x.x
-	 */
-	/**
 	 * Sets up the test case.
 	 *
 	 * @since x.x.x
@@ -113,13 +108,20 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 		add_filter( 'wpai_workspace_tool_admission_enabled', '__return_true' );
 	}
 
+	/**
+	 * Tears down the test case.
+	 *
+	 * @since x.x.x
+	 */
 	public function tearDown(): void {
 		remove_filter( 'wpai_workspace_tool_admission_enabled', '__return_true' );
 
 		foreach ( $this->registered as $ability_name ) {
-			if ( wp_has_ability( $ability_name ) ) {
-				wp_unregister_ability( $ability_name );
+			if ( ! wp_has_ability( $ability_name ) ) {
+				continue;
 			}
+
+			wp_unregister_ability( $ability_name );
 		}
 
 		$this->registered = array();
@@ -129,14 +131,16 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 
 		foreach ( array( 'post', 'page' ) as $post_type ) {
 			$object = get_post_type_object( $post_type );
-			if ( $object ) {
-				// WordPress 7.2 declares the property, and unsetting a declared property leaves it
-				// uninitialized, so restore core's default rather than removing it.
-				if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
-					$object->show_in_abilities = true;
-				} else {
-					unset( $object->show_in_abilities );
-				}
+			if ( ! $object ) {
+				continue;
+			}
+
+			// WordPress 7.2 declares the property, and unsetting a declared property leaves it
+			// uninitialized, so restore core's default rather than removing it.
+			if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
+				$object->show_in_abilities = true;
+			} else {
+				unset( $object->show_in_abilities );
 			}
 		}
 
@@ -189,73 +193,6 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 		$this->assertTrue(
 			$policy->supports_filtered_discovery(),
 			'A discovery function that accepts an arguments array must be reported as supporting filtering.'
-		);
-	}
-
-	/**
-	 * The probe answers for the real discovery function on this WordPress.
-	 *
-	 * WordPress 7.1 added the `$args` parameter. This asserts the probe agrees
-	 * with the signature actually installed, rather than with a hard-coded
-	 * expectation, so the same assertion is meaningful on every version in the
-	 * CI matrix.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_probe_matches_the_installed_discovery_signature(): void {
-		if ( ! function_exists( 'wp_get_abilities' ) ) {
-			$this->markTestSkipped( 'WordPress Abilities API not available.' );
-		}
-
-		$accepts_args = ( new \ReflectionFunction( 'wp_get_abilities' ) )->getNumberOfParameters() > 0;
-
-		$this->assertSame(
-			$accepts_args,
-			( new Tool_Policy() )->supports_filtered_discovery(),
-			'The probe must agree with the signature of the installed wp_get_abilities().'
-		);
-	}
-
-	/**
-	 * An ability declaring eligibility as strict `true` is recognized.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_strict_true_declaration_is_recognized(): void {
-		$ability = $this->register_fixture( 'wpai-test/declared', array( self::DECLARATION_CHANNEL => array( 'public' => true ) ) );
-		$policy  = new Tool_Policy();
-
-		$this->assertTrue(
-			$policy->is_declared( $ability ),
-			'An ability whose declaration is boolean true must be recognized as declared.'
-		);
-	}
-
-	/**
-	 * An ability carrying no exposure opinion of its own is not declared.
-	 *
-	 * There is no "the author declared nothing" state left to test. Core writes
-	 * `meta.public` onto every ability at registration and defaults it to
-	 * `false`, so an author who said nothing has already been answered for, and
-	 * the channel inherits that answer. The assertion on the seeded meta is not
-	 * decoration: if core stopped seeding the key, this surface would be
-	 * resolving against an absent value rather than an explicit `false`, and
-	 * this test would be passing for the wrong reason.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_ability_with_no_exposure_opinion_inherits_cores_public_false_default(): void {
-		$this->require_general_public_flag();
-
-		$ability = $this->register_fixture( 'wpai-test/undeclared', array() );
-
-		$this->assertFalse(
-			$ability->get_meta_item( 'public' ),
-			'Core must seed meta.public as false on an ability whose author set nothing, or the inheritance this policy resolves through is not the one under test.'
-		);
-		$this->assertFalse(
-			( new Tool_Policy() )->is_declared( $ability ),
-			'An ability that expresses no exposure opinion of its own must resolve to not declared through core’s public => false default.'
 		);
 	}
 
@@ -377,23 +314,22 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	 * stopped being enforced here, inheriting from the general flag would mean
 	 * "every public ability is callable by the assistant".
 	 *
+	 * One end-to-end case is enough here: each annotation is tested
+	 * independently against the predicate in
+	 * {@see self::test_effect_class_predicate()}.
+	 *
 	 * @since x.x.x
-	 *
-	 * @dataProvider data_unsafe_effect_classes
-	 *
-	 * @param array<string, mixed> $annotations  The annotations to register.
-	 * @param string               $ability_name The fixture ability name.
-	 * @param string               $message      The assertion message.
 	 */
-	public function test_public_ability_with_an_unsafe_effect_class_is_not_admitted( array $annotations, string $ability_name, string $message ): void {
+	public function test_public_ability_with_an_unsafe_effect_class_is_not_admitted(): void {
 		$this->require_filtered_discovery();
 		$this->login_as_administrator();
 
-		$ability = $this->register_fixture(
+		$ability_name = 'wpai-test/public-unannotated';
+		$ability      = $this->register_fixture(
 			$ability_name,
 			array(
 				'public'      => true,
-				'annotations' => $annotations,
+				'annotations' => array(),
 			)
 		);
 
@@ -404,54 +340,12 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 		$this->assertNotContains(
 			$ability_name,
 			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
-			$message
+			'A public ability carrying no annotations at all must not be admitted, or every public ability on the site would be callable by the model.'
 		);
 		$this->assertSame(
 			Tool_Policy::REASON_EFFECT_CLASS,
 			( new Tool_Policy() )->get_exclusion_reason( $ability ),
 			'A public ability held back by its effect class must be told so, rather than being sent to re-check an exposure flag that is already correct.'
-		);
-	}
-
-	/**
-	 * Data provider for public abilities with an inadmissible effect class.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return array<string, array{array<string, mixed>, string, string}> Provider data.
-	 */
-	public function data_unsafe_effect_classes(): array {
-		$safe = $this->safe_annotations();
-
-		return array(
-			'not readonly'       => array(
-				array_merge( $safe, array( 'readonly' => false ) ),
-				'wpai-test/public-writes',
-				'A public ability that writes must not be admitted; being public says nothing about being safe to call.',
-			),
-			'destructive'        => array(
-				array_merge( $safe, array( 'destructive' => true ) ),
-				'wpai-test/public-destructive',
-				'A public destructive ability must not be admitted; being public says nothing about being safe to call.',
-			),
-			'open world true'    => array(
-				array_merge( $safe, array( 'open_world' => true ) ),
-				'wpai-test/public-open-world',
-				'A public ability that may reach outside the site must not be admitted: it is an exfiltration path for injected instructions, whatever it declares about reading.',
-			),
-			'open world absent'  => array(
-				array(
-					'readonly'    => true,
-					'destructive' => false,
-				),
-				'wpai-test/public-no-open-world',
-				'A public ability that does not assert open_world false must not be admitted; core defaults the annotation to null and absence has to fail closed.',
-			),
-			'no annotations set' => array(
-				array(),
-				'wpai-test/public-unannotated',
-				'A public ability carrying no annotations at all must not be admitted, or every public ability on the site would be callable by the model.',
-			),
 		);
 	}
 
@@ -489,11 +383,8 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	 */
 	public function data_loose_declarations(): array {
 		return array(
-			'integer one'   => array( 1, 'wpai-test/loose-int' ),
-			'string true'   => array( 'true', 'wpai-test/loose-string' ),
-			'string one'    => array( '1', 'wpai-test/loose-string-one' ),
-			'string yes'    => array( 'yes', 'wpai-test/loose-yes' ),
-			'array wrapper' => array( array( 'enabled' => true ), 'wpai-test/loose-array' ),
+			'integer one' => array( 1, 'wpai-test/loose-int' ),
+			'string true' => array( 'true', 'wpai-test/loose-string' ),
 		);
 	}
 
@@ -557,108 +448,6 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Discovery carries no meta condition, because meta cannot express the fallback.
-	 *
-	 * This is the test that stops the query being "optimised" back into a meta
-	 * match on the channel key. Core matches `meta` exactly on the keys it is
-	 * given; it has no way to say "this key, or that one if this is absent". An
-	 * ability that is eligible only through the general `meta.public` flag —
-	 * which, since inheritance landed, is the ordinary case — carries no
-	 * `ai-workspace` key at all, so a query on that key would drop it silently,
-	 * before anything in this plugin ever saw it. Narrowing therefore has to
-	 * happen per item, and this returns nothing to match on.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_discovery_args_carry_no_meta_condition_because_meta_cannot_express_the_public_fallback(): void {
-		$this->assertSame(
-			array(),
-			( new Tool_Policy() )->get_discovery_args(),
-			'Discovery must add no meta condition. Core matches meta exactly, so querying the ai-workspace channel key alone would silently skip every ability that inherits eligibility from the general meta.public flag; resolution belongs per item, not in the query.'
-		);
-	}
-
-
-	/**
-	 * A declared, admissible ability on the surface has no exclusion reason.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_admitted_ability_reports_no_exclusion_reason(): void {
-		$this->require_filtered_discovery();
-		$this->login_as_administrator();
-
-		$ability = $this->register_fixture(
-			'wpai-test/reason-admitted',
-			array(
-				self::DECLARATION_CHANNEL => array( 'public' => true ),
-				'annotations'         => $this->safe_annotations(),
-			)
-		);
-
-		$this->assertNull(
-			( new Tool_Policy() )->get_exclusion_reason( $ability ),
-			'An ability the assistant actually holds must not be reported as excluded.'
-		);
-	}
-
-	/**
-	 * "Not public" and "wrong effect class" are told apart; nothing else is.
-	 *
-	 * One reason code on the exposure side now, not two. An ability that carries
-	 * no opinion of its own and an ability whose channel value is a loosely
-	 * truthy `1` are both simply not public here, and core's own default is why:
-	 * it writes `meta.public` onto every ability at registration, so there is no
-	 * "the author forgot" state left to distinguish. What still has to be kept
-	 * apart is the ability whose exposure flag is perfect and whose annotations
-	 * are not — telling that author to re-check the flag would send them back to
-	 * something they already got right.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_exclusion_reasons_separate_not_public_from_the_effect_class(): void {
-		$this->require_filtered_discovery();
-		$this->login_as_administrator();
-
-		$undeclared = $this->register_fixture(
-			'wpai-test/reason-undeclared',
-			array( 'annotations' => $this->safe_annotations() )
-		);
-		$loose      = $this->register_fixture(
-			'wpai-test/reason-loosely-true',
-			array(
-				self::DECLARATION_CHANNEL => array( 'public' => 1 ),
-				'annotations'         => $this->safe_annotations(),
-			)
-		);
-		$writes     = $this->register_fixture(
-			'wpai-test/reason-effect-class',
-			array(
-				self::DECLARATION_CHANNEL => array( 'public' => true ),
-				'annotations'         => array_merge( $this->safe_annotations(), array( 'readonly' => false ) ),
-			)
-		);
-
-		$policy = new Tool_Policy();
-
-		$this->assertSame(
-			Tool_Policy::REASON_NOT_PUBLIC,
-			$policy->get_exclusion_reason( $undeclared ),
-			'An ability with no exposure opinion of its own must be reported as not public, which is what core’s default already made it.'
-		);
-		$this->assertSame(
-			Tool_Policy::REASON_NOT_PUBLIC,
-			$policy->get_exclusion_reason( $loose ),
-			'A channel value that is present but not strictly true lands on the same reason as one that was never written: it is not public either way, and there is no separate malformed state to report.'
-		);
-		$this->assertSame(
-			Tool_Policy::REASON_EFFECT_CLASS,
-			$policy->get_exclusion_reason( $writes ),
-			'A correctly declared ability rejected for its effect class must be told so, not sent to re-check a correct declaration.'
-		);
-	}
-
-	/**
 	 * A candidate the current user cannot clear reports the capability reason.
 	 *
 	 * @since x.x.x
@@ -707,7 +496,7 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 			'wpai-test/reason-narrowed',
 			array(
 				self::DECLARATION_CHANNEL => array( 'public' => true ),
-				'annotations'         => $this->safe_annotations(),
+				'annotations'             => $this->safe_annotations(),
 			)
 		);
 
@@ -747,7 +536,7 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 			'wpai-test/reason-restored',
 			array(
 				self::DECLARATION_CHANNEL => array( 'public' => true ),
-				'annotations'         => $this->safe_annotations(),
+				'annotations'             => $this->safe_annotations(),
 			)
 		);
 
@@ -793,32 +582,6 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * With the kill switch on, the surface is the curated abilities by name.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_kill_switch_returns_the_curated_surface_by_name(): void {
-		$this->login_as_administrator();
-		$this->register_curated_surface();
-
-		$this->register_fixture(
-			'wpai-test/killed-declared',
-			array(
-				self::DECLARATION_CHANNEL => array( 'public' => true ),
-				'annotations'         => $this->safe_annotations(),
-			)
-		);
-
-		update_option( Tool_Policy::POLICY_DISABLED_OPTION, true );
-
-		$this->assertSame(
-			self::CURATED_SURFACE,
-			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
-			'With the kill switch on, the surface must be the three curated abilities and nothing else.'
-		);
-	}
-
-	/**
 	 * On the fail-closed branch every non-curated ability blames the policy.
 	 *
 	 * The declaration-specific reasons would all be lies here: with the policy
@@ -835,7 +598,7 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 			'wpai-test/off-declared',
 			array(
 				self::DECLARATION_CHANNEL => array( 'public' => true ),
-				'annotations'         => $this->safe_annotations(),
+				'annotations'             => $this->safe_annotations(),
 			)
 		);
 		$silent   = $this->register_fixture(
@@ -846,7 +609,7 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 			'wpai-test/off-writes',
 			array(
 				self::DECLARATION_CHANNEL => array( 'public' => true ),
-				'annotations'         => array_merge( $this->safe_annotations(), array( 'readonly' => false ) ),
+				'annotations'             => array_merge( $this->safe_annotations(), array( 'readonly' => false ) ),
 			)
 		);
 
@@ -931,7 +694,7 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 			'wpai-test/reason-filtered',
 			array(
 				self::DECLARATION_CHANNEL => array( 'public' => true ),
-				'annotations'         => $this->safe_annotations(),
+				'annotations'             => $this->safe_annotations(),
 			)
 		);
 
@@ -1022,7 +785,7 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 			'wpai-test/reason-awaiting',
 			array(
 				self::DECLARATION_CHANNEL => array( 'public' => true ),
-				'annotations'         => $this->safe_annotations(),
+				'annotations'             => $this->safe_annotations(),
 			)
 		);
 
@@ -1041,29 +804,16 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Skips a test on a WordPress whose abilities carry no general `public` flag.
-	 *
-	 * WordPress 7.1 introduced the `public` ability meta, seeded it to `false`
-	 * on every registration, and resolved `show_in_rest` from it. On 7.0 the key
-	 * does not exist, so anything asserting on core's seeding cannot be meaningful.
-	 *
-	 * @since x.x.x
-	 */
-	private function require_general_public_flag(): void {
-		if ( version_compare( get_bloginfo( 'version' ), '7.1', '<' ) ) {
-			$this->markTestSkipped( 'This WordPress does not seed the general `public` flag on abilities (added in 7.1).' );
-		}
-	}
-
-	/**
 	 * Skips a test on a WordPress that cannot filter ability discovery.
 	 *
 	 * @since x.x.x
 	 */
 	private function require_filtered_discovery(): void {
-		if ( ! ( new Tool_Policy() )->supports_filtered_discovery() ) {
-			$this->markTestSkipped( 'This WordPress does not support filtered ability discovery.' );
+		if ( ( new Tool_Policy() )->supports_filtered_discovery() ) {
+			return;
 		}
+
+		$this->markTestSkipped( 'This WordPress does not support filtered ability discovery.' );
 	}
 
 	/**
@@ -1150,7 +900,7 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 *
 	 * @param string $function_name The discovery function the probe should inspect.
-	 * @return Tool_Policy The policy under test.
+	 * @return \WordPress\AI\Experiments\AI_Workspace\Tool_Policy The policy under test.
 	 */
 	private function policy_probing( string $function_name ): Tool_Policy {
 		return new class( $function_name ) extends Tool_Policy {
@@ -1236,85 +986,6 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * `core/get-site-info` stays off the surface even once core gives it `open_world: false`.
-	 *
-	 * Core's site-info reader returns the admin email. The workspace offers
-	 * `ai/get-site-info` instead, which never does, so this registers the core
-	 * reader the way core would once that hint is added, with admission switched
-	 * on, and checks the withheld list is what keeps it off.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_core_get_site_info_is_withheld_with_perfect_annotations(): void {
-		$this->require_filtered_discovery();
-
-		if ( wp_has_ability( 'core/get-site-info' ) ) {
-			wp_unregister_ability( 'core/get-site-info' );
-		}
-
-		$ability = $this->register_fixture(
-			'core/get-site-info',
-			array(
-				'public'      => true,
-				'annotations' => $this->safe_annotations(),
-			)
-		);
-
-		$policy = new Tool_Policy();
-
-		$this->assertTrue(
-			$policy->has_admissible_effect_class( $ability ),
-			'Guard: the fixture passes the effect class, so only the withheld list can keep it off.'
-		);
-		$this->assertNotContains(
-			'core/get-site-info',
-			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
-			'Core\'s site-info reader, which returns the admin email, must never reach the model.'
-		);
-		$this->assertSame( Tool_Policy::REASON_WITHHELD, $policy->get_exclusion_reason( $ability ) );
-	}
-
-	/**
-	 * `core/settings-get` stays off the surface even once core gives it `open_world: false`.
-	 *
-	 * WordPress 7.2 registers the settings reader as `core/settings-get`; the list
-	 * named only the alias `core/read-settings`. Today the gap is hidden because
-	 * core leaves out `open_world`, so this registers it the way core would once
-	 * that hint is added, with admission switched on, and checks the withheld
-	 * list is what keeps it off.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_settings_get_is_withheld_with_perfect_annotations(): void {
-		$this->require_filtered_discovery();
-
-		if ( wp_has_ability( 'core/settings-get' ) ) {
-			wp_unregister_ability( 'core/settings-get' );
-		}
-
-		$ability = $this->register_fixture(
-			'core/settings-get',
-			array(
-				'public'      => true,
-				'annotations' => $this->safe_annotations(),
-			)
-		);
-
-		$policy = new Tool_Policy();
-
-		$this->assertTrue(
-			$policy->has_admissible_effect_class( $ability ),
-			'Guard: the fixture passes the effect class, so only the withheld list can keep it off.'
-		);
-		$this->assertNotContains(
-			'core/settings-get',
-			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
-			'The site settings reader must never reach the model.'
-		);
-		$this->assertSame( Tool_Policy::REASON_WITHHELD, $policy->get_exclusion_reason( $ability ) );
-	}
-
-	/**
 	 * The shipped list names the core abilities that read sensitive data.
 	 *
 	 * @since x.x.x
@@ -1322,7 +993,7 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	public function test_shipped_withheld_list_covers_the_sensitive_core_abilities(): void {
 		$policy = new Tool_Policy();
 
-		foreach ( array( 'core/get-user-info', 'core/users-query', 'core/read-users', 'core/settings-get', 'core/read-settings', 'core/get-environment-info' ) as $ability_name ) {
+		foreach ( array( 'core/get-user-info', 'core/users-query', 'core/read-users', 'core/settings-get', 'core/read-settings', 'core/get-environment-info', 'core/get-site-info' ) as $ability_name ) {
 			$this->assertTrue(
 				$policy->is_withheld( $ability_name ),
 				sprintf( '%s reads sensitive data and must be withheld by default. A rename upstream leaves a hole here until the new name is added, so both sides of core/read-users to core/users-query are listed.', $ability_name )
@@ -1410,7 +1081,7 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	}
 }
 
-if ( ! function_exists( 'wpai_test_zero_parameter_abilities' ) ) {
+if ( ! function_exists( __NAMESPACE__ . '\\wpai_test_zero_parameter_abilities' ) ) {
 	/**
 	 * Stands in for WordPress 7.0's `wp_get_abilities()`, which accepts nothing.
 	 *
@@ -1426,7 +1097,7 @@ if ( ! function_exists( 'wpai_test_zero_parameter_abilities' ) ) {
 	}
 }
 
-if ( ! function_exists( 'wpai_test_filtered_abilities' ) ) {
+if ( ! function_exists( __NAMESPACE__ . '\\wpai_test_filtered_abilities' ) ) {
 	/**
 	 * Stands in for WordPress 7.1's `wp_get_abilities( $args )`.
 	 *

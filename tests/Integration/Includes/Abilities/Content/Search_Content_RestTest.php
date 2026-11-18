@@ -110,6 +110,22 @@ class Search_Content_RestTest extends WP_UnitTestCase {
 			wp_unregister_ability( $ability_name );
 		}
 
+		// Restore the curated post types to their unmarked state to avoid leaking into other tests.
+		foreach ( array( 'post', 'page' ) as $post_type ) {
+			$object = get_post_type_object( $post_type );
+			if ( ! $object ) {
+				continue;
+			}
+
+			// WordPress 7.2 declares the property, and unsetting a declared property leaves it
+			// uninitialized, so restore core's default rather than removing it.
+			if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
+				$object->show_in_abilities = true;
+			} else {
+				unset( $object->show_in_abilities );
+			}
+		}
+
 		global $wp_rest_server;
 		$wp_rest_server = null; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Resetting the REST server after the test.
 

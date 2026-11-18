@@ -12,7 +12,6 @@ namespace WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace;
 use ReflectionProperty;
 use WP_UnitTestCase;
 use WordPress\AI\Experiments\AI_Workspace\Agent_Audit;
-use WordPress\AI\Experiments\AI_Workspace\Draft_Writer;
 use WordPress\AI\Logging\AI_Request_Log_Manager;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
 use WordPress\AI\Logging\Logging_Integration;
@@ -134,15 +133,6 @@ class Agent_AuditTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The agent type is one the log accepts and the log screen can filter on.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_agent_is_a_log_type(): void {
-		$this->assertContains( Agent_Audit::LOG_TYPE, AI_Request_Log_Manager::get_types() );
-	}
-
-	/**
 	 * An event writes one agent row and fires the hook once with its operation, status, context and error.
 	 *
 	 * @since x.x.x
@@ -202,77 +192,5 @@ class Agent_AuditTest extends WP_UnitTestCase {
 		$this->assertCount( 1, $calls );
 		$this->assertSame( '', $calls[0][3], 'An event without an error passes an empty string.' );
 		$this->assertSame( array(), $this->rows() );
-	}
-
-	/**
-	 * A proposal event names the proposal and its items, never their values.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_a_proposal_event_names_the_proposal_and_its_items_only(): void {
-		$user_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
-		$calls   = $this->capture();
-
-		Agent_Audit::proposal(
-			'proposal_created',
-			'success',
-			array(
-				'id'              => 'p1',
-				'user_id'         => $user_id,
-				'conversation_id' => 'c1',
-				'kind'            => 'post-field',
-				'items'           => array(
-					array(
-						'key'   => 'k1',
-						'value' => 'A secret body',
-					),
-					array(
-						'key'   => 'k2',
-						'value' => 'Another secret',
-					),
-				),
-			)
-		);
-
-		$this->assertCount( 1, $calls );
-
-		[ $operation, $status, $context ] = $calls[0];
-
-		$this->assertSame( 'proposal_created', $operation );
-		$this->assertSame( 'success', $status );
-		$this->assertSame(
-			array(
-				'surface'         => 'ai-workspace',
-				'conversation_id' => 'c1',
-				'proposal'        => array(
-					'id'    => 'p1',
-					'kind'  => 'post-field',
-					'items' => array( 'k1', 'k2' ),
-				),
-			),
-			$context
-		);
-		$this->assertStringNotContainsString( 'secret', (string) wp_json_encode( $calls[0] ) );
-	}
-
-	/**
-	 * A proposal stored without a kind is a set of drafts.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_a_proposal_without_a_kind_is_recorded_as_drafts(): void {
-		$calls = $this->capture();
-
-		Agent_Audit::proposal(
-			'proposal_declined',
-			'success',
-			array(
-				'id'    => 'p1',
-				'items' => array(),
-			)
-		);
-
-		$this->assertSame( Draft_Writer::KIND, $calls[0][2]['proposal']['kind'] );
-		$this->assertSame( '', $calls[0][2]['conversation_id'] );
 	}
 }

@@ -16,7 +16,7 @@ use WordPress\AI\Experiments\AI_Workspace\Turn_Context;
  * Ask_User test case.
  *
  * The question ability writes nothing, so these tests are about its shape: what
- * the schema refuses, that a valid question comes back exactly as given, and
+ * the schema refuses, that a valid question comes back trimmed, and
  * that, like the proposal ability, it stays off the REST and MCP surfaces and
  * outside workspace turns.
  *
@@ -114,24 +114,6 @@ class Ask_UserTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A valid question with three choices comes back unchanged.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_returns_the_question_and_choices_unchanged(): void {
-		$input = array(
-			'question' => 'How should the series start?',
-			'choices'  => array( 'Create these 5 drafts', 'Change the angle', 'Fewer parts' ),
-		);
-
-		$result = $this->ask( $input );
-
-		$this->assertIsArray( $result );
-		$this->assertSame( $input['question'], $result['question'] );
-		$this->assertSame( $input['choices'], $result['choices'] );
-	}
-
-	/**
 	 * Surrounding spaces are trimmed, so a choice is stored as the text a click sends.
 	 *
 	 * @since x.x.x
@@ -150,7 +132,10 @@ class Ask_UserTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Inputs the schema refuses.
+	 * Returns inputs of only spaces, which the schema's `pattern` refuses.
+	 *
+	 * The length, count and uniqueness bounds are plain JSON-schema keywords
+	 * that core validates, so they are not repeated here.
 	 *
 	 * @since x.x.x
 	 *
@@ -158,57 +143,16 @@ class Ask_UserTest extends WP_UnitTestCase {
 	 */
 	public function data_invalid_inputs(): array {
 		return array(
-			'one choice'           => array(
-				array(
-					'question' => 'Go ahead?',
-					'choices'  => array( 'Yes' ),
-				),
-			),
-			'six choices'          => array(
-				array(
-					'question' => 'Pick one.',
-					'choices'  => array( 'One', 'Two', 'Three', 'Four', 'Five', 'Six' ),
-				),
-			),
-			'over-length choice'   => array(
-				array(
-					'question' => 'Pick one.',
-					'choices'  => array( 'Short', str_repeat( 'x', Ask_User::MAX_CHOICE_LENGTH + 1 ) ),
-				),
-			),
-			'over-length question' => array(
-				array(
-					'question' => str_repeat( 'x', Ask_User::MAX_QUESTION_LENGTH + 1 ),
-					'choices'  => array( 'Yes', 'No' ),
-				),
-			),
-			'empty choice'         => array(
-				array(
-					'question' => 'Pick one.',
-					'choices'  => array( 'Yes', '' ),
-				),
-			),
-			'repeated choice'      => array(
-				array(
-					'question' => 'Pick one.',
-					'choices'  => array( 'Yes', 'Yes' ),
-				),
-			),
-			'blank choice'         => array(
+			'blank choice'   => array(
 				array(
 					'question' => 'Pick one.',
 					'choices'  => array( 'Yes', '   ' ),
 				),
 			),
-			'blank question'       => array(
+			'blank question' => array(
 				array(
 					'question' => '   ',
 					'choices'  => array( 'Yes', 'No' ),
-				),
-			),
-			'no question'          => array(
-				array(
-					'choices' => array( 'Yes', 'No' ),
 				),
 			),
 		);
@@ -228,29 +172,6 @@ class Ask_UserTest extends WP_UnitTestCase {
 
 		$this->assertWPError( $result );
 		$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
-	}
-
-	/**
-	 * Five choices, each at the length limit, are still accepted.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_accepts_the_limits(): void {
-		$choices = array();
-
-		for ( $i = 0; $i < Ask_User::MAX_CHOICES; $i++ ) {
-			$choices[] = str_pad( (string) $i, Ask_User::MAX_CHOICE_LENGTH, 'x' );
-		}
-
-		$result = $this->ask(
-			array(
-				'question' => str_repeat( 'q', Ask_User::MAX_QUESTION_LENGTH ),
-				'choices'  => $choices,
-			)
-		);
-
-		$this->assertIsArray( $result );
-		$this->assertSame( $choices, $result['choices'] );
 	}
 
 	/**
@@ -290,14 +211,16 @@ class Ask_UserTest extends WP_UnitTestCase {
 	/**
 	 * It is withheld from the REST and MCP surfaces, and declares that it writes nothing.
 	 *
+	 * MCP exposure reads `mcp.public`, not `show_in_rest`, and a plugin ability
+	 * is exposed unless it declares `mcp.public` as false, so both are checked.
+	 *
 	 * @since x.x.x
 	 */
-	public function test_is_hidden_from_rest_and_read_only(): void {
+	public function test_is_hidden_from_rest_and_mcp_and_read_only(): void {
 		$meta = $this->ability()->get_meta();
 
 		$this->assertFalse( $meta['show_in_rest'] );
+		$this->assertFalse( $meta['mcp']['public'] ?? null, 'The question ability must not be exposed to MCP.' );
 		$this->assertTrue( $meta['annotations']['readonly'] );
-		$this->assertFalse( $meta['annotations']['destructive'] );
-		$this->assertFalse( $meta['annotations']['open_world'] );
 	}
 }

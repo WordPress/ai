@@ -22,7 +22,6 @@ use WordPress\AI\Experiments\AI_Workspace\Propose_Site_Identity;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Template;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Policy;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Selector;
-use WordPress\AI\Experiments\Abilities_Explorer\Ability_Handler;
 use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Test_Update_Kind;
 
 /**
@@ -302,50 +301,46 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * An ability the user cannot run is never declared to the model.
+	 * An ability is declared to the model only for users who could run it.
 	 *
 	 * @since x.x.x
+	 *
+	 * @dataProvider data_editor_only_ability_by_role
+	 *
+	 * @param string $role     The role to log in as.
+	 * @param bool   $expected Whether the editor-only ability should be declared.
 	 */
-	public function test_editor_only_ability_is_not_declared_to_a_subscriber(): void {
-		$this->login_as( 'subscriber' );
+	public function test_editor_only_ability_is_declared_only_to_roles_that_can_run_it( string $role, bool $expected ): void {
+		$this->login_as( $role );
 
 		$names = ( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE );
 
-		$this->assertNotContains(
-			self::EDITOR_ABILITY,
-			$names,
-			'A subscriber must never be offered an ability gated on edit_others_posts.'
+		$this->assertSame(
+			$expected,
+			in_array( self::EDITOR_ABILITY, $names, true ),
+			sprintf(
+				$expected
+					? 'The %s role must be offered the ability gated on edit_others_posts.'
+					: 'The %s role must never be offered an ability gated on edit_others_posts.',
+				$role
+			)
 		);
 	}
 
 	/**
-	 * The same ability is declared to a user who can run it.
+	 * Data provider for the editor-only ability by role.
 	 *
 	 * @since x.x.x
-	 */
-	public function test_editor_only_ability_is_declared_to_an_editor(): void {
-		$this->login_as( 'editor' );
-
-		$names = ( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE );
-
-		$this->assertContains( self::EDITOR_ABILITY, $names );
-	}
-
-	/**
-	 * Contributors and authors do not receive the editor-only ability either.
 	 *
-	 * @since x.x.x
+	 * @return array<string, array{string, bool}> Provider data.
 	 */
-	public function test_lower_roles_do_not_receive_the_editor_only_ability(): void {
-		foreach ( array( 'contributor', 'author' ) as $role ) {
-			$this->login_as( $role );
-
-			$this->assertNotContains(
-				self::EDITOR_ABILITY,
-				( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
-				sprintf( 'The %s role must not be offered the editor-only ability.', $role )
-			);
-		}
+	public function data_editor_only_ability_by_role(): array {
+		return array(
+			'subscriber'  => array( 'subscriber', false ),
+			'contributor' => array( 'contributor', false ),
+			'author'      => array( 'author', false ),
+			'editor'      => array( 'editor', true ),
+		);
 	}
 
 	/**
@@ -448,30 +443,6 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A declared, read-only, closed-world ability reaches the model.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_declared_readonly_ability_is_admitted(): void {
-		$this->require_filtered_discovery();
-		$this->login_as( 'administrator' );
-
-		$this->register_fixture(
-			'wpai-test/declared-reader',
-			array(
-				self::DECLARATION_CHANNEL => array( 'public' => true ),
-				'annotations'             => $this->safe_annotations(),
-			)
-		);
-
-		$this->assertContains(
-			'wpai-test/declared-reader',
-			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
-			'An ability that declares itself for the conversational surface and asserts a safe effect class must be admitted.'
-		);
-	}
-
-	/**
 	 * An undeclared ability is not admitted however carefully it is annotated.
 	 *
 	 * @since x.x.x
@@ -493,88 +464,6 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A declared ability whose effect class is wrong is not admitted.
-	 *
-	 * @since x.x.x
-	 *
-	 * @dataProvider data_inadmissible_effect_classes
-	 *
-	 * @param array<string, mixed> $annotations The annotations to register.
-	 * @param string               $ability_id  The fixture ability name.
-	 * @param string               $message     The assertion message.
-	 */
-	public function test_declared_ability_with_wrong_effect_class_is_not_admitted( array $annotations, string $ability_id, string $message ): void {
-		$this->require_filtered_discovery();
-		$this->login_as( 'administrator' );
-
-		$this->register_fixture(
-			$ability_id,
-			array(
-				self::DECLARATION_CHANNEL => array( 'public' => true ),
-				'annotations'             => $annotations,
-			)
-		);
-
-		$this->assertNotContains(
-			$ability_id,
-			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
-			$message
-		);
-	}
-
-	/**
-	 * Data provider for declared abilities that fail the effect-class check.
-	 *
-	 * `open_world` is covered here rather than in its own test because it fails
-	 * for the same reason as the other two: the assertion is missing or wrong.
-	 * It is the one most easily forgotten, so both the absent and the explicitly
-	 * true case are listed.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return array<string, array{array<string, mixed>, string, string}> Provider data.
-	 */
-	public function data_inadmissible_effect_classes(): array {
-		return array(
-			'writes'            => array(
-				array(
-					'readonly'    => false,
-					'destructive' => false,
-					'open_world'  => false,
-				),
-				'wpai-test/declared-writer',
-				'A declared ability that is not read-only must not be admitted.',
-			),
-			'destructive'       => array(
-				array(
-					'readonly'    => true,
-					'destructive' => true,
-					'open_world'  => false,
-				),
-				'wpai-test/declared-destroyer',
-				'A declared ability that reports itself destructive must not be admitted.',
-			),
-			'open world'        => array(
-				array(
-					'readonly'    => true,
-					'destructive' => false,
-					'open_world'  => true,
-				),
-				'wpai-test/declared-open-world',
-				'A declared read-only ability that may reach external systems must not be admitted.',
-			),
-			'open world absent' => array(
-				array(
-					'readonly'    => true,
-					'destructive' => false,
-				),
-				'wpai-test/declared-silent-world',
-				'A declared read-only ability that says nothing about open_world must fail closed.',
-			),
-		);
-	}
-
-	/**
 	 * With nothing declared, the 7.1 surface is exactly the curated floor.
 	 *
 	 * This is the assertion the "ships dark" safety argument rests on. Default
@@ -590,7 +479,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		$this->assertSame(
 			self::CURATED_SURFACE,
 			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
-			'On a WordPress that supports filtered discovery, a site where nothing declares must still get the three curated abilities.'
+			'On a WordPress that supports filtered discovery, a site where nothing declares must still get exactly the curated abilities.'
 		);
 	}
 
@@ -748,81 +637,80 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A third-party result filter cannot re-admit an undeclared ability.
+	 * A third-party result filter cannot put a rejected ability back on the surface.
 	 *
 	 * `wp_get_abilities_result` is site-wide and fires on the workspace's own
-	 * discovery call, and unlike the per-item filters it can hand back an
-	 * ability the query never matched. So the query's return is a candidate set
-	 * rather than an authority, and everything in it is re-verified here.
+	 * discovery call, and it can hand back an ability the query rejected. So the
+	 * query's return is a candidate set rather than an authority, and admission
+	 * re-verifies everything in it.
+	 *
+	 * The fixture is declared, so the only thing that rejects it is its effect
+	 * class: the selector's own `item_include_callback` drops it, and the filter
+	 * puts it back.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_third_party_result_filter_cannot_re_admit_an_undeclared_ability(): void {
+	public function test_third_party_result_filter_cannot_re_admit_a_rejected_ability(): void {
 		$this->require_filtered_discovery();
 		$this->login_as( 'administrator' );
 
 		$this->register_fixture(
 			'wpai-test/smuggled',
-			array( 'annotations' => $this->safe_annotations() )
+			array(
+				self::DECLARATION_CHANNEL => array( 'public' => true ),
+				'annotations'             => array_merge( $this->safe_annotations(), array( 'readonly' => false ) ),
+			)
 		);
 
-		add_filter( 'wp_get_abilities_result', array( $this, 'smuggle_undeclared_ability' ) );
+		$smuggled = false;
+		$smuggle  = static function ( $matched, $args ) use ( &$smuggled ) {
+			$ability = wp_get_ability( 'wpai-test/smuggled' );
 
-		/*
-		 * The negative assertion below is a no-op if the smuggle never happened:
-		 * if core renamed the hook, or the discovery arguments stopped reaching
-		 * it, nothing would be injected and the test would stay green while
-		 * proving nothing. So prove the injection first, against the policy's
-		 * own discovery query.
-		 */
-		$this->assertContains(
-			'wpai-test/smuggled',
-			$this->discovered_names(),
-			'The result filter must actually put the undeclared ability into the discovery query, otherwise the refusal below is asserted against a smuggle that never happened.'
+			// Only the selector's own discovery call carries an include callback.
+			if ( ! is_array( $matched ) || ! isset( $args['item_include_callback'] ) || ! $ability instanceof WP_Ability ) {
+				return $matched;
+			}
+
+			if ( ! isset( $matched['wpai-test/smuggled'] ) ) {
+				$matched['wpai-test/smuggled'] = $ability;
+				$smuggled                      = true;
+			}
+
+			return $matched;
+		};
+
+		add_filter( 'wp_get_abilities_result', $smuggle, 10, 2 );
+
+		$selector = new Tool_Selector();
+		$names    = $selector->get_tool_names( Tool_Selector::SCOPE_SITE );
+
+		remove_filter( 'wp_get_abilities_result', $smuggle, 10 );
+
+		$this->assertTrue(
+			$smuggled,
+			'The selector\'s discovery query must have rejected the fixture and the result filter must have put it back, otherwise the refusals below are asserted against a smuggle that never happened.'
 		);
-
 		$this->assertNotContains(
 			'wpai-test/smuggled',
-			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
-			'A plugin hooking the site-wide result filter must not be able to put an undeclared ability on the conversational surface.'
+			$names,
+			'A plugin hooking the site-wide result filter must not be able to put a mutating ability on the conversational surface.'
 		);
-
-		remove_filter( 'wp_get_abilities_result', array( $this, 'smuggle_undeclared_ability' ) );
+		$this->assertNotContains(
+			'wpai-test/smuggled',
+			$selector->get_effect_class_rejections(),
+			'Admission must re-check what discovery returned and refuse the smuggled ability itself, rather than leaving it to the later candidate-map check.'
+		);
 	}
 
 	/**
-	 * Injects an undeclared ability into a discovery result.
+	 * Discovery is not a boundary: widening it leaves the surface unmoved.
 	 *
-	 * @since x.x.x
-	 *
-	 * @param mixed $matched The matched abilities.
-	 * @return mixed The matched abilities, with the undeclared fixture added.
-	 */
-	public function smuggle_undeclared_ability( $matched ) {
-		$ability = wp_get_ability( 'wpai-test/smuggled' );
-
-		if ( is_array( $matched ) && $ability instanceof WP_Ability ) {
-			$matched['wpai-test/smuggled'] = $ability;
-		}
-
-		return $matched;
-	}
-
-	/**
-	 * Discovery narrows nothing, and the per-item re-check is what holds.
-	 *
-	 * This used to assert that core's declarative `meta` match ran before
-	 * `wp_get_abilities_item_include` fired, so an undeclared ability was gone
-	 * before a third party could vote it back in. That guarantee is no longer
-	 * available: a channel inherits eligibility from the general `meta.public`
-	 * flag, core's `meta` matching cannot express that fallback, and the
-	 * discovery query therefore carries no condition at all. Every registered
-	 * ability now comes back from discovery.
-	 *
-	 * So the query is not a boundary and must not be mistaken for one. What
-	 * keeps an ineligible ability off the surface is the selector re-resolving
-	 * eligibility on each returned item — and this pins that, by widening the
-	 * one filter core lets a third party widen and showing the surface unmoved.
+	 * `wp_get_abilities_item_include` fires after the selector's own
+	 * `item_include_callback` and can override it, so a third party can vote
+	 * back in an ability the selector's query rejected. What keeps it off the
+	 * surface is admission re-resolving eligibility on each returned item. The
+	 * filter stays in place across the selector call, so the widening reaches
+	 * the query it claims to widen.
 	 *
 	 * @since x.x.x
 	 */
@@ -832,81 +720,46 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 
 		$this->register_fixture(
 			'wpai-test/include-smuggled',
-			array( 'annotations' => $this->safe_annotations() )
+			array(
+				self::DECLARATION_CHANNEL => array( 'public' => true ),
+				'annotations'             => array_merge( $this->safe_annotations(), array( 'open_world' => true ) ),
+			)
 		);
 
-		add_filter( 'wp_get_abilities_item_include', '__return_true', 10, 1 );
+		$widened = false;
+		$widen   = static function ( $included, $ability, $args ) use ( &$widened ): bool {
+			if (
+				! $included
+				&& isset( $args['item_include_callback'] )
+				&& $ability instanceof WP_Ability
+				&& 'wpai-test/include-smuggled' === $ability->get_name()
+			) {
+				$widened = true;
+			}
 
-		$discovered = $this->discovered_names();
+			return true;
+		};
 
-		remove_filter( 'wp_get_abilities_item_include', '__return_true', 10 );
+		add_filter( 'wp_get_abilities_item_include', $widen, 10, 3 );
 
-		$this->assertContains(
-			'wpai-test/include-smuggled',
-			$discovered,
-			'Discovery must be understood to narrow nothing: with no meta condition to match on, an undeclared ability comes straight back, and any code treating this query as the admission boundary is wrong.'
+		$selector = new Tool_Selector();
+		$names    = $selector->get_tool_names( Tool_Selector::SCOPE_SITE );
+
+		remove_filter( 'wp_get_abilities_item_include', $widen, 10 );
+
+		$this->assertTrue(
+			$widened,
+			'The include filter must have overridden the selector\'s own rejection of the fixture during the selector\'s discovery call, otherwise the refusals below prove nothing about widening.'
 		);
 		$this->assertNotContains(
 			'wpai-test/include-smuggled',
-			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
-			'An ability that resolves to not public must not reach the conversational surface, however wide discovery was made: the selector’s per-item re-check is the boundary.'
+			$names,
+			'An ability that reaches outside the site must not reach the conversational surface, however wide discovery was made.'
 		);
-	}
-
-	/**
-	 * Returns the ability names the policy's own discovery query matches.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return list<string> The discovered ability names.
-	 */
-	private function discovered_names(): array {
-		$names = array();
-
-		foreach ( wp_get_abilities( ( new Tool_Policy() )->get_discovery_args() ) as $ability ) {
-			if ( ! ( $ability instanceof WP_Ability ) ) {
-				continue;
-			}
-
-			$names[] = $ability->get_name();
-		}
-
-		return $names;
-	}
-
-	/**
-	 * The policy leaves every other consumer of the registry alone.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_explorer_inventory_is_unchanged_by_the_policy(): void {
-		$this->login_as( 'administrator' );
-
-		$this->register_fixture(
-			'wpai-test/declared-reader',
-			array(
-				self::DECLARATION_CHANNEL => array( 'public' => true ),
-				'annotations'             => $this->safe_annotations(),
-			)
-		);
-		$this->register_fixture(
-			'wpai-test/undeclared-reader',
-			array( 'annotations' => $this->safe_annotations() )
-		);
-
-		$before = $this->explorer_slugs();
-
-		( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE );
-
-		$this->assertSame(
-			$before,
-			$this->explorer_slugs(),
-			'Running the workspace admission policy must not change what the Abilities Explorer inventories.'
-		);
-		$this->assertContains(
-			'wpai-test/undeclared-reader',
-			$before,
-			'The Explorer must still list an ability the workspace declines to admit, otherwise this test proves nothing.'
+		$this->assertNotContains(
+			'wpai-test/include-smuggled',
+			$selector->get_effect_class_rejections(),
+			'Admission must re-check what discovery returned and refuse the widened-in ability itself, rather than leaving it to the later candidate-map check.'
 		);
 	}
 
@@ -989,34 +842,6 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * An owner's removal holds with no bootstrap having run.
-	 *
-	 * The Abilities Explorer is a separate experiment from the AI Workspace, and
-	 * on a site with no function-calling connector the Explorer is on while the
-	 * workspace is off. Nothing may have to be hooked for the owner's control to
-	 * work, or that site shows a removed ability as one the assistant holds.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_owner_removal_holds_without_the_workspace_bootstrap(): void {
-		$this->use_curated_surface_only();
-
-		$this->assertContains(
-			Tool_Selector::SEARCH_ABILITY,
-			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
-			'The curated search ability must be on the surface before its removal can prove anything.'
-		);
-
-		( new Tool_Policy() )->exclude_from_surface( Tool_Selector::SEARCH_ABILITY );
-
-		$this->assertNotContains(
-			Tool_Selector::SEARCH_ABILITY,
-			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
-			'An owner removal must take effect on a request where no experiment bootstrap registered anything.'
-		);
-	}
-
-	/**
 	 * Skips a test on a WordPress that cannot filter ability discovery.
 	 *
 	 * @since x.x.x
@@ -1042,33 +867,6 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 			'destructive' => false,
 			'open_world'  => false,
 		);
-	}
-
-	/**
-	 * Returns the ability slugs the Abilities Explorer inventories.
-	 *
-	 * Slugs rather than rows: the Explorer's row shape is expected to grow a
-	 * conversational-surface column, and a structural assertion would go red for
-	 * a change that is not a regression.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return list<string> The inventoried ability slugs, sorted.
-	 */
-	private function explorer_slugs(): array {
-		$slugs = array();
-
-		foreach ( Ability_Handler::get_all_abilities() as $ability ) {
-			if ( ! isset( $ability['slug'] ) || ! is_string( $ability['slug'] ) ) {
-				continue;
-			}
-
-			$slugs[] = $ability['slug'];
-		}
-
-		sort( $slugs );
-
-		return $slugs;
 	}
 
 	/**

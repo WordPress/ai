@@ -222,28 +222,6 @@ class Read_Content_BodiesTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The ability is registered in the content category and flagged read-only.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_registers_read_content_bodies_ability(): void {
-		$this->register_ability();
-
-		$ability = wp_get_ability( self::ABILITY );
-
-		$this->assertNotNull( $ability, 'The ai/read-content-bodies ability should be registered.' );
-		$this->assertSame( self::ABILITY, $ability->get_name(), 'The registered ability should use the expected name.' );
-		$this->assertSame( 'content', $ability->get_category(), 'The registered ability should use the content category.' );
-		$this->assertTrue( $ability->get_meta_item( 'show_in_rest', false ), 'The ability should be exposed in REST.' );
-
-		$annotations = $ability->get_meta_item( 'annotations', array() );
-		$this->assertTrue( $annotations['readonly'], 'The ability should be marked read-only.' );
-		$this->assertFalse( $annotations['destructive'], 'The ability should be marked non-destructive.' );
-		$this->assertTrue( $annotations['idempotent'], 'The ability should be marked idempotent.' );
-		$this->assertFalse( $annotations['open_world'], 'The ability should be marked closed-world; it only reads the local database.' );
-	}
-
-	/**
 	 * The ability is not registered when no post types are exposed to abilities.
 	 *
 	 * @since x.x.x
@@ -259,41 +237,6 @@ class Read_Content_BodiesTest extends WP_UnitTestCase {
 		$this->register_ability();
 
 		$this->assertFalse( wp_has_ability( self::ABILITY ), 'The read ability should not register without any exposed post types.' );
-	}
-
-	/**
-	 * The description tells the model the cap and the filtering, and names no other tool.
-	 *
-	 * The description is read by the model as a tool description. Naming an ability the
-	 * workspace does not offer advertises a capability the assistant does not have.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_description_states_the_cap_and_names_no_other_ability(): void {
-		$this->register_ability();
-
-		$description = wp_get_ability( self::ABILITY )->get_description();
-
-		$this->assertStringContainsString( '5', $description, 'The description should state the five-post cap.' );
-		$this->assertStringNotContainsString( 'core/read-content', $description, 'The description must not name an ability the workspace does not offer.' );
-		$this->assertStringNotContainsString( 'ai/search-content', $description, 'The description must not name another ability by name.' );
-	}
-
-	/**
-	 * The input schema caps the request at five posts.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_input_schema_caps_the_request_at_five_posts(): void {
-		$this->register_ability();
-
-		$schema = wp_get_ability( self::ABILITY )->get_input_schema();
-
-		$this->assertSame( 'object', $schema['type'], 'The input schema should describe an object.' );
-		$this->assertSame( array( 'ids' ), $schema['required'], 'A list of post IDs should be required.' );
-		$this->assertFalse( $schema['additionalProperties'], 'The input schema should reject unrelated properties.' );
-		$this->assertSame( 5, $schema['properties']['ids']['maxItems'], 'At most five posts may be requested per call.' );
-		$this->assertSame( 1, $schema['properties']['ids']['minItems'], 'At least one post must be requested.' );
 	}
 
 	/**

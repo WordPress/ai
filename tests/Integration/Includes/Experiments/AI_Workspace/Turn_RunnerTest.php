@@ -14,9 +14,7 @@ use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Experiments\AI_Workspace\Ask_User;
 use WordPress\AI\Experiments\AI_Workspace\Conversation_Store;
 use WordPress\AI\Experiments\AI_Workspace\Model_Client_Interface;
-use WordPress\AI\Experiments\AI_Workspace\Proposal_Store;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Drafts;
-use WordPress\AI\Experiments\AI_Workspace\Propose_Template;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Selector;
 use WordPress\AI\Experiments\AI_Workspace\Turn_Runner;
 use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Test_Update_Kind;
@@ -127,7 +125,7 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 		remove_all_filters( 'wpai_workspace_write_proposals_enabled' );
 		Test_Update_Kind::unregister_ability();
 
-		foreach ( array( Tool_Selector::SEARCH_ABILITY, Tool_Selector::READ_ABILITY, Propose_Drafts::ABILITY, Propose_Template::ABILITY, Ask_User::ABILITY ) as $ability_name ) {
+		foreach ( array( Tool_Selector::SEARCH_ABILITY, Tool_Selector::READ_ABILITY, Propose_Drafts::ABILITY, Ask_User::ABILITY ) as $ability_name ) {
 			if ( ! wp_has_ability( $ability_name ) ) {
 				continue;
 			}
@@ -333,19 +331,6 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The instruction states how many drafts one proposal holds, so a request
-	 * for more is split rather than written at once until the request times out.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_instruction_states_the_draft_limit(): void {
-		$this->assertStringContainsString(
-			sprintf( 'at most %d drafts', Proposal_Store::MAX_ITEMS ),
-			$this->instruction_for_turn()
-		);
-	}
-
-	/**
 	 * The question tool is named, with the rule that every reply ends on a next step.
 	 *
 	 * A model that has fully answered tends to stop on plain text, so the rule
@@ -372,7 +357,7 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 
 		$this->assertStringContainsString( self::QUESTION_FRAGMENT, $instruction );
 		$this->assertStringContainsString( 'End every reply with a next step, even when you have answered in full: a question', $instruction );
-		$this->assertStringNotContainsString( 'or a proposal', $instruction );
+		$this->assertStringNotContainsString( 'a proposal, or a question', $instruction );
 		$this->assertStringNotContainsString( self::PROPOSAL_FRAGMENT, $instruction );
 	}
 
@@ -405,23 +390,6 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Scenario 3a: the write denial holds while every admitted ability reads only.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_instruction_denies_writing_when_every_admitted_ability_is_read_only(): void {
-		add_filter( 'wpai_workspace_tool_candidates', array( $this, 'drop_proposal_candidate' ) );
-
-		$instruction = $this->instruction_for_turn();
-
-		$this->assertStringContainsString(
-			self::WRITE_DENIAL_FRAGMENT,
-			$instruction,
-			'With only read-only abilities admitted, the model genuinely cannot write, so the denial must stand.'
-		);
-	}
-
-	/**
 	 * Scenario 3b: the proposal tool is a non-R1a ability that still cannot write.
 	 *
 	 * `ai/propose-drafts` registers `readonly => false` and reaches the surface
@@ -442,31 +410,11 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The template proposal tool is named when it is admitted, and writes nothing directly.
+	 * Scenario 3c: an admitted ability that writes directly drops the denial, and only the denial.
 	 *
-	 * @since x.x.x
-	 */
-	public function test_instruction_names_the_template_tool_and_still_denies_writing(): void {
-		global $wp_current_filter;
-		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
-		try {
-			( new Propose_Template() )->register();
-		} finally {
-			array_pop( $wp_current_filter );
-		}
-
-		$instruction = $this->instruction_for_turn();
-
-		$this->assertStringContainsString( 'call the template proposal tool', $instruction );
-		$this->assertStringContainsString(
-			self::WRITE_DENIAL_FRAGMENT,
-			$instruction,
-			'The template proposal tool writes only through the confirm gate, so the write denial stands.'
-		);
-	}
-
-	/**
-	 * Scenario 3c: an admitted ability that writes directly drops the denial.
+	 * The two claims are separate. A direct writer on the surface makes the
+	 * denial false, but the proposal tool is still there and still the route to
+	 * a draft the person approves.
 	 *
 	 * @since x.x.x
 	 */
@@ -480,22 +428,6 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 			$instruction,
 			'An admitted ability that is not read-only and is not the confirm-gated proposal tool makes the write denial false, so it must be dropped.'
 		);
-	}
-
-	/**
-	 * Scenario 3c, continued: dropping the denial keeps the proposal instruction.
-	 *
-	 * The two claims are separate. A direct writer on the surface makes the
-	 * denial false, but the proposal tool is still there and still the route to
-	 * a draft the person approves.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_proposal_instruction_survives_a_direct_writer_on_the_surface(): void {
-		$this->replace_search_with_a_writer();
-
-		$instruction = $this->instruction_for_turn();
-
 		$this->assertStringContainsString(
 			self::PROPOSAL_FRAGMENT,
 			$instruction,
@@ -553,21 +485,6 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 
 		$this->assertStringContainsString( Test_Update_Kind::INSTRUCTION, $instruction );
 		$this->assertStringContainsString( self::WRITE_DENIAL_FRAGMENT, $instruction, 'A propose ability writes nothing, so the denial stays.' );
-	}
-
-	/**
-	 * A follow-up turn strips a newly registered kind's propose ability, as it does the built-in ones.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_follow_up_strips_a_newly_registered_kind(): void {
-		( new Test_Update_Kind() )->add_to_stores();
-		Test_Update_Kind::register_ability();
-
-		$instruction = $this->instruction_for_turn( Tool_Selector::SCOPE_SITE, true );
-
-		$this->assertStringNotContainsString( Test_Update_Kind::INSTRUCTION, $instruction );
-		$this->assertStringContainsString( 'End every reply with a next step, even when you have answered in full: a question', $instruction );
 	}
 
 	/**

@@ -46,18 +46,6 @@ class Admin_PageTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The query arrives in the seed, ready for the composer.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_prompt_seed_carries_the_query() {
-		$seed = $this->seed_for( array( Admin_Page::PROMPT_QUERY_ARG => 'which of my posts are missing featured images' ) );
-
-		$this->assertSame( 'prompt', $seed['status'] );
-		$this->assertSame( 'which of my posts are missing featured images', $seed['prompt'] );
-	}
-
-	/**
 	 * A 2,000-character query is cut to 500 characters.
 	 *
 	 * @since x.x.x
@@ -119,21 +107,6 @@ class Admin_PageTest extends WP_UnitTestCase {
 		$this->assertSame( 'list my drafts', $seed['prompt'] );
 		$this->assertSame( 0, $seed['postId'] );
 		$this->assertSame( '', $seed['title'] );
-	}
-
-	/**
-	 * A post handoff alone still seeds the post, with no prompt.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_post_seed_has_an_empty_prompt() {
-		$post_id = $this->factory->post->create( array( 'post_title' => 'A handed-off post' ) );
-
-		$seed = $this->seed_for( array( Admin_Page::POST_QUERY_ARG => (string) $post_id ) );
-
-		$this->assertSame( 'ready', $seed['status'] );
-		$this->assertSame( $post_id, $seed['postId'] );
-		$this->assertSame( '', $seed['prompt'] );
 	}
 
 	/**

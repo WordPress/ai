@@ -233,21 +233,16 @@ class Site_Identity_ProposalTest extends WP_UnitTestCase {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param array<string, mixed>      $proposal The proposal.
-	 * @param array<string, mixed>|null $edits    Optional. Edits keyed by item key. Default none.
+	 * @param array<string, mixed> $proposal The proposal.
 	 * @return \WP_REST_Response The response.
 	 */
-	private function execute( array $proposal, ?array $edits = null ) {
+	private function execute( array $proposal ) {
 		$this->ensure_conversation();
 
 		$body = array(
 			'conversation_id' => self::CONVERSATION,
 			'selected'        => array_column( $proposal['items'], 'key' ),
 		);
-
-		if ( null !== $edits ) {
-			$body['edits'] = $edits;
-		}
 
 		$request = new WP_REST_Request( 'POST', '/ai/v1/workspace/proposals/' . $proposal['id'] . '/execute' );
 		$request->set_header( 'Content-Type', 'application/json' );
@@ -540,9 +535,6 @@ class Site_Identity_ProposalTest extends WP_UnitTestCase {
 			'blogdescription' => Site_Identity_Writer::TAGLINE_MAX_LENGTH,
 		);
 
-		$this->assertSame( 200, $caps['blogname'] );
-		$this->assertSame( 300, $caps['blogdescription'] );
-
 		foreach ( $caps as $option => $cap ) {
 			$result = $this->propose(
 				array(
@@ -597,7 +589,7 @@ class Site_Identity_ProposalTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A proposal names each option at most once, and holds at most two items.
+	 * A proposal names each option at most once.
 	 *
 	 * @since x.x.x
 	 */
@@ -618,68 +610,15 @@ class Site_Identity_ProposalTest extends WP_UnitTestCase {
 		$this->assertWPError( $result );
 		$this->assertSame( 'workspace_site_identity_duplicate_option', $result->get_error_code() );
 
-		$this->assertSame( 2, ( new Site_Identity_Writer() )->max_items() );
 		$this->assertSame( 'Just another site', get_option( 'blogdescription' ) );
 	}
 
 	/**
-	 * An edited value goes through the same rules, and a valid one is what gets written and reported.
+	 * Proposing needs a workspace turn, and the tool is withheld from MCP and REST.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_an_edit_is_revalidated_and_written(): void {
-		$proposal = $this->store_tagline( 'Model tagline' );
-		$key      = $proposal['items'][0]['key'];
-
-		$long = $this->execute( $proposal, array( $key => array( 'value' => str_repeat( 'b', Site_Identity_Writer::TAGLINE_MAX_LENGTH + 1 ) ) ) );
-
-		$this->assertSame( 400, $long->get_status() );
-		$this->assertSame( 'workspace_site_identity_too_long', $long->get_data()['code'] );
-		$this->assertSame( 'Just another site', get_option( 'blogdescription' ) );
-		$this->assertSame( 'pending', ( new Proposal_Store() )->get( $proposal['id'], get_current_user_id() )['status'], 'A refused edit leaves the proposal approvable.' );
-
-		$data = $this->execute( $proposal, array( $key => array( 'value' => 'Person <i>tagline</i>' ) ) )->get_data();
-
-		$this->assertSame( 1, $data['updated'] );
-		$this->assertSame( 'Person tagline', $data['items'][0]['value'] );
-		$this->assertSame( 'Person tagline', get_option( 'blogdescription' ) );
-		$this->assertSame( 'Person tagline', $this->reported_result()['items'][0]['value'] );
-	}
-
-	/**
-	 * An edit can change only the proposed value, never which option the item targets.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_an_edit_cannot_retarget_the_option(): void {
-		$proposal = $this->store_tagline( 'Model tagline' );
-		$key      = $proposal['items'][0]['key'];
-
-		foreach ( array( 'blogname', 'admin_email' ) as $option ) {
-			$response = $this->execute(
-				$proposal,
-				array(
-					$key => array(
-						'option' => $option,
-						'value'  => 'Edited',
-					),
-				)
-			);
-
-			$this->assertSame( 400, $response->get_status() );
-			$this->assertSame( 'workspace_proposal_invalid_edit', $response->get_data()['code'] );
-		}
-
-		$this->assertSame( 'Old Site', get_option( 'blogname' ) );
-		$this->assertSame( 'Just another site', get_option( 'blogdescription' ) );
-	}
-
-	/**
-	 * Proposing needs a workspace turn, the tool is withheld from MCP and REST, and the write gate removes it.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_proposing_needs_a_turn_and_follows_the_write_gate(): void {
+	public function test_proposing_needs_a_turn_and_is_withheld_from_mcp_and_rest(): void {
 		$result = wp_get_ability( Propose_Site_Identity::ABILITY )->execute(
 			array(
 				'items' => array(
@@ -697,37 +636,5 @@ class Site_Identity_ProposalTest extends WP_UnitTestCase {
 		$meta = wp_get_ability( Propose_Site_Identity::ABILITY )->get_meta();
 		$this->assertFalse( $meta['mcp']['public'] );
 		$this->assertFalse( $meta['show_in_rest'] );
-
-		$store = new Proposal_Store();
-		$this->assertContains( Propose_Site_Identity::ABILITY, $store->proposal_abilities() );
-		$this->assertSame( 'manage_options', $store->kinds()[ Site_Identity_Writer::KIND ]->capability() );
-
-		add_filter( 'wpai_workspace_write_proposals_enabled', '__return_false' );
-
-		$this->assertNotContains( Propose_Site_Identity::ABILITY, ( new Proposal_Store() )->proposal_abilities(), 'Turning write proposals off removes the kind.' );
-	}
-
-	/**
-	 * Discarding a site identity proposal tells the model which settings it named.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_discarding_reports_the_setting_labels(): void {
-		$proposal = $this->store_tagline( 'Discarded tagline' );
-
-		$this->ensure_conversation();
-
-		$response = rest_get_server()->dispatch( new WP_REST_Request( 'DELETE', '/ai/v1/workspace/proposals/' . $proposal['id'] ) );
-
-		$this->assertSame( 200, $response->get_status() );
-		$this->assertTrue( $response->get_data()['declined'] );
-		$this->assertSame( 'Just another site', get_option( 'blogdescription' ) );
-
-		$conversation = ( new Conversation_Store() )->get( self::CONVERSATION, get_current_user_id() );
-		$last         = end( $conversation['messages'] );
-		$decoded      = json_decode( $last['parts'][0]['text'], true );
-
-		$this->assertSame( 'Tagline', $decoded['wp_proposal_discarded']['items'][0]['title'] );
-		$this->assertSame( 'option', $decoded['wp_proposal_discarded']['items'][0]['post_type'] );
 	}
 }

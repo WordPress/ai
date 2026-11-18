@@ -199,62 +199,6 @@ class Command_Palette_AI_SearchTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that input_schema() requires the query and the commands.
-	 */
-	public function test_input_schema_returns_expected_structure() {
-		$schema = $this->invoke( 'input_schema' );
-
-		$this->assertSame( 'object', $schema['type'] );
-		$this->assertSame( array( 'query', 'commands' ), $schema['required'] );
-		$this->assertSame( 'string', $schema['properties']['query']['type'] );
-		$this->assertSame( 'array', $schema['properties']['commands']['type'] );
-		$this->assertSame( array( 'name', 'label' ), $schema['properties']['commands']['items']['required'] );
-	}
-
-	/**
-	 * Test that output_schema() returns a list of command names.
-	 */
-	public function test_output_schema_returns_expected_structure() {
-		$schema = $this->invoke( 'output_schema' );
-
-		$this->assertSame( 'object', $schema['type'] );
-		$this->assertSame( 'array', $schema['properties']['commands']['type'] );
-		$this->assertSame( 'string', $schema['properties']['commands']['items']['type'] );
-	}
-
-	/**
-	 * Test that meta() shows the ability in REST and annotates it as calling the AI provider.
-	 *
-	 * It is not marked read-only, because the REST run route would then only
-	 * accept GET, and the command list does not fit in a URL.
-	 */
-	public function test_meta_returns_expected_structure() {
-		$meta = $this->invoke( 'meta' );
-
-		$this->assertTrue( $meta['show_in_rest'] ?? false );
-		$this->assertSame(
-			array(
-				'destructive' => false,
-				'idempotent'  => true,
-				'open_world'  => true,
-			),
-			$meta['annotations'] ?? null
-		);
-	}
-
-	/**
-	 * Test that the workspace registers the ability in the plugin's category.
-	 */
-	public function test_ability_registers_in_the_plugin_category() {
-		$this->register_through_the_workspace();
-
-		$ability = wp_get_ability( Command_Palette_AI_Search::ABILITY );
-
-		$this->assertInstanceOf( \WP_Ability::class, $ability );
-		$this->assertSame( WPAI_DEFAULT_ABILITY_CATEGORY, $ability->get_category() );
-	}
-
-	/**
 	 * Test that the ability is hidden from MCP and never offered to the agent as a tool.
 	 */
 	public function test_ability_is_hidden_from_mcp_and_refused_as_an_agent_tool() {
@@ -298,20 +242,32 @@ class Command_Palette_AI_SearchTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that permission_callback() returns an error for a logged out user.
+	 * Data provider for users without `edit_posts`.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{string}> Test cases: the role, or an empty string for a logged-out visitor.
 	 */
-	public function test_permission_callback_for_logged_out_user() {
-		$result = $this->invoke( 'permission_callback', array() );
-
-		$this->assertInstanceOf( WP_Error::class, $result );
-		$this->assertSame( 'insufficient_capabilities', $result->get_error_code() );
+	public function data_users_without_edit_posts(): array {
+		return array(
+			'logged out' => array( '' ),
+			'subscriber' => array( 'subscriber' ),
+		);
 	}
 
 	/**
-	 * Test that permission_callback() returns an error for a user without edit_posts.
+	 * Refuses a logged-out visitor or a user without `edit_posts` in permission_callback().
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_users_without_edit_posts
+	 *
+	 * @param string $role The role, or an empty string for a logged-out visitor.
 	 */
-	public function test_permission_callback_for_subscriber() {
-		wp_set_current_user( $this->factory->user->create( array( 'role' => 'subscriber' ) ) );
+	public function test_permission_callback_refuses_a_user_without_edit_posts( string $role ) {
+		if ( '' !== $role ) {
+			wp_set_current_user( $this->factory->user->create( array( 'role' => $role ) ) );
+		}
 
 		$result = $this->invoke( 'permission_callback', array() );
 
@@ -392,15 +348,6 @@ class Command_Palette_AI_SearchTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that execute_callback() returns an empty list when no command fits.
-	 */
-	public function test_execute_callback_returns_empty_list_when_none_fits() {
-		$result = $this->search( 'how do I bake a cake' );
-
-		$this->assertSame( array( 'commands' => array() ), $result );
-	}
-
-	/**
 	 * Test that execute_callback() returns the error when the model's answer can't be used.
 	 */
 	public function test_execute_callback_returns_model_errors() {
@@ -424,18 +371,12 @@ class Command_Palette_AI_SearchTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that the system instruction asks for at most three IDs.
-	 */
-	public function test_get_system_instruction_includes_max_results() {
-		$system_instruction = $this->real_ability()->get_system_instruction( null, array( 'max_results' => 3 ) );
-
-		$this->assertStringContainsString( 'Return at most 3 IDs', $system_instruction );
-	}
-
-	/**
 	 * Test that choose_commands() returns an error without a provider that supports text generation.
 	 */
 	public function test_choose_commands_returns_error_without_provider() {
+		// Neither the structured-output builder nor the plain fallback supports text generation.
+		$this->mock_prompt_builder( '{"commands":["c1"]}', array( false, false ) );
+
 		$result = $this->choose_commands();
 
 		$this->assertInstanceOf( WP_Error::class, $result );

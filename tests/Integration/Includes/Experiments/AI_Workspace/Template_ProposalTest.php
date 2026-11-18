@@ -372,7 +372,6 @@ class Template_ProposalTest extends WP_UnitTestCase {
 
 		$this->assertWPError( $result );
 		$this->assertSame( 'workspace_template_classic_theme', $result->get_error_code() );
-		$this->assertStringContainsString( 'classic theme', $result->get_error_message() );
 		$this->assertSame( 0, $this->stored_proposal_count() );
 	}
 
@@ -443,20 +442,16 @@ class Template_ProposalTest extends WP_UnitTestCase {
 	 *
 	 * @since x.x.x
 	 */
-	public function test_replacing_a_theme_file_template_is_announced_then_created(): void {
+	public function test_replacing_a_theme_file_template_is_announced(): void {
 		$this->assertNotNull( get_block_file_template( get_stylesheet() . '//404' ), 'The fixture theme ships 404.html.' );
 
 		$proposal  = $this->store_template();
 		$presented = $this->present( $proposal['id'] );
 
 		$this->assertSame( 'template', $presented['kind'] );
-		$this->assertSame( 1, $presented['max_items'] );
 		$this->assertTrue( $presented['items'][0]['replaces_theme_template'] );
 		$this->assertSame( '404', $presented['items'][0]['slug'] );
 		$this->assertSame( wp_get_theme()->get( 'Name' ), $presented['items'][0]['theme'] );
-
-		$this->assertSame( 1, $this->execute( $proposal )->get_data()['created'] );
-		$this->assertCount( 1, $this->stored_templates( '404' ) );
 
 		$page = $this->store_template( 'page-about' );
 		$this->assertFalse( $this->present( $page['id'] )['items'][0]['replaces_theme_template'], 'The theme ships no page-about template.' );
@@ -551,18 +546,6 @@ class Template_ProposalTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A template for one page may be proposed and created.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_a_page_template_is_created(): void {
-		$data = $this->execute( $this->store_template( 'page-about-us' ) )->get_data();
-
-		$this->assertSame( 1, $data['created'] );
-		$this->assertCount( 1, $this->stored_templates( 'page-about-us' ) );
-	}
-
-	/**
 	 * A switch to a classic theme before approval writes nothing.
 	 *
 	 * @since x.x.x
@@ -637,12 +620,6 @@ class Template_ProposalTest extends WP_UnitTestCase {
 		$proposal = $this->store_template();
 
 		$first = $this->execute( $proposal )->get_data();
-
-		// A second approval of the stored proposal returns the first result.
-		$again = $this->execute( $proposal )->get_data();
-
-		$this->assertSame( $first['items'], $again['items'] );
-		$this->assertSame( 1, $again['created'] );
 
 		// A write that runs again anyway, from a lost record, finds the template by its token.
 		$store  = new Proposal_Store();

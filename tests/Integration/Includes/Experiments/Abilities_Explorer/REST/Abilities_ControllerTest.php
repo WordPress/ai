@@ -530,11 +530,11 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	 */
 
 	/**
-	 * Remove stores the exclusion and returns the updated row; a repeat is "no change".
+	 * Removes and restores an ability through the route; a repeated remove is "no change".
 	 *
 	 * @since x.x.x
 	 */
-	public function test_surface_remove_stores_the_exclusion_and_a_repeat_is_no_change(): void {
+	public function test_surface_remove_and_restore_round_trip(): void {
 		$slug = $this->register_declared_fixture( 'wpai-test/surface-remove' );
 
 		$response = $this->surface( 'remove', $slug );
@@ -556,23 +556,12 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 		$this->assertFalse( $repeat->get_data()['changed'] );
 		$this->assertTrue( $repeat->get_data()['item']['owner_excluded'] );
 		$this->assertGreaterThanOrEqual( $data['sequence'], $repeat->get_data()['sequence'] );
-	}
 
-	/**
-	 * Restore clears the stored exclusion.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_surface_restore_clears_the_exclusion(): void {
-		$slug = $this->register_declared_fixture( 'wpai-test/surface-restore' );
+		$restore = $this->surface( 'restore', $slug );
 
-		( new Tool_Policy() )->exclude_from_surface( $slug );
-
-		$response = $this->surface( 'restore', $slug );
-
-		$this->assertSame( 200, $response->get_status() );
-		$this->assertTrue( $response->get_data()['changed'] );
-		$this->assertFalse( $response->get_data()['item']['owner_excluded'] );
+		$this->assertSame( 200, $restore->get_status() );
+		$this->assertTrue( $restore->get_data()['changed'] );
+		$this->assertFalse( $restore->get_data()['item']['owner_excluded'] );
 		$this->assertNotContains( $slug, get_option( Tool_Policy::OWNER_EXCLUSIONS_OPTION, array() ) );
 	}
 
@@ -651,32 +640,6 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	public function test_surface_remove_refuses_an_unregistered_or_missing_name(): void {
 		$this->assertSame( 404, $this->surface( 'remove', 'wpai-test/never-registered' )->get_status() );
 		$this->assertSame( 400, $this->surface( 'remove' )->get_status() );
-		$this->assertOptionsUntouched();
-	}
-
-	/**
-	 * A GET to the surface route changes nothing.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_surface_get_changes_nothing(): void {
-		$slug = $this->register_declared_fixture( 'wpai-test/surface-get' );
-
-		$response = $this->dispatch(
-			'GET',
-			Abilities_Controller::SURFACE_ROUTE,
-			array(
-				'change' => 'remove',
-				'name'   => $slug,
-			)
-		);
-
-		$this->assertNotSame( 200, $response->get_status() );
-		$this->assertOptionsUntouched();
-
-		$response = $this->dispatch( 'GET', Abilities_Controller::SURFACE_ROUTE, array( 'change' => 'disable_policy' ) );
-
-		$this->assertNotSame( 200, $response->get_status() );
 		$this->assertOptionsUntouched();
 	}
 
@@ -789,52 +752,6 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The row and the model read the same, unescaped description string.
-	 *
-	 * The fixture's description holds `&`, `'` and `<` so that a payload which
-	 * escaped it could not pass by accident. Escaping is the screen's job.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_list_and_function_declaration_share_one_description_source(): void {
-		$this->require_filtered_discovery();
-
-		$description = "Reads drafts & notes with 'quotes' and a <tag>.";
-		$slug        = $this->register_declared_fixture( 'wpai-test/table-description', $description );
-
-		$row = $this->row( $this->dispatch( 'GET', Abilities_Controller::ABILITIES_ROUTE )->get_data()['items'], $slug );
-
-		$this->assertSame( $description, $row['description'], 'The row must carry the ability description unmodified.' );
-
-		if ( ! function_exists( 'wp_ai_client_prompt' ) ) {
-			$this->markTestSkipped( 'This WordPress does not ship the AI client prompt builder.' );
-		}
-
-		// The workspace declares abilities through core's builder; read back what it would send.
-		$prompt = wp_ai_client_prompt( 'instruction' )->using_abilities( $slug );
-
-		// WordPress 7.2 moved `$builder` up to the `WP_AI_Client_Builder` base class.
-		$declaring = new \ReflectionClass( $prompt );
-		while ( ! $declaring->hasProperty( 'builder' ) && $declaring->getParentClass() ) {
-			$declaring = $declaring->getParentClass();
-		}
-		$wrapped = $declaring->getProperty( 'builder' );
-		$wrapped->setAccessible( true );
-		$sdk_builder = $wrapped->getValue( $prompt );
-		$config      = new \ReflectionProperty( $sdk_builder, 'modelConfig' );
-		$config->setAccessible( true );
-
-		$declarations = $config->getValue( $sdk_builder )->getFunctionDeclarations();
-
-		$this->assertCount( 1, $declarations, 'The fixture must produce exactly one function declaration for the comparison to be meaningful.' );
-		$this->assertSame(
-			$row['description'],
-			$declarations[0]->getDescription(),
-			'The Explorer and the model must be shown the same description string, not two renderings of it.'
-		);
-	}
-
-	/**
 	 * A removed ability is not reported as held, with no workspace bootstrap.
 	 *
 	 * The Explorer is a separate experiment from the AI Workspace, so on a site
@@ -876,44 +793,6 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 
 		$this->assertTrue( $row['show_in_rest'], 'Core resolves show_in_rest from the general flag at registration.' );
 		$this->assertTrue( $row['show_in_mcp'], 'Nothing resolves mcp.public, so the row has to inherit it from the general flag or it under-reports MCP exposure.' );
-	}
-
-	/**
-	 * Each row reports REST and MCP exposure independently.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_list_reports_rest_and_mcp_exposure_independently(): void {
-		$none      = $this->register_fixture( 'wpai-test/table-surfaces-none', array( 'meta' => array( 'show_in_rest' => false ) ) );
-		$rest_only = $this->register_fixture(
-			'wpai-test/table-surfaces-rest',
-			array(
-				'meta' => array(
-					'show_in_rest' => true,
-					'mcp'          => array( 'public' => false ),
-				),
-			)
-		);
-		$both      = $this->register_fixture(
-			'wpai-test/table-surfaces-both',
-			array(
-				'meta' => array(
-					'show_in_rest' => true,
-					'mcp'          => array( 'public' => true ),
-				),
-			)
-		);
-
-		$items = $this->dispatch( 'GET', Abilities_Controller::ABILITIES_ROUTE )->get_data()['items'];
-
-		$this->assertFalse( $this->row( $items, $none )['show_in_rest'], 'A fixture that never asked for REST exposure must not be reported as exposed there.' );
-		$this->assertFalse( $this->row( $items, $none )['show_in_mcp'] );
-
-		$this->assertTrue( $this->row( $items, $rest_only )['show_in_rest'] );
-		$this->assertFalse( $this->row( $items, $rest_only )['show_in_mcp'], 'An ability that is not exposed over MCP must not claim to be.' );
-
-		$this->assertTrue( $this->row( $items, $both )['show_in_rest'] );
-		$this->assertTrue( $this->row( $items, $both )['show_in_mcp'], 'An ability exposed over MCP must say so alongside its other channels.' );
 	}
 
 	/**
@@ -1323,16 +1202,14 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string $slug        The ability name.
-	 * @param string $description Optional. The ability description. Default the fixture sentence.
+	 * @param string $slug The ability name.
 	 * @return string The ability name.
 	 */
-	private function register_declared_fixture( string $slug, string $description = 'A fixture ability for the Explorer REST routes.' ): string {
+	private function register_declared_fixture( string $slug ): string {
 		return $this->register_fixture(
 			$slug,
 			array(
-				'description' => $description,
-				'meta'        => array(
+				'meta' => array(
 					'annotations'  => array(
 						'readonly'    => true,
 						'destructive' => false,

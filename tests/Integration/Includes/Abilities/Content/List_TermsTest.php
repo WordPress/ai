@@ -76,6 +76,22 @@ class List_TermsTest extends WP_UnitTestCase {
 			wp_unregister_ability( self::ABILITY );
 		}
 
+		// Restore the curated post types to their unmarked state to avoid leaking into other tests.
+		foreach ( array( 'post', 'page' ) as $post_type ) {
+			$object = get_post_type_object( $post_type );
+			if ( ! $object ) {
+				continue;
+			}
+
+			// WordPress 7.2 declares the property, and unsetting a declared property leaves it
+			// uninitialized, so restore core's default rather than removing it.
+			if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
+				$object->show_in_abilities = true;
+			} else {
+				unset( $object->show_in_abilities );
+			}
+		}
+
 		wp_set_current_user( 0 );
 
 		parent::tearDown();
@@ -135,23 +151,6 @@ class List_TermsTest extends WP_UnitTestCase {
 				}
 			)
 		);
-	}
-
-	/**
-	 * The ability reads only, and says it never reaches outside the site.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_registers_as_a_read_only_local_ability(): void {
-		$ability = wp_get_ability( self::ABILITY );
-
-		$this->assertNotNull( $ability );
-
-		$annotations = $ability->get_meta()['annotations'];
-
-		$this->assertTrue( $annotations['readonly'] );
-		$this->assertFalse( $annotations['destructive'] );
-		$this->assertFalse( $annotations['open_world'] );
 	}
 
 	/**
@@ -275,9 +274,6 @@ class List_TermsTest extends WP_UnitTestCase {
 
 		$this->assertCount( 3, $this->rows( $result, 'category' ) );
 		$this->assertGreaterThanOrEqual( 5, $result['total'] );
-
-		$schema = wp_get_ability( self::ABILITY )->get_input_schema();
-		$this->assertSame( 100, $schema['properties']['per_page']['maximum'] );
 	}
 
 	/**

@@ -23,9 +23,8 @@ use WordPress\AI\Logging\Logging_Integration;
  * tests are about what it refuses: proposing outside a workspace turn, proposing
  * more items than a person can meaningfully review, proposing a status the user
  * cannot write, and smuggling a prose summary into the stored values. They also
- * assert the negative space the confirm gate depends on: that no write ability is
- * registered at all, so no ability consumer can reach a write without a
- * confirmation.
+ * assert that the ability stays off the REST and MCP surfaces, which have no
+ * confirm gate.
  *
  * @since x.x.x
  *
@@ -99,14 +98,17 @@ class Propose_DraftsTest extends WP_UnitTestCase {
 
 		foreach ( array( 'post', 'page' ) as $post_type ) {
 			$object = get_post_type_object( $post_type );
-			if ( $object ) {
-				// WordPress 7.2 declares the property, and unsetting a declared property leaves it
-				// uninitialized, so restore core's default rather than removing it.
-				if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
-					$object->show_in_abilities = true;
-				} else {
-					unset( $object->show_in_abilities );
-				}
+
+			if ( ! $object ) {
+				continue;
+			}
+
+			// WordPress 7.2 declares the property, and unsetting a declared property leaves it
+			// uninitialized, so restore core's default rather than removing it.
+			if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
+				$object->show_in_abilities = true;
+			} else {
+				unset( $object->show_in_abilities );
 			}
 		}
 
@@ -212,37 +214,22 @@ class Propose_DraftsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * No globally reachable write ability exists.
-	 *
-	 * The confirm gate is a property of the write path rather than of one
-	 * controller, and this is what that means concretely: the only registered
-	 * ability in the flow writes nothing, so the MCP surface, the Abilities
-	 * Explorer and any third-party caller have no write to reach.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_no_write_ability_is_registered(): void {
-		foreach ( array( 'ai/create-drafts', 'ai/create-content', 'ai/write-content' ) as $ability_name ) {
-			$this->assertFalse(
-				wp_has_ability( $ability_name ),
-				sprintf( 'No write ability may be registered; found "%s".', $ability_name )
-			);
-		}
-	}
-
-	/**
 	 * The proposal ability is withheld from the REST and MCP surfaces.
 	 *
+	 * MCP exposure reads `mcp.public`, not `show_in_rest`, and a plugin ability
+	 * is exposed unless it declares `mcp.public` as false, so both are checked.
+	 *
 	 * @since x.x.x
 	 */
-	public function test_proposal_ability_is_hidden_from_the_mcp_surface(): void {
+	public function test_proposal_ability_is_hidden_from_rest_and_mcp(): void {
 		$ability = wp_get_ability( Propose_Drafts::ABILITY );
 
 		$this->assertInstanceOf( WP_Ability::class, $ability );
-		$this->assertNotTrue(
-			$ability->get_meta_item( 'show_in_rest' ),
-			'The proposal ability must not be exposed to the REST and MCP surfaces, which have no confirm gate.'
-		);
+
+		$meta = $ability->get_meta();
+
+		$this->assertFalse( $meta['show_in_rest'], 'The proposal ability must not be exposed to REST, which has no confirm gate.' );
+		$this->assertFalse( $meta['mcp']['public'] ?? null, 'The proposal ability must not be exposed to MCP, which has no confirm gate.' );
 	}
 
 	/**

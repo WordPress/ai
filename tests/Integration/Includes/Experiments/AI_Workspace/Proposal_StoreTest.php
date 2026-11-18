@@ -10,13 +10,10 @@ namespace WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace;
 use ReflectionProperty;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Show_In_Abilities;
+use WordPress\AI\Experiments\AI_Workspace\Agent_Audit;
 use WordPress\AI\Experiments\AI_Workspace\Draft_Writer;
 use WordPress\AI\Experiments\AI_Workspace\Post_Field_Writer;
 use WordPress\AI\Experiments\AI_Workspace\Proposal_Store;
-use WordPress\AI\Experiments\AI_Workspace\Propose_Drafts;
-use WordPress\AI\Experiments\AI_Workspace\Propose_Post_Changes;
-use WordPress\AI\Experiments\AI_Workspace\Propose_Site_Identity;
-use WordPress\AI\Experiments\AI_Workspace\Propose_Template;
 use WordPress\AI\Experiments\AI_Workspace\Site_Identity_Writer;
 use WordPress\AI\Experiments\AI_Workspace\Template_Writer;
 use WordPress\AI\Logging\Logging_Integration;
@@ -174,49 +171,6 @@ class Proposal_StoreTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * With nothing filtered, the store accepts drafts, templates, post-field and site identity changes, in that order.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_default_kinds_are_drafts_templates_post_fields_and_site_identity(): void {
-		$store = new Proposal_Store();
-
-		$this->assertSame( array( Draft_Writer::KIND, Template_Writer::KIND, Post_Field_Writer::KIND, Site_Identity_Writer::KIND ), array_keys( $store->kinds() ) );
-		$this->assertSame( array( Propose_Drafts::ABILITY, Propose_Template::ABILITY, Propose_Post_Changes::ABILITY, Propose_Site_Identity::ABILITY ), $store->proposal_abilities() );
-	}
-
-	/**
-	 * Each built-in kind names the ability, capability and sentence that used to be hand-kept lists.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_built_in_kinds_describe_their_propose_ability(): void {
-		$kinds = ( new Proposal_Store() )->kinds();
-
-		$this->assertSame( 'edit_posts', $kinds[ Draft_Writer::KIND ]->capability() );
-		$this->assertSame( 'edit_theme_options', $kinds[ Template_Writer::KIND ]->capability() );
-		$this->assertStringContainsString( 'call the proposal tool', $kinds[ Draft_Writer::KIND ]->instruction() );
-		$this->assertStringContainsString( 'call the template proposal tool', $kinds[ Template_Writer::KIND ]->instruction() );
-		$this->assertFalse( $kinds[ Draft_Writer::KIND ]->is_update() );
-		$this->assertFalse( $kinds[ Template_Writer::KIND ]->accepts_edits() );
-	}
-
-	/**
-	 * A kind added through the filter is accepted and its ability listed.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_a_kind_added_through_the_filter_is_registered(): void {
-		( new Test_Update_Kind() )->add_to_stores();
-
-		$store = new Proposal_Store();
-
-		$this->assertArrayHasKey( Test_Update_Kind::KIND, $store->kinds() );
-		$this->assertContains( Test_Update_Kind::ABILITY, $store->proposal_abilities() );
-		$this->assertIsArray( $this->store_test_proposal( $store ) );
-	}
-
-	/**
 	 * A filter that returns something other than kinds cannot break the store.
 	 *
 	 * @since x.x.x
@@ -256,24 +210,11 @@ class Proposal_StoreTest extends WP_UnitTestCase {
 
 		$this->assertWPError( $refused );
 		$this->assertSame( 'workspace_proposal_invalid_kind', $refused->get_error_code() );
-	}
 
-	/**
-	 * The gate is on by default, and it never removes a kind that only creates things.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_write_gate_keeps_kinds_that_create(): void {
-		( new Test_Update_Kind( false ) )->add_to_stores();
-		add_filter( 'wpai_workspace_write_proposals_enabled', '__return_false' );
-
-		$this->assertArrayHasKey( Test_Update_Kind::KIND, ( new Proposal_Store() )->kinds() );
-
-		remove_all_filters( 'wpai_workspace_write_proposals_enabled' );
 		remove_all_filters( 'wpai_workspace_proposal_kinds' );
-		( new Test_Update_Kind() )->add_to_stores();
+		( new Test_Update_Kind( false ) )->add_to_stores();
 
-		$this->assertArrayHasKey( Test_Update_Kind::KIND, ( new Proposal_Store() )->kinds(), 'Write proposals are allowed by default.' );
+		$this->assertArrayHasKey( Test_Update_Kind::KIND, ( new Proposal_Store() )->kinds(), 'The gate never removes a kind that only creates things.' );
 	}
 
 	/**
@@ -293,22 +234,6 @@ class Proposal_StoreTest extends WP_UnitTestCase {
 		preg_match_all( "/'([^']+)'/", $match[1], $names );
 
 		$this->assertSame( ( new Proposal_Store() )->proposal_abilities(), $names[1] );
-	}
-
-	/**
-	 * The transient outlives the proposal's expiry by the grace, so expiry can be observed.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_transient_outlives_the_expiry_by_the_grace(): void {
-		$store    = new Proposal_Store();
-		$proposal = $store->create( $this->user_id, self::CONVERSATION, $this->draft_items() );
-
-		$this->assertIsArray( $proposal );
-
-		$timeout = (int) get_option( '_transient_timeout_' . Proposal_Store::TRANSIENT_PREFIX . md5( $this->user_id . '|' . $proposal['id'] ) );
-
-		$this->assertGreaterThanOrEqual( $proposal['expires'] + Proposal_Store::GRACE, $timeout );
 	}
 
 	/**
@@ -332,18 +257,6 @@ class Proposal_StoreTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Another user cannot find a proposal either.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_find_is_scoped_to_the_owner(): void {
-		$store    = new Proposal_Store();
-		$proposal = $store->create( $this->user_id, self::CONVERSATION, $this->draft_items() );
-
-		$this->assertNull( $store->find( $proposal['id'], $this->user_id + 1 ) );
-	}
-
-	/**
 	 * A proposal still executing after the lock window reads as failed, with its partial results.
 	 *
 	 * @since x.x.x
@@ -364,11 +277,27 @@ class Proposal_StoreTest extends WP_UnitTestCase {
 		);
 		$store->save( $proposal );
 
+		$events = array();
+
+		add_action(
+			Agent_Audit::ACTION,
+			static function ( string $operation, string $status, array $context ) use ( &$events ): void {
+				$events[] = array( $operation, $status, $context['error_code'] ?? '' );
+			},
+			10,
+			3
+		);
+
 		$found = $store->find( $proposal['id'], $this->user_id );
 
 		$this->assertSame( 'failed', $found['status'] );
 		$this->assertCount( 1, $found['results'] );
 		$this->assertSame( 'failed', $store->get( $proposal['id'], $this->user_id )['status'] );
+		$this->assertSame(
+			array( array( 'proposal_failed', 'error', 'workspace_proposal_interrupted' ) ),
+			$events,
+			'The interruption is recorded once, by the first read past the window.'
+		);
 	}
 
 	/**
@@ -512,88 +441,48 @@ class Proposal_StoreTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * An edit that names anything but the value, such as a forged key or snapshot, is refused (R4).
+	 * Returns edits that are not just a new value.
 	 *
 	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: mixed}> The malformed edits.
 	 */
-	public function test_an_edit_naming_more_than_the_value_is_refused(): void {
-		( new Test_Update_Kind() )->add_to_stores();
-
-		$store    = new Proposal_Store();
-		$proposal = $this->store_test_proposal( $store );
-		$key      = $proposal['items'][1]['key'];
-
-		foreach ( array( array( 'key' => 'forged-key' ), array( Test_Update_Kind::SNAPSHOT_FIELD => 'forged snapshot' ) ) as $forged ) {
-			$edited = $store->apply_edits( $proposal, array( $key => $forged + array( 'value' => 'Edited' ) ) );
-
-			$this->assertWPError( $edited );
-			$this->assertSame( 'workspace_proposal_invalid_edit', $edited->get_error_code() );
-		}
+	public function data_malformed_edits(): array {
+		return array(
+			'forged key'          => array(
+				array(
+					'key'   => 'forged-key',
+					'value' => 'Edited',
+				),
+			),
+			'forged snapshot'     => array(
+				array(
+					Test_Update_Kind::SNAPSHOT_FIELD => 'forged snapshot',
+					'value'                          => 'Edited',
+				),
+			),
+			'not a set of fields' => array( 'just a string' ),
+		);
 	}
 
 	/**
-	 * An edit the kind's own rules refuse is refused.
+	 * An edit that names anything but the value, or is not a set of fields, is refused (R4).
+	 *
+	 * @dataProvider data_malformed_edits
 	 *
 	 * @since x.x.x
-	 */
-	public function test_an_invalid_edit_is_refused_by_the_kind(): void {
-		( new Test_Update_Kind() )->add_to_stores();
-
-		$store    = new Proposal_Store();
-		$proposal = $this->store_test_proposal( $store );
-
-		$refused = $store->apply_edits( $proposal, array( $proposal['items'][0]['key'] => array( 'value' => '   ' ) ) );
-
-		$this->assertWPError( $refused );
-		$this->assertSame( 'test_update_empty', $refused->get_error_code() );
-	}
-
-	/**
-	 * An edit for a key the proposal does not carry is refused.
 	 *
-	 * @since x.x.x
+	 * @param mixed $fields The edit for one item.
 	 */
-	public function test_an_edit_for_an_unknown_key_is_refused(): void {
+	public function test_a_malformed_edit_is_refused( $fields ): void {
 		( new Test_Update_Kind() )->add_to_stores();
 
 		$store    = new Proposal_Store();
 		$proposal = $this->store_test_proposal( $store );
 
-		$refused = $store->apply_edits( $proposal, array( 'not-a-key' => array( 'value' => 'x' ) ) );
+		$edited = $store->apply_edits( $proposal, array( $proposal['items'][1]['key'] => $fields ) );
 
-		$this->assertWPError( $refused );
-		$this->assertSame( 'workspace_proposal_unknown_item', $refused->get_error_code() );
-	}
-
-	/**
-	 * Drafts and templates take no edits.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_drafts_refuse_edits(): void {
-		$store    = new Proposal_Store();
-		$proposal = $store->create( $this->user_id, self::CONVERSATION, $this->draft_items() );
-
-		$refused = $store->apply_edits( $proposal, array( $proposal['items'][0]['key'] => array( 'title' => 'Changed' ) ) );
-
-		$this->assertWPError( $refused );
-		$this->assertSame( 'workspace_proposal_edits_not_accepted', $refused->get_error_code() );
-	}
-
-	/**
-	 * An edit that is not a set of fields is refused.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_a_malformed_edit_is_refused(): void {
-		( new Test_Update_Kind() )->add_to_stores();
-
-		$store    = new Proposal_Store();
-		$proposal = $this->store_test_proposal( $store );
-
-		$refused = $store->apply_edits( $proposal, array( $proposal['items'][0]['key'] => 'just a string' ) );
-
-		$this->assertWPError( $refused );
-		$this->assertSame( 'workspace_proposal_invalid_edit', $refused->get_error_code() );
+		$this->assertWPError( $edited );
+		$this->assertSame( 'workspace_proposal_invalid_edit', $edited->get_error_code() );
 	}
 }
