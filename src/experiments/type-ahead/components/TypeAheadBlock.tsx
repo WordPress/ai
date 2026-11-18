@@ -12,6 +12,7 @@ import type { ComponentType } from 'react';
  */
 import { VisuallyHidden } from '@wordpress/components';
 import { useCallback, useEffect } from '@wordpress/element';
+import { isKeyboardEvent } from '@wordpress/keycodes';
 
 /**
  * Internal dependencies
@@ -29,26 +30,23 @@ type TypeAheadBlockProps = {
 	BlockEdit: ComponentType< any >;
 	blockProps: any;
 	settings: TypeAheadSettings;
-	allowedBlocks: Set< string >;
 };
 
 /**
  * Block wrapper that adds type-ahead behavior to supported blocks.
  *
- * @param {Object}               props               Block wrapper props.
- * @param {ComponentType< any >} props.BlockEdit     Block edit component.
- * @param {any}                  props.blockProps    Block wrapper props.
- * @param {TypeAheadSettings}    props.settings      Type-ahead settings.
- * @param {Set< string >}        props.allowedBlocks Allowed blocks.
+ * @param {Object}                            props            Block wrapper props.
+ * @param {TypeAheadBlockProps['BlockEdit']}  props.BlockEdit  Block edit component.
+ * @param {TypeAheadBlockProps['blockProps']} props.blockProps Block wrapper props.
+ * @param {TypeAheadSettings}                 props.settings   Type-ahead settings.
  * @return {React.JSX.Element} Wrapped block edit UI plus ghost text overlay.
  */
 const TypeAheadBlock = ( {
 	BlockEdit,
 	blockProps,
 	settings,
-	allowedBlocks,
 }: TypeAheadBlockProps ): React.JSX.Element => {
-	const { clientId, attributes, name } = blockProps;
+	const { clientId, attributes } = blockProps;
 	const { block, editable } = useBlockDom( clientId );
 	const { caret, rect } = useCaretData( editable );
 	const { selectedClientId, siblingContext, postId, plainContent } =
@@ -57,10 +55,7 @@ const TypeAheadBlock = ( {
 	const caretAtEnd = caret ? followingText.length === 0 : false;
 
 	const shouldRequest =
-		settings.enabled &&
-		allowedBlocks.has( name ) &&
-		selectedClientId === clientId &&
-		caretAtEnd;
+		settings.enabled && selectedClientId === clientId && caretAtEnd;
 
 	const {
 		suggestion,
@@ -294,10 +289,9 @@ const TypeAheadBlock = ( {
 				return;
 			}
 
-			if (
-				( event.metaKey || event.ctrlKey ) &&
-				event.code === 'Space'
-			) {
+			// Ctrl + Option + G on macOS, Shift + Alt + G elsewhere. Registered
+			// in index.tsx so it shows in the Keyboard shortcuts modal.
+			if ( isKeyboardEvent.access( event, 'g' ) ) {
 				event.preventDefault();
 				triggerManualFetch();
 			}
@@ -312,10 +306,6 @@ const TypeAheadBlock = ( {
 		setSuggestion,
 		triggerManualFetch,
 	] );
-
-	if ( ! allowedBlocks.has( name ) ) {
-		return <BlockEdit { ...blockProps } />;
-	}
 
 	return (
 		<>

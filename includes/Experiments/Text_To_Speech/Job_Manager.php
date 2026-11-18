@@ -14,6 +14,7 @@ use WordPress\AI\Background\Lock;
 use WordPress\AI\Background\Scheduler;
 
 use function WordPress\AI\get_default_request_timeout;
+use function WordPress\AI\is_post_publicly_readable;
 use function WordPress\AI\normalize_content;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -106,6 +107,21 @@ class Job_Manager {
 	public const META_JOB = '_wpai_tts_job';
 
 	/**
+	 * Every post meta key the experiment writes.
+	 *
+	 * @since x.x.x
+	 * @var list<string>
+	 */
+	public const META_KEYS = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+		self::META_AUDIO_ID,
+		self::META_STATUS,
+		self::META_ERROR,
+		self::META_UPDATED,
+		self::META_JOB,
+		self::META_DISPLAY,
+	);
+
+	/**
 	 * Filename prefix of the temp file a job appends chunks to, in the root
 	 * of the uploads directory. The full name is `{prefix}{post ID}-{random}.part`.
 	 *
@@ -193,7 +209,7 @@ class Job_Manager {
 
 		// Prepend the post title so the audio announces it before the body.
 		// The period gives text to speech a sentence break between the two.
-		$title   = normalize_content( get_the_title( $post ) );
+		$title   = normalize_content( $this->get_post_title( $post->ID ) );
 		$content = '' !== $title ? $title . '. ' . $body : $body;
 
 		/**
@@ -222,11 +238,14 @@ class Job_Manager {
 		$this->delete_temp_file( $post_id );
 
 		$upload_dir = wp_upload_dir();
-		$temp_file  = trailingslashit( $upload_dir['basedir'] ) . sprintf(
-			'%s%d-%s.part',
-			self::TEMP_FILE_PREFIX,
-			$post_id,
-			wp_generate_password( 8, false )
+
+		$temp_file = wp_normalize_path(
+			trailingslashit( $upload_dir['basedir'] ) . sprintf(
+				'%s%d-%s.part',
+				self::TEMP_FILE_PREFIX,
+				$post_id,
+				wp_generate_password( 8, false )
+			)
 		);
 
 		$voice = (string) get_option( 'wpai_feature_' . self::FEATURE_ID . '_field_voice', '' );
@@ -261,7 +280,7 @@ class Job_Manager {
 			'started'   => time(),
 		);
 
-		update_post_meta( $post_id, self::META_JOB, $job );
+		update_post_meta( $post_id, self::META_JOB, wp_slash( $job ) );
 		update_post_meta( $post_id, self::META_STATUS, 'pending' );
 		update_post_meta( $post_id, self::META_ERROR, '' );
 		update_post_meta( $post_id, self::META_UPDATED, time() );
@@ -375,7 +394,7 @@ class Job_Manager {
 		}
 
 		$job['next'] = $index + 1;
-		update_post_meta( $post_id, self::META_JOB, $job );
+		update_post_meta( $post_id, self::META_JOB, wp_slash( $job ) );
 		update_post_meta( $post_id, self::META_UPDATED, time() );
 
 		if ( ! $is_last ) {
@@ -559,16 +578,7 @@ class Job_Manager {
 			wp_delete_attachment( $audio_id, true );
 		}
 
-		foreach (
-			array(
-				self::META_AUDIO_ID,
-				self::META_STATUS,
-				self::META_ERROR,
-				self::META_UPDATED,
-				self::META_JOB,
-				self::META_DISPLAY,
-			) as $meta_key
-		) {
+		foreach ( self::META_KEYS as $meta_key ) {
 			delete_post_meta( $post_id, $meta_key );
 		}
 
@@ -627,7 +637,7 @@ class Job_Manager {
 			'post_title'     => sprintf(
 				/* translators: %s: Post title. */
 				__( 'Audio for “%s”', 'ai' ),
-				get_the_title( $post_id )
+				normalize_content( $this->get_post_title( $post_id ) )
 			),
 			'post_mime_type' => $mime_type,
 			'post_status'    => $this->get_audio_post_status( $post_id ),
@@ -666,7 +676,7 @@ class Job_Manager {
 	}
 
 	/**
-	 * Updates the post's audio attachment to match the post's password state.
+	 * Updates the post's audio attachment to match whether anyone may read the post.
 	 *
 	 * @since 1.5.0
 	 *
@@ -700,12 +710,25 @@ class Job_Manager {
 	 * @since 1.5.0
 	 *
 	 * @param int $post_id The post the audio belongs to.
-	 * @return string 'private' while the post has a password, otherwise 'inherit'.
+	 * @return string 'inherit' while anyone may read the post, otherwise 'private'.
 	 */
 	private function get_audio_post_status( int $post_id ): string {
 		$post = get_post( $post_id );
 
-		return $post && '' !== $post->post_password ? 'private' : 'inherit';
+		return $post && is_post_publicly_readable( $post ) ? 'inherit' : 'private';
+	}
+
+	/**
+	 * Returns the post title without the "Protected:" and "Private:" prefixes.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $post_id The post ID.
+	 * @return string The post title.
+	 */
+	private function get_post_title( int $post_id ): string {
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+		return (string) apply_filters( 'the_title', get_post_field( 'post_title', $post_id, 'raw' ), $post_id );
 	}
 
 	/**

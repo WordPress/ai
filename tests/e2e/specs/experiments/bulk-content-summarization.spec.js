@@ -42,10 +42,19 @@ test.describe( 'Bulk Content Summarization', () => {
 		await admin.visitAdminPage( 'edit.php' );
 
 		// Verify the bulk actions dropdown contains the Generate Summary option.
-		const bulkSelect = page.locator( '#bulk-action-selector-top' );
+		const bulkSelect = page
+			.getByRole( 'combobox', {
+				name: 'Select bulk action',
+				exact: true,
+			} )
+			.first();
 		await expect( bulkSelect ).toBeVisible();
 		await expect(
-			bulkSelect.locator( 'option[value="wpai_generate_summary"]' )
+			bulkSelect.getByRole( 'option', {
+				name: 'Generate Summary',
+				exact: true,
+				includeHidden: true,
+			} )
 		).toHaveCount( 1 );
 	} );
 
@@ -73,29 +82,37 @@ test.describe( 'Bulk Content Summarization', () => {
 		await admin.visitAdminPage( 'edit.php' );
 
 		// Select all items via the header checkbox.
-		await page.locator( '#cb-select-all-1' ).check();
+		await page
+			.getByRole( 'checkbox', { name: 'Select All', exact: true } )
+			.first()
+			.check();
 
 		// Choose the bulk action.
 		await page
-			.locator( '#bulk-action-selector-top' )
-			.selectOption( 'wpai_generate_summary' );
+			.getByRole( 'combobox', {
+				name: 'Select bulk action',
+				exact: true,
+			} )
+			.first()
+			.selectOption( { label: 'Generate Summary' } );
 
 		// Click Apply.
-		await page.locator( '#doaction' ).click();
+		await page
+			.getByRole( 'button', { name: 'Apply', exact: true } )
+			.first()
+			.click();
 
 		// After redirect, the progress notice should appear immediately, then
 		// update to the completion message once all posts are processed.
 		await expect(
-			page.locator( '.notice p', {
-				hasText: /Generating summaries|Summary generated/,
-			} )
+			page
+				.getByRole( 'main' )
+				.getByText( /Generating summaries|Summary generated/ )
 		).toBeVisible( { timeout: 30000 } );
 
 		// Wait for the completion message.
 		await expect(
-			page.locator( '.notice p', {
-				hasText: /Summary generated/,
-			} )
+			page.getByRole( 'main' ).getByText( /Summary generated/ )
 		).toBeVisible( { timeout: 60000 } );
 
 		// Verify query args have been stripped from the URL.
@@ -128,26 +145,35 @@ test.describe( 'Bulk Content Summarization', () => {
 		await admin.visitAdminPage( 'edit.php' );
 
 		// Select all items via the header checkbox.
-		await page.locator( '#cb-select-all-1' ).check();
+		await page
+			.getByRole( 'checkbox', { name: 'Select All', exact: true } )
+			.first()
+			.check();
 
 		// Choose the bulk action.
 		await page
-			.locator( '#bulk-action-selector-top' )
-			.selectOption( 'wpai_generate_summary' );
+			.getByRole( 'combobox', {
+				name: 'Select bulk action',
+				exact: true,
+			} )
+			.first()
+			.selectOption( { label: 'Generate Summary' } );
 
 		// Click Apply.
-		await page.locator( '#doaction' ).click();
+		await page
+			.getByRole( 'button', { name: 'Apply', exact: true } )
+			.first()
+			.click();
 
 		// Wait for the completion message, which should call out the skipped post.
 		await expect(
-			page.locator( '.notice p', {
-				hasText: /too short to summarize/,
-			} )
+			page.getByRole( 'main' ).getByText( /too short to summarize/ )
 		).toBeVisible( { timeout: 60000 } );
 
 		// Verify the short post's content was left untouched (no summary block added).
 		const shortPostContent = await requestUtils.rest( {
-			path: `/wp/v2/posts/${ shortPost.id }?context=edit`,
+			path: `/wp/v2/posts/${ shortPost.id }`,
+			params: { context: 'edit' },
 		} );
 		expect( shortPostContent.content.raw ).not.toContain(
 			'ai-summarization-summary'
@@ -176,21 +202,32 @@ test.describe( 'Bulk Content Summarization', () => {
 			await admin.visitAdminPage( 'edit.php' );
 
 			// Select all items via the header checkbox.
-			await page.locator( '#cb-select-all-1' ).check();
+			await page
+				.getByRole( 'checkbox', { name: 'Select All', exact: true } )
+				.first()
+				.check();
 
 			// Choose the bulk action.
 			await page
-				.locator( '#bulk-action-selector-top' )
-				.selectOption( 'wpai_generate_summary' );
+				.getByRole( 'combobox', {
+					name: 'Select bulk action',
+					exact: true,
+				} )
+				.first()
+				.selectOption( { label: 'Generate Summary' } );
 
 			// Click Apply.
-			await page.locator( '#doaction' ).click();
+			await page
+				.getByRole( 'button', { name: 'Apply', exact: true } )
+				.first()
+				.click();
 
 			await expect(
-				page.locator( '.notice-error p', {
-					hasText:
-						'This feature requires a valid AI Connector to function properly.',
-				} )
+				page
+					.getByRole( 'main' )
+					.getByText(
+						'This feature requires a valid AI Connector to function properly.'
+					)
 			).toBeVisible( { timeout: 30000 } );
 
 			// Verify query args have been stripped from the URL.
@@ -198,6 +235,68 @@ test.describe( 'Bulk Content Summarization', () => {
 			expect( page.url() ).not.toContain( 'wpai_post_ids' );
 		} finally {
 			await seedCredentials( requestUtils );
+		}
+	} );
+
+	test( 'Bulk action generates summaries for a custom post type without a rest_base', async ( {
+		admin,
+		requestUtils,
+		page,
+	} ) => {
+		// Enable the Content Summarization Experiment.
+		await enableExperiment( admin, page, 'Content Summarization' );
+
+		// The e2e-testing plugin registers `ai_e2e_sample` without a `rest_base`,
+		// so its REST route is /wp/v2/ai_e2e_sample.
+		const samplePost = await requestUtils.rest( {
+			path: '/wp/v2/ai_e2e_sample',
+			method: 'POST',
+			data: {
+				title: 'Bulk Summary Custom Post Type Test',
+				content: LONG_CONTENT,
+				status: 'publish',
+			},
+		} );
+
+		try {
+			await admin.visitAdminPage( 'edit.php', 'post_type=ai_e2e_sample' );
+
+			await page
+				.getByRole( 'checkbox', {
+					name: 'Select Bulk Summary Custom Post Type Test',
+				} )
+				.check();
+			await page
+				.getByRole( 'combobox', {
+					name: 'Select bulk action',
+					exact: true,
+				} )
+				.first()
+				.selectOption( { label: 'Generate Summary' } );
+			await page
+				.getByRole( 'button', { name: 'Apply', exact: true } )
+				.first()
+				.click();
+
+			await expect(
+				page
+					.getByRole( 'main' )
+					.getByText( 'Summary generated for 1 post.' )
+			).toBeVisible( { timeout: 60000 } );
+
+			const updatedPost = await requestUtils.rest( {
+				path: `/wp/v2/ai_e2e_sample/${ samplePost.id }`,
+				params: { context: 'edit' },
+			} );
+			expect( updatedPost.content.raw ).toContain(
+				'ai-summarization-summary'
+			);
+		} finally {
+			await requestUtils.rest( {
+				path: `/wp/v2/ai_e2e_sample/${ samplePost.id }`,
+				method: 'DELETE',
+				params: { force: true },
+			} );
 		}
 	} );
 
@@ -223,22 +322,33 @@ test.describe( 'Bulk Content Summarization', () => {
 
 		// Navigate to the posts list and run the bulk action.
 		await admin.visitAdminPage( 'edit.php' );
-		await page.locator( '#cb-select-all-1' ).check();
 		await page
-			.locator( '#bulk-action-selector-top' )
-			.selectOption( 'wpai_generate_summary' );
-		await page.locator( '#doaction' ).click();
+			.getByRole( 'checkbox', { name: 'Select All', exact: true } )
+			.first()
+			.check();
+		await page
+			.getByRole( 'combobox', {
+				name: 'Select bulk action',
+				exact: true,
+			} )
+			.first()
+			.selectOption( { label: 'Generate Summary' } );
+		await page
+			.getByRole( 'button', { name: 'Apply', exact: true } )
+			.first()
+			.click();
 
 		// Wait for the completion message.
 		await expect(
-			page.locator( '.notice p', {
-				hasText: /Summary generated/,
-			} )
+			page.getByRole( 'main' ).getByText( /Summary generated/ )
 		).toBeVisible( { timeout: 60000 } );
 
 		// The links the list table rendered must not carry the bulk trigger
 		// params, otherwise every sort and pagination click re-runs generation.
-		const sortLink = page.locator( 'th#title a' ).first();
+		const sortLink = page
+			.getByRole( 'columnheader', { name: /^Title/ } )
+			.first()
+			.getByRole( 'link' );
 		await expect( sortLink ).not.toHaveAttribute(
 			'href',
 			/wpai_bulk_summary/
@@ -274,10 +384,19 @@ test.describe( 'Bulk Content Summarization', () => {
 		await admin.visitAdminPage( 'edit.php' );
 
 		// Verify the bulk actions dropdown does NOT contain the Generate Summary option.
-		const bulkSelect = page.locator( '#bulk-action-selector-top' );
+		const bulkSelect = page
+			.getByRole( 'combobox', {
+				name: 'Select bulk action',
+				exact: true,
+			} )
+			.first();
 		await expect( bulkSelect ).toBeVisible();
 		await expect(
-			bulkSelect.locator( 'option[value="wpai_generate_summary"]' )
+			bulkSelect.getByRole( 'option', {
+				name: 'Generate Summary',
+				exact: true,
+				includeHidden: true,
+			} )
 		).toHaveCount( 0 );
 	} );
 } );

@@ -16,6 +16,7 @@ use WordPress\AI\Experiments\Content_Translation\Languages;
 
 use function WordPress\AI\count_characters_excluding_spaces;
 use function WordPress\AI\get_min_content_length;
+use function WordPress\AI\kses_post_keep_rgb_colors;
 
 /**
  * Content Translation WordPress Ability.
@@ -154,7 +155,7 @@ class Content_Translation extends Abstract_Ability {
 			);
 		}
 
-		return wp_kses_post( $result );
+		return kses_post_keep_rgb_colors( $result );
 	}
 
 	/**

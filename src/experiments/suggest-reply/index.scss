@@ -23,7 +23,7 @@
 }
 
 #wpai-suggest-reply-btn {
-	margin-right: 0 !important;
+	margin-right: -1px !important;
 }
 
 .wpai-split-button {
@@ -33,7 +33,6 @@
 	.wpai-split-button__action {
 		border-top-right-radius: 0;
 		border-bottom-right-radius: 0;
-		border-right: 0;
 	}
 
 	.wpai-split-button__toggle {

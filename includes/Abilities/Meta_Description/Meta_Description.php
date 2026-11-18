@@ -17,6 +17,7 @@ use WordPress\AI\Experiments\Meta_Description\Meta_Description as Meta_Descripti
 
 use function WordPress\AI\get_post_context;
 use function WordPress\AI\normalize_content;
+use function WordPress\AI\sanitize_plain_text;
 
 /**
  * Meta description generation WordPress Ability.
@@ -280,7 +281,7 @@ class Meta_Description extends Abstract_Ability {
 			);
 		}
 
-		$text = sanitize_text_field( trim( $result, ' "\'' ) );
+		$text = sanitize_plain_text( trim( $result, ' "\'' ) );
 
 		return array(
 			'text'            => $text,
@@ -297,16 +298,6 @@ class Meta_Description extends Abstract_Ability {
 	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error if there isn't a model that supports text generation.
 	 */
 	private function get_prompt_builder( string $prompt ) {
-		/**
-		 * Filters the temperature for the result of the meta description generation.
-		 *
-		 * @since 0.7.0
-		 * @deprecated 1.3.0 No longer used.
-		 *
-		 * @param float $result_temperature The temperature for the result of the meta description generation.
-		 */
-		$result_temperature = (float) apply_filters_deprecated( 'wpai_meta_description_result_temperature', array( 0.7 ), '1.3.0' ); // phpcs:ignore SlevomatCodingStandard.Variables.UnusedVariable.UnusedVariable
-
 		$prompt_builder = wp_ai_client_prompt( $prompt )
 			->using_system_instruction( $this->get_system_instruction() );
 

@@ -12,6 +12,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Abilities_Explorer;
 
+use WordPress\AI\Admin\Tools_Page;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Abilities_Explorer\REST\Abilities_Controller;
 
@@ -70,12 +71,10 @@ class Admin_Page {
 	 * @since 0.2.0
 	 */
 	public function add_admin_menu(): void {
-		$hook = add_submenu_page(
-			'tools.php',
-			__( 'Abilities Explorer', 'ai' ),
-			__( 'Abilities Explorer', 'ai' ),
-			'manage_options',
+		$hook = Tools_Page::add_page(
 			self::PAGE_SLUG,
+			__( 'Abilities Explorer', 'ai' ),
+			__( 'Browse, inspect, and test registered WordPress abilities.', 'ai' ),
 			array( $this, 'render_page' )
 		);
 

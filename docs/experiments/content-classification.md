@@ -381,7 +381,7 @@ add_filter( 'wpai_normalize_content', function( $content ) {
 - Content is normalized before being sent to the AI (HTML stripped, shortcodes removed, etc.)
 - The `normalize_content()` function handles this processing
 - Additional context from post metadata (title, categories, tags) is included when using post ID
-- All existing terms for the taxonomy are included in the prompt to encourage consistency
+- With the `existing_only` strategy, the most-used existing terms (100 by default) are included in the prompt to encourage consistency
 
 ### Limitations
 
@@ -389,4 +389,4 @@ add_filter( 'wpai_normalize_content', function( $content ) {
 - The ability processes one taxonomy per request
 - Generated suggestions should be reviewed before publishing
 - The experiment requires JavaScript to be enabled in the admin
-- The `is_new` flag is determined server-side by comparing against existing terms, not from the AI response
+- The `is_new` flag is determined server-side by comparing against existing terms, not from the AI response. Names match case-insensitively, an existing term is returned with its stored name, and case variants of one name are returned once, keeping the highest confidence

@@ -43,7 +43,8 @@ test.describe( 'Editorial Updates Experiment', () => {
 		await editor.insertBlock( {
 			name: 'core/paragraph',
 			attributes: {
-				content: 'This paragraph needs refinement.',
+				content:
+					'This <a href="https://example.com">paragraph</a> needs <strong>refinement</strong>.',
 			},
 		} );
 		await editor.saveDraft();
@@ -188,8 +189,11 @@ test.describe( 'Editorial Updates Experiment', () => {
 			page.getByRole( 'button', { name: /Refining block/ } )
 		).toBeVisible( { timeout: 5000 } );
 
-		// Verify the ability endpoint was called.
-		await abilityRequestPromise;
+		// Verify the ability endpoint was called with the block's inline formatting.
+		const abilityRequest = await abilityRequestPromise;
+		expect( abilityRequest.postDataJSON().input.block_content ).toBe(
+			'This <a href="https://example.com">paragraph</a> needs <strong>refinement</strong>.'
+		);
 
 		// Verify the block content was updated by the refinement.
 		// waitForFunction polls until the update lands (the response is async).
@@ -744,5 +748,174 @@ test.describe( 'Editorial Updates Experiment', () => {
 			'This is the refined block content.'
 		);
 		expect( attributes[ 1 ].content ).toBeUndefined();
+	} );
+} );
+
+test.describe( 'Editorial Updates Experiment in Template Mode', () => {
+	test.beforeAll( async ( { requestUtils } ) => {
+		await requestUtils.activateTheme( 'twentytwentyfive' );
+	} );
+
+	test.beforeEach( async ( { requestUtils } ) => {
+		// "Show template" persists the rendering mode in user preferences.
+		// Reset before each test so it starts in post-only mode regardless
+		// of state leaked from previous tests or test files in the shard.
+		await requestUtils.resetPreferences();
+	} );
+
+	test.afterAll( async ( { requestUtils } ) => {
+		await requestUtils.activateTheme( 'twentytwentyone' );
+		await requestUtils.resetPreferences();
+	} );
+
+	test( 'Shows the button and refines post blocks when "Show template" is enabled', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+
+		await admin.createNewPost( {
+			title: 'Show Template Editorial Updates Test',
+		} );
+
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: {
+				content: 'This paragraph needs refinement.',
+			},
+		} );
+		await editor.saveDraft();
+
+		// Create a pending note via the API.
+		const noteId = await page.evaluate( async () => {
+			const postId = window.wp.data
+				.select( 'core/editor' )
+				.getCurrentPostId();
+
+			// Ensure comments are open on the post (draft posts default to closed).
+			await window.wp.apiFetch( {
+				path: `/wp/v2/posts/${ postId }`,
+				method: 'POST',
+				data: { comment_status: 'open' },
+			} );
+
+			const note = await window.wp.apiFetch( {
+				path: '/wp/v2/comments',
+				method: 'POST',
+				data: {
+					post: postId,
+					content: 'Make this better.',
+					type: 'note',
+					status: 'hold',
+					meta: { wpai_note: true },
+				},
+			} );
+
+			return note.id;
+		} );
+
+		const mockNote = {
+			id: noteId,
+			parent: 0,
+			content: { rendered: '<p>Make this better.</p>' },
+			meta: { wpai_note: true },
+		};
+
+		let refinementComplete = false;
+
+		await page.route( /\/wp\/v2\/comments/, async ( route ) => {
+			const url = route.request().url();
+			const method = route.request().method();
+			const hasTypeNote =
+				url.includes( 'type=note' ) || url.includes( 'type%3Dnote' );
+			const isResolveNote =
+				method === 'PUT' && /\/wp\/v2\/comments\/\d+/.test( url );
+
+			if ( hasTypeNote ) {
+				await route.fulfill( {
+					status: 200,
+					contentType: 'application/json',
+					body: JSON.stringify(
+						refinementComplete ? [] : [ mockNote ]
+					),
+					headers: {
+						'X-WP-Total': refinementComplete ? '0' : '1',
+						'X-WP-TotalPages': refinementComplete ? '0' : '1',
+					},
+				} );
+			} else if ( isResolveNote ) {
+				refinementComplete = true;
+				await route.fulfill( {
+					status: 200,
+					contentType: 'application/json',
+					body: JSON.stringify( {
+						id: noteId,
+						status: 'approve',
+					} ),
+				} );
+			} else {
+				await route.continue();
+			}
+		} );
+
+		await page.reload();
+
+		// Enable the template mode.
+		await page.getByRole( 'button', { name: 'View', exact: true } ).click();
+		await page
+			.getByRole( 'menuitemcheckbox', { name: 'Show template' } )
+			.click();
+
+		await editor.openDocumentSettingsSidebar();
+		await page.getByRole( 'tab', { name: 'Post' } ).click();
+
+		// Wait for the post blocks to render inside `core/post-content`.
+		await expect(
+			editor.canvas
+				.getByRole( 'document', { name: 'Block: Content' } )
+				.getByLabel( 'Block: Paragraph' )
+				.first()
+		).toBeVisible();
+
+		// Link the note to the post block nested in `core/post-content`.
+		await page.evaluate( ( id ) => {
+			const blockEditor = window.wp.data.select( 'core/block-editor' );
+			const postContentId = blockEditor
+				.getBlocksByName( 'core/post-content' )
+				.find(
+					( clientId ) =>
+						blockEditor.getBlockParentsByBlockName(
+							clientId,
+							'core/query'
+						).length === 0
+				);
+			const [ block ] = blockEditor.getBlocks( postContentId );
+
+			window.wp.data
+				.dispatch( 'core/block-editor' )
+				.updateBlockAttributes( block.clientId, {
+					metadata: { noteId: id },
+				} );
+		}, noteId );
+
+		const refineButton = page.getByRole( 'button', {
+			name: 'Apply Editorial Updates',
+		} );
+		await expect( refineButton ).toBeVisible( { timeout: 10000 } );
+		await refineButton.click();
+
+		await expect(
+			page.getByTestId( 'snackbar' ).filter( {
+				hasText: '1 block refined with AI.',
+			} )
+		).toBeVisible( { timeout: 20000 } );
+
+		await expect(
+			editor.canvas
+				.getByRole( 'document', { name: 'Block: Content' } )
+				.getByLabel( 'Block: Paragraph' )
+				.first()
+		).toHaveText( 'This is the refined block content.' );
 	} );
 } );

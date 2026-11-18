@@ -40,14 +40,14 @@ const AI_PLUGIN = 'ai/ai.php';
 /**
  * FeatureToggle component.
  *
- * @param {FeatureToggleProps} props            The component props.
- * @param {FeatureToggleProps} props.field      The field to display.
- * @param {AISettings}         props.data       The data to display.
- * @param {Function}           props.onChange   The function to call when the value changes.
- * @param {string}             props.featureId  The feature ID.
- * @param {string}             props.capability The AI capability type for model filtering.
- * @param {FeatureUsage}       props.usage      When the feature runs, what it sends, and how many requests it makes.
- * @param {string}             props.docsUrl    URL of the feature's documentation.
+ * @param {FeatureToggleProps}             props            The component props.
+ * @param {FeatureToggleProps['field']}    props.field      The field to display.
+ * @param {AISettings}                     props.data       The data to display.
+ * @param {FeatureToggleProps['onChange']} props.onChange   The function to call when the value changes.
+ * @param {string}                         props.featureId  The feature ID.
+ * @param {string}                         props.capability The AI capability type for model filtering.
+ * @param {FeatureUsage}                   props.usage      When the feature runs, what it sends, and how many requests it makes.
+ * @param {string}                         props.docsUrl    URL of the feature's documentation.
  * @return {React.JSX.Element} The component.
  */
 export function FeatureToggle( {

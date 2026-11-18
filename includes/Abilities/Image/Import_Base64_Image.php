@@ -15,6 +15,7 @@ use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AiClient\Files\DTO\File;
 
 use function WordPress\AI\get_image_data_uri;
+use function WordPress\AI\sanitize_plain_text;
 
 /**
  * Base64 encoded image import WordPress Ability.
@@ -298,10 +299,10 @@ class Import_Base64_Image extends Abstract_Ability {
 		// Handle the sideload.
 		$post_data = array(
 			'post_title'     => sanitize_text_field( $args['title'] ),
-			'post_content'   => sanitize_text_field( $args['description'] ),
+			'post_content'   => sanitize_plain_text( $args['description'] ),
 			'post_mime_type' => $args['mime_type'],
 			'meta_input'     => array(
-				'_wp_attachment_image_alt' => sanitize_text_field( $args['alt_text'] ),
+				'_wp_attachment_image_alt' => sanitize_plain_text( $args['alt_text'] ),
 			),
 		);
 

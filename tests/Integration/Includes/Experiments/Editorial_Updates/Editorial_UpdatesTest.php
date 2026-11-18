@@ -111,7 +111,14 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 	 * @since 1.0.0
 	 */
 	public function test_register_abilities_registers_editorial_updates_ability() {
-		$this->setExpectedIncorrectUsage( 'WP_Abilities_Registry::register' );
+		$this->assertNotFalse( has_action( 'wp_abilities_api_init', array( $this->experiment, 'register_abilities' ) ) );
+
+		// Register on a clean slate with only this callback, so the result does not depend on other tests.
+		if ( wp_has_ability( 'ai/editorial-updates' ) ) {
+			wp_unregister_ability( 'ai/editorial-updates' );
+		}
+		remove_all_actions( 'wp_abilities_api_init' );
+		add_action( 'wp_abilities_api_init', array( $this->experiment, 'register_abilities' ) );
 
 		do_action( 'wp_abilities_api_init' );
 
@@ -151,5 +158,41 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'aiEditorialUpdatesData', $data, 'Localized object name should be aiEditorialUpdatesData.' );
 		$this->assertStringContainsString( '"enabled"', $data, 'Localized data should contain "enabled" key.' );
 		$this->assertStringContainsString( '"admin_url"', $data, 'Localized data should contain "admin_url" key for classic revisions fallback.' );
+	}
+
+	/**
+	 * Tests that enqueue_assets() passes the REST route of a custom post type without a rest_base.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_enqueue_assets_localizes_custom_post_type_rest_route() {
+		register_post_type(
+			'book',
+			array(
+				'public'       => true,
+				'show_in_rest' => true,
+			)
+		);
+
+		try {
+			// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Simulating the edited post.
+			$GLOBALS['post'] = self::factory()->post->create_and_get( array( 'post_type' => 'book' ) );
+
+			$this->experiment->enqueue_assets();
+
+			$data = wp_scripts()->get_data( 'ai_editorial_updates', 'data' );
+
+			$this->assertIsString( $data );
+			// The data of earlier enqueues of the same handle stays in front of this one.
+			$this->assertGreaterThan( 0, preg_match_all( '/= (\{.*\});/', $data, $matches ) );
+
+			$localized_json = end( $matches[1] );
+			$localized      = json_decode( $localized_json, true );
+
+			$this->assertSame( '/wp/v2/book', $localized['rest_route'] ?? null, 'Localized data: ' . $localized_json );
+		} finally {
+			unset( $GLOBALS['post'] );
+			unregister_post_type( 'book' );
+		}
 	}
 }

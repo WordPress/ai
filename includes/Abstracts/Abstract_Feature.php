@@ -240,15 +240,6 @@ abstract class Abstract_Feature implements Feature {
 	final public function is_individually_enabled(): bool {
 		$feature_enabled = (bool) get_option( "wpai_feature_{$this->id}_enabled", false );
 
-		// @todo remove in v1.0
-		$is_enabled = (bool) apply_filters_deprecated(
-			"ai_experiments_experiment_{$this->id}_enabled",
-			array( $feature_enabled ),
-			'0.6.0',
-			"wpai_feature_{$this->id}_enabled",
-			esc_html__( 'This will be removed in v1.0', 'ai' )
-		);
-
 		/**
 		 * Filters the enabled status for a specific feature.
 		 *
@@ -258,7 +249,7 @@ abstract class Abstract_Feature implements Feature {
 		 *
 		 * @param bool $feature_enabled Whether the feature is enabled.
 		 */
-		return (bool) apply_filters( "wpai_feature_{$this->id}_enabled", $is_enabled );
+		return (bool) apply_filters( "wpai_feature_{$this->id}_enabled", $feature_enabled );
 	}
 
 	/**

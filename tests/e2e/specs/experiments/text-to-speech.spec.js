@@ -63,9 +63,7 @@ test.describe( 'Text to Speech Experiment', () => {
 		await openTextToSpeechPanel( editor, page );
 
 		await expect(
-			page
-				.locator( '.ai-text-to-speech-panel' )
-				.getByRole( 'button', { name: 'Generate Audio', exact: true } )
+			page.getByRole( 'button', { name: 'Generate Audio', exact: true } )
 		).toBeVisible();
 	} );
 

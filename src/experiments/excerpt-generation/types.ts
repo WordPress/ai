@@ -17,4 +17,10 @@ export interface ExcerptGenerationAbilityInput {
 export interface ExcerptGenerationData {
 	enabled: boolean;
 	minContentLength: number;
+	/**
+	 * Whether the editor renders the excerpt with the Entity Fields API
+	 * (WordPress 7.2+), in which case the `@ai/excerpt-field` script module
+	 * adds the generate buttons instead of the legacy excerpt panel plugins.
+	 */
+	entityFieldsApi?: boolean;
 }

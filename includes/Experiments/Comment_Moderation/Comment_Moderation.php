@@ -369,6 +369,7 @@ class Comment_Moderation extends Abstract_Feature {
 			array(
 				'label'         => __( 'Comment Analysis', 'ai' ),
 				'description'   => __( 'Analyzes a comment for toxicity, sentiment, and value.', 'ai' ),
+				'category'      => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'ability_class' => Comment_Analysis_Ability::class,
 			)
 		);

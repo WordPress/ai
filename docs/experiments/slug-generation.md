@@ -366,4 +366,3 @@ add_filter( 'wpai_preferred_text_models', function ( array $models ): array {
 - The **Generate Slug** button is attached by DOM injection and assumes the standard `.editor-post-url` markup; heavily customized editors may need additional selectors.
 - The modal is given an explicit `z-index` so it renders above the permalink popover, which relies on the popover's current stacking values.
 - Suggestions are generated in real time and are not cached.
-- Non-Latin suggestions are stored percent-encoded (via `sanitize_title()`), and `cleanForSlug()` does not account for octets, so applying such a suggestion re-normalizes the encoded form rather than the original text. The normalization preview is suppressed for percent-encoded slugs so it does not advertise that form, but the underlying apply behavior is a known limitation.

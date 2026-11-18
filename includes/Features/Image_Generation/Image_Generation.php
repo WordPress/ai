@@ -160,6 +160,7 @@ class Image_Generation extends Abstract_Feature {
 			array(
 				'label'         => $this->get_label(),
 				'description'   => $this->get_description(),
+				'category'      => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'ability_class' => Image_Generation_Ability::class,
 			),
 		);
@@ -169,6 +170,7 @@ class Image_Generation extends Abstract_Feature {
 			array(
 				'label'         => __( 'Base64 Image Import', 'ai' ),
 				'description'   => __( 'Imports a base64 encoded image into the media library', 'ai' ),
+				'category'      => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'ability_class' => Image_Import_Ability::class,
 			),
 		);
@@ -178,6 +180,7 @@ class Image_Generation extends Abstract_Feature {
 			array(
 				'label'         => __( 'Image Prompt Generation', 'ai' ),
 				'description'   => __( 'Generates a prompt from post content that can be used to generate an image', 'ai' ),
+				'category'      => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'ability_class' => Generate_Image_Prompt_Ability::class,
 			),
 		);

@@ -17,10 +17,10 @@ interface ImportConfirmModalProps {
  * Displayed to ask the user to confirm before overwriting settings during
  * an AI settings import.
  *
- * @param {ImportConfirmModalProps} props             The component props.
- * @param {Function}                props.onConfirm   Called when the import is confirmed.
- * @param {Function}                props.onCancel    Called when the import is cancelled.
- * @param {boolean}                 props.isImporting Whether the import request is in flight.
+ * @param {ImportConfirmModalProps}              props             The component props.
+ * @param {ImportConfirmModalProps['onConfirm']} props.onConfirm   Called when the import is confirmed.
+ * @param {ImportConfirmModalProps['onCancel']}  props.onCancel    Called when the import is cancelled.
+ * @param {boolean}                              props.isImporting Whether the import request is in flight.
  * @return {React.JSX.Element} The component.
  */
 export function ImportConfirmModal( {

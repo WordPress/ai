@@ -57,7 +57,9 @@ test.describe( 'AI Request Logging Experiment', () => {
 
 		// No menu link
 		await expect(
-			page.locator( '#menu-tools a[href*="page=ai-request-logs"]' )
+			page
+				.getByRole( 'navigation', { name: 'Main menu', exact: true } )
+				.getByRole( 'link', { name: PAGE_HEADING, exact: true } )
 		).toHaveCount( 0 );
 
 		// Direct navigation does nothing
@@ -87,23 +89,27 @@ test.describe( 'AI Request Logging Experiment', () => {
 				'Artificial intelligence is rapidly changing how content is created, edited, and published across the web today. Writers increasingly rely on automated tools to draft outlines, summarize research, and suggest improvements to their work. These systems analyze large amounts of text and surface patterns that would take a human many hours to find on their own. As the technology matures, editors are learning to combine their own judgment with machine generated suggestions to produce stronger results. This paragraph exists only to provide enough words for the title generation experiment to run, because the feature now requires a reasonable amount of content before it will offer to generate a brand new title for the post.',
 		} );
 		await editor.saveDraft();
-		await editor.canvas.locator( '.editor-post-title__input' ).click();
 		await editor.canvas
-			.locator( '.ai-title-toolbar-container button' )
+			.getByRole( 'textbox', { name: 'Add Title' } )
 			.click();
-		await page
-			.locator( '.ai-title-generation-modal' )
-			.getByRole( 'button', { name: 'Insert' } )
+		await editor.canvas
+			.getByRole( 'toolbar', { name: 'Generate title toolbar' } )
+			.getByRole( 'button', { name: 'Generate', exact: true } )
 			.click();
-		await expect(
-			page.locator( '.ai-title-generation-modal' )
-		).not.toBeVisible();
+		const modal = page.getByRole( 'dialog', {
+			name: 'Title suggestion',
+		} );
+		await modal.getByRole( 'button', { name: 'Insert' } ).click();
+		await expect( modal ).not.toBeVisible();
 
 		await visitRequestLogsPage( admin );
 
 		// Confirm the log row is visible
 		await expect(
-			page.locator( 'code', { hasText: 'openai:responses' } ).first()
+			page
+				.getByRole( 'table' )
+				.getByText( 'openai:responses', { exact: true } )
+				.first()
 		).toBeVisible( { timeout: 10000 } );
 	} );
 
@@ -157,7 +163,10 @@ test.describe( 'AI Request Logging Experiment', () => {
 
 		// Make sure there is at least one row in the table (from previous test)
 		await expect(
-			page.locator( 'code', { hasText: 'openai:responses' } ).first()
+			page
+				.getByRole( 'table' )
+				.getByText( 'openai:responses', { exact: true } )
+				.first()
 		).toBeVisible();
 
 		const searchBox = page.getByRole( 'searchbox' );
@@ -167,14 +176,19 @@ test.describe( 'AI Request Logging Experiment', () => {
 
 		await expect( page.getByText( 'No results' ) ).toBeVisible();
 		await expect(
-			page.locator( 'code', { hasText: 'openai:responses' } )
+			page
+				.getByRole( 'table' )
+				.getByText( 'openai:responses', { exact: true } )
 		).toHaveCount( 0 );
 
 		// Clearing the search restores the row
 		await searchBox.clear();
 
 		await expect(
-			page.locator( 'code', { hasText: 'openai:responses' } ).first()
+			page
+				.getByRole( 'table' )
+				.getByText( 'openai:responses', { exact: true } )
+				.first()
 		).toBeVisible();
 	} );
 
@@ -183,7 +197,10 @@ test.describe( 'AI Request Logging Experiment', () => {
 
 		// Make sure there is at least one row in the table (from previous test)
 		await expect(
-			page.locator( 'code', { hasText: 'openai:responses' } ).first()
+			page
+				.getByRole( 'table' )
+				.getByText( 'openai:responses', { exact: true } )
+				.first()
 		).toBeVisible();
 
 		await page.getByLabel( 'Logs to delete' ).selectOption( 'All logs' );
@@ -213,8 +230,11 @@ test.describe( 'AI Request Logging Experiment', () => {
 		expect( deleteResponse.ok() ).toBe( true );
 		await expect(
 			page
-				.locator( '.components-snackbar' )
-				.getByText( 'All logs have been deleted.' )
+				.getByRole( 'button', {
+					name: 'Dismiss this notice',
+					exact: true,
+				} )
+				.getByText( 'All logs have been deleted.', { exact: true } )
 		).toBeVisible();
 		await expect(
 			page.getByRole( 'button', { name: 'Delete', exact: true } )
@@ -223,7 +243,9 @@ test.describe( 'AI Request Logging Experiment', () => {
 		// Make sure the table is empty
 		await expect( page.getByText( 'No results' ) ).toBeVisible();
 		await expect(
-			page.locator( 'code', { hasText: 'openai:responses' } )
+			page
+				.getByRole( 'table' )
+				.getByText( 'openai:responses', { exact: true } )
 		).toHaveCount( 0 );
 	} );
 
@@ -255,14 +277,14 @@ test.describe( 'AI Request Logging Experiment', () => {
 		// Show every log so old entries are visible in the table
 		await page.getByLabel( 'Time period' ).selectOption( 'all' );
 
-		const table = page.locator( '.ai-request-logs__main' );
+		const table = page.getByRole( 'table' );
 		for ( const operation of [
 			'e2e:year-old',
 			'e2e:months-old',
 			'e2e:recent',
 		] ) {
 			await expect(
-				table.locator( 'code', { hasText: operation } )
+				table.getByText( operation, { exact: true } )
 			).toBeVisible();
 		}
 
@@ -278,7 +300,7 @@ test.describe( 'AI Request Logging Experiment', () => {
 		await page.getByRole( 'button', { name: 'Cancel' } ).click();
 		await expect( deleteButton ).toBeFocused();
 		await expect(
-			table.locator( 'code', { hasText: 'e2e:year-old' } )
+			table.getByText( 'e2e:year-old', { exact: true } )
 		).toBeVisible();
 
 		// Confirming deletes only the logs older than 90 days
@@ -295,19 +317,24 @@ test.describe( 'AI Request Logging Experiment', () => {
 		expect( ( await deleteResponse.json() ).deleted ).toBe( 2 );
 		await expect(
 			page
-				.locator( '.components-snackbar' )
-				.getByText( '2 log entries have been deleted.' )
+				.getByRole( 'button', {
+					name: 'Dismiss this notice',
+					exact: true,
+				} )
+				.getByText( '2 log entries have been deleted.', {
+					exact: true,
+				} )
 		).toBeVisible();
 		await expect( deleteButton ).toBeFocused();
 
 		await expect(
-			table.locator( 'code', { hasText: 'e2e:year-old' } )
+			table.getByText( 'e2e:year-old', { exact: true } )
 		).toHaveCount( 0 );
 		await expect(
-			table.locator( 'code', { hasText: 'e2e:months-old' } )
+			table.getByText( 'e2e:months-old', { exact: true } )
 		).toHaveCount( 0 );
 		await expect(
-			table.locator( 'code', { hasText: 'e2e:recent' } )
+			table.getByText( 'e2e:recent', { exact: true } )
 		).toBeVisible();
 
 		await purgeRequestLogs( requestUtils );
