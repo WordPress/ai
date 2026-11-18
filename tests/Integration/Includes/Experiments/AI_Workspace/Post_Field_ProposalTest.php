@@ -22,6 +22,7 @@ use WordPress\AI\Experiments\AI_Workspace\REST\Proposal_Controller;
 use WordPress\AI\Experiments\AI_Workspace\Turn_Context;
 use WordPress\AI\Logging\AI_Request_Log_Manager;
 use WordPress\AI\Logging\Logging_Integration;
+use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Workspace_Tools;
 
 /**
  * Post-field proposal test case.
@@ -113,7 +114,7 @@ class Post_Field_ProposalTest extends WP_UnitTestCase {
 
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
-			( new Propose_Post_Changes() )->register();
+			Workspace_Tools::register( new Propose_Post_Changes() );
 			( new Read_Content_Bodies() )->register();
 		} finally {
 			array_pop( $wp_current_filter );

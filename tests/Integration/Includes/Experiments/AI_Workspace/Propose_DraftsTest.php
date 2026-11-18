@@ -15,6 +15,7 @@ use WordPress\AI\Experiments\AI_Workspace\Proposal_Store;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Drafts;
 use WordPress\AI\Experiments\AI_Workspace\Turn_Context;
 use WordPress\AI\Logging\Logging_Integration;
+use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Workspace_Tools;
 
 /**
  * Propose_Drafts test case.
@@ -168,7 +169,7 @@ class Propose_DraftsTest extends WP_UnitTestCase {
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
-			( new Propose_Drafts() )->register();
+			Workspace_Tools::register( new Propose_Drafts() );
 		} finally {
 			array_pop( $wp_current_filter );
 		}

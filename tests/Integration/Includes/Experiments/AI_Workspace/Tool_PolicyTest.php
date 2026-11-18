@@ -17,6 +17,7 @@ use WordPress\AI\Experiments\AI_Workspace\Propose_Drafts;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Template;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Policy;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Selector;
+use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Workspace_Tools;
 
 /**
  * Tool_Policy test case.
@@ -871,9 +872,9 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 			( new Search_Content() )->register();
 			( new Read_Content_Bodies() )->register();
 			( new List_Terms() )->register();
-			( new Propose_Drafts() )->register();
-			( new Propose_Template() )->register();
-			( new Ask_User() )->register();
+			Workspace_Tools::register( new Propose_Drafts() );
+			Workspace_Tools::register( new Propose_Template() );
+			Workspace_Tools::register( new Ask_User() );
 		} finally {
 			array_pop( $wp_current_filter );
 		}

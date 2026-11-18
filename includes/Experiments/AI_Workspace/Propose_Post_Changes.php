@@ -69,13 +69,12 @@ final class Propose_Post_Changes {
 	}
 
 	/**
-	 * Hooks the ability into the Abilities API.
+	 * Hooks the ability's category into the Abilities API.
 	 *
 	 * @since x.x.x
 	 */
 	public function init(): void {
 		add_action( 'wp_abilities_api_categories_init', array( $this, 'register_category' ), 11 );
-		add_action( 'wp_abilities_api_init', array( $this, 'register' ), 11 );
 	}
 
 	/**
@@ -98,48 +97,44 @@ final class Propose_Post_Changes {
 	}
 
 	/**
-	 * Registers the ability.
+	 * Returns the ability's registration args.
 	 *
-	 * Must run on the `wp_abilities_api_init` hook.
+	 * The workspace registers the ability, so it carries the feature's access
+	 * control tag.
 	 *
 	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> The registration args.
 	 */
-	public function register(): void {
-		if ( wp_has_ability( self::ABILITY ) ) {
-			wp_unregister_ability( self::ABILITY );
-		}
-
-		wp_register_ability(
-			self::ABILITY,
-			array(
-				'label'               => __( 'Propose Post Changes', 'ai' ),
-				'description'         => sprintf(
-					/* translators: %d: the maximum number of items a proposal may contain. */
-					__( 'Records proposed changes to the title, excerpt or content of existing posts, for the person to review. This writes nothing: each item names one field of one post and its complete new value, the person sees the current value next to yours, may edit yours, and must approve before anything changes. A title is plain text with no HTML. To change content, first read the post with ai/read-content-bodies and "raw": true, then propose its complete block markup built from "content_raw", changing only what was asked and keeping every other block as it is; the plain-text body has lost its blocks and must not be used. Content that holds embeds or iframes cannot be rewritten. Propose at most %d items at a time, and never claim a post changed until you are told the outcome.', 'ai' ),
-					Proposal_Store::MAX_ITEMS
+	public function get_ability_args(): array {
+		return array(
+			'label'               => __( 'Propose Post Changes', 'ai' ),
+			'description'         => sprintf(
+				/* translators: %d: the maximum number of items a proposal may contain. */
+				__( 'Records proposed changes to the title, excerpt or content of existing posts, for the person to review. This writes nothing: each item names one field of one post and its complete new value, the person sees the current value next to yours, may edit yours, and must approve before anything changes. A title is plain text with no HTML. To change content, first read the post with ai/read-content-bodies and "raw": true, then propose its complete block markup built from "content_raw", changing only what was asked and keeping every other block as it is; the plain-text body has lost its blocks and must not be used. Content that holds embeds or iframes cannot be rewritten. Propose at most %d items at a time, and never claim a post changed until you are told the outcome.', 'ai' ),
+				Proposal_Store::MAX_ITEMS
+			),
+			'category'            => self::CATEGORY,
+			'input_schema'        => $this->get_input_schema(),
+			'output_schema'       => $this->get_output_schema(),
+			'execute_callback'    => array( $this, 'execute_propose_post_changes' ),
+			'permission_callback' => array( $this, 'check_permission' ),
+			'meta'                => array(
+				'annotations'  => array(
+					'readonly'    => false,
+					'destructive' => false,
+					'idempotent'  => false,
+					'open_world'  => false,
 				),
-				'category'            => self::CATEGORY,
-				'input_schema'        => $this->get_input_schema(),
-				'output_schema'       => $this->get_output_schema(),
-				'execute_callback'    => array( $this, 'execute_propose_post_changes' ),
-				'permission_callback' => array( $this, 'check_permission' ),
-				'meta'                => array(
-					'annotations'  => array(
-						'readonly'    => false,
-						'destructive' => false,
-						'idempotent'  => false,
-						'open_world'  => false,
-					),
-					/*
-					 * Withheld from the REST and MCP surfaces on purpose; MCP
-					 * exposure reads `mcp.public`, not `show_in_rest`. A
-					 * proposal is only meaningful inside a workspace turn, which
-					 * is where the person who has to approve it is.
-					 */
-					'show_in_rest' => false,
-					'mcp'          => array( 'public' => false ),
-				),
-			)
+				/*
+				 * Withheld from the REST and MCP surfaces on purpose; MCP
+				 * exposure reads `mcp.public`, not `show_in_rest`. A
+				 * proposal is only meaningful inside a workspace turn, which
+				 * is where the person who has to approve it is.
+				 */
+				'show_in_rest' => false,
+				'mcp'          => array( 'public' => false ),
+			),
 		);
 	}
 

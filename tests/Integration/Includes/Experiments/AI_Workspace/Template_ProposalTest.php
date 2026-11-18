@@ -20,6 +20,7 @@ use WordPress\AI\Experiments\AI_Workspace\Template_Writer;
 use WordPress\AI\Experiments\AI_Workspace\Turn_Context;
 use WordPress\AI\Logging\AI_Request_Log_Manager;
 use WordPress\AI\Logging\Logging_Integration;
+use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Workspace_Tools;
 
 /**
  * Template proposal test case.
@@ -135,7 +136,7 @@ class Template_ProposalTest extends WP_UnitTestCase {
 
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
-			( new Propose_Template() )->register();
+			Workspace_Tools::register( new Propose_Template() );
 		} finally {
 			array_pop( $wp_current_filter );
 		}

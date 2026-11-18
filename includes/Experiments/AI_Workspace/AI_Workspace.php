@@ -83,6 +83,15 @@ class AI_Workspace extends Abstract_Feature {
 	private ?Admin_Page $admin_page = null;
 
 	/**
+	 * The workspace's own tools: the proposal kinds and the question tool.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var list<\WordPress\AI\Experiments\AI_Workspace\Propose_Drafts|\WordPress\AI\Experiments\AI_Workspace\Propose_Template|\WordPress\AI\Experiments\AI_Workspace\Propose_Post_Changes|\WordPress\AI\Experiments\AI_Workspace\Propose_Site_Identity|\WordPress\AI\Experiments\AI_Workspace\Ask_User>
+	 */
+	private array $tools = array();
+
+	/**
 	 * {@inheritDoc}
 	 */
 	public static function get_id(): string {
@@ -159,35 +168,45 @@ class AI_Workspace extends Abstract_Feature {
 		 * writes nothing; it is withheld from the REST and MCP surfaces because
 		 * a proposal is only meaningful where the person who approves it is.
 		 */
-		( new Propose_Drafts() )->init();
+		$drafts = new Propose_Drafts();
+		$drafts->init();
 
 		/*
 		 * The same reach for block templates. It stores one proposed template and
 		 * writes nothing, and is withheld from the REST and MCP surfaces for the
 		 * same reason.
 		 */
-		( new Propose_Template() )->init();
+		$template = new Propose_Template();
+		$template->init();
 
 		/*
 		 * The same reach for changes to existing posts' titles, excerpts and
 		 * content. It stores the proposed values and writes nothing, and is
 		 * withheld from the REST and MCP surfaces for the same reason.
 		 */
-		( new Propose_Post_Changes() )->init();
+		$post_changes = new Propose_Post_Changes();
+		$post_changes->init();
 
 		/*
 		 * The same reach for the site title and tagline. It stores the proposed
 		 * values and writes nothing, and is withheld from the REST and MCP
 		 * surfaces for the same reason.
 		 */
-		( new Propose_Site_Identity() )->init();
+		$site_identity = new Propose_Site_Identity();
 
 		/*
 		 * Asks the person a question with choices, which ends the turn. It
 		 * writes nothing and, like the proposal tool, is withheld from the REST
 		 * and MCP surfaces.
 		 */
-		( new Ask_User() )->init();
+		$ask_user = new Ask_User();
+
+		/*
+		 * The workspace registers its own tools, so they carry this feature's
+		 * access control tag.
+		 */
+		$this->tools = array( $drafts, $template, $post_changes, $site_identity, $ask_user );
+		add_action( 'wp_abilities_api_init', array( $this, 'register_tool_abilities' ), 11 );
 
 		/*
 		 * The turn endpoint is the only route through which the workspace reaches
@@ -235,6 +254,27 @@ class AI_Workspace extends Abstract_Feature {
 	}
 
 	/**
+	 * Registers the workspace's tool abilities.
+	 *
+	 * @since x.x.x
+	 */
+	public function register_tool_abilities(): void {
+		foreach ( $this->tools as $tool ) {
+			$args = $tool->get_ability_args();
+
+			if ( null === $args ) {
+				continue;
+			}
+
+			if ( wp_has_ability( $tool::ABILITY ) ) {
+				wp_unregister_ability( $tool::ABILITY );
+			}
+
+			$this->register_feature_ability( $tool::ABILITY, $args );
+		}
+	}
+
+	/**
 	 * Registers the command palette AI search ability.
 	 *
 	 * Must run on the `wp_abilities_api_init` hook.
@@ -242,7 +282,7 @@ class AI_Workspace extends Abstract_Feature {
 	 * @since x.x.x
 	 */
 	public function register_command_palette_ability(): void {
-		wp_register_ability(
+		$this->register_feature_ability(
 			Command_Palette_AI_Search::ABILITY,
 			array(
 				'label'         => __( 'Command Palette AI Search', 'ai' ),

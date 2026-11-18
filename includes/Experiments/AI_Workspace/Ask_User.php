@@ -79,58 +79,45 @@ final class Ask_User {
 	public const MAX_CHOICE_LENGTH = 60;
 
 	/**
-	 * Hooks the ability into the Abilities API.
+	 * Returns the ability's registration args.
+	 *
+	 * The workspace registers the ability, so it carries the feature's access
+	 * control tag.
 	 *
 	 * @since x.x.x
-	 */
-	public function init(): void {
-		add_action( 'wp_abilities_api_init', array( $this, 'register' ), 11 );
-	}
-
-	/**
-	 * Registers the ability.
 	 *
-	 * Must run on the `wp_abilities_api_init` hook.
-	 *
-	 * @since x.x.x
+	 * @return array<string, mixed> The registration args.
 	 */
-	public function register(): void {
-		if ( wp_has_ability( self::ABILITY ) ) {
-			wp_unregister_ability( self::ABILITY );
-		}
-
-		wp_register_ability(
-			self::ABILITY,
-			array(
-				'label'               => __( 'Ask the Person', 'ai' ),
-				'description'         => sprintf(
-					/* translators: 1: the fewest choices, 2: the most choices. */
-					__( 'Asks the person a question and offers %1$d to %2$d short answers to choose from. Use it when you need a decision before you can go on, instead of ending with instructions for them to follow. Asking ends your turn: their answer arrives as their next message, and they may type a different answer instead of choosing one.', 'ai' ),
-					self::MIN_CHOICES,
-					self::MAX_CHOICES
+	public function get_ability_args(): array {
+		return array(
+			'label'               => __( 'Ask the Person', 'ai' ),
+			'description'         => sprintf(
+				/* translators: 1: the fewest choices, 2: the most choices. */
+				__( 'Asks the person a question and offers %1$d to %2$d short answers to choose from. Use it when you need a decision before you can go on, instead of ending with instructions for them to follow. Asking ends your turn: their answer arrives as their next message, and they may type a different answer instead of choosing one.', 'ai' ),
+				self::MIN_CHOICES,
+				self::MAX_CHOICES
+			),
+			'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
+			'input_schema'        => $this->get_input_schema(),
+			'output_schema'       => $this->get_output_schema(),
+			'execute_callback'    => array( $this, 'execute_ask_user' ),
+			'permission_callback' => array( $this, 'check_permission' ),
+			'meta'                => array(
+				'annotations'  => array(
+					'readonly'    => true,
+					'destructive' => false,
+					'idempotent'  => true,
+					'open_world'  => false,
 				),
-				'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
-				'input_schema'        => $this->get_input_schema(),
-				'output_schema'       => $this->get_output_schema(),
-				'execute_callback'    => array( $this, 'execute_ask_user' ),
-				'permission_callback' => array( $this, 'check_permission' ),
-				'meta'                => array(
-					'annotations'  => array(
-						'readonly'    => true,
-						'destructive' => false,
-						'idempotent'  => true,
-						'open_world'  => false,
-					),
-					/*
-					 * Withheld from the REST and MCP surfaces on purpose; MCP
-					 * exposure reads `mcp.public`, not `show_in_rest`. A
-					 * question is only meaningful inside a workspace turn, which
-					 * is where the person who has to answer it is.
-					 */
-					'show_in_rest' => false,
-					'mcp'          => array( 'public' => false ),
-				),
-			)
+				/*
+				 * Withheld from the REST and MCP surfaces on purpose; MCP
+				 * exposure reads `mcp.public`, not `show_in_rest`. A
+				 * question is only meaningful inside a workspace turn, which
+				 * is where the person who has to answer it is.
+				 */
+				'show_in_rest' => false,
+				'mcp'          => array( 'public' => false ),
+			),
 		);
 	}
 

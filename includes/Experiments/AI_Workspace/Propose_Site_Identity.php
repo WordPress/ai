@@ -60,58 +60,45 @@ final class Propose_Site_Identity {
 	}
 
 	/**
-	 * Hooks the ability into the Abilities API.
+	 * Returns the ability's registration args.
+	 *
+	 * The workspace registers the ability, so it carries the feature's access
+	 * control tag.
 	 *
 	 * @since x.x.x
-	 */
-	public function init(): void {
-		add_action( 'wp_abilities_api_init', array( $this, 'register' ), 11 );
-	}
-
-	/**
-	 * Registers the ability.
 	 *
-	 * Must run on the `wp_abilities_api_init` hook.
-	 *
-	 * @since x.x.x
+	 * @return array<string, mixed> The registration args.
 	 */
-	public function register(): void {
-		if ( wp_has_ability( self::ABILITY ) ) {
-			wp_unregister_ability( self::ABILITY );
-		}
-
-		wp_register_ability(
-			self::ABILITY,
-			array(
-				'label'               => __( 'Propose Site Title or Tagline', 'ai' ),
-				'description'         => sprintf(
-					/* translators: 1: the maximum site title length, 2: the maximum tagline length. */
-					__( 'Records a proposed new site title or tagline, for the person to review. This writes nothing: each item names one setting and its complete new value, the person sees the current value next to yours, may edit yours, and must approve before anything changes. Values are plain text, at most %1$d characters for the title and %2$d for the tagline. Name each setting at most once, and never claim it changed until you are told the outcome.', 'ai' ),
-					Site_Identity_Writer::TITLE_MAX_LENGTH,
-					Site_Identity_Writer::TAGLINE_MAX_LENGTH
+	public function get_ability_args(): array {
+		return array(
+			'label'               => __( 'Propose Site Title or Tagline', 'ai' ),
+			'description'         => sprintf(
+				/* translators: 1: the maximum site title length, 2: the maximum tagline length. */
+				__( 'Records a proposed new site title or tagline, for the person to review. This writes nothing: each item names one setting and its complete new value, the person sees the current value next to yours, may edit yours, and must approve before anything changes. Values are plain text, at most %1$d characters for the title and %2$d for the tagline. Name each setting at most once, and never claim it changed until you are told the outcome.', 'ai' ),
+				Site_Identity_Writer::TITLE_MAX_LENGTH,
+				Site_Identity_Writer::TAGLINE_MAX_LENGTH
+			),
+			'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
+			'input_schema'        => $this->get_input_schema(),
+			'output_schema'       => $this->get_output_schema(),
+			'execute_callback'    => array( $this, 'execute_propose_site_identity' ),
+			'permission_callback' => array( $this, 'check_permission' ),
+			'meta'                => array(
+				'annotations'  => array(
+					'readonly'    => false,
+					'destructive' => false,
+					'idempotent'  => false,
+					'open_world'  => false,
 				),
-				'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
-				'input_schema'        => $this->get_input_schema(),
-				'output_schema'       => $this->get_output_schema(),
-				'execute_callback'    => array( $this, 'execute_propose_site_identity' ),
-				'permission_callback' => array( $this, 'check_permission' ),
-				'meta'                => array(
-					'annotations'  => array(
-						'readonly'    => false,
-						'destructive' => false,
-						'idempotent'  => false,
-						'open_world'  => false,
-					),
-					/*
-					 * Withheld from the REST and MCP surfaces on purpose; MCP
-					 * exposure reads `mcp.public`, not `show_in_rest`. A
-					 * proposal is only meaningful inside a workspace turn, which
-					 * is where the person who has to approve it is.
-					 */
-					'show_in_rest' => false,
-					'mcp'          => array( 'public' => false ),
-				),
-			)
+				/*
+				 * Withheld from the REST and MCP surfaces on purpose; MCP
+				 * exposure reads `mcp.public`, not `show_in_rest`. A
+				 * proposal is only meaningful inside a workspace turn, which
+				 * is where the person who has to approve it is.
+				 */
+				'show_in_rest' => false,
+				'mcp'          => array( 'public' => false ),
+			),
 		);
 	}
 

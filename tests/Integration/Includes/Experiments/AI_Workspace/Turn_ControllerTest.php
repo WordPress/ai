@@ -25,6 +25,7 @@ use WordPress\AI\Experiments\AI_Workspace\Turn_Runner;
 use WordPress\AI\Logging\AI_Request_Log_Manager;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
 use WordPress\AI\Logging\Logging_Integration;
+use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Workspace_Tools;
 use WordPress\AiClient\Messages\DTO\Message;
 use WordPress\AiClient\Messages\DTO\MessagePart;
 use WordPress\AiClient\Messages\Enums\MessagePartChannelEnum;
@@ -1903,7 +1904,7 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
-			( new Propose_Drafts() )->register();
+			Workspace_Tools::register( new Propose_Drafts() );
 		} finally {
 			array_pop( $wp_current_filter );
 		}
@@ -1918,7 +1919,7 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
-			( new Ask_User() )->register();
+			Workspace_Tools::register( new Ask_User() );
 		} finally {
 			array_pop( $wp_current_filter );
 		}

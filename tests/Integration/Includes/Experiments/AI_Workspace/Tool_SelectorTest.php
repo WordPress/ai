@@ -23,6 +23,7 @@ use WordPress\AI\Experiments\AI_Workspace\Propose_Template;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Policy;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Selector;
 use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Test_Update_Kind;
+use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Workspace_Tools;
 
 /**
  * Tool_Selector test case.
@@ -887,11 +888,11 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 			( new List_Terms() )->register();
 			( new Get_Site_Info() )->register();
 			( new Find_Admin_Screens() )->register();
-			( new Propose_Drafts() )->register();
-			( new Propose_Template() )->register();
-			( new Propose_Post_Changes() )->register();
-			( new Propose_Site_Identity() )->register();
-			( new Ask_User() )->register();
+			Workspace_Tools::register( new Propose_Drafts() );
+			Workspace_Tools::register( new Propose_Template() );
+			Workspace_Tools::register( new Propose_Post_Changes() );
+			Workspace_Tools::register( new Propose_Site_Identity() );
+			Workspace_Tools::register( new Ask_User() );
 		} finally {
 			array_pop( $wp_current_filter );
 		}

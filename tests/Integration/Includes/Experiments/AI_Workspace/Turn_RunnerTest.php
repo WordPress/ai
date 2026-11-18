@@ -18,6 +18,7 @@ use WordPress\AI\Experiments\AI_Workspace\Propose_Drafts;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Selector;
 use WordPress\AI\Experiments\AI_Workspace\Turn_Runner;
 use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Test_Update_Kind;
+use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Workspace_Tools;
 use WordPress\AiClient\Messages\DTO\Message;
 use WordPress\AiClient\Messages\DTO\MessagePart;
 use WordPress\AiClient\Messages\Enums\MessageRoleEnum;
@@ -205,8 +206,8 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 		try {
 			( new Search_Content() )->register();
 			( new Read_Content_Bodies() )->register();
-			( new Propose_Drafts() )->register();
-			( new Ask_User() )->register();
+			Workspace_Tools::register( new Propose_Drafts() );
+			Workspace_Tools::register( new Ask_User() );
 		} finally {
 			array_pop( $wp_current_filter );
 		}

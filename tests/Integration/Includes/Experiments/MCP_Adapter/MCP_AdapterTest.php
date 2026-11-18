@@ -16,6 +16,7 @@ use WordPress\AI\Experiments\AI_Workspace\Propose_Template;
 use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Experiments\MCP_Adapter\Exposure_Overrides;
 use WordPress\AI\Experiments\MCP_Adapter\MCP_Adapter;
+use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Workspace_Tools;
 
 require_once __DIR__ . '/Class_Ability_Fixture.php';
 
@@ -290,11 +291,11 @@ class MCP_AdapterTest extends WP_UnitTestCase {
 
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
-			( new Propose_Drafts() )->register();
-			( new Propose_Template() )->register();
-			( new Propose_Post_Changes() )->register();
-			( new Propose_Site_Identity() )->register();
-			( new Ask_User() )->register();
+			Workspace_Tools::register( new Propose_Drafts() );
+			Workspace_Tools::register( new Propose_Template() );
+			Workspace_Tools::register( new Propose_Post_Changes() );
+			Workspace_Tools::register( new Propose_Site_Identity() );
+			Workspace_Tools::register( new Ask_User() );
 		} finally {
 			array_pop( $wp_current_filter );
 		}

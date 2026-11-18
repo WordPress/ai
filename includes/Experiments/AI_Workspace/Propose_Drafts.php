@@ -86,13 +86,12 @@ final class Propose_Drafts {
 	}
 
 	/**
-	 * Hooks the ability into the Abilities API.
+	 * Hooks the ability's category into the Abilities API.
 	 *
 	 * @since x.x.x
 	 */
 	public function init(): void {
 		add_action( 'wp_abilities_api_categories_init', array( $this, 'register_category' ), 11 );
-		add_action( 'wp_abilities_api_init', array( $this, 'register' ), 11 );
 	}
 
 	/**
@@ -115,54 +114,50 @@ final class Propose_Drafts {
 	}
 
 	/**
-	 * Registers the ability.
+	 * Returns the ability's registration args.
 	 *
-	 * Must run on the `wp_abilities_api_init` hook.
+	 * The workspace registers the ability, so it carries the feature's access
+	 * control tag.
 	 *
 	 * @since x.x.x
+	 *
+	 * @return array<string, mixed>|null The registration args, or null when no post type is exposed.
 	 */
-	public function register(): void {
+	public function get_ability_args(): ?array {
 		$post_types = array_keys( $this->get_exposed_post_types() );
 
 		if ( array() === $post_types ) {
-			return;
+			return null;
 		}
 
-		if ( wp_has_ability( self::ABILITY ) ) {
-			wp_unregister_ability( self::ABILITY );
-		}
-
-		wp_register_ability(
-			self::ABILITY,
-			array(
-				'label'               => __( 'Propose Drafts', 'ai' ),
-				'description'         => sprintf(
-					/* translators: %d: the maximum number of items a proposal may contain. */
-					__( 'Records a set of proposed drafts for the person to review. This writes nothing: it stores the exact field values you propose and returns a proposal identifier, and the person must approve the stored values before anything is created. Propose at most %d items at a time, and never claim a draft exists until the person confirms.', 'ai' ),
-					Proposal_Store::MAX_ITEMS
+		return array(
+			'label'               => __( 'Propose Drafts', 'ai' ),
+			'description'         => sprintf(
+				/* translators: %d: the maximum number of items a proposal may contain. */
+				__( 'Records a set of proposed drafts for the person to review. This writes nothing: it stores the exact field values you propose and returns a proposal identifier, and the person must approve the stored values before anything is created. Propose at most %d items at a time, and never claim a draft exists until the person confirms.', 'ai' ),
+				Proposal_Store::MAX_ITEMS
+			),
+			'category'            => self::CATEGORY,
+			'input_schema'        => $this->get_input_schema( $post_types ),
+			'output_schema'       => $this->get_output_schema(),
+			'execute_callback'    => array( $this, 'execute_propose_drafts' ),
+			'permission_callback' => array( $this, 'check_permission' ),
+			'meta'                => array(
+				'annotations'  => array(
+					'readonly'    => false,
+					'destructive' => false,
+					'idempotent'  => false,
+					'open_world'  => false,
 				),
-				'category'            => self::CATEGORY,
-				'input_schema'        => $this->get_input_schema( $post_types ),
-				'output_schema'       => $this->get_output_schema(),
-				'execute_callback'    => array( $this, 'execute_propose_drafts' ),
-				'permission_callback' => array( $this, 'check_permission' ),
-				'meta'                => array(
-					'annotations'  => array(
-						'readonly'    => false,
-						'destructive' => false,
-						'idempotent'  => false,
-						'open_world'  => false,
-					),
-					/*
-					 * Withheld from the REST and MCP surfaces on purpose; MCP
-					 * exposure reads `mcp.public`, not `show_in_rest`. A
-					 * proposal is only meaningful inside a workspace turn, which
-					 * is where the person who has to approve it is.
-					 */
-					'show_in_rest' => false,
-					'mcp'          => array( 'public' => false ),
-				),
-			)
+				/*
+				 * Withheld from the REST and MCP surfaces on purpose; MCP
+				 * exposure reads `mcp.public`, not `show_in_rest`. A
+				 * proposal is only meaningful inside a workspace turn, which
+				 * is where the person who has to approve it is.
+				 */
+				'show_in_rest' => false,
+				'mcp'          => array( 'public' => false ),
+			),
 		);
 	}
 

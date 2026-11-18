@@ -19,6 +19,7 @@ use WordPress\AI\Experiments\AI_Workspace\Site_Identity_Writer;
 use WordPress\AI\Experiments\AI_Workspace\Turn_Context;
 use WordPress\AI\Logging\AI_Request_Log_Manager;
 use WordPress\AI\Logging\Logging_Integration;
+use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Workspace_Tools;
 
 /**
  * Site identity proposal test case.
@@ -97,7 +98,7 @@ class Site_Identity_ProposalTest extends WP_UnitTestCase {
 
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
-			( new Propose_Site_Identity() )->register();
+			Workspace_Tools::register( new Propose_Site_Identity() );
 		} finally {
 			array_pop( $wp_current_filter );
 		}
