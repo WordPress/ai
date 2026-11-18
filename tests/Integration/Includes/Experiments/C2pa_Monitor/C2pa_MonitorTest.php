@@ -1030,11 +1030,37 @@ class C2pa_MonitorTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Media attached to a non-public post never pre-fills the external verifier.
+	 * Non-public media cases for the verify link.
+	 *
+	 * @return array<string, array{0: array<string, mixed>|null, 1: array<string, mixed>}>
 	 */
-	public function test_verify_link_rejects_source_for_non_public_parent(): void {
-		$parent_id     = (int) $this->factory->post->create( array( 'post_status' => 'draft' ) );
-		$attachment_id = $this->create_image_attachment( array( 'post_parent' => $parent_id ) );
+	public function data_non_public_media(): array {
+		return array(
+			'draft parent'              => array( array( 'post_status' => 'draft' ), array() ),
+			'password-protected parent' => array(
+				array(
+					'post_status'   => 'publish',
+					'post_password' => 'secret',
+				),
+				array(),
+			),
+			'unattached private media'  => array( null, array( 'post_status' => 'private' ) ),
+		);
+	}
+
+	/**
+	 * Non-public media never pre-fills the external verifier.
+	 *
+	 * @dataProvider data_non_public_media
+	 *
+	 * @param array<string, mixed>|null $parent_args     Parent post args, or null for unattached media.
+	 * @param array<string, mixed>      $attachment_args Attachment overrides.
+	 */
+	public function test_verify_link_rejects_source_for_non_public_media( ?array $parent_args, array $attachment_args ): void {
+		if ( null !== $parent_args ) {
+			$attachment_args['post_parent'] = (int) $this->factory->post->create( $parent_args );
+		}
+		$attachment_id = $this->create_image_attachment( $attachment_args );
 		$record        = array(
 			'@context'       => array( 'https://schema.org/' ),
 			'schema_version' => 1,

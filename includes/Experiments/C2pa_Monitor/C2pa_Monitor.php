@@ -17,6 +17,8 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
 
+use function WordPress\AI\is_post_publicly_readable;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -39,6 +41,15 @@ class C2pa_Monitor extends Abstract_Feature {
 	 * @var string
 	 */
 	public const POSTMETA_KEY = '_wpai_monitor_record';
+
+	/**
+	 * Content Authenticity Initiative Verify tool URL.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const VERIFY_TOOL_URL = 'https://verify.contentauthenticity.org/';
 
 	/**
 	 * Postmeta key used for sortable column ordering.
@@ -282,24 +293,24 @@ class C2pa_Monitor extends Abstract_Feature {
 	/**
 	 * Returns the CAI Verify tool URL for an attachment.
 	 *
-	 * The source parameter is opt-in because local, staging, and authenticated
-	 * attachment URLs are not reachable by the public CAI Verify service.
-	 *
 	 * @since x.x.x
 	 *
 	 * @param int $post_id The attachment post ID.
 	 * @return string The CAI Verify tool URL.
 	 */
 	private function get_verify_tool_url( int $post_id ): string {
-		$verify_tool_url = 'https://verify.contentauthenticity.org/';
-		$parent_id       = wp_get_post_parent_id( $post_id );
+		$verify_tool_url = self::VERIFY_TOOL_URL;
+		$attachment      = get_post( $post_id );
+		if ( ! $attachment ) {
+			return $verify_tool_url;
+		}
 
-		// Never pre-fill media attached to a non-public post. Unattached media is
-		// allowed because the site operator still has to opt in via the filter.
+		// Never pre-fill media that isn't public: a private attachment, or one
+		// attached to a draft, private, password-protected or non-viewable post.
+		$parent = $attachment->post_parent ? get_post( $attachment->post_parent ) : null;
 		if (
-			false !== $parent_id &&
-			0 !== $parent_id &&
-			'publish' !== get_post_status( $parent_id )
+			! is_post_publicly_viewable( $attachment )
+			|| ( $parent && ! is_post_publicly_readable( $parent ) )
 		) {
 			return $verify_tool_url;
 		}
@@ -309,17 +320,7 @@ class C2pa_Monitor extends Abstract_Feature {
 		 *
 		 * The URL is fetched by the Content Authenticity Initiative's servers. Only
 		 * return a URL that loads without authentication and serves the original
-		 * uploaded bytes (not a scaled, optimized, or CDN-transformed copy), or the
-		 * tool will report that no credentials were found. Return an empty string
-		 * to keep the bare Verify link. The plugin checks only that the URL uses HTTP
-		 * or HTTPS, includes a host, and has no user information; it does not resolve
-		 * the host or reject private network addresses. The filter operator is
-		 * responsible for returning only URLs they intend to share publicly.
-		 *
-		 * Attachments whose parent post is password-protected remain eligible because
-		 * WordPress keeps the parent status as `publish`, and post passwords do not
-		 * protect files in the uploads directory. Filter implementations should account
-		 * for that when deciding whether to return a URL.
+		 * uploaded bytes, or the tool will report that no credentials were found.
 		 *
 		 * @since x.x.x
 		 *
@@ -371,7 +372,7 @@ class C2pa_Monitor extends Abstract_Feature {
 		}
 
 		if ( $present ) {
-			if ( false !== strpos( $this->get_verify_tool_url( $post_id ), '?source=' ) ) {
+			if ( self::VERIFY_TOOL_URL !== $this->get_verify_tool_url( $post_id ) ) {
 				return esc_html__(
 					'C2PA Content Credentials were detected in this file. The original image URL is pre-filled in the Content Authenticity Initiative verify tool.',
 					'ai'
