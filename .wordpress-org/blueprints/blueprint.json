@@ -24,6 +24,11 @@
 			"code": "<?php require '/wordpress/wp-load.php'; foreach ( array( 'post' => 'hello-world', 'page' => 'sample-page' ) as $type => $slug ) { $default = get_page_by_path( $slug, OBJECT, $type ); if ( $default ) { wp_delete_post( $default->ID, true ); } }"
 		},
 		{
+			"step": "writeFile",
+			"path": "/wordpress/wp-content/mu-plugins/sample-content-thumbnails-only.php",
+			"data": "<?php /* Sample content import: only make thumbnails, which halves the import time. The last step removes this file. */ add_filter( 'intermediate_image_sizes_advanced', function ( $sizes ) { return array_intersect_key( $sizes, array( 'thumbnail' => true ) ); } );"
+		},
+		{
 			"step": "importWxr",
 			"file": {
 				"resource": "url",
@@ -32,7 +37,7 @@
 		},
 		{
 			"step": "runPHP",
-			"code": "<?php require '/wordpress/wp-load.php'; $book = get_page_by_path( 'milestones' ); if ( $book ) { update_option( 'show_on_front', 'page' ); update_option( 'page_on_front', $book->ID ); } update_option( 'blogname', 'Milestones' ); update_option( 'blogdescription', 'The Story of WordPress' ); global $wp_rewrite; $wp_rewrite->set_permalink_structure( '/%postname%/' ); flush_rewrite_rules();"
+			"code": "<?php require '/wordpress/wp-load.php'; wp_delete_file( WPMU_PLUGIN_DIR . '/sample-content-thumbnails-only.php' ); $book = get_page_by_path( 'milestones' ); if ( $book ) { update_option( 'show_on_front', 'page' ); update_option( 'page_on_front', $book->ID ); } update_option( 'blogname', 'Milestones' ); update_option( 'blogdescription', 'The Story of WordPress' ); global $wp_rewrite; $wp_rewrite->set_permalink_structure( '/%postname%/' ); flush_rewrite_rules();"
 		}
 	]
 }

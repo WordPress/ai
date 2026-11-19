@@ -18,7 +18,7 @@ Excerpts, tags and some alt text are left empty on purpose, so features such as 
 
 ## How the previews load it
 
-- `.wordpress-org/blueprints/blueprint.json` (Live Preview) installs the plugin, deletes the default "Hello world!" post and "Sample Page", imports `milestones/milestones.xml` from `trunk` with the `importWxr` step, then sets the front page, site title and permalinks.
+- `.wordpress-org/blueprints/blueprint.json` (Live Preview) installs the plugin, deletes the default "Hello world!" post and "Sample Page", imports `milestones/milestones.xml` from `trunk` with the `importWxr` step, then sets the front page, site title and permalinks. During the import a temporary must-use plugin limits the generated image sizes to thumbnails, which halves the import time in the browser (about 30 s to 15 s); the last step removes it, so images uploaded later get every size.
 - `.github/workflows/pr-playground-preview.yml` reuses those steps for the PR's Playground button. It loads the WXR file from the PR's own commit and maps the image URLs there with `urlMapping`, so a PR that changes this content previews its own version.
 
 The WXR file also works with `wp import` or Tools > Import on any test site.
