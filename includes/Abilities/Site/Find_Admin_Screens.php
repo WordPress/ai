@@ -142,10 +142,6 @@ final class Find_Admin_Screens {
 	 * @since x.x.x
 	 */
 	public function register(): void {
-		if ( wp_has_ability( self::ABILITY ) ) {
-			wp_unregister_ability( self::ABILITY );
-		}
-
 		wp_register_ability(
 			self::ABILITY,
 			array(

@@ -98,7 +98,7 @@ final class Propose_Site_Identity {
 	public function check_permission( $input = array() ): bool {
 		unset( $input );
 
-		return is_user_logged_in() && current_user_can( 'manage_options' );
+		return current_user_can( 'manage_options' );
 	}
 
 	/**

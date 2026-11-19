@@ -113,10 +113,6 @@ final class List_Terms {
 			return;
 		}
 
-		if ( wp_has_ability( self::ABILITY ) ) {
-			wp_unregister_ability( self::ABILITY );
-		}
-
 		wp_register_ability(
 			self::ABILITY,
 			array(

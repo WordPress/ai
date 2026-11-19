@@ -1276,4 +1276,28 @@ class Post_Field_ProposalTest extends WP_UnitTestCase {
 		$this->assertSame( $post_id, $writes[0]['context']['proposal']['post_id'] );
 		$this->assertStringNotContainsString( 'Private', (string) wp_json_encode( $events ), 'No event carries the old or new content.' );
 	}
+
+	/**
+	 * A logged-out visitor or a user without edit_posts is refused inside a turn.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_proposing_needs_edit_posts(): void {
+		$items = array(
+			array(
+				'post_id' => $this->make_post(),
+				'field'   => 'title',
+				'value'   => 'Refused',
+			),
+		);
+
+		foreach ( array( 0, self::factory()->user->create( array( 'role' => 'subscriber' ) ) ) as $user_id ) {
+			wp_set_current_user( $user_id );
+
+			$result = $this->propose( $items );
+
+			$this->assertWPError( $result );
+			$this->assertSame( 'ability_invalid_permissions', $result->get_error_code() );
+		}
+	}
 }

@@ -134,6 +134,12 @@ class Read_Content_BodiesTest extends WP_UnitTestCase {
 	 */
 	private function register_ability(): void {
 		global $wp_current_filter;
+
+		// Re-registering after a fixture change needs the old registration gone.
+		if ( wp_has_ability( self::ABILITY ) ) {
+			wp_unregister_ability( self::ABILITY );
+		}
+
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
 			( new Read_Content_Bodies() )->register();

@@ -203,15 +203,8 @@ class Command_Palette_AI_Search extends Abstract_Ability {
 	 * @return list<string>|\WP_Error Command IDs such as `c4`, best first, or WP_Error.
 	 */
 	protected function choose_commands( string $prompt, int $count ) {
-		$prompt_builder = $this->get_prompt_builder( $prompt )->as_json_response( $this->commands_schema( $count ) );
-
-		// Not every provider supports structured output; the system instruction also asks for JSON.
-		if ( ! $prompt_builder->is_supported_for_text_generation() ) {
-			$prompt_builder = $this->get_prompt_builder( $prompt );
-		}
-
 		$prompt_builder = $this->ensure_text_generation_supported(
-			$prompt_builder,
+			$this->get_prompt_builder( $prompt, $count ),
 			esc_html__( 'Command palette AI search failed. Please ensure you have a connected provider that supports text generation.', 'ai' )
 		);
 
@@ -255,11 +248,13 @@ class Command_Palette_AI_Search extends Abstract_Ability {
 	 * @since x.x.x
 	 *
 	 * @param string $prompt The prompt.
+	 * @param int    $count  Number of commands in the prompt.
 	 * @return \WP_AI_Client_Prompt_Builder The prompt builder.
 	 */
-	private function get_prompt_builder( string $prompt ): \WP_AI_Client_Prompt_Builder {
+	private function get_prompt_builder( string $prompt, int $count ): \WP_AI_Client_Prompt_Builder {
 		$prompt_builder = wp_ai_client_prompt( $prompt )
-			->using_system_instruction( $this->get_system_instruction( null, array( 'max_results' => self::MAX_RESULTS ) ) );
+			->using_system_instruction( $this->get_system_instruction( null, array( 'max_results' => self::MAX_RESULTS ) ) )
+			->as_json_response( $this->commands_schema( $count ) );
 
 		return $this->filter_prompt_builder( $prompt_builder, AI_Workspace::class, array(), $prompt );
 	}

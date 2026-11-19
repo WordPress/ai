@@ -113,10 +113,6 @@ final class Search_Content {
 			return;
 		}
 
-		if ( wp_has_ability( self::ABILITY ) ) {
-			wp_unregister_ability( self::ABILITY );
-		}
-
 		$statuses = array_values( get_post_stati( array( 'internal' => false ) ) );
 
 		wp_register_ability(

@@ -130,9 +130,9 @@ class Command_Palette_AI_SearchTest extends WP_UnitTestCase {
 	 * Replaces the prompt builder with a mock.
 	 *
 	 * @param string|\WP_Error $response  What generate_text() returns.
-	 * @param list<bool>       $supported What each is_supported_for_text_generation() call returns.
+	 * @param bool             $supported What is_supported_for_text_generation() returns. It must be called once.
 	 */
-	private function mock_prompt_builder( $response, array $supported = array( true, true ) ): void {
+	private function mock_prompt_builder( $response, bool $supported = true ): void {
 		$mock_builder = $this->getMockBuilder( \WP_AI_Client_Prompt_Builder::class )
 			->disableOriginalConstructor()
 			->addMethods( array( 'as_json_response', 'is_supported_for_text_generation', 'generate_text' ) )
@@ -141,8 +141,9 @@ class Command_Palette_AI_SearchTest extends WP_UnitTestCase {
 		$mock_builder->method( 'as_json_response' )
 			->willReturnSelf();
 
-		$mock_builder->method( 'is_supported_for_text_generation' )
-			->willReturnOnConsecutiveCalls( ...$supported );
+		$mock_builder->expects( $this->once() )
+			->method( 'is_supported_for_text_generation' )
+			->willReturn( $supported );
 
 		$mock_builder->method( 'generate_text' )
 			->willReturn( $response );
@@ -374,8 +375,7 @@ class Command_Palette_AI_SearchTest extends WP_UnitTestCase {
 	 * Test that choose_commands() returns an error without a provider that supports text generation.
 	 */
 	public function test_choose_commands_returns_error_without_provider() {
-		// Neither the structured-output builder nor the plain fallback supports text generation.
-		$this->mock_prompt_builder( '{"commands":["c1"]}', array( false, false ) );
+		$this->mock_prompt_builder( '{"commands":["c1"]}', false );
 
 		$result = $this->choose_commands();
 
@@ -393,10 +393,10 @@ class Command_Palette_AI_SearchTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that choose_commands() falls back to a plain prompt when structured output is not supported.
+	 * Test that choose_commands() still finds the JSON when the model wraps it in other text.
 	 */
-	public function test_choose_commands_falls_back_without_structured_output() {
-		$this->mock_prompt_builder( "Sure!\n```json\n{\"commands\":[\"c2\"]}\n```", array( false, true ) );
+	public function test_choose_commands_reads_json_wrapped_in_text() {
+		$this->mock_prompt_builder( "Sure!\n```json\n{\"commands\":[\"c2\"]}\n```" );
 
 		$this->assertSame( array( 'c2' ), $this->choose_commands() );
 	}

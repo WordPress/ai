@@ -22,7 +22,8 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Reports whether any configured connector exposes a function-calling model.
  *
- * Reads model metadata instead of making a request, so it is cheap enough to run on every render.
+ * Reads each authenticated connector's model list. The SDK caches that list with wp_cache for a day,
+ * so without a persistent object cache the first call in a request can hit each connector's models endpoint.
  *
  * @since x.x.x
  */
@@ -39,40 +40,55 @@ final class Function_Calling_Support {
 		$connectors  = array();
 		$has_support = false;
 
-		if ( class_exists( AiClient::class ) ) {
-			$registry   = AiClient::defaultRegistry();
-			$connectors = get_ai_connectors();
+		if ( ! class_exists( AiClient::class ) ) {
+			return self::filter( $has_support, $connectors );
+		}
 
-			foreach ( array_keys( $connectors ) as $connector_id ) {
-				if ( ! has_connector_authentication( $connector_id ) ) {
-					continue;
-				}
+		$registry   = AiClient::defaultRegistry();
+		$connectors = get_ai_connectors();
 
-				try {
-					$provider_class = $registry->getProviderClassName( $connector_id );
+		foreach ( array_keys( $connectors ) as $connector_id ) {
+			if ( ! has_connector_authentication( $connector_id ) ) {
+				continue;
+			}
 
-					/** @var \WordPress\AiClient\Providers\Contracts\ProviderInterface $provider_class */
-					$models = $provider_class::modelMetadataDirectory()->listModelMetadata();
+			try {
+				$provider_class = $registry->getProviderClassName( $connector_id );
 
-					foreach ( $models as $model ) {
-						foreach ( $model->getSupportedOptions() as $option ) {
-							if ( $option->getName()->isFunctionDeclarations() ) {
-								$has_support = true;
-								break 3;
-							}
+				/** @var \WordPress\AiClient\Providers\Contracts\ProviderInterface $provider_class */
+				$models = $provider_class::modelMetadataDirectory()->listModelMetadata();
+
+				foreach ( $models as $model ) {
+					foreach ( $model->getSupportedOptions() as $option ) {
+						if ( $option->getName()->isFunctionDeclarations() ) {
+							$has_support = true;
+							break 3;
 						}
 					}
-				} catch ( Throwable $e ) {
-					// An unreachable provider counts as no support, but an Error is a bug here and must surface.
-					if ( $e instanceof Error ) {
-						throw $e;
-					}
-
-					continue;
 				}
+			} catch ( Throwable $e ) {
+				// An unreachable provider counts as no support, but an Error is a bug here and must surface.
+				if ( $e instanceof Error ) {
+					throw $e;
+				}
+
+				continue;
 			}
 		}
 
+		return self::filter( $has_support, $connectors );
+	}
+
+	/**
+	 * Applies the support filter.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param bool                 $has_support Whether function calling is supported.
+	 * @param array<string, mixed> $connectors  The registered connectors.
+	 * @return bool Filtered support.
+	 */
+	private static function filter( bool $has_support, array $connectors ): bool {
 		/**
 		 * Filters whether a function-calling-capable model is available.
 		 *

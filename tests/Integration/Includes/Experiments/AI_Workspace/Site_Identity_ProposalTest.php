@@ -633,4 +633,27 @@ class Site_Identity_ProposalTest extends WP_UnitTestCase {
 		$this->assertFalse( $meta['mcp']['public'] );
 		$this->assertFalse( $meta['show_in_rest'] );
 	}
+
+	/**
+	 * A logged-out visitor or a user without manage_options is refused inside a turn.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_proposing_needs_manage_options(): void {
+		$items = array(
+			array(
+				'option' => 'blogdescription',
+				'value'  => 'Refused',
+			),
+		);
+
+		foreach ( array( 0, self::$user_ids['editor'] ) as $user_id ) {
+			wp_set_current_user( $user_id );
+
+			$result = $this->propose( $items );
+
+			$this->assertWPError( $result );
+			$this->assertSame( 'ability_invalid_permissions', $result->get_error_code() );
+		}
+	}
 }

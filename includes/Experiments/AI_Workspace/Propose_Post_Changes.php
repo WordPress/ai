@@ -134,7 +134,7 @@ final class Propose_Post_Changes {
 	public function check_permission( $input = array() ): bool {
 		unset( $input );
 
-		return is_user_logged_in() && current_user_can( 'edit_posts' );
+		return current_user_can( 'edit_posts' );
 	}
 
 	/**

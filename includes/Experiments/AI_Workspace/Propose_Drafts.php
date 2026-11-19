@@ -143,10 +143,6 @@ final class Propose_Drafts {
 	public function check_permission( $input = array() ): bool {
 		unset( $input );
 
-		if ( ! is_user_logged_in() ) {
-			return false;
-		}
-
 		foreach ( $this->get_exposed_post_types() as $post_type_object ) {
 			// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 			if ( current_user_can( $this->post_type_cap( $post_type_object, 'create_posts' ) ) ) {

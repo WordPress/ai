@@ -238,14 +238,6 @@ class Prompt_Model_Client implements Model_Client_Interface {
 	 * @return \WordPress\AiClient\Messages\DTO\Message|non-empty-list<\WordPress\AiClient\Messages\DTO\Message>|\WP_Error The assistant message, the assistant messages when the reply came as several, or an error.
 	 */
 	protected function generate_buffered( array $messages, array $ability_names, string $system_instruction ) {
-		if ( ! function_exists( 'wp_ai_client_prompt' ) ) {
-			return new WP_Error(
-				'workspace_ai_client_unavailable',
-				__( 'The WordPress AI client is not available in this environment.', 'ai' ),
-				array( 'status' => 500 )
-			);
-		}
-
 		$raise = array( self::class, 'request_timeout' );
 
 		try {

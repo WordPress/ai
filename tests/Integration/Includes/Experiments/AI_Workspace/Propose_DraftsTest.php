@@ -367,4 +367,21 @@ class Propose_DraftsTest extends WP_UnitTestCase {
 		$this->assertFalse( Turn_Context::is_active() );
 		$this->assertSame( '', Turn_Context::get_conversation_id() );
 	}
+
+	/**
+	 * A logged-out visitor is refused by the permission callback.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_logged_out_visitor_cannot_propose(): void {
+		wp_set_current_user( 0 );
+
+		$ability = wp_get_ability( Propose_Drafts::ABILITY );
+		$this->assertInstanceOf( WP_Ability::class, $ability );
+
+		$result = $ability->execute( array( 'items' => $this->items( 1 ) ) );
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code() );
+	}
 }

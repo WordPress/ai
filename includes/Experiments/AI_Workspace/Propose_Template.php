@@ -131,7 +131,7 @@ final class Propose_Template {
 		unset( $input );
 
 		// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- The capability is the literal edit_theme_options, held in a constant.
-		return is_user_logged_in() && current_user_can( Template_Writer::CAPABILITY );
+		return current_user_can( Template_Writer::CAPABILITY );
 	}
 
 	/**

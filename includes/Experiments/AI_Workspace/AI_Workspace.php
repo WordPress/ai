@@ -177,10 +177,6 @@ class AI_Workspace extends Abstract_Feature {
 				continue;
 			}
 
-			if ( wp_has_ability( $tool::ABILITY ) ) {
-				wp_unregister_ability( $tool::ABILITY );
-			}
-
 			$this->register_feature_ability( $tool::ABILITY, $args );
 		}
 	}
