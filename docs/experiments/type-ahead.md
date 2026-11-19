@@ -8,7 +8,7 @@ The Type Ahead experiment adds inline ghost-text completions to the block editor
 
 - **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
 - **Runs without a user action:** Yes, once enabled
-- **When it runs:** Automatically, when you pause typing at the end of a paragraph. You can also press Cmd/Ctrl + Space to ask for a suggestion anywhere in a paragraph
+- **When it runs:** Automatically, when you pause typing at the end of a paragraph. You can also press Ctrl + Option + G on macOS, or Shift + Alt + G on Windows and Linux, to ask for a suggestion anywhere in a paragraph
 - **Sent to your AI provider:** The current paragraph and the blocks around it
 - **Requests and data:** One request per typing pause
 
@@ -26,7 +26,7 @@ When enabled, type-ahead suggestions appear while writing in supported blocks:
    - `Cmd/Ctrl + Right Arrow`: accept the next word.
    - `Cmd/Ctrl + Shift + Right Arrow`: accept the next sentence.
    - `Esc`: dismiss current suggestion.
-   - `Cmd/Ctrl + Space`: manual trigger.
+   - `Ctrl + Option + G` (macOS) or `Shift + Alt + G` (Windows and Linux): manual trigger. It is also listed in the editor's Keyboard shortcuts modal.
 
 ### For Developers
 
@@ -87,7 +87,7 @@ Editor bootstrap:
   - caret is at block end.
 - Empty block content is allowed.
 - In `word` mode, auto-trigger additionally requires punctuation/context from `shouldTriggerFromContext()`.
-- Manual trigger (`Cmd/Ctrl + Space`) bypasses the `word` mode context gate.
+- Manual trigger (`Ctrl + Option + G` / `Shift + Alt + G`) bypasses the `word` mode context gate.
 
 ### Input Schema (Ability)
 
@@ -134,6 +134,6 @@ The ability's `permission_callback` has two paths:
    - non-empty paragraphs;
    - empty paragraph blocks.
 3. In an empty paragraph with active ghost text, verify placeholder text does not overlap.
-4. Verify keyboard controls (`Tab`, `Cmd/Ctrl + Right`, `Cmd/Ctrl + Shift + Right`, `Esc`, `Cmd/Ctrl + Space`).
+4. Verify keyboard controls (`Tab`, `Cmd/Ctrl + Right`, `Cmd/Ctrl + Shift + Right`, `Esc`, `Ctrl + Option + G` / `Shift + Alt + G`), and that the manual trigger is listed under **Block shortcuts** in the Keyboard shortcuts modal.
 5. Enable headings in settings and verify `core/heading` support.
 6. In `word` mode, verify auto-trigger only happens in triggering contexts, while manual trigger still works.

@@ -1,6 +1,6 @@
 /**
  * Module augmentation to declare BlockSettingsMenuControls, which is exported
- * from the @wordpress/block-editor JS bundle but missing from its type
+ * from the `@wordpress/block-editor` JS bundle but missing from its type
  * declarations.
  */
 

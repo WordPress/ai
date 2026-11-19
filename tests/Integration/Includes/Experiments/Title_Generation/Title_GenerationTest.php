@@ -79,6 +79,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 	public function test_register_adds_hooks() {
 		$experiment = new Title_Generation();
 		$experiment->register();
+		$experiment->register_ui();
 		$this->assertIsInt( has_action( 'wp_abilities_api_init', array( $experiment, 'register_abilities' ) ), 'Should register abilities hook' );
 		$this->assertIsInt( has_action( 'admin_enqueue_scripts', array( $experiment, 'enqueue_assets' ) ), 'Should register assets hook' );
 	}

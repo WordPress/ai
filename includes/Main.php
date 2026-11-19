@@ -12,10 +12,12 @@ declare( strict_types=1 );
 namespace WordPress\AI;
 
 use WordPress\AI\Abilities\Meta_Description\SEO_Integration;
+use WordPress\AI\Access_Control\Feature_Access;
 use WordPress\AI\Admin\Activation;
 use WordPress\AI\Admin\Dashboard\Dashboard_Widgets;
 use WordPress\AI\Admin\Deactivation;
 use WordPress\AI\Admin\Site_Health;
+use WordPress\AI\Admin\Tools_Page;
 use WordPress\AI\Admin\Upgrades;
 use WordPress\AI\CLI\Embedding_Sync_Command;
 use WordPress\AI\CLI\Embeddings_Command;
@@ -92,14 +94,14 @@ final class Main {
 		// Handle any pending upgrades.
 		( new Upgrades() )->init();
 
-		// Handle deprecated code.
-		( new Deprecated() )->init();
-
 		// Keep the detected SEO plugin cache fresh regardless of experiment state.
 		SEO_Integration::register_cache_invalidation();
 
 		// List featured Connector plugins on the Connectors screen.
 		( new Featured_Connectors() )->init();
+
+		// Restrict features, and the abilities they register, to chosen roles and users.
+		( new Feature_Access() )->init();
 
 		// Add plugin action links to plugins screen.
 		add_filter( 'plugin_action_links_' . plugin_basename( WPAI_PLUGIN_FILE ), array( $this, 'plugin_action_links' ) );
@@ -136,11 +138,12 @@ final class Main {
 			// Initialize settings registration.
 			( new Settings_Registration( $registry ) )->init();
 
-			// Register admin settings page menu item and dashboard widgets.
+			// Register the AI settings page, dashboard widgets, and Tools card.
 			if ( is_admin() ) {
 				Settings_Page::init( $registry );
 
 				( new Dashboard_Widgets( $registry ) )->init();
+				Tools_Page::init();
 			}
 
 			// Register Site Health integration. The `debug_information` and

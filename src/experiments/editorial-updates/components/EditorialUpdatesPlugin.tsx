@@ -32,7 +32,7 @@ export default function EditorialUpdatesPlugin() {
 	const buttonLabel = isRefining
 		? sprintf(
 				/* translators: 1: Current block number, 2: Total number of blocks. */
-				__( 'Refining block (%1$s of %2$s)…', 'ai' ),
+				__( 'Refining block (%1$d of %2$d)…', 'ai' ),
 				progress,
 				total
 		  )
@@ -51,6 +51,7 @@ export default function EditorialUpdatesPlugin() {
 				justify="flex-start"
 				className="editor-post-editorial-updates"
 				gap={ 2 }
+				style={ { width: '100%' } }
 			>
 				<FlexItem>
 					<Button

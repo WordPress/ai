@@ -16,6 +16,7 @@ use WordPress\AI\Experiments\Block_Container_Label_Generation\Block_Container_La
 use function WordPress\AI\count_characters_excluding_spaces;
 use function WordPress\AI\get_min_content_length;
 use function WordPress\AI\normalize_content;
+use function WordPress\AI\sanitize_plain_text;
 
 /**
  * Block Container Label Generation WordPress Ability.
@@ -225,7 +226,7 @@ class Block_Container_Label_Generation extends Abstract_Ability {
 			);
 		}
 
-		return sanitize_text_field( trim( $result, " \t\n\r\0\x0B\"'" ) );
+		return sanitize_plain_text( trim( $result, " \t\n\r\0\x0B\"'" ) );
 	}
 
 	/**

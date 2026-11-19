@@ -15,7 +15,6 @@ use WordPress\AI\Embeddings\Sync\Embedding_Sync;
 use WordPress\AI\Experiments\Summarization\Summarization;
 use WordPress\AI\Logging\AI_Request_Log_Manager;
 use WordPress\AI\Logging\Logging_Integration;
-use WordPress\AI\Services\AI_Service;
 use WordPress\AI\Services\Guidelines;
 use WordPress\AiClient\AiClient;
 use WordPress\AiClient\Builders\EmbeddingBuilder;
@@ -59,6 +58,9 @@ function normalize_content( string $content ): string {
 
 	// Remove linebreaks but replace with spaces to avoid sentences running together.
 	$content = str_replace( array( "\r", "\n" ), ' ', (string) $content );
+
+	// Keep the text of adjacent elements apart, like table cells or a quote and its citation, also across comments.
+	$content = preg_replace( '#(</[a-z][^>]*>)(?=(?:<!--.*?-->)*+<[a-z])#is', '$1 ', (string) $content ) ?? $content;
 
 	// Strip all HTML tags before decoding.
 	$content = wp_strip_all_tags( (string) $content );
@@ -128,6 +130,62 @@ function count_characters_excluding_spaces( string $text ): int {
 	$count      = preg_match_all( sprintf( '/[^%s]/u', $whitespace ), $text );
 
 	return is_int( $count ) ? $count : 0;
+}
+
+/**
+ * Sanitizes text like sanitize_text_field(), keeping "%20" and similar, for text that is never URL-decoded.
+ *
+ * @since x.x.x
+ *
+ * @param mixed $text          The text to sanitize.
+ * @param bool  $keep_newlines Optional. Whether to keep newlines, like sanitize_textarea_field(). Default false.
+ * @return string The sanitized text.
+ */
+function sanitize_plain_text( $text, bool $keep_newlines = false ): string {
+	// Same steps as _sanitize_text_fields(), without removing percent-encoded characters.
+	$filtered = is_object( $text ) || is_array( $text ) ? '' : wp_check_invalid_utf8( (string) $text );
+
+	if ( str_contains( $filtered, '<' ) ) {
+		$filtered = wp_pre_kses_less_than( $filtered );
+		$filtered = wp_strip_all_tags( $filtered, false );
+		$filtered = str_replace( "<\n", "&lt;\n", $filtered );
+	}
+
+	if ( ! $keep_newlines ) {
+		$filtered = (string) preg_replace( '/[\r\n\t ]+/', ' ', $filtered );
+	}
+
+	$filtered = trim( $filtered );
+
+	// Run the same filters as sanitize_text_field() and sanitize_textarea_field().
+	// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+	return (string) ( $keep_newlines ? apply_filters( 'sanitize_textarea_field', $filtered, $text ) : apply_filters( 'sanitize_text_field', $filtered, $text ) );
+}
+
+/**
+ * Sanitizes HTML like wp_kses_post(), keeping the `rgb()` and `rgba()` colors that core's CSS filter removes.
+ *
+ * @since x.x.x
+ *
+ * @param string $content The HTML to sanitize.
+ * @return string The sanitized HTML.
+ */
+function kses_post_keep_rgb_colors( string $content ): string {
+	$allow_rgb_colors = static function ( $allow_css, $css_test_string ) {
+		if ( $allow_css || ! is_string( $css_test_string ) ) {
+			return $allow_css;
+		}
+
+		$css_test_string = (string) preg_replace( '/(?<![\w-])rgba?\([\d.%\s,\/]*\)/', '', $css_test_string );
+
+		return 0 === preg_match( '%[\\\(&=}]|/\*%', $css_test_string );
+	};
+
+	add_filter( 'safecss_filter_attr_allow_css', $allow_rgb_colors, PHP_INT_MIN, 2 );
+	$content = wp_kses_post( $content );
+	remove_filter( 'safecss_filter_attr_allow_css', $allow_rgb_colors, PHP_INT_MIN );
+
+	return $content;
 }
 
 /**
@@ -323,33 +381,6 @@ function get_preferred_models_for_text_generation(): array {
 }
 
 /**
- * Gets the AI Service instance.
- *
- * Call `wp_ai_client_prompt()` directly instead. The prompt builder it returns
- * exposes the full SDK API, so the only behavior this helper added was applying
- * `get_preferred_models_for_text_generation()` by default:
- *
- * ```php
- * $builder = wp_ai_client_prompt( 'Summarize this article...' );
- *
- * $models = WordPress\AI\get_preferred_models_for_text_generation();
- * if ( ! empty( $models ) ) {
- *     $builder = $builder->using_model_preference( ...$models );
- * }
- * ```
- *
- * @since 0.2.1
- * @deprecated 1.3.0 Use wp_ai_client_prompt() instead.
- *
- * @return \WordPress\AI\Services\AI_Service The AI Service instance.
- */
-function get_ai_service(): AI_Service {
-	_deprecated_function( __FUNCTION__, '1.3.0', 'wp_ai_client_prompt()' );
-
-	return AI_Service::get_instance();
-}
-
-/**
  * Returns the preferred image models.
  *
  * @since 0.2.0
@@ -376,11 +407,11 @@ function get_preferred_image_models(): array {
 		),
 		array(
 			'openai',
-			'gpt-image-2.5-flare',
+			'gpt-image-2.6-flare',
 		),
 		array(
 			'openai',
-			'gpt-image-2',
+			'gpt-image-2.5-flare',
 		),
 	);
 

@@ -13,6 +13,7 @@ use WordPress\AI\Background\Lock;
 use WordPress\AI\Experiments\Text_To_Speech\Audio_Combiner;
 use WordPress\AI\Experiments\Text_To_Speech\Job_Manager;
 use WordPress\AI\Experiments\Text_To_Speech\Speech_Generator;
+use WordPress\AI\Experiments\Text_To_Speech\Text_To_Speech;
 
 /**
  * Job_Manager test case.
@@ -109,6 +110,40 @@ class Job_ManagerTest extends WP_UnitTestCase {
 		$this->assertSame( 'pending', $result['status'] );
 		$this->assertNotFalse( wp_next_scheduled( Job_Manager::CRON_HOOK, array( $post_id ) ) );
 		$this->assertIsArray( get_post_meta( $post_id, Job_Manager::META_JOB, true ) );
+	}
+
+	/**
+	 * Test that the stored temp file path survives the unslashing that the
+	 * metadata API performs, as a Windows path would not without normalizing.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_start_job_stores_a_temp_path_that_survives_meta_unslashing(): void {
+		$post_id = $this->create_post();
+
+		add_filter( 'upload_dir', array( $this, 'filter_windows_upload_dir' ) );
+		$this->job_manager->start_job( $post_id, get_current_user_id() );
+		remove_filter( 'upload_dir', array( $this, 'filter_windows_upload_dir' ) );
+
+		$job = get_post_meta( $post_id, Job_Manager::META_JOB, true );
+
+		$this->assertIsArray( $job );
+		$this->assertStringStartsWith( 'C:/windows-basedir/', $job['temp_file'] );
+		$this->assertStringNotContainsString( '\\', $job['temp_file'] );
+	}
+
+	/**
+	 * Returns an upload directory whose base path uses Windows separators.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $upload_dir The upload directory data.
+	 * @return array<string, mixed> The filtered upload directory data.
+	 */
+	public function filter_windows_upload_dir( array $upload_dir ): array {
+		$upload_dir['basedir'] = 'C:\\windows-basedir';
+
+		return $upload_dir;
 	}
 
 	/**
@@ -330,6 +365,104 @@ class Job_ManagerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that audio for an unpublished post is private, so core's Media
+	 * Library never lists it to users who cannot read the post, and that it
+	 * follows the post when it is published, including by cron, and unpublished.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_audio_is_private_until_the_post_is_published(): void {
+		( new Text_To_Speech() )->register();
+
+		$post_id = self::factory()->post->create(
+			array(
+				'post_content' => 'First sentence here. Second sentence here.',
+				'post_status'  => 'future',
+				'post_date'    => gmdate( 'Y-m-d H:i:s', time() + DAY_IN_SECONDS ),
+			)
+		);
+
+		$this->job_manager->start_job( $post_id, get_current_user_id() );
+		$this->run_all_chunk_events( $post_id );
+
+		$audio_id = $this->job_manager->get_status( $post_id )['audio_id'];
+		$this->assertGreaterThan( 0, $audio_id );
+		$this->assertSame( 'private', get_post( $audio_id )->post_status );
+
+		// Cron publishes scheduled posts through wp_publish_post().
+		wp_publish_post( $post_id );
+		$this->assertSame( 'inherit', get_post( $audio_id )->post_status );
+
+		wp_update_post(
+			array(
+				'ID'          => $post_id,
+				'post_status' => 'draft',
+			)
+		);
+		$this->assertSame( 'private', get_post( $audio_id )->post_status );
+	}
+
+	/**
+	 * Test that the audio title is the title the narration announces: without
+	 * the "Protected:" or "Private:" prefix, and with the character references
+	 * from the `the_title` filters decoded.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_narration_titles
+	 *
+	 * @param array<string, string> $post_args Arguments for the post.
+	 * @param string                $expected  The title the narration and the audio title use.
+	 */
+	public function test_audio_title_matches_the_narration_title( array $post_args, string $expected ): void {
+		$requested = array();
+
+		add_filter(
+			'wpai_tts_pre_generate_chunk',
+			static function ( $pre, $text ) use ( &$requested ) {
+				$requested[] = $text;
+
+				return $pre;
+			},
+			5,
+			2
+		);
+
+		$post_id = self::factory()->post->create(
+			array_merge(
+				array(
+					'post_title'   => 'My Garden Diary',
+					'post_content' => 'Tomatoes are ripe today.',
+				),
+				$post_args
+			)
+		);
+
+		$this->job_manager->start_job( $post_id, get_current_user_id() );
+		$this->run_all_chunk_events( $post_id );
+
+		$this->assertSame( array( $expected . '. Tomatoes are ripe today.' ), $requested );
+
+		$audio_id = $this->job_manager->get_status( $post_id )['audio_id'];
+		$this->assertSame( 'Audio for “' . $expected . '”', get_post( $audio_id )->post_title );
+	}
+
+	/**
+	 * Data provider for test_audio_title_matches_the_narration_title().
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: array<string, string>, 1: string}>
+	 */
+	public static function data_narration_titles(): array {
+		return array(
+			'password protected' => array( array( 'post_password' => 'secret' ), 'My Garden Diary' ),
+			'private'            => array( array( 'post_status' => 'private' ), 'My Garden Diary' ),
+			'texturized title'   => array( array( 'post_title' => "Kamran's Garden Diary" ), 'Kamran’s Garden Diary' ),
+		);
+	}
+
+	/**
 	 * Test that a multi-chunk job is refused before anything is generated or
 	 * scheduled when the provider cannot output MP3.
 	 *
@@ -418,6 +551,45 @@ class Job_ManagerTest extends WP_UnitTestCase {
 		$this->run_all_chunk_events( $multi );
 		$this->assertNotEmpty( $requested );
 		$this->assertSame( array( Audio_Combiner::MIME_TYPE ), array_values( array_unique( $requested ) ) );
+	}
+
+	/**
+	 * Test that backslashes in the post text reach the provider intact on
+	 * every chunk, despite the job being re-saved to post meta after each one.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_chunk_text_keeps_backslashes_across_job_saves(): void {
+		$requested = array();
+
+		add_filter(
+			'wpai_tts_pre_generate_chunk',
+			static function ( $pre, $text ) use ( &$requested ) {
+				$requested[] = $text;
+
+				return $pre;
+			},
+			5,
+			2
+		);
+		add_filter(
+			'wpai_tts_max_chunk_length',
+			static function () {
+				return 30;
+			}
+		);
+
+		$post_id = $this->create_post( wp_slash( 'Open C:\\Users\\me first. Then match \\d+ here. Finally a \\\\ pair.' ) );
+		$this->job_manager->start_job( $post_id, get_current_user_id() );
+		$this->run_all_chunk_events( $post_id );
+
+		$this->assertGreaterThan( 2, count( $requested ) );
+
+		$spoken = implode( ' ', $requested );
+
+		$this->assertStringContainsString( 'C:\\Users\\me', $spoken );
+		$this->assertStringContainsString( '\\d+', $spoken );
+		$this->assertStringContainsString( 'a \\\\ pair', $spoken );
 	}
 
 	/**
@@ -602,5 +774,23 @@ class Job_ManagerTest extends WP_UnitTestCase {
 
 		// No chunk event is left scheduled.
 		$this->assertFalse( wp_next_scheduled( Job_Manager::CRON_HOOK, array( $post_id ) ) );
+	}
+
+	/**
+	 * Tests that META_KEYS lists every post meta key constant, so uninstall and
+	 * delete_audio() remove a newly added key too.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_meta_keys_lists_every_meta_key_constant(): void {
+		$meta_constants = array_filter(
+			( new \ReflectionClass( Job_Manager::class ) )->getConstants(),
+			static function ( $value, string $name ): bool {
+				return 0 === strpos( $name, 'META_' ) && is_string( $value );
+			},
+			ARRAY_FILTER_USE_BOTH
+		);
+
+		$this->assertEqualsCanonicalizing( array_values( $meta_constants ), Job_Manager::META_KEYS );
 	}
 }

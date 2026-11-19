@@ -31,16 +31,6 @@ defined( 'ABSPATH' ) || exit;
 class Settings_Page {
 
 	/**
-	 * Legacy settings page slug.
-	 * TODO: either once [0.6.0 is less than 10% of installs](https://wordpress.org/plugins/ai/advanced/) or we're in October 2026 let's remove this section in case other plugin(s) are attempting to use the `ai` page.
-	 *
-	 * @since 0.8.0
-	 *
-	 * @var string
-	 */
-	private const LEGACY_PAGE_SLUG = 'ai';
-
-	/**
 	 * The settings page slug.
 	 *
 	 * @since 0.7.0
@@ -48,6 +38,15 @@ class Settings_Page {
 	 * @var string
 	 */
 	private const PAGE_SLUG = 'ai-wp-admin';
+
+	/**
+	 * Roles pre-checked when access control is turned on for a feature.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var list<string>
+	 */
+	public const DEFAULT_ACCESS_ROLES = array( 'administrator', 'editor' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
 
 	/**
 	 * Initializes the settings page hooks.
@@ -58,8 +57,6 @@ class Settings_Page {
 	 * @return void
 	 */
 	public static function init( Registry $registry ): void {
-		add_action( 'admin_init', array( self::class, 'maybe_redirect_legacy_page' ), 1 );
-		add_action( 'admin_page_access_denied', array( self::class, 'maybe_redirect_legacy_page' ) );
 		add_action( 'ai-wp-admin_init', array( self::class, 'register_route_script_module_translations' ) );
 
 		if ( function_exists( 'ai_ai_wp_admin_render_page' ) ) {
@@ -87,6 +84,8 @@ class Settings_Page {
 					$data['connectorsUrl']       = admin_url( 'options-connectors.php' );
 					$data['featureGroups']       = $feature_metadata['groups'] ?? array();
 					$data['features']            = $feature_metadata['features'] ?? array();
+					$data['roles']               = self::get_access_control_roles();
+					$data['defaultAccessRoles']  = array_values( array_intersect( self::DEFAULT_ACCESS_ROLES, array_keys( wp_roles()->roles ) ) );
 					return $data;
 				}
 			);
@@ -124,34 +123,6 @@ class Settings_Page {
 		wp_set_script_module_translations( 'ai/routes/ai-home/content', 'ai' );
 	}
 
-
-	/**
-	 * Redirects legacy settings page slug to the current settings route.
-	 *
-	 * @since 0.8.0
-	 */
-	public static function maybe_redirect_legacy_page(): void {
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading query param for admin page detection only, no data processing.
-		if ( ! isset( $_GET['page'] ) ) {
-			return;
-		}
-
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading query param for admin page detection only, no data processing.
-		$page = sanitize_key( wp_unslash( (string) $_GET['page'] ) );
-		if ( self::LEGACY_PAGE_SLUG !== $page ) {
-			return;
-		}
-
-		$redirect_url = add_query_arg(
-			'page',
-			self::PAGE_SLUG,
-			admin_url( 'options-general.php' )
-		);
-
-		if ( wp_safe_redirect( $redirect_url, 301, 'WordPress AI plugin' ) ) {
-			exit;
-		}
-	}
 
 	/**
 	 * Gets feature group metadata for the settings UI.
@@ -249,7 +220,8 @@ class Settings_Page {
 	*       isValid?: array{min?: int, max?: int}
 	*     }>,
 	*     usage: array{trigger: 'automatic'|'on_demand'|'none', runs: string, sends: string, requests: string, details: string}|array{},
-	*     docsUrl: string
+	*     docsUrl: string,
+	*     supportsAccessControl: bool
 	*   }>
 	* }
 	 */
@@ -276,17 +248,18 @@ class Settings_Page {
 
 			$categories_in_use[ $category ] = true;
 			$features[]                     = array(
-				'id'             => $feature_id,
-				'settingName'    => "wpai_feature_{$feature_id}_enabled",
-				'label'          => $feature->get_label(),
-				'description'    => wp_strip_all_tags( $feature->get_description() ),
-				'category'       => $category,
-				'settingsFields' => $feature->get_settings_fields_metadata(),
-				'stability'      => $feature->get_stability(),
-				'image'          => esc_url( $feature->get_image() ),
-				'capability'     => $feature->get_capability(),
-				'usage'          => $feature instanceof Abstract_Feature ? $feature->get_usage() : array(),
-				'docsUrl'        => self::get_feature_docs_url( $feature ),
+				'id'                    => $feature_id,
+				'settingName'           => "wpai_feature_{$feature_id}_enabled",
+				'label'                 => $feature->get_label(),
+				'description'           => wp_strip_all_tags( $feature->get_description() ),
+				'category'              => $category,
+				'settingsFields'        => $feature->get_settings_fields_metadata(),
+				'stability'             => $feature->get_stability(),
+				'image'                 => esc_url( $feature->get_image() ),
+				'capability'            => $feature->get_capability(),
+				'usage'                 => $feature instanceof Abstract_Feature ? $feature->get_usage() : array(),
+				'docsUrl'               => self::get_feature_docs_url( $feature ),
+				'supportsAccessControl' => $feature instanceof Abstract_Feature && $feature->supports_access_control(),
 			);
 		}
 
@@ -358,7 +331,8 @@ class Settings_Page {
 		 *       isValid?: array{min?: int, max?: int}
 		 *     }>,
 		 *     usage: array{trigger: 'automatic'|'on_demand'|'none', runs: string, sends: string, requests: string, details: string}|array{},
-		 *     docsUrl: string
+		 *     docsUrl: string,
+		 *     supportsAccessControl: bool
 		 *   }>
 		 * } $metadata Settings UI metadata.
 		 * @param \WordPress\AI\Features\Registry $registry Feature registry instance.
@@ -366,5 +340,29 @@ class Settings_Page {
 		$filtered_metadata = apply_filters( 'wpai_settings_feature_metadata', $metadata, $registry );
 
 		return is_array( $filtered_metadata ) ? $filtered_metadata : $metadata;
+	}
+
+	/**
+	 * Returns the roles offered in access control settings.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return list<array{id: string, name: string}> Role IDs and translated names.
+	 */
+	private static function get_access_control_roles(): array {
+		$roles = array();
+
+		foreach ( wp_roles()->roles as $role_id => $role ) {
+			if ( empty( $role['capabilities']['edit_posts'] ) ) {
+				continue;
+			}
+
+			$roles[] = array(
+				'id'   => (string) $role_id,
+				'name' => translate_user_role( $role['name'] ),
+			);
+		}
+
+		return $roles;
 	}
 }

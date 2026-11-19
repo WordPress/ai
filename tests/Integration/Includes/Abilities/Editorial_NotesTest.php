@@ -666,4 +666,60 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 		}
 	}
 
+
+	/**
+	 * Tests that generate_review() keeps percent signs in existing notes and in the AI response.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_generate_review_keeps_percent_signs(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_review' );
+		$method->setAccessible( true );
+
+		$mock_builder = $this->getMockBuilder( \WP_AI_Client_Prompt_Builder::class )
+			->disableOriginalConstructor()
+			->addMethods( array( 'is_supported_for_text_generation', 'generate_text' ) )
+			->getMock();
+
+		$mock_builder->method( 'is_supported_for_text_generation' )
+			->willReturn( true );
+
+		$mock_builder->method( 'generate_text' )
+			->willReturn( '{"suggestions":[{"review_type":"readability","text":"İndirim oranını %50 olarak belirtin.","priority":1}]}' );
+
+		$prompt = '';
+		add_filter(
+			'wpai_editorial_notes_prompt_builder',
+			static function ( $builder, $filtered_prompt ) use ( $mock_builder, &$prompt ) {
+				$prompt = $filtered_prompt;
+				return $mock_builder;
+			},
+			10,
+			2
+		);
+
+		$result = $method->invoke(
+			$this->ability,
+			'core/paragraph',
+			'Tüm ürünlerde indirim.',
+			'',
+			array( '[Grammar] İndirim oranı %50 olmalı.' ),
+			array( 'readability' )
+		);
+
+		remove_all_filters( 'wpai_editorial_notes_prompt_builder' );
+
+		$this->assertStringContainsString( '<existing-notes>[Grammar] İndirim oranı %50 olmalı.</existing-notes>', $prompt );
+		$this->assertSame(
+			array(
+				array(
+					'review_type' => 'readability',
+					'text'        => 'İndirim oranını %50 olarak belirtin.',
+				),
+			),
+			$result
+		);
+	}
+
 }
