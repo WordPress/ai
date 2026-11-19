@@ -119,13 +119,14 @@ class AltTextMediaControls {
 	/**
 	 * Handles the generate button click.
 	 *
-	 * The button stays disabled until the request finishes, which blocks
-	 * repeat clicks.
-	 *
 	 * @since 0.3.0
 	 */
 	public async handleGenerate(): Promise< void > {
 		if ( ! this.textarea || ! this.button || ! this.spinner ) {
+			return;
+		}
+
+		if ( this.button.getAttribute( 'aria-disabled' ) === 'true' ) {
 			return;
 		}
 
@@ -140,7 +141,7 @@ class AltTextMediaControls {
 			return;
 		}
 
-		this.button.disabled = true;
+		this.button.setAttribute( 'aria-disabled', 'true' );
 		this.spinner.classList.add( 'is-active' );
 		this.setStatus( __( 'Generating alt text…', 'ai' ) );
 
@@ -172,7 +173,7 @@ class AltTextMediaControls {
 			);
 			this.setStatus( message, true );
 		} finally {
-			this.button.disabled = false;
+			this.button.removeAttribute( 'aria-disabled' );
 			this.spinner.classList.remove( 'is-active' );
 			updateButtonLabel( this.button, this.textarea );
 		}
