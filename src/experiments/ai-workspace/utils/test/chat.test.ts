@@ -2,13 +2,12 @@
  * Unit coverage for how a stored chat becomes a transcript.
  *
  * These rules decide what a person sees when they reopen a chat, so they are
- * asserted directly rather than through the browser. These tests use no
- * browser fixture and run in any Playwright project.
+ * asserted directly rather than through the browser.
  */
 /**
  * External dependencies
  */
-import { expect, test } from '@playwright/test';
+import { describe, expect, test } from 'vitest';
 
 /**
  * Internal dependencies
@@ -22,7 +21,7 @@ import {
 	toOutcomes,
 	toStoredChat,
 	urlForChat,
-} from '../../../../src/experiments/ai-workspace/utils/chat';
+} from '../chat';
 
 const stored = ( overrides: Record< string, unknown > = {} ) =>
 	toStoredChat( {
@@ -37,7 +36,7 @@ const stored = ( overrides: Record< string, unknown > = {} ) =>
 		...overrides,
 	} );
 
-test.describe( 'AI Workspace stored chats', () => {
+describe( 'AI Workspace stored chats', () => {
 	test( 'lists only the chats that have an ID', () => {
 		expect(
 			toChatList( {
@@ -138,9 +137,13 @@ test.describe( 'AI Workspace stored chats', () => {
 			} )!
 		);
 
-		expect( Object.keys( outcomes ) ).toEqual( [ 'p1' ] );
-		expect( outcomes.p1?.created ).toBe( 1 );
-		expect( outcomes.p1?.items[ 0 ]?.edit_link ).toContain( 'post=9' );
+		const proposalId = 'p1';
+
+		expect( Object.keys( outcomes ) ).toEqual( [ proposalId ] );
+		expect( outcomes[ proposalId ]?.created ).toBe( 1 );
+		expect( outcomes[ proposalId ]?.items[ 0 ]?.edit_link ).toContain(
+			'post=9'
+		);
 	} );
 
 	test( 'reads a chat from the URL and writes it back', () => {

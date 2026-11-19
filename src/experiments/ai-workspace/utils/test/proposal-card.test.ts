@@ -2,13 +2,12 @@
  * Unit coverage for what the AI Workspace proposal card says and links to.
  *
  * These rules decide what a person approves and where they land afterwards, so
- * they are asserted directly rather than through the browser. These tests use
- * no browser fixture and run in any Playwright project.
+ * they are asserted directly rather than through the browser.
  */
 /**
  * External dependencies
  */
-import { expect, test } from '@playwright/test';
+import { describe, expect, test } from 'vitest';
 
 /**
  * Internal dependencies
@@ -28,12 +27,8 @@ import {
 	reviewLabel,
 	templateNotice,
 	updatedLabel,
-} from '../../../../src/experiments/ai-workspace/utils/proposal-card';
-import type {
-	Proposal,
-	ProposalItem,
-	ProposalItemOutcome,
-} from '../../../../src/experiments/ai-workspace/types';
+} from '../proposal-card';
+import type { Proposal, ProposalItem, ProposalItemOutcome } from '../../types';
 
 const item = ( overrides: Partial< ProposalItem > = {} ): ProposalItem => ( {
 	key: 'a',
@@ -81,10 +76,11 @@ const outcome = (
 	error_code: '',
 	error_message: '',
 	field: '',
+	value: '',
 	...overrides,
 } );
 
-test.describe( 'AI Workspace proposal card selection', () => {
+describe( 'AI Workspace proposal card selection', () => {
 	test( 'starts a single draft or pending item checked', () => {
 		expect( initialSelection( proposal( [ item() ] ) ) ).toEqual( [ 'a' ] );
 		expect(
@@ -129,7 +125,7 @@ test.describe( 'AI Workspace proposal card selection', () => {
 	} );
 } );
 
-test.describe( 'AI Workspace template card', () => {
+describe( 'AI Workspace template card', () => {
 	test( 'says a replaced theme template is replaced, and that it goes live', () => {
 		const notice = templateNotice(
 			item( { slug: '404', replaces_theme_template: true } )
@@ -166,7 +162,7 @@ test.describe( 'AI Workspace template card', () => {
 	} );
 } );
 
-test.describe( 'AI Workspace proposal card labels', () => {
+describe( 'AI Workspace proposal card labels', () => {
 	test( 'names drafts as drafts', () => {
 		expect( createLabel( [ item() ], 1 ) ).toBe( 'Create 1 draft' );
 		expect( createLabel( [ item(), item() ], 2 ) ).toBe(
@@ -195,7 +191,7 @@ test.describe( 'AI Workspace proposal card labels', () => {
 	} );
 } );
 
-test.describe( 'AI Workspace proposal card links', () => {
+describe( 'AI Workspace proposal card links', () => {
 	test( 'opens any outcome that points at a post', () => {
 		expect( canOpen( outcome() ) ).toBe( true );
 		expect( canOpen( outcome( { outcome: 'duplicate' } ) ) ).toBe( true );
@@ -264,7 +260,7 @@ const change = ( overrides: Partial< ProposalItem > = {} ): ProposalItem =>
 		...overrides,
 	} );
 
-test.describe( 'AI Workspace update card', () => {
+describe( 'AI Workspace update card', () => {
 	test( 'starts every change of a pending update checked', () => {
 		const changes = [ change(), change( { key: 'b', field: 'excerpt' } ) ];
 

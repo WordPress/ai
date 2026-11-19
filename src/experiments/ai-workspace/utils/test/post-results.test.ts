@@ -2,20 +2,19 @@
  * Unit coverage for the AI Workspace tool-result narrowing.
  *
  * The narrowing decides what a tool result is allowed to put on screen, so it
- * is asserted directly rather than through the browser. These tests use no
- * browser fixture and run in any Playwright project.
+ * is asserted directly rather than through the browser.
  *
  * External dependencies
  */
 /**
  * External dependencies
  */
-import { expect, test } from '@playwright/test';
+import { describe, expect, test } from 'vitest';
 
 /**
  * Internal dependencies
  */
-import { toPostResultSet } from '../../../../src/experiments/ai-workspace/utils/post-results';
+import { toPostResultSet } from '../post-results';
 
 const ROW = {
 	id: 12,
@@ -28,7 +27,7 @@ const ROW = {
 	excerpt: 'A short excerpt.',
 };
 
-test.describe( 'AI Workspace post result narrowing', () => {
+describe( 'AI Workspace post result narrowing', () => {
 	test( 'accepts a post list and keeps every returned field', () => {
 		const result = toPostResultSet( {
 			results: [ ROW ],

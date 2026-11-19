@@ -2,20 +2,19 @@
  * Unit coverage for the AI Workspace question narrowing.
  *
  * The narrowing decides which choices a question card shows, so it is asserted
- * directly rather than through the browser. These tests use no browser fixture
- * and run in any Playwright project.
+ * directly rather than through the browser.
  */
 /**
  * External dependencies
  */
-import { expect, test } from '@playwright/test';
+import { describe, expect, test } from 'vitest';
 
 /**
  * Internal dependencies
  */
-import { toQuestion } from '../../../../src/experiments/ai-workspace/utils/question';
+import { toQuestion } from '../question';
 
-test.describe( 'AI Workspace question narrowing', () => {
+describe( 'AI Workspace question narrowing', () => {
 	test( 'accepts a question with its choices', () => {
 		expect(
 			toQuestion( {

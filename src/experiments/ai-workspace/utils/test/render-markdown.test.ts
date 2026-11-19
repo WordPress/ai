@@ -2,15 +2,14 @@
  * Unit coverage for the AI Workspace restricted-subset markdown renderer.
  *
  * The renderer is the R19 / KTD9 security boundary and is pure logic, so it is
- * asserted directly rather than through the browser. These tests use no browser
- * fixture and run in any Playwright project.
+ * asserted directly rather than through the browser.
  *
  * External dependencies
  */
 /**
  * External dependencies
  */
-import { expect, test } from '@playwright/test';
+import { describe, expect, test } from 'vitest';
 
 /**
  * Internal dependencies
@@ -19,7 +18,7 @@ import {
 	renderMarkdown,
 	type BlockNode,
 	type InlineNode,
-} from '../../../../src/experiments/ai-workspace/utils/render-markdown';
+} from '../render-markdown';
 
 const OPTIONS = { allowedHost: 'example.test' };
 
@@ -79,7 +78,7 @@ function textOf( blocks: BlockNode[] ): string {
 		.join( '' );
 }
 
-test.describe( 'AI Workspace markdown renderer', () => {
+describe( 'AI Workspace markdown renderer', () => {
 	test( 'renders the allowed inline subset', () => {
 		const blocks = renderMarkdown(
 			'Plain **bold** and *italic* with `code()`.',
@@ -323,7 +322,7 @@ test.describe( 'AI Workspace markdown renderer', () => {
 
 		// One paragraph, not three: a single newline is a break, not a new block.
 		expect( blocks ).toHaveLength( 1 );
-		expect( blocks[ 0 ].type ).toBe( 'paragraph' );
+		expect( blocks[ 0 ]?.type ).toBe( 'paragraph' );
 
 		const types = inlineNodes( blocks ).map( ( node ) => node.type );
 
