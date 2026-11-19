@@ -40,6 +40,15 @@ class Settings_Page {
 	private const PAGE_SLUG = 'ai-wp-admin';
 
 	/**
+	 * Roles pre-checked when access control is turned on for a feature.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var list<string>
+	 */
+	public const DEFAULT_ACCESS_ROLES = array( 'administrator', 'editor' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+
+	/**
 	 * Initializes the settings page hooks.
 	 *
 	 * @since 0.7.0
@@ -75,6 +84,8 @@ class Settings_Page {
 					$data['connectorsUrl']       = admin_url( 'options-connectors.php' );
 					$data['featureGroups']       = $feature_metadata['groups'] ?? array();
 					$data['features']            = $feature_metadata['features'] ?? array();
+					$data['roles']               = self::get_access_control_roles();
+					$data['defaultAccessRoles']  = array_values( array_intersect( self::DEFAULT_ACCESS_ROLES, array_keys( wp_roles()->roles ) ) );
 					return $data;
 				}
 			);
@@ -209,7 +220,8 @@ class Settings_Page {
 	*       isValid?: array{min?: int, max?: int}
 	*     }>,
 	*     usage: array{trigger: 'automatic'|'on_demand'|'none', runs: string, sends: string, requests: string, details: string}|array{},
-	*     docsUrl: string
+	*     docsUrl: string,
+	*     supportsAccessControl: bool
 	*   }>
 	* }
 	 */
@@ -236,17 +248,18 @@ class Settings_Page {
 
 			$categories_in_use[ $category ] = true;
 			$features[]                     = array(
-				'id'             => $feature_id,
-				'settingName'    => "wpai_feature_{$feature_id}_enabled",
-				'label'          => $feature->get_label(),
-				'description'    => wp_strip_all_tags( $feature->get_description() ),
-				'category'       => $category,
-				'settingsFields' => $feature->get_settings_fields_metadata(),
-				'stability'      => $feature->get_stability(),
-				'image'          => esc_url( $feature->get_image() ),
-				'capability'     => $feature->get_capability(),
-				'usage'          => $feature instanceof Abstract_Feature ? $feature->get_usage() : array(),
-				'docsUrl'        => self::get_feature_docs_url( $feature ),
+				'id'                    => $feature_id,
+				'settingName'           => "wpai_feature_{$feature_id}_enabled",
+				'label'                 => $feature->get_label(),
+				'description'           => wp_strip_all_tags( $feature->get_description() ),
+				'category'              => $category,
+				'settingsFields'        => $feature->get_settings_fields_metadata(),
+				'stability'             => $feature->get_stability(),
+				'image'                 => esc_url( $feature->get_image() ),
+				'capability'            => $feature->get_capability(),
+				'usage'                 => $feature instanceof Abstract_Feature ? $feature->get_usage() : array(),
+				'docsUrl'               => self::get_feature_docs_url( $feature ),
+				'supportsAccessControl' => $feature instanceof Abstract_Feature && $feature->supports_access_control(),
 			);
 		}
 
@@ -318,7 +331,8 @@ class Settings_Page {
 		 *       isValid?: array{min?: int, max?: int}
 		 *     }>,
 		 *     usage: array{trigger: 'automatic'|'on_demand'|'none', runs: string, sends: string, requests: string, details: string}|array{},
-		 *     docsUrl: string
+		 *     docsUrl: string,
+		 *     supportsAccessControl: bool
 		 *   }>
 		 * } $metadata Settings UI metadata.
 		 * @param \WordPress\AI\Features\Registry $registry Feature registry instance.
@@ -326,5 +340,29 @@ class Settings_Page {
 		$filtered_metadata = apply_filters( 'wpai_settings_feature_metadata', $metadata, $registry );
 
 		return is_array( $filtered_metadata ) ? $filtered_metadata : $metadata;
+	}
+
+	/**
+	 * Returns the roles offered in access control settings.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return list<array{id: string, name: string}> Role IDs and translated names.
+	 */
+	private static function get_access_control_roles(): array {
+		$roles = array();
+
+		foreach ( wp_roles()->roles as $role_id => $role ) {
+			if ( empty( $role['capabilities']['edit_posts'] ) ) {
+				continue;
+			}
+
+			$roles[] = array(
+				'id'   => (string) $role_id,
+				'name' => translate_user_role( $role['name'] ),
+			);
+		}
+
+		return $roles;
 	}
 }

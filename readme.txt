@@ -55,7 +55,7 @@ Experiments marked "runs automatically" do their work without you clicking anyth
 * **Editorial Notes** – Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
 * **Editorial Updates** – Applies pending editorial Notes to your content and saves the post, without a preview.
 * **Excerpt Generation** – Generates excerpt suggestions for your posts.
-* **Key Encryption** – Encrypts AI provider API keys stored in your database. Disabling the experiment or deactivating the plugin restores plaintext keys.
+* **Key Encryption** – Encrypts AI provider API keys stored in your database. Requires `WP_SECRETS_KEY` in `wp-config.php`. Disabling the experiment or deactivating the plugin restores plaintext keys.
 * **Markdown Feeds** – Publishes a Markdown feed and Markdown versions of your public posts and pages for AI agents and other machine readers.
 * **MCP Access** – Controls which abilities AI agents can use over the Model Context Protocol (MCP). Installs and activates the MCP Adapter plugin when enabled.
 * **Meta Description Generation** – Generates meta description suggestions and integrates them with several SEO plugins.

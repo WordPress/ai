@@ -148,8 +148,10 @@ class C2pa_MonitorTest extends WP_UnitTestCase {
 		$this->assertSame( 'APP11/JUMBF', $record['c2pa']['container'] );
 		$this->assertSame( hash( 'sha256', $expected_store ), $record['c2pa']['manifest_sha256'] );
 		$this->assertSame( strlen( $expected_store ), $record['c2pa']['manifest_length'] );
+		// The synthetic payload is not a valid JUMBF box tree, so decoding
+		// fails and is reported without affecting the raw capture.
 		$this->assertNull( $record['c2pa']['decoded'] );
-		$this->assertSame( array(), $record['errors'] );
+		$this->assertSame( array( 'decode_jumbf' ), array_column( $record['errors'], 'stage' ) );
 
 		$uploads  = wp_upload_dir( null, false );
 		$absolute = trailingslashit( (string) $uploads['basedir'] ) . $record['c2pa']['sidecar_path_relative'];
@@ -160,6 +162,38 @@ class C2pa_MonitorTest extends WP_UnitTestCase {
 		$this->assertIsArray( $record['@context'] );
 		$this->assertContains( 'https://schema.org/', $record['@context'] );
 		$this->assertContains( C2pa_Monitor::CONTEXT_URL, $record['@context'] );
+	}
+
+	/**
+	 * Capture for a real signed JPEG populates c2pa.decoded from the active
+	 * manifest.
+	 */
+	public function test_capture_populates_decoded_for_real_signed_jpeg(): void {
+		$fixture = dirname( __DIR__, 4 ) . '/fixtures/c2pa/XCA.jpg';
+		if ( ! is_file( $fixture ) ) {
+			$this->markTestSkipped( 'XCA.jpg fixture not found.' );
+		}
+		$path = $this->tmp_dir . '/XCA.jpg';
+		copy( $fixture, $path );
+
+		$attachment_id = $this->factory->attachment->create_upload_object( $path, 0 );
+		if ( ! $attachment_id || is_wp_error( $attachment_id ) ) {
+			$this->markTestSkipped( 'Could not create attachment from fixture.' );
+		}
+
+		$this->feature->capture_for_attachment( (int) $attachment_id );
+
+		$record = Record::load( (int) $attachment_id );
+		$this->assertIsArray( $record );
+		$this->assertTrue( $record['c2pa']['present'] );
+		$this->assertSame( array(), $record['errors'] );
+
+		$decoded = $record['c2pa']['decoded'];
+		$this->assertIsArray( $decoded );
+		$this->assertSame( 'contentauth:urn:uuid:ee7fc739-e619-44d3-a110-c9ff5dd2588d', $decoded['manifest_label'] );
+		$this->assertSame( 'make_test_images/0.22.0 c2pa-rs/0.22.0', $decoded['claim_generator']['name'] );
+		$this->assertNull( $decoded['digital_source_type'] );
+		$this->assertSame( array( 'c2pa.opened', 'c2pa.color_adjustments' ), array_column( $decoded['actions'], 'action' ) );
 	}
 
 	/**
@@ -929,5 +963,159 @@ class C2pa_MonitorTest extends WP_UnitTestCase {
 
 		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_c2pa-monitor_enabled' );
+	}
+
+	/**
+	 * A site operator can opt in a publicly reachable attachment URL for CAI Verify.
+	 */
+	public function test_verify_link_uses_filtered_public_source_url(): void {
+		$attachment_id = $this->create_image_attachment();
+		$record        = array(
+			'@context'       => array( 'https://schema.org/' ),
+			'schema_version' => 1,
+			'captured_at'    => '2026-01-01T00:00:00Z',
+			'duration_ms'    => 0,
+			'source'         => array(),
+			'traditional'    => array(),
+			'c2pa'           => array( 'present' => true, 'format' => 'jpeg' ),
+			'errors'         => array(),
+		);
+		update_post_meta( $attachment_id, C2pa_Monitor::POSTMETA_KEY, wp_json_encode( $record ) );
+
+		$filter = static function ( string $public_url, int $post_id, $original_url ) use ( $attachment_id ): string {
+			self::assertSame( '', $public_url );
+			self::assertSame( $attachment_id, $post_id );
+			self::assertSame( wp_get_original_image_url( $attachment_id ), $original_url );
+			return 'https://media.example.com/credentialed.jpg?version=2&variant=original';
+		};
+		add_filter( 'wpai_c2pa_public_verify_url', $filter, 10, 3 );
+
+		ob_start();
+		$this->feature->render_media_column( 'wpai_c2pa', $attachment_id );
+		$out = ob_get_clean();
+
+		remove_filter( 'wpai_c2pa_public_verify_url', $filter, 10 );
+		$this->assertStringContainsString( 'source=https%3A%2F%2Fmedia.example.com%2Fcredentialed.jpg%3Fversion%3D2%26variant%3Doriginal', $out );
+	}
+
+	/**
+	 * Invalid or non-public filter values preserve the bare CAI Verify link.
+	 */
+	public function test_verify_link_rejects_invalid_source_url(): void {
+		$attachment_id = $this->create_image_attachment();
+		$record        = array(
+			'@context'       => array( 'https://schema.org/' ),
+			'schema_version' => 1,
+			'captured_at'    => '2026-01-01T00:00:00Z',
+			'duration_ms'    => 0,
+			'source'         => array(),
+			'traditional'    => array(),
+			'c2pa'           => array( 'present' => true, 'format' => 'jpeg' ),
+			'errors'         => array(),
+		);
+		update_post_meta( $attachment_id, C2pa_Monitor::POSTMETA_KEY, wp_json_encode( $record ) );
+
+		$filter = static function (): string {
+			return 'ftp://media.example.com/credentialed.jpg';
+		};
+		add_filter( 'wpai_c2pa_public_verify_url', $filter );
+
+		ob_start();
+		$this->feature->render_media_column( 'wpai_c2pa', $attachment_id );
+		$out = ob_get_clean();
+
+		remove_filter( 'wpai_c2pa_public_verify_url', $filter );
+		$this->assertStringContainsString( 'href="https://verify.contentauthenticity.org/"', $out );
+		$this->assertStringNotContainsString( 'source=', $out );
+	}
+
+	/**
+	 * Non-public media cases for the verify link.
+	 *
+	 * @return array<string, array{0: array<string, mixed>|null, 1: array<string, mixed>}>
+	 */
+	public function data_non_public_media(): array {
+		return array(
+			'draft parent'              => array( array( 'post_status' => 'draft' ), array() ),
+			'password-protected parent' => array(
+				array(
+					'post_status'   => 'publish',
+					'post_password' => 'secret',
+				),
+				array(),
+			),
+			'unattached private media'  => array( null, array( 'post_status' => 'private' ) ),
+		);
+	}
+
+	/**
+	 * Non-public media never pre-fills the external verifier.
+	 *
+	 * @dataProvider data_non_public_media
+	 *
+	 * @param array<string, mixed>|null $parent_args     Parent post args, or null for unattached media.
+	 * @param array<string, mixed>      $attachment_args Attachment overrides.
+	 */
+	public function test_verify_link_rejects_source_for_non_public_media( ?array $parent_args, array $attachment_args ): void {
+		if ( null !== $parent_args ) {
+			$attachment_args['post_parent'] = (int) $this->factory->post->create( $parent_args );
+		}
+		$attachment_id = $this->create_image_attachment( $attachment_args );
+		$record        = array(
+			'@context'       => array( 'https://schema.org/' ),
+			'schema_version' => 1,
+			'captured_at'    => '2026-01-01T00:00:00Z',
+			'duration_ms'    => 0,
+			'source'         => array(),
+			'traditional'    => array(),
+			'c2pa'           => array( 'present' => true, 'format' => 'jpeg' ),
+			'errors'         => array(),
+		);
+		update_post_meta( $attachment_id, C2pa_Monitor::POSTMETA_KEY, wp_json_encode( $record ) );
+
+		$filter = static function (): string {
+			return 'https://media.example.com/credentialed.jpg';
+		};
+		add_filter( 'wpai_c2pa_public_verify_url', $filter );
+
+		ob_start();
+		$this->feature->render_media_column( 'wpai_c2pa', $attachment_id );
+		$out = ob_get_clean();
+
+		remove_filter( 'wpai_c2pa_public_verify_url', $filter );
+		$this->assertStringContainsString( 'href="https://verify.contentauthenticity.org/"', $out );
+		$this->assertStringNotContainsString( 'source=', $out );
+	}
+
+	/**
+	 * Help text reflects whether the external verifier receives a source URL.
+	 */
+	public function test_verify_help_text_describes_prefilled_source(): void {
+		$attachment_id = $this->create_image_attachment();
+		$post          = get_post( $attachment_id );
+		$record        = array(
+			'@context'       => array( 'https://schema.org/' ),
+			'schema_version' => 1,
+			'captured_at'    => '2026-01-01T00:00:00Z',
+			'duration_ms'    => 0,
+			'source'         => array(),
+			'traditional'    => array(),
+			'c2pa'           => array( 'present' => true, 'format' => 'jpeg' ),
+			'errors'         => array(),
+		);
+		update_post_meta( $attachment_id, C2pa_Monitor::POSTMETA_KEY, wp_json_encode( $record ) );
+
+		$filter = static function (): string {
+			return 'https://media.example.com/credentialed.jpg';
+		};
+		add_filter( 'wpai_c2pa_public_verify_url', $filter );
+
+		ob_start();
+		$this->feature->render_attachment_meta_box( $post );
+		$out = ob_get_clean();
+
+		remove_filter( 'wpai_c2pa_public_verify_url', $filter );
+		$this->assertStringContainsString( 'original image URL is pre-filled', $out );
+		$this->assertStringNotContainsString( 'download the original image', $out );
 	}
 }
