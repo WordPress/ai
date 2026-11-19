@@ -62,9 +62,6 @@ function createNotice(
 		container.prepend( notice );
 	}
 
-	// The notice is added after the page has loaded, so announce it.
-	speak( message, type === 'error' ? 'assertive' : 'polite' );
-
 	return paragraph;
 }
 
@@ -87,6 +84,7 @@ async function processBulkAltText(): Promise< void > {
 
 	if ( ! isProviderAvailable() ) {
 		createNotice( noProviderMessage, 'error' );
+		speak( noProviderMessage, 'assertive' );
 		return;
 	}
 
@@ -96,20 +94,20 @@ async function processBulkAltText(): Promise< void > {
 	// wp_localize_script() stringifies scalar values, so coerce before comparing.
 	const truncatedCount = Number( data.truncatedCount ?? 0 );
 
+	let limitMessage = '';
+
 	if ( truncatedCount > 0 ) {
-		createNotice(
-			sprintf(
-				// translators: %d: number of images not processed because the batch limit was reached.
-				_n(
-					'%d image was not processed because the bulk limit was reached. Select fewer images and run the action again.',
-					'%d images were not processed because the bulk limit was reached. Select fewer images and run the action again.',
-					truncatedCount,
-					'ai'
-				),
-				truncatedCount
+		limitMessage = sprintf(
+			// translators: %d: number of images not processed because the batch limit was reached.
+			_n(
+				'%d image was not processed because the bulk limit was reached. Select fewer images and run the action again.',
+				'%d images were not processed because the bulk limit was reached. Select fewer images and run the action again.',
+				truncatedCount,
+				'ai'
 			),
-			'warning'
+			truncatedCount
 		);
+		createNotice( limitMessage, 'warning' );
 	}
 
 	let processed = 0;
@@ -123,6 +121,10 @@ async function processBulkAltText(): Promise< void > {
 		total
 	);
 	const statusParagraph = createNotice( initialMessage );
+
+	speak(
+		limitMessage ? `${ limitMessage } ${ initialMessage }` : initialMessage
+	);
 
 	for ( const id of attachmentIds ) {
 		try {
