@@ -20,13 +20,12 @@ import {
 import {
 	activateMockScenario,
 	deactivateMockScenario,
-	disableExperiment,
-	enableExperiment,
 	getMockScenarioReport,
 	seedCredentials,
+	setExperimentEnabled,
 } from '../../utils/helpers';
 
-const EXPERIMENT_LABEL = 'AI Workspace';
+const EXPERIMENT_ID = 'ai-workspace';
 const WORKSPACE_PAGE = 'admin.php?page=ai-workspace';
 const BLOCK_THEME = 'twentytwentyfive';
 const CLASSIC_THEME = 'twentytwentyone';
@@ -51,17 +50,17 @@ async function customTemplateSlugs(
 }
 
 test.describe( 'AI Workspace template proposals', () => {
-	test.beforeEach( async ( { admin, page, requestUtils } ) => {
+	test.beforeEach( async ( { requestUtils } ) => {
 		await requestUtils.activateTheme( BLOCK_THEME );
 		await requestUtils.deleteAllTemplates( 'wp_template' );
 		await seedCredentials( requestUtils, [ 'anthropic' ] );
-		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, true );
 		await activateMockScenario( requestUtils, 'workspace-template' );
 	} );
 
-	test.afterEach( async ( { admin, page, requestUtils } ) => {
+	test.afterEach( async ( { requestUtils } ) => {
 		await deactivateMockScenario( requestUtils );
-		await disableExperiment( admin, page, EXPERIMENT_LABEL );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, false );
 		await seedCredentials( requestUtils, [ 'openai' ] );
 		await requestUtils.deleteAllTemplates( 'wp_template' );
 		await requestUtils.activateTheme( CLASSIC_THEME );

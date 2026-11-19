@@ -17,24 +17,23 @@ import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 import {
 	activateMockScenario,
 	deactivateMockScenario,
-	disableExperiment,
-	enableExperiment,
 	getMockScenarioReport,
 	seedCredentials,
+	setExperimentEnabled,
 } from '../../utils/helpers';
 
-const EXPERIMENT_LABEL = 'AI Workspace';
+const EXPERIMENT_ID = 'ai-workspace';
 const WORKSPACE_PAGE = 'admin.php?page=ai-workspace';
 
 test.describe( 'AI Workspace navigation', () => {
-	test.beforeEach( async ( { admin, page, requestUtils } ) => {
+	test.beforeEach( async ( { requestUtils } ) => {
 		await seedCredentials( requestUtils, [ 'anthropic' ] );
-		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, true );
 	} );
 
-	test.afterEach( async ( { admin, page, requestUtils } ) => {
+	test.afterEach( async ( { requestUtils } ) => {
 		await deactivateMockScenario( requestUtils );
-		await disableExperiment( admin, page, EXPERIMENT_LABEL );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, false );
 		await seedCredentials( requestUtils, [ 'openai' ] );
 	} );
 

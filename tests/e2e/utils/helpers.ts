@@ -211,6 +211,30 @@ export const disableAllFeatures = async ( requestUtils: RequestUtils ) => {
 };
 
 /**
+ * Turns an experiment on or off by writing its setting over REST.
+ *
+ * enableExperiment() and disableExperiment() load the settings screen and click
+ * the toggle, which is the thing to do when the toggle is what a test covers.
+ * When it is only setup, this skips the page load: it writes the same
+ * `wpai_feature_{id}_enabled` setting the toggle saves.
+ *
+ * @param requestUtils The requestUtils fixture from the test context.
+ * @param featureId    The feature ID, e.g. 'ai-workspace'.
+ * @param enabled      Whether the experiment should be on.
+ */
+export const setExperimentEnabled = async (
+	requestUtils: RequestUtils,
+	featureId: string,
+	enabled: boolean
+) => {
+	await requestUtils.rest( {
+		method: 'POST',
+		path: '/wp/v2/settings',
+		data: { [ `wpai_feature_${ featureId }_enabled` ]: enabled },
+	} );
+};
+
+/**
  * Enables a specific experiment.
  *
  * @param admin           The admin fixture from the test context.

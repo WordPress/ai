@@ -18,13 +18,12 @@ import {
 import {
 	activateMockScenario,
 	deactivateMockScenario,
-	disableExperiment,
-	enableExperiment,
 	getMockScenarioReport,
 	seedCredentials,
+	setExperimentEnabled,
 } from '../../utils/helpers';
 
-const EXPERIMENT_LABEL = 'AI Workspace';
+const EXPERIMENT_ID = 'ai-workspace';
 const WORKSPACE_PAGE = 'admin.php?page=ai-workspace';
 
 /*
@@ -45,14 +44,14 @@ const seedOpenAi = ( requestUtils: RequestUtils ) =>
 	seedCredentials( requestUtils, [ 'openai' ] );
 
 test.describe( 'AI Workspace tool loop', () => {
-	test.beforeEach( async ( { admin, page, requestUtils } ) => {
+	test.beforeEach( async ( { requestUtils } ) => {
 		await seedAnthropic( requestUtils );
-		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, true );
 	} );
 
-	test.afterEach( async ( { admin, page, requestUtils } ) => {
+	test.afterEach( async ( { requestUtils } ) => {
 		await deactivateMockScenario( requestUtils );
-		await disableExperiment( admin, page, EXPERIMENT_LABEL );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, false );
 		await seedOpenAi( requestUtils );
 	} );
 
@@ -198,7 +197,7 @@ const ANSWER_REPLY = 'Got it. I will rework the series to match.';
 test.describe( 'AI Workspace questions', () => {
 	test.beforeEach( async ( { admin, page, requestUtils } ) => {
 		await seedAnthropic( requestUtils );
-		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, true );
 		await activateMockScenario( requestUtils, 'workspace-ask' );
 		await admin.visitAdminPage( WORKSPACE_PAGE );
 
@@ -212,9 +211,9 @@ test.describe( 'AI Workspace questions', () => {
 		).toBeVisible( { timeout: 30000 } );
 	} );
 
-	test.afterEach( async ( { admin, page, requestUtils } ) => {
+	test.afterEach( async ( { requestUtils } ) => {
 		await deactivateMockScenario( requestUtils );
-		await disableExperiment( admin, page, EXPERIMENT_LABEL );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, false );
 		await seedOpenAi( requestUtils );
 	} );
 
@@ -292,16 +291,16 @@ test.describe( 'AI Workspace questions', () => {
 } );
 
 test.describe( 'AI Workspace question asked alongside a proposal', () => {
-	test.beforeEach( async ( { admin, page, requestUtils } ) => {
+	test.beforeEach( async ( { requestUtils } ) => {
 		await requestUtils.deleteAllPosts();
 		await seedAnthropic( requestUtils );
-		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, true );
 		await activateMockScenario( requestUtils, 'workspace-ask-propose' );
 	} );
 
-	test.afterEach( async ( { admin, page, requestUtils } ) => {
+	test.afterEach( async ( { requestUtils } ) => {
 		await deactivateMockScenario( requestUtils );
-		await disableExperiment( admin, page, EXPERIMENT_LABEL );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, false );
 		await seedOpenAi( requestUtils );
 		await requestUtils.deleteAllPosts();
 	} );
@@ -351,16 +350,16 @@ const FOLLOW_UP_REPLY =
 	'Noted what you decided about “Proposed E2E Draft”. Want me to draft another post?';
 
 test.describe( 'AI Workspace proposal confirmation', () => {
-	test.beforeEach( async ( { admin, page, requestUtils } ) => {
+	test.beforeEach( async ( { requestUtils } ) => {
 		await requestUtils.deleteAllPosts();
 		await seedAnthropic( requestUtils );
-		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, true );
 		await activateMockScenario( requestUtils, 'workspace-proposal' );
 	} );
 
-	test.afterEach( async ( { admin, page, requestUtils } ) => {
+	test.afterEach( async ( { requestUtils } ) => {
 		await deactivateMockScenario( requestUtils );
-		await disableExperiment( admin, page, EXPERIMENT_LABEL );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, false );
 		await seedOpenAi( requestUtils );
 		await requestUtils.deleteAllPosts();
 	} );
@@ -619,7 +618,7 @@ test.describe( 'AI Workspace proposal card', () => {
 	test.beforeEach( async ( { admin, page, requestUtils } ) => {
 		await requestUtils.deleteAllPosts();
 		await seedAnthropic( requestUtils );
-		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, true );
 		await activateMockScenario( requestUtils, 'workspace-proposal-series' );
 		await admin.visitAdminPage( WORKSPACE_PAGE );
 
@@ -633,9 +632,9 @@ test.describe( 'AI Workspace proposal card', () => {
 		).toBeVisible( { timeout: 30000 } );
 	} );
 
-	test.afterEach( async ( { admin, page, requestUtils } ) => {
+	test.afterEach( async ( { requestUtils } ) => {
 		await deactivateMockScenario( requestUtils );
-		await disableExperiment( admin, page, EXPERIMENT_LABEL );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, false );
 		await seedOpenAi( requestUtils );
 		await requestUtils.deleteAllPosts();
 	} );

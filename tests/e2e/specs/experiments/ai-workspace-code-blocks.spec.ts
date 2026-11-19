@@ -13,12 +13,11 @@ import {
 import {
 	activateMockScenario,
 	deactivateMockScenario,
-	disableExperiment,
-	enableExperiment,
 	seedCredentials,
+	setExperimentEnabled,
 } from '../../utils/helpers';
 
-const EXPERIMENT_LABEL = 'AI Workspace';
+const EXPERIMENT_ID = 'ai-workspace';
 const WORKSPACE_PAGE = 'admin.php?page=ai-workspace';
 
 /*
@@ -36,7 +35,7 @@ const seedOpenAi = ( requestUtils: RequestUtils ) =>
 test.describe( 'AI Workspace code blocks', () => {
 	test.beforeEach( async ( { admin, page, requestUtils } ) => {
 		await seedAnthropic( requestUtils );
-		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, true );
 		await activateMockScenario( requestUtils, 'workspace-code' );
 		await admin.visitAdminPage( WORKSPACE_PAGE );
 
@@ -50,9 +49,9 @@ test.describe( 'AI Workspace code blocks', () => {
 		} );
 	} );
 
-	test.afterEach( async ( { admin, page, requestUtils } ) => {
+	test.afterEach( async ( { requestUtils } ) => {
 		await deactivateMockScenario( requestUtils );
-		await disableExperiment( admin, page, EXPERIMENT_LABEL );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, false );
 		await seedOpenAi( requestUtils );
 	} );
 

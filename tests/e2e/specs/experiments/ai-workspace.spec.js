@@ -6,9 +6,9 @@ import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 /**
  * Internal dependencies
  */
-import { disableExperiment, enableExperiment } from '../../utils/helpers';
+import { setExperimentEnabled } from '../../utils/helpers';
 
-const EXPERIMENT_LABEL = 'AI Workspace';
+const EXPERIMENT_ID = 'ai-workspace';
 const WORKSPACE_PAGE = 'admin.php?page=ai-workspace';
 
 // The mocked OpenAI responses fixture answers every workspace turn with this
@@ -17,13 +17,13 @@ const MOCKED_RESPONSE =
 	'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure';
 
 test.describe( 'AI Workspace transcript', () => {
-	test.beforeEach( async ( { admin, page } ) => {
-		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+	test.beforeEach( async ( { admin, requestUtils } ) => {
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, true );
 		await admin.visitAdminPage( WORKSPACE_PAGE );
 	} );
 
-	test.afterEach( async ( { admin, page } ) => {
-		await disableExperiment( admin, page, EXPERIMENT_LABEL );
+	test.afterEach( async ( { requestUtils } ) => {
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, false );
 	} );
 
 	test( 'renders the empty state before any turn is taken', async ( {
@@ -248,13 +248,13 @@ function spriteLoaded( sprite ) {
 }
 
 test.describe( 'AI Workspace Wapuu', () => {
-	test.beforeEach( async ( { admin, page } ) => {
-		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+	test.beforeEach( async ( { admin, requestUtils } ) => {
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, true );
 		await admin.visitAdminPage( WORKSPACE_PAGE );
 	} );
 
-	test.afterEach( async ( { admin, page } ) => {
-		await disableExperiment( admin, page, EXPERIMENT_LABEL );
+	test.afterEach( async ( { requestUtils } ) => {
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, false );
 	} );
 
 	test( 'a running turn shows the busy Wapuu beside "Responding…"', async ( {
@@ -383,12 +383,12 @@ test.describe( 'AI Workspace Wapuu', () => {
 } );
 
 test.describe( 'AI Workspace frame', () => {
-	test.beforeEach( async ( { admin, page } ) => {
-		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+	test.beforeEach( async ( { requestUtils } ) => {
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, true );
 	} );
 
-	test.afterEach( async ( { admin, page } ) => {
-		await disableExperiment( admin, page, EXPERIMENT_LABEL );
+	test.afterEach( async ( { requestUtils } ) => {
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, false );
 	} );
 
 	for ( const viewport of [

@@ -30,13 +30,12 @@ import {
 import {
 	activateMockScenario,
 	deactivateMockScenario,
-	disableExperiment,
-	enableExperiment,
 	getMockScenarioReport,
 	seedCredentials,
+	setExperimentEnabled,
 } from '../../utils/helpers';
 
-const EXPERIMENT_LABEL = 'AI Workspace';
+const EXPERIMENT_ID = 'ai-workspace';
 const WORKSPACE_PAGE = 'admin.php?page=ai-workspace';
 const FIRST_POST = 1;
 const NEW_TITLE = 'Welcome to the site';
@@ -180,19 +179,19 @@ function cardItem( card: ReturnType< Page[ 'getByRole' ] >, label: string ) {
 }
 
 test.describe( 'AI Workspace update proposals', () => {
-	test.beforeEach( async ( { admin, page, requestUtils } ) => {
+	test.beforeEach( async ( { requestUtils } ) => {
 		await resetFirstPost( requestUtils );
 		await seedCredentials( requestUtils, [ 'anthropic' ] );
-		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, true );
 		await deleteAllChats( requestUtils );
 	} );
 
-	test.afterEach( async ( { admin, page, requestUtils } ) => {
+	test.afterEach( async ( { page, requestUtils } ) => {
 		await page.unrouteAll( { behavior: 'ignoreErrors' } );
 		await setWriteDelay( requestUtils, 0 );
 		await deactivateMockScenario( requestUtils );
 		await deleteAllChats( requestUtils );
-		await disableExperiment( admin, page, EXPERIMENT_LABEL );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, false );
 		await seedCredentials( requestUtils, [ 'openai' ] );
 		await resetFirstPost( requestUtils );
 		await setTagline( requestUtils, '' );

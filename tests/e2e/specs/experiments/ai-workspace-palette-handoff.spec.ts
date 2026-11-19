@@ -23,9 +23,9 @@ import {
 /**
  * Internal dependencies
  */
-import { disableExperiment, enableExperiment } from '../../utils/helpers';
+import { setExperimentEnabled } from '../../utils/helpers';
 
-const EXPERIMENT_LABEL = 'AI Workspace';
+const EXPERIMENT_ID = 'ai-workspace';
 const AI_RESULT = '[cmdk-item][data-value^="ai-command-palette-ai-search-"]';
 const ASK_AI_ROW =
 	'[cmdk-item][data-value^="ai-command-palette-ai-search-ask-ai "]';
@@ -113,13 +113,13 @@ async function openPageAs(
 }
 
 test.describe( 'AI Workspace handoff from the command palette', () => {
-	test.beforeEach( async ( { admin, page } ) => {
-		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+	test.beforeEach( async ( { requestUtils } ) => {
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, true );
 	} );
 
-	test.afterEach( async ( { admin, page, requestUtils } ) => {
+	test.afterEach( async ( { requestUtils } ) => {
 		await requestUtils.deleteAllUsers();
-		await disableExperiment( admin, page, EXPERIMENT_LABEL );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, false );
 	} );
 
 	test( 'Ask AI opens the workspace with the query in the composer, unsent', async ( {

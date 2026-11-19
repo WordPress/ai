@@ -19,9 +19,9 @@ import {
 /**
  * Internal dependencies
  */
-import { disableExperiment, enableExperiment } from '../../utils/helpers';
+import { setExperimentEnabled } from '../../utils/helpers';
 
-const EXPERIMENT_LABEL = 'AI Workspace';
+const EXPERIMENT_ID = 'ai-workspace';
 const WORKSPACE_PAGE = 'admin.php?page=ai-workspace';
 
 // The mocked OpenAI responses fixture answers every plain turn with this text.
@@ -101,16 +101,16 @@ async function send(
 }
 
 test.describe( 'AI Workspace turn with a dropped connection', () => {
-	test.beforeEach( async ( { admin, page, requestUtils } ) => {
-		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+	test.beforeEach( async ( { page, requestUtils } ) => {
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, true );
 		await deleteAllChats( requestUtils );
 		await page.setViewportSize( { width: 1280, height: 900 } );
 	} );
 
-	test.afterEach( async ( { admin, page, requestUtils } ) => {
+	test.afterEach( async ( { page, requestUtils } ) => {
 		await page.unrouteAll( { behavior: 'ignoreErrors' } );
 		await deleteAllChats( requestUtils );
-		await disableExperiment( admin, page, EXPERIMENT_LABEL );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, false );
 	} );
 
 	test( 'a first turn whose response is lost still shows its reply, in a chat that carries on', async ( {

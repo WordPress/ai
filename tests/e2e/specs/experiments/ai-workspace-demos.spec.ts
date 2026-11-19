@@ -30,13 +30,12 @@ import type { Page } from '@playwright/test';
 import {
 	activateMockScenario,
 	deactivateMockScenario,
-	disableExperiment,
-	enableExperiment,
 	getMockScenarioReport,
 	seedCredentials,
+	setExperimentEnabled,
 } from '../../utils/helpers';
 
-const EXPERIMENT_LABEL = 'AI Workspace';
+const EXPERIMENT_ID = 'ai-workspace';
 const WORKSPACE_PAGE = 'admin.php?page=ai-workspace';
 const SCENARIOS = join(
 	__dirname,
@@ -130,15 +129,15 @@ async function toolOrder( page: Page ): Promise< string[] > {
 }
 
 test.describe( 'AI Workspace starter prompts', () => {
-	test.beforeEach( async ( { admin, page, requestUtils } ) => {
+	test.beforeEach( async ( { requestUtils } ) => {
 		await requestUtils.deleteAllPosts();
 		await seedCredentials( requestUtils, [ 'anthropic' ] );
-		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, true );
 	} );
 
-	test.afterEach( async ( { admin, page, requestUtils } ) => {
+	test.afterEach( async ( { requestUtils } ) => {
 		await deactivateMockScenario( requestUtils );
-		await disableExperiment( admin, page, EXPERIMENT_LABEL );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, false );
 		await seedCredentials( requestUtils, [ 'openai' ] );
 		await requestUtils.deleteAllPosts();
 	} );

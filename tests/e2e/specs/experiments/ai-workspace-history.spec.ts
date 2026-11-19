@@ -21,12 +21,11 @@ import {
 import {
 	activateMockScenario,
 	deactivateMockScenario,
-	disableExperiment,
-	enableExperiment,
 	seedCredentials,
+	setExperimentEnabled,
 } from '../../utils/helpers';
 
-const EXPERIMENT_LABEL = 'AI Workspace';
+const EXPERIMENT_ID = 'ai-workspace';
 const WORKSPACE_PAGE = 'admin.php?page=ai-workspace';
 
 // The mocked OpenAI responses fixture answers every plain turn with this text.
@@ -76,15 +75,15 @@ async function sendAndWait(
 }
 
 test.describe( 'AI Workspace chat history', () => {
-	test.beforeEach( async ( { admin, page, requestUtils } ) => {
-		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+	test.beforeEach( async ( { page, requestUtils } ) => {
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, true );
 		await deleteAllChats( requestUtils );
 		await page.setViewportSize( { width: 1280, height: 900 } );
 	} );
 
-	test.afterEach( async ( { admin, page, requestUtils } ) => {
+	test.afterEach( async ( { requestUtils } ) => {
 		await deleteAllChats( requestUtils );
-		await disableExperiment( admin, page, EXPERIMENT_LABEL );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, false );
 	} );
 
 	test( 'shows the empty state when there are no chats', async ( {
@@ -421,19 +420,19 @@ test.describe( 'AI Workspace chat history', () => {
 } );
 
 test.describe( 'AI Workspace chat history with proposals', () => {
-	test.beforeEach( async ( { admin, page, requestUtils } ) => {
+	test.beforeEach( async ( { page, requestUtils } ) => {
 		await requestUtils.deleteAllPosts();
 		await seedCredentials( requestUtils, [ 'anthropic' ] );
-		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, true );
 		await deleteAllChats( requestUtils );
 		await activateMockScenario( requestUtils, 'workspace-proposal' );
 		await page.setViewportSize( { width: 1280, height: 900 } );
 	} );
 
-	test.afterEach( async ( { admin, page, requestUtils } ) => {
+	test.afterEach( async ( { requestUtils } ) => {
 		await deactivateMockScenario( requestUtils );
 		await deleteAllChats( requestUtils );
-		await disableExperiment( admin, page, EXPERIMENT_LABEL );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, false );
 		await seedCredentials( requestUtils, [ 'openai' ] );
 		await requestUtils.deleteAllPosts();
 	} );
