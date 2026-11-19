@@ -13,6 +13,7 @@ use WP_UnitTestCase;
 use WordPress\AI\Logging\AI_Request_Log_Manager;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
 use WordPress\AI\Logging\Logging_Http_Transporter;
+use WordPress\AI\Logging\Request_Source_Detector;
 use WordPress\AiClient\Providers\Http\Contracts\HttpTransporterInterface;
 use WordPress\AiClient\Providers\Http\DTO\Request;
 use WordPress\AiClient\Providers\Http\DTO\Response;
@@ -96,9 +97,9 @@ class Logging_Http_TransporterTest extends WP_UnitTestCase {
 	 * @return bool
 	 */
 	private function call_is_infrastructure_file( string $file ): bool {
-		$method = new ReflectionMethod( $this->transporter, 'is_infrastructure_file' );
+		$method = new ReflectionMethod( Request_Source_Detector::class, 'is_infrastructure_file' );
 		$method->setAccessible( true );
-		return (bool) $method->invoke( $this->transporter, $file );
+		return (bool) $method->invoke( new Request_Source_Detector(), $file );
 	}
 
 	/**
@@ -197,7 +198,7 @@ class Logging_Http_TransporterTest extends WP_UnitTestCase {
 			return null;
 		}
 
-		$resolver = new ReflectionMethod( $this->transporter, 'resolve_connector_plugin_slug' );
+		$resolver = new ReflectionMethod( Request_Source_Detector::class, 'resolve_connector_plugin_slug' );
 		$resolver->setAccessible( true );
 
 		foreach ( wp_get_connectors() as $connector_data ) {
@@ -205,7 +206,7 @@ class Logging_Http_TransporterTest extends WP_UnitTestCase {
 				continue;
 			}
 
-			$slug = (string) $resolver->invoke( $this->transporter, $connector_data );
+			$slug = (string) $resolver->invoke( new Request_Source_Detector(), $connector_data );
 			if ( '' !== $slug ) {
 				return $slug;
 			}

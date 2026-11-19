@@ -42,14 +42,23 @@ class Logging_Event_Listener {
 	private array $generations = array();
 
 	/**
+	 * The request source detector.
+	 *
+	 * @var \WordPress\AI\Logging\Request_Source_Detector
+	 */
+	private Request_Source_Detector $source_detector;
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 1.5.0
 	 *
-	 * @param \WordPress\AI\Logging\AI_Request_Log_Manager $log_manager The log manager.
+	 * @param \WordPress\AI\Logging\AI_Request_Log_Manager       $log_manager     The log manager.
+	 * @param \WordPress\AI\Logging\Request_Source_Detector|null $source_detector Optional source detector (created if not provided).
 	 */
-	public function __construct( AI_Request_Log_Manager $log_manager ) {
-		$this->log_manager = $log_manager;
+	public function __construct( AI_Request_Log_Manager $log_manager, ?Request_Source_Detector $source_detector = null ) {
+		$this->log_manager     = $log_manager;
+		$this->source_detector = $source_detector ?? new Request_Source_Detector();
 	}
 
 	/**
@@ -127,7 +136,14 @@ class Logging_Event_Listener {
 		$generation = $this->generations[ $index ];
 
 		if ( ! $generation['logged'] ) {
-			$tokens = $event->getResult()->getTokenUsage();
+			$tokens  = $event->getResult()->getTokenUsage();
+			$context = array( 'logged_via' => 'generation_event' );
+
+			// The after-event runs inside the generation call, so the caller is still on the stack.
+			$source = $this->source_detector->detect( true );
+			if ( null !== $source ) {
+				$context['source'] = $source;
+			}
 
 			$this->log_manager->log(
 				array(
@@ -139,7 +155,7 @@ class Logging_Event_Listener {
 					'tokens_input'  => $tokens->getPromptTokens(),
 					'tokens_output' => $tokens->getCompletionTokens(),
 					'status'        => 'success',
-					'context'       => array( 'logged_via' => 'generation_event' ),
+					'context'       => $context,
 				)
 			);
 		}

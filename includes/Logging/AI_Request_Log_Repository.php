@@ -36,6 +36,16 @@ class AI_Request_Log_Repository {
 	private const SUMMARY_CACHE_EXPIRATION = 5 * MINUTE_IN_SECONDS;
 
 	/**
+	 * Maximum number of sources returned in the summary breakdown.
+	 */
+	private const SUMMARY_SOURCE_LIMIT = 20;
+
+	/**
+	 * Maximum length of a stored source key, matching the indexed column width.
+	 */
+	private const SOURCE_KEY_MAX_BYTES = 191;
+
+	/**
 	 * Chunk size for batched delete operations.
 	 */
 	private const DELETE_BATCH_SIZE = 5000;
@@ -46,6 +56,13 @@ class AI_Request_Log_Repository {
 	 * @var \WordPress\AI\Logging\AI_Request_Log_Schema
 	 */
 	private AI_Request_Log_Schema $schema;
+
+	/**
+	 * Installed plugin names keyed by slug, loaded on first use.
+	 *
+	 * @var array<string, string>|null
+	 */
+	private ?array $plugin_names = null;
 
 	/**
 	 * Constructor.
@@ -106,12 +123,15 @@ class AI_Request_Log_Repository {
 			'request_preview'  => $request_preview,
 			'response_preview' => $response_preview,
 		);
+		$formats     = array( '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%d', '%s', '%s', '%d', '%s', '%s', '%s' );
 
-		$result = $wpdb->insert(
-			$this->schema->get_table_name(),
-			$insert_data,
-			array( '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%d', '%s', '%s', '%d', '%s', '%s', '%s' )
-		);
+		// Keep logging if the `source` column has not been added yet.
+		if ( $this->schema->has_source_column() ) {
+			$insert_data['source'] = self::build_source_key( $context );
+			$formats[]             = '%s';
+		}
+
+		$result = $wpdb->insert( $this->schema->get_table_name(), $insert_data, $formats );
 
 		if ( false === $result ) {
 			return false;
@@ -272,7 +292,8 @@ class AI_Request_Log_Repository {
 	 *     success_rate: float,
 	 *     by_type: array<string, int>,
 	 *     by_provider: array<string, int>,
-	 *     by_status: array<string, int>
+	 *     by_status: array<string, int>,
+	 *     by_source: list<array{source: string|null, type: string, slug: string, name: string, requests: int, tokens: int, errors: int}>
 	 * } Aggregated statistics.
 	 */
 	public function get_summary( string $period = 'day', bool $force_refresh = false ): array {
@@ -280,8 +301,10 @@ class AI_Request_Log_Repository {
 
 		if ( ! $force_refresh ) {
 			$cached = get_transient( $cache_key );
-			if ( is_array( $cached ) ) {
-				/** @var array{total_requests: int, total_tokens: int, avg_duration_ms: float, success_rate: float, by_type: array<string, int>, by_provider: array<string, int>, by_status: array<string, int>} $cached */
+			if ( is_array( $cached ) && isset( $cached['by_source'] ) && is_array( $cached['by_source'] ) ) {
+				$cached['by_source'] = $this->describe_sources( $cached['by_source'] );
+
+				/** @var array{total_requests: int, total_tokens: int, avg_duration_ms: float, success_rate: float, by_type: array<string, int>, by_provider: array<string, int>, by_status: array<string, int>, by_source: list<array{source: string|null, type: string, slug: string, name: string, requests: int, tokens: int, errors: int}>} $cached */
 				return $cached;
 			}
 		}
@@ -305,9 +328,16 @@ class AI_Request_Log_Repository {
 
 		$rows = $wpdb->get_results( $sql, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 
-		$result = $this->aggregate_summary_rows( ( $rows ? $rows : array() ) );
+		$result        = $this->aggregate_summary_rows( ( $rows ? $rows : array() ) );
+		$source_counts = $this->get_source_counts( $date_condition );
 
-		set_transient( $cache_key, $result, self::SUMMARY_CACHE_EXPIRATION );
+		// Cache counts only: display names are translated per user, and a failed breakdown is retried.
+		$result['by_source'] = $source_counts ?? array();
+		if ( null !== $source_counts ) {
+			set_transient( $cache_key, $result, self::SUMMARY_CACHE_EXPIRATION );
+		}
+
+		$result['by_source'] = $this->describe_sources( $result['by_source'] );
 
 		return $result;
 	}
@@ -710,6 +740,200 @@ class AI_Request_Log_Repository {
 		);
 
 		return ( $results ? $results : array() );
+	}
+
+	/**
+	 * Returns request and token totals grouped by source.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $date_condition SQL date condition from get_date_condition().
+	 * @return list<array{source: string|null, requests: int, tokens: int, errors: int}>|null Sources ordered by token usage, or null when the breakdown is unavailable.
+	 */
+	private function get_source_counts( string $date_condition ): ?array {
+		global $wpdb;
+
+		if ( ! $this->schema->has_source_column() ) {
+			return null;
+		}
+
+		$table_name = $this->schema->get_table_name();
+		$limit      = self::SUMMARY_SOURCE_LIMIT;
+
+		$sql = "SELECT
+			source,
+			COUNT(*) as requests,
+			COALESCE(SUM(tokens_total), 0) as tokens,
+			SUM(CASE WHEN status = 'success' THEN 0 ELSE 1 END) as errors
+			FROM {$table_name}
+			WHERE 1=1 {$date_condition}
+			GROUP BY source
+			ORDER BY tokens DESC, requests DESC, source ASC
+			LIMIT {$limit}"; // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		$rows = $wpdb->get_results( $sql, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+		if ( '' !== $wpdb->last_error || ! is_array( $rows ) ) {
+			return null;
+		}
+
+		$sources = array();
+
+		foreach ( $rows as $row ) {
+			$sources[] = array(
+				'source'   => isset( $row['source'] ) && '' !== $row['source'] ? (string) $row['source'] : null,
+				'requests' => (int) $row['requests'],
+				'tokens'   => (int) $row['tokens'],
+				'errors'   => (int) $row['errors'],
+			);
+		}
+
+		return $sources;
+	}
+
+	/**
+	 * Adds the type, slug, and display name to each source count.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $sources Source counts from get_source_counts().
+	 * @return list<array{source: string|null, type: string, slug: string, name: string, requests: int, tokens: int, errors: int}> Sources with display details.
+	 */
+	private function describe_sources( array $sources ): array {
+		$described = array();
+
+		foreach ( $sources as $source ) {
+			if ( ! is_array( $source ) ) {
+				continue;
+			}
+
+			$key         = isset( $source['source'] ) && is_string( $source['source'] ) && '' !== $source['source'] ? $source['source'] : null;
+			$described[] = array_merge(
+				array( 'source' => $key ),
+				$this->describe_source( $key ),
+				array(
+					'requests' => (int) ( $source['requests'] ?? 0 ),
+					'tokens'   => (int) ( $source['tokens'] ?? 0 ),
+					'errors'   => (int) ( $source['errors'] ?? 0 ),
+				)
+			);
+		}
+
+		return $described;
+	}
+
+	/**
+	 * Builds the indexed source key (`type:slug`) from a log's context.
+	 *
+	 * Keys longer than the column are shortened on a character boundary and made unique with a hash.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $context Log context.
+	 * @return string|null Source key, or null when the source is unknown.
+	 */
+	private static function build_source_key( array $context ): ?string {
+		$source = $context['source'] ?? null;
+
+		if ( ! is_array( $source ) ) {
+			return null;
+		}
+
+		$type = isset( $source['type'] ) && is_string( $source['type'] ) ? sanitize_key( $source['type'] ) : '';
+		$slug = isset( $source['slug'] ) && is_string( $source['slug'] ) ? sanitize_text_field( $source['slug'] ) : '';
+
+		if ( '' === $type || '' === $slug ) {
+			return null;
+		}
+
+		$key = $type . ':' . $slug;
+
+		if ( strlen( $key ) <= self::SOURCE_KEY_MAX_BYTES ) {
+			return $key;
+		}
+
+		// Leave room for "~" and a 32-character hash.
+		$max_prefix = self::SOURCE_KEY_MAX_BYTES - 33;
+		$prefix     = mb_substr( $key, 0, $max_prefix, 'UTF-8' );
+		$length     = strlen( $prefix );
+		while ( $length > $max_prefix ) {
+			$prefix = mb_substr( $prefix, 0, -1, 'UTF-8' );
+			$length = strlen( $prefix );
+		}
+
+		return $prefix . '~' . md5( $key );
+	}
+
+	/**
+	 * Resolves a source key into its type, slug, and display name.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string|null $key Source key in `type:slug` form.
+	 * @return array{type: string, slug: string, name: string} Source details. The name is empty for unknown sources.
+	 */
+	private function describe_source( ?string $key ): array {
+		if ( null === $key || false === strpos( $key, ':' ) ) {
+			return array(
+				'type' => '',
+				'slug' => '',
+				'name' => '',
+			);
+		}
+
+		[ $type, $slug ] = explode( ':', $key, 2 );
+
+		switch ( $type ) {
+			case 'plugin':
+				$name = $this->get_plugin_names()[ $slug ] ?? $slug;
+				break;
+			case 'theme':
+				$theme = wp_get_theme( $slug );
+				$name  = $theme->exists() ? (string) $theme->get( 'Name' ) : $slug;
+				break;
+			case 'core':
+				$name = __( 'WordPress Core', 'ai' );
+				break;
+			default:
+				$name = $slug;
+		}
+
+		return array(
+			'type' => $type,
+			'slug' => $slug,
+			'name' => '' !== $name ? $name : $slug,
+		);
+	}
+
+	/**
+	 * Returns installed plugin names keyed by plugin directory, or file name for single-file plugins.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, string> Plugin names keyed by slug.
+	 */
+	private function get_plugin_names(): array {
+		if ( null !== $this->plugin_names ) {
+			return $this->plugin_names;
+		}
+
+		if ( ! function_exists( 'get_plugins' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		$this->plugin_names = array();
+
+		foreach ( get_plugins() as $basename => $data ) {
+			$slug = explode( '/', (string) $basename )[0];
+
+			if ( isset( $this->plugin_names[ $slug ] ) || ! isset( $data['Name'] ) || ! is_string( $data['Name'] ) || '' === $data['Name'] ) {
+				continue;
+			}
+
+			$this->plugin_names[ $slug ] = $data['Name'];
+		}
+
+		return $this->plugin_names;
 	}
 
 	/**

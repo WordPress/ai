@@ -111,6 +111,18 @@ test.describe( 'AI Request Logging Experiment', () => {
 				.getByText( 'openai:responses', { exact: true } )
 				.first()
 		).toBeVisible( { timeout: 10000 } );
+
+		// Confirm the request is attributed to the AI plugin in the usage breakdown
+		await expect(
+			page.getByRole( 'heading', { name: 'Usage by source' } )
+		).toBeVisible();
+		const sourceRow = page.getByRole( 'row' ).filter( {
+			has: page.getByRole( 'rowheader', { name: 'AI', exact: true } ),
+		} );
+		await expect( sourceRow ).toBeVisible();
+		await expect(
+			sourceRow.getByRole( 'cell', { name: 'Plugin', exact: true } )
+		).toBeVisible();
 	} );
 
 	test( 'Period selector switches the table data window', async ( {
