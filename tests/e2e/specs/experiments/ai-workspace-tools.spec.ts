@@ -710,6 +710,132 @@ test.describe( 'AI Workspace proposal card', () => {
 		expect( href.searchParams.get( 'post_status' ) ).toBe( 'draft' );
 	} );
 
+	test( 'selects all or none with the keyboard and follows individual changes', async ( {
+		page,
+	} ) => {
+		const card = page.getByRole( 'region', { name: 'Create 3 drafts' } );
+		const selectAll = card.getByRole( 'button', {
+			name: 'Select all',
+			exact: true,
+		} );
+		const selectNone = card.getByRole( 'button', {
+			name: 'Select none',
+			exact: true,
+		} );
+
+		await expect( card.getByRole( 'status' ) ).toHaveText(
+			'0 items selected'
+		);
+		await selectAll.focus();
+		await selectAll.press( 'Enter' );
+		for ( const title of SERIES ) {
+			await expect(
+				card.getByRole( 'checkbox', { name: title } )
+			).toBeChecked();
+		}
+		await expect( selectNone ).toBeFocused();
+		await expect( card.getByRole( 'status' ) ).toHaveText(
+			'3 items selected'
+		);
+		await expect(
+			card.getByRole( 'button', { name: 'Create 3 drafts' } )
+		).toBeEnabled();
+
+		await selectNone.press( 'Space' );
+		for ( const title of SERIES ) {
+			await expect(
+				card.getByRole( 'checkbox', { name: title } )
+			).not.toBeChecked();
+		}
+		await expect(
+			card.getByRole( 'button', { name: 'Create 0 drafts' } )
+		).toBeDisabled();
+
+		await card.getByRole( 'checkbox', { name: SERIES[ 0 ] } ).check();
+		await selectAll.click();
+		await card.getByRole( 'checkbox', { name: SERIES[ 1 ] } ).uncheck();
+		await expect( card.getByRole( 'status' ) ).toHaveText(
+			'2 items selected'
+		);
+		await expect(
+			card.getByRole( 'button', { name: 'Create 2 drafts' } )
+		).toBeEnabled();
+		await selectAll.click();
+		await expect( card.getByRole( 'status' ) ).toHaveText(
+			'3 items selected'
+		);
+	} );
+
+	for ( const count of [ 1, 2 ] ) {
+		test( `hides bulk selection for ${ count } proposed items`, async ( {
+			page,
+		} ) => {
+			await page.route( '**/workspace/proposals/*', async ( route ) => {
+				const response = await route.fetch();
+				const body = await response.json();
+				body.items = body.items.slice( 0, count );
+				await route.fulfill( { response, json: body } );
+			} );
+			await page.reload();
+			const card = page.getByRole( 'region', {
+				name: `Create ${ count } ${ count === 1 ? 'draft' : 'drafts' }`,
+			} );
+			await expect( card ).toBeVisible();
+			await expect( card.getByRole( 'checkbox' ) ).toHaveCount( count );
+			await expect(
+				card.getByRole( 'button', { name: /^Select (all|none)$/ } )
+			).toHaveCount( 0 );
+		} );
+	}
+
+	test( 'bulk selection makes publishing explicit in the action label', async ( {
+		page,
+	} ) => {
+		await page.route( '**/workspace/proposals/*', async ( route ) => {
+			const response = await route.fetch();
+			const body = await response.json();
+			body.items[ 0 ].status = 'publish';
+			await route.fulfill( { response, json: body } );
+		} );
+		await page.reload();
+		const card = page.locator( '.ai-workspace__proposal' );
+		await card
+			.getByRole( 'button', { name: 'Select all', exact: true } )
+			.click();
+		await expect(
+			card.getByRole( 'button', {
+				name: 'Create and publish 3 items',
+				exact: true,
+			} )
+		).toBeEnabled();
+		await card.getByRole( 'checkbox', { name: SERIES[ 0 ] } ).uncheck();
+		await expect(
+			card.getByRole( 'button', { name: 'Create 2 drafts', exact: true } )
+		).toBeEnabled();
+	} );
+
+	test( 'disables bulk and individual selection while approval is pending', async ( {
+		page,
+	} ) => {
+		await page.route( '**/workspace/proposals/*/execute', () => {} );
+		const card = page.getByRole( 'region', { name: 'Create 3 drafts' } );
+		await card
+			.getByRole( 'button', { name: 'Select all', exact: true } )
+			.click();
+		await card
+			.getByRole( 'button', { name: 'Create 3 drafts', exact: true } )
+			.click();
+		await expect(
+			card.getByRole( 'button', { name: 'Select none', exact: true } )
+		).toBeDisabled();
+		for ( const title of SERIES ) {
+			await expect(
+				card.getByRole( 'checkbox', { name: title } )
+			).toBeDisabled();
+		}
+		await page.unrouteAll( { behavior: 'ignoreErrors' } );
+	} );
+
 	test( 'says why an item was not created, and opens the rest', async ( {
 		page,
 	} ) => {

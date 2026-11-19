@@ -12,7 +12,7 @@ import {
 	Spinner,
 } from '@wordpress/components';
 import { useCallback, useEffect, useRef, useState } from '@wordpress/element';
-import { __, sprintf } from '@wordpress/i18n';
+import { __, _n, sprintf } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
@@ -831,6 +831,49 @@ export default function ConfirmProposal( {
 		return null;
 	}
 
+	const allSelected = proposal.items.every( ( item ) =>
+		selected.includes( item.key )
+	);
+
+	const selectionControl = proposal.items.length >= 3 && (
+		<div className="ai-workspace__proposal-actions">
+			<Button
+				variant="link"
+				isDestructive={ allSelected }
+				disabled={
+					'working' === state || 'pending' !== proposal.status
+				}
+				onClick={ () =>
+					setSelected(
+						allSelected
+							? []
+							: proposal.items.map( ( item ) => item.key )
+					)
+				}
+			>
+				{ allSelected
+					? __( 'Select none', 'ai' )
+					: __( 'Select all', 'ai' ) }
+			</Button>
+			<span
+				className="ai-workspace__proposal-hint"
+				role="status"
+				aria-atomic="true"
+			>
+				{ sprintf(
+					/* translators: %d: number of selected proposal items. */
+					_n(
+						'%d item selected',
+						'%d items selected',
+						selected.length,
+						'ai'
+					),
+					selected.length
+				) }
+			</span>
+		</div>
+	);
+
 	if ( isUpdate( proposal ) ) {
 		const heading = reviewLabel( proposal.items.length );
 
@@ -882,6 +925,7 @@ export default function ConfirmProposal( {
 					>
 						{ __( 'Discard', 'ai' ) }
 					</Button>
+					{ selectionControl }
 				</div>
 			</section>
 		);
@@ -970,6 +1014,7 @@ export default function ConfirmProposal( {
 					<CheckboxControl
 						__nextHasNoMarginBottom
 						checked={ selected.includes( item.key ) }
+						disabled={ 'working' === state }
 						onChange={ ( isChecked: boolean ) =>
 							toggle( item.key, isChecked )
 						}
@@ -1025,6 +1070,7 @@ export default function ConfirmProposal( {
 				>
 					{ __( 'Discard', 'ai' ) }
 				</Button>
+				{ selectionControl }
 			</div>
 		</section>
 	);
