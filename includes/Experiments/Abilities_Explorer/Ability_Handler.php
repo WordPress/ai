@@ -43,9 +43,6 @@ class Ability_Handler {
 	/**
 	 * Returns the human-readable label for every conversational-surface exclusion reason.
 	 *
-	 * The reason codes are the workspace's; the wording is the Explorer's,
-	 * because this is the only screen that shows them to a person.
-	 *
 	 * @since x.x.x
 	 *
 	 * @return array<string, string> Map of `Tool_Policy::REASON_*` code to translated label.
@@ -108,11 +105,7 @@ class Ability_Handler {
 
 		$formatted = array();
 
-		/*
-		 * Computed once for the whole list. Every reason needs the admitted
-		 * surface, and deriving that per row would rebuild the candidate map
-		 * once per ability.
-		 */
+		// Computed once: deriving reasons per row rebuilds the candidate map per ability.
 		$reasons = ( new Tool_Policy() )->get_exclusion_reasons();
 
 		foreach ( $abilities as $ability ) {
@@ -129,11 +122,7 @@ class Ability_Handler {
 	 * @since x.x.x Added the `$reasons` parameter and the conversational-surface fields.
 	 *
 	 * @param \WP_Ability                     $ability Ability object.
-	 * @param array<string,string|null>|null  $reasons Optional. Exclusion reasons keyed by ability
-	 *                                                 name, as returned by
-	 *                                                 `Tool_Policy::get_exclusion_reasons()`. Default
-	 *                                                 null, which resolves the reason for this
-	 *                                                 ability alone.
+	 * @param array<string,string|null>|null  $reasons Optional. `Tool_Policy::get_exclusion_reasons()` output. Default null.
 	 * @return array<string,mixed> Formatted ability data.
 	 */
 	private static function format_single_ability( \WP_Ability $ability, ?array $reasons = null ): array {
@@ -150,26 +139,12 @@ class Ability_Handler {
 		return array(
 			'slug'                   => $name,
 			'name'                   => $ability->get_label(),
-			/*
-			 * The description the model is handed, unmodified. Columns escape
-			 * on output; the stored value stays the source string so it can be
-			 * compared with the function declaration the model is sent.
-			 */
+			// Unescaped, so it matches the description the model is sent.
 			'description'            => $ability->get_description(),
 			'conversational_surface' => null === $reason,
 			'surface_reason'         => $reason,
 			'owner_excluded'         => $policy->is_owner_excluded( $name ),
-			/*
-			 * The other two surfaces an ability can be exposed on. WordPress 7.1
-			 * added `meta.public` as the general exposure flag, and a channel
-			 * resolves as `meta[channel] ?? meta.public ?? the channel default`.
-			 *
-			 * Core resolves `show_in_rest` at registration and writes the answer
-			 * back into meta, so reading it here is already the resolved value.
-			 * Nothing resolves `mcp.public`, so the inheritance has to happen
-			 * here -- reading that key alone reports an ability as absent from MCP
-			 * when `meta.public` put it there.
-			 */
+			// Core resolves `show_in_rest` at registration; `mcp.public` must fall back to `meta.public` here.
 			'show_in_rest'           => true === ( $meta['show_in_rest'] ?? null ),
 			'show_in_mcp'            => true === ( $meta['mcp']['public'] ?? $meta['public'] ?? null ),
 			'provider'               => self::detect_provider( $name, $meta ),

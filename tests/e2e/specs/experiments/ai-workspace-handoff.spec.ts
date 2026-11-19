@@ -1,7 +1,5 @@
 /**
  * Browser coverage for the block editor handoff into the AI Workspace.
- *
- * External dependencies
  */
 /**
  * External dependencies
@@ -89,21 +87,14 @@ test.describe( 'AI Workspace block editor handoff', () => {
 
 		await page.waitForURL( /page=ai-workspace/ );
 
-		// The post travels as an identity in the URL.
 		expect( page.url() ).toContain( `wpai-post=${ post.id }` );
 
-		// The composer opens naming the post, and nothing is sent yet.
 		await expect(
 			page.getByLabel( 'Message', { exact: true } )
 		).toHaveValue( /Handoff seeds the workspace/ );
 		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 0 );
 
-		/*
-		 * The body never crosses the handoff. The workspace reads content only
-		 * through the permission-checked tool path, so an injected instruction
-		 * in the post body is not on the page at all and cannot have reached
-		 * the model by way of the seed.
-		 */
+		// The body never crosses the handoff; content is read only through permission-checked tools.
 		await expect( page.locator( 'body' ) ).not.toContainText(
 			'IGNORE ALL PREVIOUS INSTRUCTIONS'
 		);
@@ -125,7 +116,6 @@ test.describe( 'AI Workspace block editor handoff', () => {
 			page.locator( '.ai-workspace__seed-notice' )
 		).toContainText( 'no longer exists' );
 
-		// Nothing was prefilled for a post that could not be resolved.
 		await expect(
 			page.getByLabel( 'Message', { exact: true } )
 		).toHaveValue( '' );

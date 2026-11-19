@@ -15,13 +15,7 @@ import { __ } from '@wordpress/i18n';
 import type { Question } from '../types';
 
 /**
- * Renders a question card.
- *
- * Clicking a choice sends its text as the person's next message, the same as
- * typing it. Only the card at the end of the conversation can be answered:
- * once anything has been sent after it, by a click or by typing, its choices
- * are disabled so an old question cannot be answered twice. The choice that was
- * sent, if any, stays marked.
+ * Renders a question card; only the live card can be answered.
  *
  * @param props          Component props.
  * @param props.question The question and its choices.
@@ -60,8 +54,7 @@ export default function AskUser( {
 						__next40pxDefaultSize
 						variant={ chosen === choice ? 'primary' : 'secondary' }
 						disabled={ ! isLive }
-						// Only an answered card is a set of toggles: it shows
-						// which one was sent.
+						// Only an answered card shows which choice was sent.
 						aria-pressed={ isLive ? undefined : chosen === choice }
 						onClick={ () => onAnswer( choice ) }
 					>

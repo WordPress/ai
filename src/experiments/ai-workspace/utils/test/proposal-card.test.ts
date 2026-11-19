@@ -1,8 +1,5 @@
 /**
  * Unit coverage for what the AI Workspace proposal card says and links to.
- *
- * These rules decide what a person approves and where they land afterwards, so
- * they are asserted directly rather than through the browser.
  */
 /**
  * External dependencies

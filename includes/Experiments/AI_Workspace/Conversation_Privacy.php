@@ -17,13 +17,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Adds a person's saved chats to Tools → Export Personal Data and Tools → Erase Personal Data.
  *
- * Registered by the plugin's `Main` class, next to the chat lifecycle hooks, so
- * chats saved while the experiment was on are exported and erased while it is
- * off (R16, KTD13). Chats are read through {@see Conversation_Store::chat_ids()},
- * which finds archived chats even when their status is not registered.
- *
- * Erasing needs no separate pass over proposals: a proposal whose chat is gone
- * can no longer be approved.
+ * Registered by `Main` so chats are still exported and erased while the experiment is off.
  *
  * @since x.x.x
  */
@@ -96,11 +90,7 @@ final class Conversation_Privacy {
 	}
 
 	/**
-	 * Exports one page of a person's chats.
-	 *
-	 * Each chat is one item: its name, when it was created and last updated,
-	 * whether it is archived, and each turn's message and reply. Tool results
-	 * are left out; they are site content the person can export on its own.
+	 * Exports one page of a person's chats; tool results are left out as they are site content.
 	 *
 	 * @since x.x.x
 	 *
@@ -122,7 +112,6 @@ final class Conversation_Privacy {
 		$ids  = Conversation_Store::chat_ids( $user->ID, self::PER_PAGE, ( $page - 1 ) * self::PER_PAGE );
 		$data = array();
 
-		// One query for the page's posts and one for their meta, rather than two per chat.
 		_prime_post_caches( $ids, false, true );
 
 		foreach ( $ids as $id ) {
@@ -168,7 +157,6 @@ final class Conversation_Privacy {
 
 		return array(
 			'items_removed'  => $had,
-			// A chat that could not be deleted is still there.
 			'items_retained' => $had && array() !== Conversation_Store::chat_ids( $user->ID, 1 ),
 			'messages'       => array(),
 			'done'           => true,

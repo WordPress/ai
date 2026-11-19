@@ -22,14 +22,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Class - Search_Filters
  *
- * Turns the term, date and featured-image filters of {@see Search_Content} into
- * query clauses, and decides which taxonomies posts may be filtered and labelled
- * by, a set {@see List_Terms} lists too.
- *
- * One rule runs through all of it: a filter never widens the list. A filter that
- * names an unknown taxonomy or an impossible date is an error rather than ignored,
- * and one that names terms the taxonomy does not have matches nothing. Inputs are
- * read the way a GET request delivers them, as strings, as well as typed.
+ * Builds query clauses for {@see Search_Content} filters; an invalid filter errors rather than widening results.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -46,11 +39,7 @@ final class Search_Filters {
 	public const MAX_TERMS = 20;
 
 	/**
-	 * Returns the taxonomies posts may be filtered and labelled by.
-	 *
-	 * Those that are publicly viewable and attached to a post type exposed to
-	 * abilities, so a filter, a row's terms and a term listing say nothing a visitor
-	 * to the site could not already see.
+	 * Returns the publicly viewable taxonomies of post types exposed to abilities.
 	 *
 	 * @since x.x.x
 	 *
@@ -74,10 +63,6 @@ final class Search_Filters {
 
 	/**
 	 * Resolves the taxonomy filter into a taxonomy and the IDs of the terms it names.
-	 *
-	 * Terms are matched by slug first and then by name, so "Updates" and "updates"
-	 * both find the tag. Terms may arrive as a list or, from a GET request, as a
-	 * comma-separated string.
 	 *
 	 * @since x.x.x
 	 *
@@ -134,9 +119,7 @@ final class Search_Filters {
 	/**
 	 * Builds the date range clause, with both end days included.
 	 *
-	 * A bound that is not a real calendar day is refused: WP_Date_Query would read
-	 * it as 1 January 1970, which quietly drops an "after" bound and empties a
-	 * "before" one.
+	 * Invalid days are refused because WP_Date_Query would silently read them as 1970-01-01.
 	 *
 	 * @since x.x.x
 	 *
@@ -165,7 +148,6 @@ final class Search_Filters {
 				);
 			}
 
-			// The whole of the end day is in range, not just its first second.
 			$clause[ $bound ] = 'before' === $bound ? $value . ' 23:59:59' : $value . ' 00:00:00';
 		}
 
@@ -173,11 +155,7 @@ final class Search_Filters {
 	}
 
 	/**
-	 * Builds the featured-image clause.
-	 *
-	 * A post has a featured image when its `_thumbnail_id` is a positive number,
-	 * the same test {@see has_post_thumbnail()} applies to the row, so the filter
-	 * and the row never disagree about a post whose stored value is 0 or empty.
+	 * Builds the featured-image clause, matching has_post_thumbnail()'s positive-ID test.
 	 *
 	 * @since x.x.x
 	 *
@@ -242,11 +220,7 @@ final class Search_Filters {
 	}
 
 	/**
-	 * Returns the names of a post's terms, keyed by taxonomy.
-	 *
-	 * Only the given taxonomies are reported, so a term from a private taxonomy
-	 * never reaches the result. An empty object, not an empty list, when the post
-	 * has none, so it still encodes as a JSON object.
+	 * Returns the names of a post's terms in the given taxonomies, keyed by taxonomy.
 	 *
 	 * @since x.x.x
 	 *
@@ -271,6 +245,7 @@ final class Search_Filters {
 			$terms[ $taxonomy ] = array_values( wp_list_pluck( $post_terms, 'name' ) );
 		}
 
+		// Encodes as a JSON object even when empty.
 		return array() === $terms ? new \stdClass() : $terms;
 	}
 }

@@ -1,29 +1,8 @@
 /**
- * A restricted-subset markdown renderer for assistant output.
+ * A restricted-subset markdown renderer for assistant output; a security boundary that never produces HTML strings.
  *
- * This module is a security boundary (R19, KTD9). It deliberately does not use a
- * markdown parser or an HTML sanitizer. It parses an explicit allowlist of
- * constructs into a small node tree that a React component renders as elements,
- * so no code path anywhere produces an HTML string and nothing is ever handed to
- * `dangerouslySetInnerHTML`. Dangerous constructs are impossible to emit rather
- * than stripped after the fact:
- *
- * - **Raw HTML** is never recognised. Anything that looks like markup falls
- *   through to a text node and is displayed as visible text.
- * - **Images** never produce a node that can issue a network request. Inline
- *   images become an `image` node the renderer prints as inert text, and
- *   reference-style definitions and reference-style images are not recognised at
- *   all, so they remain literal text. Markdown images are the zero-click
- *   exfiltration channel, so this holds for both spellings.
- * - **Links** are neutralised by policy rather than by escaping. The destination
- *   is always carried on the node so the UI can show it, only `http` and `https`
- *   survive, and a destination outside {@link MarkdownOptions.allowedHost} is
- *   marked inert so it renders as text rather than as a live anchor. That closes
- *   the other half of the exfiltration path: a link whose query string carries
- *   retrieved private content, wearing anchor text that reads like a next step.
- *
- * The allowlist is: paragraphs, hard line breaks, bold, italic, inline code,
- * fenced code blocks, ordered and unordered lists, headings and blockquotes.
+ * Raw HTML stays text. Images are never fetched (zero-click exfiltration).
+ * Off-host or non-http(s) links are inert, so a link cannot carry retrieved content off-site.
  */
 
 /**
@@ -33,33 +12,17 @@ export type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
 
 /**
  * An inline node.
- *
- * `image` and an inert `link` both exist to be rendered as plain text; they are
- * kept as distinct node types so the UI can label them for the reader instead of
- * silently discarding what the model wrote.
  */
 export type InlineNode =
 	| { type: 'text'; value: string }
-	/*
-	 * A line break inside one paragraph. Emitted for a single newline, which
-	 * CommonMark treats as a soft break rendered as a space. That is wrong for
-	 * this surface: a model writing a limerick, an address, or lyrics puts one
-	 * newline between lines and means them, and joining those into a run-on
-	 * paragraph loses the shape the answer was written in.
-	 */
+	// Emitted for a single newline, unlike CommonMark's soft break, to keep the model's line shape.
 	| { type: 'break' }
 	| { type: 'strong'; children: InlineNode[] }
 	| { type: 'emphasis'; children: InlineNode[] }
 	| { type: 'code'; value: string }
 	| { type: 'link'; label: string; destination: string; inert: boolean }
 	| { type: 'image'; alt: string; destination: string }
-	/*
-	 * Post markup that would render, play or load on the live site but is
-	 * never drawn here: a block delimiter (a dynamic block renders server
-	 * side), a media or embed element, or a form control. It is described in
-	 * place as plain text, the same idea as `image`, so an approver sees that
-	 * it is there. Only `renderHtml()` emits it.
-	 */
+	// Live-site markup described as text, never drawn; only `renderHtml()` emits it.
 	| {
 			type: 'withheld';
 			kind: 'block' | 'media' | 'embed' | 'control';
@@ -86,9 +49,7 @@ export type BlockNode =
  * Options for {@link renderMarkdown}.
  */
 export interface MarkdownOptions {
-	/**
-	 * The host whose links may render as live anchors. Every other host is inert.
-	 */
+	/** The only host whose links may render as live anchors. */
 	allowedHost: string;
 }
 
@@ -205,8 +166,7 @@ function parseBlocks( lines: string[], options: MarkdownOptions ): BlockNode[] {
 				: UNORDERED_ITEM_PATTERN;
 			const items: InlineNode[][] = [];
 
-			// A run that opens at something other than 1 keeps counting from
-			// there, so a list broken up by paragraphs stays numbered.
+			// Keep the opening number so a list split by paragraphs stays numbered.
 			let start = 1;
 
 			while ( index < lines.length ) {
@@ -254,8 +214,7 @@ function parseBlocks( lines: string[], options: MarkdownOptions ): BlockNode[] {
 
 		paragraph.forEach( ( text, position ) => {
 			if ( position > 0 ) {
-				// A newline in a text node collapses to a space in HTML, so the
-				// break has to be a node the renderer can turn into an element.
+				// A newline in a text node would collapse to a space.
 				children.push( { type: 'break' } );
 			}
 
@@ -312,7 +271,7 @@ function parseInline( text: string, options: MarkdownOptions ): InlineNode[] {
 
 			if ( image ) {
 				flush();
-				// An image never becomes a node that can request a URL (KTD9).
+				// An image never becomes a node that can request a URL.
 				nodes.push( {
 					type: 'image',
 					alt: image.label,
@@ -415,10 +374,7 @@ function matchEmphasis(
 }
 
 /**
- * Matches an inline `[label](destination)` construct.
- *
- * Reference-style syntax is deliberately not matched, so `[label][ref]` and its
- * `[ref]: url` definition stay literal text and resolve to nothing.
+ * Matches an inline `[label](destination)` construct; reference-style links stay literal text.
  *
  * @param text  The inline source.
  * @param start Index of the opening bracket.
@@ -514,12 +470,7 @@ function normalizeDestination( destination: string ): string {
 }
 
 /**
- * Decides whether a destination may render as a live anchor.
- *
- * Only `http` and `https` on {@link MarkdownOptions.allowedHost} qualify. Every
- * other scheme — `javascript:`, `data:`, `blob:`, and anything unparseable — and
- * every other host is inert, because a live off-site anchor is enough to carry
- * retrieved content out in its query string on a single click.
+ * Decides whether a destination may be live: only http(s) on the allowed host, since an off-site link can exfiltrate data.
  *
  * @param destination The destination.
  * @param allowedHost The host whose links may be live.

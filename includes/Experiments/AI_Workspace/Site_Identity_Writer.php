@@ -17,34 +17,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Proposes and writes a new site title or tagline.
  *
- * One item is one option: `{option, value}`, with the option `blogname` or
- * `blogdescription`, each at most once per proposal. The person sees the
- * option's current value next to the proposed one, may edit the proposed one,
- * and approves it. Either change is live for every visitor at once, and the
- * card says so.
- *
- * There is deliberately no `ai/*` write ability behind this kind. Every plugin
- * ability is offered over MCP by default, with no approval step there, so a
- * registered update-setting ability (as #1214 had) would let any MCP client
- * rename the site unreviewed. Only #1214's rules are ported, here: its two-option
- * allowlist and its `manage_options` check. Do not "fix" MCP parity by
- * registering a write ability; see {@see Proposal_Writer}.
- *
- * The rules, applied alike to the model's values and the person's edits:
- *
- * - **Only the site title and tagline.** No URL, email, role or other option is
- *   reachable.
- * - **`manage_options`**, when the item is proposed and again when it is written.
- * - **The value is plain text.** It goes through `sanitize_text_field()`, which
- *   strips tags, so a value holding HTML is stored as its text. It is refused,
- *   not truncated, past {@see self::TITLE_MAX_LENGTH} or
- *   {@see self::TAGLINE_MAX_LENGTH}. The site title cannot be empty; the tagline can.
- *
- * Each item carries a SHA-256 hash of the option's stored value when it was
- * proposed (the snapshot), and approval writes nothing when the option has changed since
- * (`stale`) or already has the new value (`unchanged`). `update_option()`
- * returns false for an unchanged value, which #1214 reported as an error; here
- * it is checked first and reported as `unchanged`.
+ * Deliberately not a write ability: MCP has no approval step. See {@see Proposal_Writer}.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -91,7 +64,7 @@ final class Site_Identity_Writer implements Proposal_Kind {
 	public const TAGLINE_MAX_LENGTH = 300;
 
 	/**
-	 * The options an item may change, from #1214's allowlist.
+	 * The options an item may change.
 	 *
 	 * @since x.x.x
 	 *
@@ -119,8 +92,6 @@ final class Site_Identity_Writer implements Proposal_Kind {
 
 	/**
 	 * {@inheritDoc}
-	 *
-	 * One item per option.
 	 *
 	 * @since x.x.x
 	 */
@@ -185,9 +156,6 @@ final class Site_Identity_Writer implements Proposal_Kind {
 	/**
 	 * Normalizes and validates one proposed option change.
 	 *
-	 * Error messages are written for the model to pass on, so the person hears
-	 * why a change could not be proposed.
-	 *
 	 * @since x.x.x
 	 *
 	 * @param array<mixed> $item The raw item.
@@ -219,10 +187,7 @@ final class Site_Identity_Writer implements Proposal_Kind {
 			return $value;
 		}
 
-		/*
-		 * An edited item keeps the snapshot it was proposed with. Only a hash is
-		 * kept, since the value is only ever compared, never shown.
-		 */
+		// An edited item keeps the snapshot it was proposed with.
 		$snapshot = isset( $item[ self::SNAPSHOT_FIELD ] ) && is_string( $item[ self::SNAPSHOT_FIELD ] )
 			? $item[ self::SNAPSHOT_FIELD ]
 			: hash( 'sha256', $this->stored_value( $option ) );
@@ -236,10 +201,6 @@ final class Site_Identity_Writer implements Proposal_Kind {
 
 	/**
 	 * {@inheritDoc}
-	 *
-	 * The current value is read when the card loads, not stored, so the card
-	 * shows the setting as it is now. `post_type` and `title` let the generic
-	 * discard report name the setting as it names a post.
 	 *
 	 * @since x.x.x
 	 */
@@ -282,10 +243,7 @@ final class Site_Identity_Writer implements Proposal_Kind {
 			return $this->outcome( $item, 'failed', 'invalid_option', __( 'Only the site title and tagline can be changed.', 'ai' ) );
 		}
 
-		/*
-		 * Re-checked here, not only when the proposal was made: a capability can
-		 * be revoked between the two requests, and this is the one that writes.
-		 */
+		// Re-checked: the capability may have been revoked since the proposal.
 		// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- The capability is the literal manage_options, held in a constant.
 		if ( ! current_user_can( self::CAPABILITY ) ) {
 			$this->log( $item, $proposal_id, $conversation_id, Turn_Runner::LOG_STATUS_DENIED, 0, 'cannot_manage_options', 'The user may no longer change site settings.' );
@@ -295,10 +253,7 @@ final class Site_Identity_Writer implements Proposal_Kind {
 
 		$current = $this->stored_value( $option );
 
-		/*
-		 * Compared in the form core stores, since `sanitize_option()` escapes
-		 * these two options: "Tom & Jerry" is stored as "Tom &amp; Jerry".
-		 */
+		// `sanitize_option()` escapes these options: "Tom & Jerry" is stored as "Tom &amp; Jerry".
 		if ( $current === $this->as_stored( $option, $value ) ) {
 			$this->log( $item, $proposal_id, $conversation_id, 'skipped', 0, 'unchanged', '' );
 

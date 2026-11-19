@@ -18,9 +18,6 @@ use WordPress\AiClient\Messages\Enums\MessageRoleEnum;
 /**
  * Prompt_Model_Client test case.
  *
- * Rounds are buffered unless a stream driver is injected, and a driver that
- * cannot stream falls back to a buffered request rather than failing the turn.
- *
  * @since x.x.x
  *
  * @covers \WordPress\AI\Experiments\AI_Workspace\Prompt_Model_Client
@@ -182,8 +179,7 @@ class Prompt_Model_ClientTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Drops an unsigned thought part from the replay: Anthropic rejects an
-	 * unsigned thinking block, and its connector does not keep the signature.
+	 * Drops an unsigned thought part from the replay, since Anthropic rejects unsigned thinking blocks.
 	 *
 	 * @dataProvider data_missing_signatures
 	 *
@@ -203,8 +199,7 @@ class Prompt_Model_ClientTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A signed thought part, as the Google and OpenAI connectors produce, is
-	 * replayed with its signature.
+	 * A signed thought part is replayed with its signature.
 	 *
 	 * @since x.x.x
 	 */
@@ -220,8 +215,7 @@ class Prompt_Model_ClientTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A model message that held only an unsigned thought is dropped rather
-	 * than sent empty.
+	 * A model message that held only an unsigned thought is dropped rather than sent empty.
 	 *
 	 * @since x.x.x
 	 */
@@ -252,8 +246,7 @@ class Prompt_Model_ClientTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Raises the wait above core's 30 second default, which cut off a round that
-	 * wrote a full proposal, but keeps a longer timeout a site already set.
+	 * Raises the timeout above core's 30 second default but keeps a longer one a site set.
 	 *
 	 * @dataProvider data_request_timeouts
 	 *
@@ -267,8 +260,7 @@ class Prompt_Model_ClientTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A round asks for room to write a full proposal, more than the 4,096
-	 * tokens a connector may default to.
+	 * A round asks for more output tokens than the 4,096 a connector may default to.
 	 *
 	 * @since x.x.x
 	 */
@@ -289,8 +281,7 @@ class Prompt_Model_ClientTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The output token limit is filterable, and a value that is not positive
-	 * falls back to the default.
+	 * The output token limit is filterable, and a non-positive value falls back to the default.
 	 *
 	 * @since x.x.x
 	 */
@@ -312,8 +303,7 @@ class Prompt_Model_ClientTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The raise is removed once the round's request is built, so other model
-	 * calls on the same page keep core's default.
+	 * The timeout raise is removed once the round's request is built.
 	 *
 	 * @since x.x.x
 	 */

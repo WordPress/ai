@@ -19,39 +19,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Proposes and writes a new title, excerpt or content for an existing post.
  *
- * One item is one field of one post: `{post_id, field, value}`. The person sees
- * the field's current value next to the proposed one, may edit the proposed
- * one, and approves it. Published posts may be changed too, and the card says
- * that the change goes live at once.
- *
- * There is deliberately no `ai/*` write ability behind this kind. Every plugin
- * ability is offered over MCP by default, with no approval step there, so a
- * registered update-post ability (as #1214 had) would let any MCP client change
- * a live post unreviewed. Only #1214's validation rules are ported, here. Do not
- * "fix" MCP parity by registering a write ability; see {@see Proposal_Writer}.
- *
- * The rules, applied alike to the model's values and the person's edits:
- *
- * - **A title is plain text.** It is trimmed, and refused if it holds markup or
- *   runs past {@see self::TITLE_MAX_LENGTH}. Core's `title_save_pre` kses pass
- *   does not run for `unfiltered_html` users, who are the ones approving here,
- *   so this check is the only one.
- * - **Excerpt and content go through `wp_kses_post()` for every user**, for the
- *   reasons {@see Draft_Writer::normalize_item()} gives: the value is model output.
- * - **Content is not rewritten over markup kses would strip.** A post whose
- *   current content loses a tag, attribute, attribute value, comment or text
- *   under `wp_kses_post()`, such as one holding an iframe or embed script saved
- *   with `unfiltered_html`, would silently lose it, so a content item for it is
- *   refused. Its title and excerpt still change. Kses also re-serializes markup
- *   it keeps (`<img/>` becomes `<img />`), and that alone is not a refusal; see
- *   {@see self::kses_would_remove_markup()}.
- * - **The post must be one the person can edit**, of a post type exposed to
- *   abilities that supports the field, and not trashed, a revision or an
- *   autosave. Status, author and type never change.
- *
- * Each item carries a SHA-256 hash of the field's value when it was proposed
- * (the snapshot), and approval writes nothing when the field has changed since (`stale`), already
- * has the new value (`unchanged`), or another user holds the post lock (`locked`).
+ * Deliberately has no `ai/*` write ability: MCP would expose it with no approval step.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -81,8 +49,6 @@ final class Post_Field_Writer implements Proposal_Kind {
 
 	/**
 	 * The longest title that may be proposed, in characters.
-	 *
-	 * The cap #1214 put on the values its write abilities accepted.
 	 *
 	 * @since x.x.x
 	 *
@@ -146,8 +112,7 @@ final class Post_Field_Writer implements Proposal_Kind {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * Each item is checked against `edit_post` for its own post; a user who
-	 * cannot edit posts at all is not offered the tool.
+	 * Each item is also checked against `edit_post` for its own post.
 	 *
 	 * @since x.x.x
 	 */
@@ -193,9 +158,6 @@ final class Post_Field_Writer implements Proposal_Kind {
 
 	/**
 	 * Normalizes and validates one proposed field change.
-	 *
-	 * Error messages are written for the model to pass on, so the person hears
-	 * why a change could not be proposed.
 	 *
 	 * @since x.x.x
 	 *
@@ -282,13 +244,7 @@ final class Post_Field_Writer implements Proposal_Kind {
 			);
 		}
 
-		/*
-		 * New content is built from the markup the model read. If the post was
-		 * saved after that read in this turn, the proposal would overwrite the
-		 * newer content, and the snapshot taken below could not tell, since it is
-		 * taken now. Outside a turn, or with no raw read this turn, there is
-		 * nothing to compare.
-		 */
+		// Refuse content built from a read older than the post; the snapshot below is taken now and can't tell.
 		$read = 'content' === $field ? Turn_Context::read_hash( (int) $post->ID ) : '';
 
 		if ( '' !== $read && ! hash_equals( $read, hash( 'sha256', (string) $post->post_content ) ) ) {
@@ -299,10 +255,7 @@ final class Post_Field_Writer implements Proposal_Kind {
 			);
 		}
 
-		/*
-		 * An edited item keeps the snapshot it was proposed with. Only a hash is
-		 * kept, since the value is only ever compared, never shown.
-		 */
+		// An edited item keeps the snapshot it was proposed with.
 		$snapshot = isset( $item[ self::SNAPSHOT_FIELD ] ) && is_string( $item[ self::SNAPSHOT_FIELD ] )
 			? $item[ self::SNAPSHOT_FIELD ]
 			: hash( 'sha256', $this->current_value( $post, $field ) );
@@ -318,8 +271,7 @@ final class Post_Field_Writer implements Proposal_Kind {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * The current value, title and status are read when the card loads, not
-	 * stored, so the card shows the post as it is now. The snapshot is not shown.
+	 * The current value is read live, so the card shows the post as it is now.
 	 *
 	 * @since x.x.x
 	 */
@@ -364,10 +316,7 @@ final class Post_Field_Writer implements Proposal_Kind {
 			return $this->outcome( $item, 'failed', 'post_not_found', __( 'That post no longer exists or is in the trash.', 'ai' ) );
 		}
 
-		/*
-		 * Re-checked here, not only when the proposal was made: a capability can
-		 * be revoked between the two requests, and this is the one that writes.
-		 */
+		// Re-checked: a capability can be revoked after the proposal was made.
 		if ( ! current_user_can( 'edit_post', $post->ID ) ) {
 			$this->log( $item, $proposal_id, $conversation_id, Turn_Runner::LOG_STATUS_DENIED, 0, 'cannot_edit_post', 'The user may no longer edit this post.' );
 
@@ -392,22 +341,14 @@ final class Post_Field_Writer implements Proposal_Kind {
 			return $this->outcome( $item, 'unchanged', '', '' );
 		}
 
-		/*
-		 * Compared with this field's own value at propose time, not the post's
-		 * modified date, so writing one field of a post does not make the next
-		 * item, another field of the same post, look stale.
-		 */
+		// Per-field hash, not the modified date, so writing one field doesn't make the next look stale.
 		if ( ! hash_equals( $this->field( $item, self::SNAPSHOT_FIELD ), hash( 'sha256', $current ) ) ) {
 			$this->log( $item, $proposal_id, $conversation_id, 'skipped', 0, 'stale', 'The field changed after the proposal was made.' );
 
 			return $this->outcome( $item, 'stale', 'stale', __( 'This field changed after the change was proposed, so it was left as it is.', 'ai' ) );
 		}
 
-		/*
-		 * `wp_update_post()` unslashes what it is given, so the value is slashed
-		 * first, or a backslash in it would be lost. Only the one column is passed,
-		 * so status, author and type stay as they are.
-		 */
+		// wp_update_post() unslashes its input, so the value is slashed to keep backslashes.
 		$kept = $this->keep_other_columns( $post, self::FIELDS[ $field ] );
 
 		try {
@@ -444,15 +385,7 @@ final class Post_Field_Writer implements Proposal_Kind {
 	/**
 	 * Keeps every text column but the one being written exactly as stored.
 	 *
-	 * `wp_update_post()` saves the whole row, so each column goes back through
-	 * its save filters, and for a user without `unfiltered_html` that includes
-	 * kses. Changing only a post's title would then strip an iframe from its
-	 * content, which is the silent loss the content rule refuses to cause. So
-	 * the row's other columns are put back as stored, slashed as the row is at
-	 * that point, after every save filter has run.
-	 *
-	 * The row is matched by ID: a `save_post` hook that saves another post
-	 * during this write gets that post's own columns, not these.
+	 * Otherwise kses on save would strip, e.g., an iframe from content when only the title changed.
 	 *
 	 * @since x.x.x
 	 *
@@ -489,17 +422,7 @@ final class Post_Field_Writer implements Proposal_Kind {
 	/**
 	 * Whether `wp_kses_post()` would remove anything from a post's content.
 	 *
-	 * A byte comparison is not enough: kses rebuilds every tag it keeps, so a
-	 * block editor `<img .../>` comes back as `<img ... />`, `&` in an attribute
-	 * as `&amp;`, and a style attribute with its spacing normalized. None of that
-	 * removes anything, and refusing on it would refuse every image or separator
-	 * post. So the two versions are compared as parsed markup instead: the same
-	 * tags in the same order, each with the same attribute names and decoded
-	 * values, and the same comments and decoded text between them. Anything kses
-	 * strips — a tag, an `on*` attribute, a disallowed protocol, a CSS
-	 * declaration — changes that sequence and the post is refused.
-	 *
-	 * Markup the parser cannot finish reading is treated as stripped.
+	 * Compares parsed tokens, not bytes, since kses re-serializes markup it keeps (`<img/>` to `<img />`).
 	 *
 	 * @since x.x.x
 	 *
@@ -521,11 +444,6 @@ final class Post_Field_Writer implements Proposal_Kind {
 
 	/**
 	 * Reads markup as a list of tokens that ignores how it is serialized.
-	 *
-	 * Each tag is its name, whether it closes, its attributes (names with their
-	 * decoded values, sorted) and any raw text it holds, such as a textarea's.
-	 * Adjacent text is joined and decoded; comments keep their text. Void-tag
-	 * slashes, attribute quoting and order, and entity spelling do not appear.
 	 *
 	 * @since x.x.x
 	 *
@@ -654,10 +572,7 @@ final class Post_Field_Writer implements Proposal_Kind {
 	}
 
 	/**
-	 * Builds one item outcome.
-	 *
-	 * A written title or excerpt is reported in full. Content is reported by its
-	 * length only, to keep the model's context small.
+	 * Builds one item outcome; content is reported by length only, to keep the model's context small.
 	 *
 	 * @since x.x.x
 	 *

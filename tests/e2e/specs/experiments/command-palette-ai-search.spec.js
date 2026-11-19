@@ -20,9 +20,7 @@ const EXPERIMENT_LABEL = 'AI Workspace';
 const AI_RESULT = '[cmdk-item][data-value^="ai-command-palette-ai-search-"]';
 
 /**
- * Matches requests to the command palette AI search ability.
- *
- * The path is URL-encoded when the site uses plain permalinks.
+ * Matches requests to the command palette AI search ability, URL-encoded or not.
  *
  * @param {URL} url The request URL.
  * @return {boolean} Whether the request runs the ability.
@@ -74,10 +72,7 @@ const getLoaderNames = ( page ) =>
 	);
 
 /**
- * Opens a page logged in as a new user with the given role.
- *
- * The page has its own browser context, so the admin session the other
- * fixtures use is left alone.
+ * Opens a page, in its own browser context, logged in as a new user with the given role.
  *
  * @param {Object} browser      The browser fixture.
  * @param {Object} requestUtils The request utils fixture.
@@ -220,8 +215,7 @@ test.describe( 'Command Palette AI Search', () => {
 			await route.continue();
 		} );
 
-		// Characters no command label contains, so the palette has no results of its own
-		// whichever experiments (and so admin screens) are on.
+		// Characters no command label contains, so the palette has no results of its own.
 		const input = await searchPalette( page, '~' );
 		await expect( page.getByText( 'No results found.' ) ).toBeVisible();
 

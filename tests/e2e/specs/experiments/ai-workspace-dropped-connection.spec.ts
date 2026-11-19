@@ -1,11 +1,5 @@
 /**
- * End-to-end coverage for a turn whose response never reaches the browser.
- *
- * WordPress Playground gives up on any request after 25 seconds, and a proxy in
- * front of a site can give up sooner than PHP does. In both cases WordPress
- * keeps running the turn and saves it. Each test here lets the request reach
- * the server, waits for the server's answer, and then drops it or replaces it
- * with a gateway error, so the reply can only come from the saved chat.
+ * End-to-end coverage for a turn whose response is lost (e.g. a proxy timeout) after the server saved it.
  */
 /**
  * WordPress dependencies
@@ -68,7 +62,6 @@ async function loseNextTurnResponse(
 			);
 		},
 		async ( route ) => {
-			// The server runs and saves the turn.
 			await route.fetch();
 
 			if ( 'drop' === outcome ) {

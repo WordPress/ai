@@ -25,12 +25,6 @@ use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Te
 /**
  * Proposal_Controller test case.
  *
- * This is the only path in the feature that writes to the database, so the
- * assertions are about the guards rather than the happy path: a proposal is
- * bound to the user and the conversation that created it, it expires, it can
- * only be executed against the items the person actually selected, and a repeat
- * execution creates nothing new.
- *
  * @since x.x.x
  *
  * @covers \WordPress\AI\Experiments\AI_Workspace\REST\Proposal_Controller
@@ -70,10 +64,6 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 
 	/**
 	 * Creates the shared users.
-	 *
-	 * Two administrators, because the interesting question is not whether an
-	 * unprivileged user is refused but whether a second user holding exactly the
-	 * same capability can execute somebody else's proposal.
 	 *
 	 * @since x.x.x
 	 *
@@ -131,8 +121,7 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 				continue;
 			}
 
-			// WordPress 7.2 declares the property, and unsetting a declared property leaves it
-			// uninitialized, so restore core's default rather than removing it.
+			// Unsetting a property WordPress 7.2 declares leaves it uninitialized, so restore the default.
 			if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
 				$object->show_in_abilities = true;
 			} else {
@@ -308,9 +297,6 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Stores the current user's chat the proposals belong to, unless it is there.
 	 *
-	 * An approval is refused once its chat is gone (R7), so every approval in
-	 * these tests needs the chat to exist.
-	 *
 	 * @since x.x.x
 	 */
 	private function ensure_conversation(): void {
@@ -352,9 +338,6 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 
 	/**
 	 * Counts posts carrying a proposal idempotency token, trash included.
-	 *
-	 * `written_post_count()` uses the `any` shorthand, which hides trashed rows —
-	 * exactly the rows this counter has to see.
 	 *
 	 * @since x.x.x
 	 *
@@ -455,11 +438,6 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 
 	/**
 	 * Puts an executed proposal back to pending, as a replay of its write would find it.
-	 *
-	 * A second approval of a stored, executed proposal returns the stored
-	 * results without writing. The idempotency token is the guard beneath that
-	 * one, for a write that runs again anyway, such as after the stored record
-	 * was lost, so these tests reach it by resetting the record.
 	 *
 	 * @since x.x.x
 	 *
@@ -575,10 +553,6 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * With the chat deleted, the approval is refused and nothing is written (R7).
 	 *
-	 * This replaces the earlier rule that the write still happened without a
-	 * follow-up: a proposal whose chat was deleted, or whose owner's chats were
-	 * erased, can no longer be approved.
-	 *
 	 * @since x.x.x
 	 */
 	public function test_approving_after_the_chat_was_deleted_is_refused(): void {
@@ -686,10 +660,6 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 
 	/**
 	 * A second user with equal capability cannot execute another user's proposal.
-	 *
-	 * Capability is not identity. Both users here are administrators, so a
-	 * capability check alone would let the second one execute values the first
-	 * one approved on screen.
 	 *
 	 * @since x.x.x
 	 */
@@ -834,11 +804,6 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * The publish capability alone, revoked after the proposal, is refused at write time.
 	 *
-	 * This is a different branch from the test above: that one revokes the
-	 * create capability, which refuses every item whatever status it asks for.
-	 * Only an item asking for a publish status, proposed while the user could
-	 * publish and executed once they no longer can, reaches the publish recheck.
-	 *
 	 * @since x.x.x
 	 */
 	public function test_publish_capability_revoked_after_proposal_is_refused_at_write_time(): void {
@@ -872,11 +837,6 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 
 	/**
 	 * Model-authored markup is stripped for an approver who holds unfiltered_html.
-	 *
-	 * The workspace is gated on `manage_options`, so this is the ordinary case
-	 * and the one core does not cover: WordPress skips its own kses pass for a
-	 * user with `unfiltered_html`, and the body is model output derived from
-	 * content a lower-privileged author can write.
 	 *
 	 * @since x.x.x
 	 */
@@ -925,11 +885,6 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 
 	/**
 	 * Proposes hostile markup as the current user and asserts what is shown and written.
-	 *
-	 * Both the confirmation payload and the created post are checked against the
-	 * same expectations, so the property that what a person approved is what got
-	 * written stays under test rather than being an argument about where the
-	 * sanitizer lives.
 	 *
 	 * @since x.x.x
 	 */
@@ -1094,10 +1049,6 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * A write that dies on its second item keeps the first result, then reads as failed.
 	 *
-	 * A request that dies outright, by a fatal error or a timeout, runs no catch
-	 * block, so its state is set up here as it would be left: `executing`, with
-	 * the first item's result saved, and the lock still held.
-	 *
 	 * @since x.x.x
 	 */
 	public function test_an_interrupted_write_keeps_partial_results_and_reads_as_failed(): void {
@@ -1223,9 +1174,6 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 
 	/**
 	 * A discard while an approval holds the lock deletes nothing and is refused.
-	 *
-	 * The approval may have claimed the proposal without saving it as
-	 * `executing` yet, so the stored status alone cannot tell.
 	 *
 	 * @since x.x.x
 	 */

@@ -14,11 +14,7 @@ import { __ } from '@wordpress/i18n';
 import type { KeyboardEvent, MutableRefObject, ReactNode } from 'react';
 
 /**
- * Renders the multi-line prompt input and its turn controls (R2, R9, R11).
- *
- * Focus returns to the textarea whenever a turn finishes, which the app drives
- * through `inputRef`. Clearing the conversation is a header action rather than
- * a composer one: it acts on the whole transcript, not on the draft message.
+ * Renders the multi-line prompt input and its turn controls.
  *
  * @param props              Component props.
  * @param props.value        The current draft message.
@@ -73,8 +69,7 @@ export default function PromptInput( {
 					'Ask about your site or describe what you want to make. ⌘/Ctrl + Enter to send.',
 					'ai'
 				) }
-				// The placeholder is the one visible hint, and it is gone once
-				// the person types, so the shortcut is also a description.
+				// The placeholder disappears once typing starts, so describe the shortcut too.
 				aria-describedby={ shortcutId }
 				aria-keyshortcuts="Meta+Enter Control+Enter"
 				rows={ 3 }

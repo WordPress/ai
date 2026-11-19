@@ -13,9 +13,6 @@ use WordPress\AI\Experiments\AI_Workspace\Admin_Page;
 /**
  * Admin_Page prompt seed test case.
  *
- * The command palette's "Ask AI" row opens the workspace with the search in
- * the `wpai-prompt` query argument.
- *
  * @since x.x.x
  */
 class Admin_PageTest extends WP_UnitTestCase {

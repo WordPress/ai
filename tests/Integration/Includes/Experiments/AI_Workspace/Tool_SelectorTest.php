@@ -28,10 +28,6 @@ use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Wo
 /**
  * Tool_Selector test case.
  *
- * The load-bearing assertion here is the first one: an ability the current user
- * could never invoke is never declared to the model. Everything else in the unit
- * assumes the declared list is already capability-filtered.
- *
  * @since x.x.x
  *
  * @covers \WordPress\AI\Experiments\AI_Workspace\Tool_Selector
@@ -50,9 +46,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 	/**
 	 * The provisional declaration meta key.
 	 *
-	 * Duplicated from {@see Tool_Policy} on purpose: the key is private there
-	 * because issue #354 owns its public name, and these tests assert behavior at
-	 * the key the policy currently honors.
+	 * Duplicated rather than read from Tool_Policy, where the key is private.
 	 *
 	 * @since x.x.x
 	 *
@@ -63,10 +57,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 	/**
 	 * The curated floor, in registration order, by name.
 	 *
-	 * Written out rather than derived from `Tool_Selector` so that a change to the
-	 * shipped surface has to be made deliberately in both places. Several tests
-	 * assert equality against this list, which is the whole point of R8: policy
-	 * only ever adds to it.
+	 * Written out, not derived from Tool_Selector, so a surface change must be made in both places.
 	 *
 	 * @since x.x.x
 	 *
@@ -181,8 +172,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 				continue;
 			}
 
-			// WordPress 7.2 declares the property, and unsetting a declared property leaves it
-			// uninitialized, so restore core's default rather than removing it.
+			// Unsetting a property WordPress 7.2 declares leaves it uninitialized, so restore the default.
 			if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
 				$object->show_in_abilities = true;
 			} else {
@@ -467,10 +457,6 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 	/**
 	 * With nothing declared, the 7.1 surface is exactly the curated floor.
 	 *
-	 * This is the assertion the "ships dark" safety argument rests on. Default
-	 * deny is only safe if it denies *in addition to* the curated floor rather
-	 * than instead of it, and merge order is the easiest thing to get wrong.
-	 *
 	 * @since x.x.x
 	 */
 	public function test_surface_is_the_curated_floor_when_nothing_declares(): void {
@@ -640,15 +626,6 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 	/**
 	 * A third-party result filter cannot put a rejected ability back on the surface.
 	 *
-	 * `wp_get_abilities_result` is site-wide and fires on the workspace's own
-	 * discovery call, and it can hand back an ability the query rejected. So the
-	 * query's return is a candidate set rather than an authority, and admission
-	 * re-verifies everything in it.
-	 *
-	 * The fixture is declared, so the only thing that rejects it is its effect
-	 * class: the selector's own `item_include_callback` drops it, and the filter
-	 * puts it back.
-	 *
 	 * @since x.x.x
 	 */
 	public function test_third_party_result_filter_cannot_re_admit_a_rejected_ability(): void {
@@ -706,13 +683,6 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 	/**
 	 * Discovery is not a boundary: widening it leaves the surface unmoved.
 	 *
-	 * `wp_get_abilities_item_include` fires after the selector's own
-	 * `item_include_callback` and can override it, so a third party can vote
-	 * back in an ability the selector's query rejected. What keeps it off the
-	 * surface is admission re-resolving eligibility on each returned item. The
-	 * filter stays in place across the selector call, so the widening reaches
-	 * the query it claims to widen.
-	 *
 	 * @since x.x.x
 	 */
 	public function test_surface_holds_when_an_include_filter_widens_discovery(): void {
@@ -766,12 +736,6 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 
 	/**
 	 * Declaration-based admission is off until the declaration is public.
-	 *
-	 * The declaration key is private to {@see Tool_Policy}, but this is an open
-	 * source plugin: an ability author needs nothing but the literal string to
-	 * opt in. So "private" is not what keeps the surface from growing on merge —
-	 * the gate is, and it ships closed until issue #354 settles the public
-	 * shape.
 	 *
 	 * @since x.x.x
 	 */
@@ -873,9 +837,6 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 	/**
 	 * Registers the curated abilities that setUp does not, and drops the fixture filter.
 	 *
-	 * The floor assertions compare the whole surface by name, so the editor-only
-	 * fixture the rest of this case relies on has to come back off first.
-	 *
 	 * @since x.x.x
 	 */
 	private function use_curated_surface_only(): void {
@@ -910,10 +871,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 	/**
 	 * Builds a selector whose policy probe sees a WordPress 7.0 discovery signature.
 	 *
-	 * `.wp-env.json` pins core to the latest release, so 7.0's zero-parameter
-	 * `wp_get_abilities()` cannot be installed locally. The policy reads the name
-	 * of the function it inspects from an overridable seam, and the fixture at the
-	 * foot of this file stands in for that signature.
+	 * wp-env cannot install WordPress 7.0, so a fixture stands in for its `wp_get_abilities()`.
 	 *
 	 * @since x.x.x
 	 *

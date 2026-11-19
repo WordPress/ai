@@ -8,14 +8,9 @@
 import type { Question } from '../types';
 
 /**
- * Narrows a tool result to a question with choices.
+ * Narrows a tool result to a question with at least two unique, trimmed choices.
  *
- * The server validated the input before it ran, but the result still arrives
- * over the wire, so anything that is not a non-empty question with at least
- * two string choices is treated as no question at all. Duplicate and empty
- * choices are dropped rather than rendered as buttons that send nothing, and
- * every choice is trimmed, because the composer trims what it sends: the text
- * on the button is then exactly the text a click sends.
+ * Choices are trimmed because the composer trims what it sends.
  *
  * @param value The raw tool result.
  * @return The question, or null when the result is not one.

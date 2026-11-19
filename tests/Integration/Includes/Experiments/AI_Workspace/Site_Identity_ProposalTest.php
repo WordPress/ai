@@ -24,11 +24,6 @@ use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Wo
 /**
  * Site identity proposal test case.
  *
- * The site title and tagline change for every visitor the moment they are
- * written, so these tests pin which options may be proposed, by whom, what the
- * card is shown, and that approval writes exactly the value shown, only when
- * nobody changed the option in between.
- *
  * @since x.x.x
  *
  * @covers \WordPress\AI\Experiments\AI_Workspace\Site_Identity_Writer

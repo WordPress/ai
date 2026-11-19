@@ -17,13 +17,6 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Registers the `ai/propose-site-identity` ability, which proposes a new site title or tagline without writing it.
  *
- * It is {@see Propose_Post_Changes} for the two site identity settings, and it
- * holds to the same rules: it records the exact values in {@see Proposal_Store}
- * and writes nothing, it is hidden from the REST and MCP surfaces, it refuses
- * outside a workspace turn, and the proposal is bound to the conversation read
- * from {@see Turn_Context}. {@see Site_Identity_Writer} validates each item and
- * writes it once a person approves it.
- *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
  * @since x.x.x
@@ -62,9 +55,6 @@ final class Propose_Site_Identity {
 	/**
 	 * Returns the ability's registration args.
 	 *
-	 * The workspace registers the ability, so it carries the feature's access
-	 * control tag.
-	 *
 	 * @since x.x.x
 	 *
 	 * @return array<string, mixed> The registration args.
@@ -90,12 +80,7 @@ final class Propose_Site_Identity {
 					'idempotent'  => false,
 					'open_world'  => false,
 				),
-				/*
-				 * Withheld from the REST and MCP surfaces on purpose; MCP
-				 * exposure reads `mcp.public`, not `show_in_rest`. A
-				 * proposal is only meaningful inside a workspace turn, which
-				 * is where the person who has to approve it is.
-				 */
+				// Only meaningful inside a workspace turn; MCP reads `mcp.public`, not `show_in_rest`.
 				'show_in_rest' => false,
 				'mcp'          => array( 'public' => false ),
 			),
@@ -104,9 +89,6 @@ final class Propose_Site_Identity {
 
 	/**
 	 * Permission callback for the ability.
-	 *
-	 * {@see Site_Identity_Writer::normalize_item()} checks the same capability
-	 * again, and the writer once more when the person approves.
 	 *
 	 * @since x.x.x
 	 *
@@ -139,11 +121,7 @@ final class Propose_Site_Identity {
 		$input = rest_sanitize_object( $input );
 		$items = isset( $input['items'] ) && is_array( $input['items'] ) ? $input['items'] : array();
 
-		/*
-		 * Two values for one setting would leave the person to approve both and
-		 * see only the second survive, so each setting may be named once. Edits
-		 * cannot change which setting an item names, so checking here suffices.
-		 */
+		// Two values for one setting would leave only the second surviving approval.
 		$options = array();
 
 		foreach ( $items as $item ) {

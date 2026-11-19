@@ -21,12 +21,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Runs a workspace model round through the core prompt builder.
  *
- * Rounds are buffered: the model's reply arrives whole. Streaming is attempted
- * only when a {@see Stream_Driver_Interface} was injected and the caller supplies
- * a text callback. None is injected by default, because the PHP AI Client does
- * not ship provider streaming yet. A driver that returns null means this host
- * could not stream the round, and the turn answers with a buffered request
- * instead of failing.
+ * Buffered unless a {@see Stream_Driver_Interface} is injected; none is by default.
  *
  * @since x.x.x
  */
@@ -35,9 +30,7 @@ class Prompt_Model_Client implements Model_Client_Interface {
 	/**
 	 * The shortest time, in seconds, a workspace round waits for the model.
 	 *
-	 * Core's AI client waits 30 seconds by default. A round that writes a full
-	 * proposal, such as twenty drafts, can take longer than that, and the
-	 * request was cut off before any reply arrived.
+	 * Core's 30-second default cuts off large proposals.
 	 *
 	 * @since x.x.x
 	 *
@@ -48,9 +41,7 @@ class Prompt_Model_Client implements Model_Client_Interface {
 	/**
 	 * The most tokens a workspace round asks the model to write.
 	 *
-	 * Some connectors cap a reply when the caller sets nothing: the Anthropic
-	 * connector sends 4,096, and a proposal of twenty drafts stopped partway
-	 * with a token-limit error. This leaves room for a full proposal.
+	 * Some connectors default to 4,096, which truncates a large proposal.
 	 *
 	 * @since x.x.x
 	 *
@@ -128,16 +119,7 @@ class Prompt_Model_Client implements Model_Client_Interface {
 	/**
 	 * Drops thought parts that carry no signature from the conversation.
 	 *
-	 * A reasoning model's private thinking comes back as thought-channel parts,
-	 * and the whole history is replayed on the next round. Some providers only
-	 * accept that thinking back when it carries the signature they issued:
-	 * Anthropic rejects an unsigned `thinking` block with a 400 ("thinking.signature:
-	 * Field required"), and its connector does not yet keep the signature when it
-	 * reads a reply. An omitted thinking block is accepted, so an unsigned thought
-	 * part is left out rather than sent. Signed thought parts, which the Google
-	 * and OpenAI connectors produce, pass through unchanged.
-	 *
-	 * A model message left with no parts is dropped.
+	 * Anthropic rejects replayed unsigned thinking blocks with a 400 but accepts omitted ones.
 	 *
 	 * @since x.x.x
 	 *
@@ -180,11 +162,7 @@ class Prompt_Model_Client implements Model_Client_Interface {
 	}
 
 	/**
-	 * Returns the timeout a workspace round's request uses.
-	 *
-	 * Hooked to `wp_ai_client_default_request_timeout` while the round's
-	 * request is built. It only ever raises the wait, so a longer default a
-	 * site set is kept.
+	 * Returns the timeout a workspace round's request uses; it only ever raises the default.
 	 *
 	 * @since x.x.x
 	 *
@@ -271,10 +249,7 @@ class Prompt_Model_Client implements Model_Client_Interface {
 		$raise = array( self::class, 'request_timeout' );
 
 		try {
-			/*
-			 * Core reads the timeout when the builder is made, so the raise is
-			 * scoped to that, and a model call an ability makes keeps its own.
-			 */
+			// Core reads the timeout when the builder is made; scoping it leaves abilities' own calls alone.
 			add_filter( 'wp_ai_client_default_request_timeout', $raise, PHP_INT_MAX );
 
 			try {
@@ -297,14 +272,8 @@ class Prompt_Model_Client implements Model_Client_Interface {
 		}
 
 		/*
-		 * Every candidate is kept, not only the first. The OpenAI connector
-		 * returns each item of a Responses API reply as its own candidate, so a
-		 * model that says what it is about to do and then calls a tool sends the
-		 * sentence and the call as two. Reading only the first kept the sentence
-		 * and lost the call: the model announced a proposal the person never saw.
-		 * They stay separate messages because that connector refuses a function
-		 * call that shares a message with anything else when the history is
-		 * replayed. A connector that replies in one candidate is unchanged.
+		 * Keep every candidate: OpenAI returns text and a tool call as separate candidates,
+		 * and refuses a replayed function call that shares a message with anything else.
 		 */
 		$replies = array();
 

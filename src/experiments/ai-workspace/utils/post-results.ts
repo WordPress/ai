@@ -34,12 +34,7 @@ function readNumber( record: Record< string, unknown >, key: string ): number {
 }
 
 /**
- * Narrows a tool result to the post list this table can render.
- *
- * Rows are rebuilt from the fields the ability declares and nothing else, so a
- * result carrying extra properties cannot smuggle them into the table, and a
- * result of another shape is simply not rendered. A row without a usable ID is
- * dropped rather than rendered without an identity DataViews can key on.
+ * Narrows a tool result to the post list this table can render, keeping only declared fields.
  *
  * @param value The raw tool result.
  * @return The post list, or null when the result is not one.

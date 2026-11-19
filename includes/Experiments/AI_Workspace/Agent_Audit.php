@@ -17,18 +17,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Records every agent event in one place.
  *
- * Each tool call, including a withheld one, each proposal item written, and
- * each proposal event (created, edited, declined, expired, failed, refused) is
- * one `agent` row in the AI Request Log and one call of the
- * {@see self::ACTION} hook. The hook fires whether or not the AI Request
- * Logging experiment is on, so an audit plugin need not depend on it (KTD11).
- *
- * The hook covers agent turns and approvals only. A direct MCP call to an
- * ability does not pass through here.
- *
- * Context never carries post content or option values: tool rows name the
- * tool, item rows name the post and field or the option, and proposal rows
- * name the proposal and its item keys.
+ * Context never carries post content or option values.
  *
  * @since x.x.x
  */
@@ -71,14 +60,7 @@ final class Agent_Audit {
 		$error   = $data['error_message'] ?? '';
 
 		/**
-		 * Fires for every agent event.
-		 *
-		 * Events are tool calls (operation: the ability name; status `success`,
-		 * `error` or `denied`), proposal items written (operation: the kind's
-		 * write operation, such as `ai/update-post-fields`), and proposal events
-		 * (operation `proposal_created`, `proposal_edited`, `proposal_declined`,
-		 * `proposal_expired`, `proposal_failed` or `proposal_refused`). It fires
-		 * whether or not AI Request Logging is on.
+		 * Fires for every agent event, whether or not AI Request Logging is on.
 		 *
 		 * @since x.x.x
 		 *

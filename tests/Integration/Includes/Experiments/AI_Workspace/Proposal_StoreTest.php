@@ -22,11 +22,6 @@ use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Te
 /**
  * Proposal_Store test case.
  *
- * Covers the store's side of single approval (the claim, the five-minute window
- * after which an interrupted write reads as failed, the expiry grace), the kind
- * registry the tool list and the turn runner are built from, the write gate,
- * and edits re-validated through the kind.
- *
  * @since x.x.x
  *
  * @covers \WordPress\AI\Experiments\AI_Workspace\Proposal_Store
@@ -90,8 +85,7 @@ class Proposal_StoreTest extends WP_UnitTestCase {
 		$object = get_post_type_object( 'post' );
 
 		if ( $object ) {
-			// WordPress 7.2 declares the property, and unsetting a declared property leaves it
-			// uninitialized, so restore core's default rather than removing it.
+			// Unsetting a property WordPress 7.2 declares leaves it uninitialized, so restore the default.
 			if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
 				$object->show_in_abilities = true;
 			} else {
@@ -219,9 +213,6 @@ class Proposal_StoreTest extends WP_UnitTestCase {
 
 	/**
 	 * The client's copy of the proposal abilities matches the server's list.
-	 *
-	 * The transcript uses it to find the tool results that carry a proposal, so a
-	 * kind added on the server and not here would render no card.
 	 *
 	 * @since x.x.x
 	 */
@@ -364,10 +355,6 @@ class Proposal_StoreTest extends WP_UnitTestCase {
 
 	/**
 	 * A stale lock another request replaced after this one read it is left alone.
-	 *
-	 * Two requests can read the same stale lock. The first deletes it and takes
-	 * a fresh one; the second must then delete nothing, rather than the first
-	 * one's fresh lock, and must not claim the proposal.
 	 *
 	 * @since x.x.x
 	 */

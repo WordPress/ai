@@ -1,5 +1,5 @@
 /**
- * The Wapuu that shows how a turn is going (R17).
+ * The Wapuu that shows how a turn is going.
  */
 
 /**
@@ -32,19 +32,12 @@ const SPRITES: Record< WapuuState, string > = {
 	error: errorSprite,
 };
 
-/**
- * The prefix of the data URI the bundler inlines each sprite as.
- */
 const DATA_URI = 'data:image/svg+xml;base64,';
 
 /**
- * Turns a sprite into its still frame.
+ * Turns an inlined SVG sprite into its still frame.
  *
- * Each sprite keeps its motion inside its own reduced-motion query, but an
- * `<img>` evaluates that query in a separate document, which does not reliably
- * follow the page's setting. Switching every animation off in the markup is the
- * still pose the query would have shown. A source that is not an inlined SVG is
- * returned as it is, so this can only ever fall back to the moving sprite.
+ * An `<img>` does not reliably follow the page's reduced-motion setting, so animations are disabled in the markup.
  *
  * @param src The sprite's source.
  * @return The still frame's source.
@@ -65,7 +58,7 @@ function toStill( src: string ): string {
 }
 
 /**
- * Each sprite's still frame, built once per page the first time it is needed.
+ * Each sprite's still frame, built lazily.
  */
 const STILLS: Partial< Record< WapuuState, string > > = {};
 
@@ -82,10 +75,7 @@ function stillOf( state: WapuuState ): string {
 }
 
 /**
- * Renders one Wapuu sprite.
- *
- * The sprite is decorative: the text beside it is what says how the turn is
- * going, so it has an empty alternative and is never announced on its own.
+ * Renders one decorative Wapuu sprite.
  *
  * @param props       Component props.
  * @param props.state The state to show.
@@ -107,11 +97,7 @@ export default function WapuuStatus( { state }: { state: WapuuState } ) {
 }
 
 /**
- * Shows the done sprite for a moment after a turn finishes.
- *
- * Only a turn seen running gets one, so a chat reopened from history does not
- * celebrate every turn it already had. A turn that ends any other way, stopped,
- * capped or failed, shows nothing here.
+ * Briefly shows the done sprite when a turn seen running finishes.
  *
  * @param props        Component props.
  * @param props.status The turn's status.
@@ -130,8 +116,7 @@ export function WapuuDone( { status }: { status: EntryStatus } ) {
 		previous.current = status;
 	}, [ status, isDone ] );
 
-	// The timer has its own effect so that re-running the one above can never
-	// leave the sprite up without something to take it down.
+	// Separate effect so the timer is always cleared.
 	useEffect( () => {
 		if ( ! isShown ) {
 			return undefined;

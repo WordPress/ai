@@ -1,8 +1,5 @@
 /**
  * Unit coverage for how a stored chat becomes a transcript.
- *
- * These rules decide what a person sees when they reopen a chat, so they are
- * asserted directly rather than through the browser.
  */
 /**
  * External dependencies

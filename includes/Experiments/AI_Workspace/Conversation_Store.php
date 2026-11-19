@@ -18,32 +18,8 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Stores a workspace conversation, and the cancellation marker for its turn.
  *
- * Four properties are load bearing.
- *
- * **The medium is a private post type.** A chat is a `wpai_chat` post: its author
- * is the owner, its title is the name, `publish` means active and the registered
- * non-public `wpai_archived` status means archived. Trash is never used, because
- * `wp_scheduled_delete` empties it on its own and untrashing restores to `draft`.
- * Chats are kept until their owner deletes them; nothing expires them. The model
- * messages and one entry record per turn live in post meta as slashed JSON, with
- * `post_content` left empty, so neither kses nor unslashing can rewrite them.
- *
- * **A conversation belongs to one user.** The client sends the conversation ID,
- * so ownership is not implied by anything about the request. Every read matches
- * the post author as well as the ID, and the `map_meta_cap` filter grants reading,
- * editing and deleting a chat to its author alone, with no override for other
- * administrators. Without both, a conversation ID would be an enumerable read of
- * somebody else's private and draft post content.
- *
- * **A chat leaves with its owner.** Deleting or removing a user deletes their
- * chats before WordPress can reassign that user's content to someone else, which
- * would otherwise hand one person's transcripts to another.
- *
- * **Cancellation is stored separately.** It is written by a different HTTP
- * request than the one running the turn, so it lives in its own transient that
- * the loop re-reads between rounds. Its local cache entry is dropped before each
- * read, otherwise the loop would keep answering from the value it cached at the
- * start of the request and could never observe the cancellation.
+ * A chat is a `wpai_chat` post readable only by its author. Trash is never used:
+ * `wp_scheduled_delete` empties it and untrashing restores to `draft`.
  *
  * @since x.x.x
  */
@@ -142,10 +118,6 @@ final class Conversation_Store {
 	/**
 	 * Conversation key set while one follow-up turn is owed.
 	 *
-	 * The proposal controller sets it when it reports an approval or a discard
-	 * to the model, and the follow-up turn clears it, so the client can start
-	 * exactly one follow-up per reported outcome and no more.
-	 *
 	 * @since x.x.x
 	 *
 	 * @var string
@@ -153,8 +125,7 @@ final class Conversation_Store {
 	public const FOLLOW_UP_OWED = 'follow_up_owed';
 
 	/**
-	 * Conversation keys that are stored in the post itself or in their own meta,
-	 * and so are left out of the state meta.
+	 * Conversation keys stored in the post or their own meta, so left out of the state meta.
 	 *
 	 * @since x.x.x
 	 *
@@ -164,10 +135,6 @@ final class Conversation_Store {
 
 	/**
 	 * Registers the post type and the archived status.
-	 *
-	 * Called while the experiment is on. The ownership and user-removal hooks are
-	 * registered separately, by {@see self::register_lifecycle_hooks()}, so they hold
-	 * even while the experiment is off.
 	 *
 	 * @since x.x.x
 	 */
@@ -193,11 +160,7 @@ final class Conversation_Store {
 					'query_var'           => false,
 					'can_export'          => false,
 					'delete_with_user'    => true,
-					/*
-					 * A dedicated capability type no role holds, with core's meta
-					 * capability mapping off, so the only grant is the author check
-					 * in {@see self::map_meta_cap()}.
-					 */
+					// No role holds this capability type; the only grant is the author check in map_meta_cap().
 					'capability_type'     => array( 'wpai_chat', 'wpai_chats' ),
 					'map_meta_cap'        => false,
 					'supports'            => array( 'title', 'author' ),
@@ -223,11 +186,7 @@ final class Conversation_Store {
 	}
 
 	/**
-	 * Hooks the ownership rule and user-removal cleanup.
-	 *
-	 * These run whether or not the experiment is on: a chat stored while it was on
-	 * must not become readable by another administrator, or be reassigned with a
-	 * deleted user's content, while it is off.
+	 * Hooks the ownership rule and user-removal cleanup, whether or not the experiment is on.
 	 *
 	 * @since x.x.x
 	 */
@@ -294,9 +253,7 @@ final class Conversation_Store {
 	}
 
 	/**
-	 * Creates a new, empty conversation owned by a user.
-	 *
-	 * Nothing is stored until the conversation is first saved.
+	 * Creates a new, empty conversation owned by a user; nothing is stored until it is saved.
 	 *
 	 * @since x.x.x
 	 *
@@ -353,10 +310,6 @@ final class Conversation_Store {
 	/**
 	 * Saves a conversation, creating its chat on the first save.
 	 *
-	 * The first save names the chat after the first message it records. A later
-	 * save leaves the name and the archived status alone; those change only through
-	 * {@see self::rename()} and {@see self::set_archived()}.
-	 *
 	 * @since x.x.x
 	 *
 	 * @param array<string, mixed> $conversation The conversation to store.
@@ -377,11 +330,7 @@ final class Conversation_Store {
 			return false;
 		}
 
-		/*
-		 * Encoded before anything is written, so a value JSON cannot hold leaves
-		 * the stored chat as it was rather than replacing its transcript with
-		 * nothing.
-		 */
+		// Encode first, so a value JSON cannot hold doesn't wipe the stored transcript.
 		$meta = array(
 			self::MESSAGES_META => wp_json_encode( $this->list_of( $conversation, 'messages' ) ),
 			self::ENTRIES_META  => wp_json_encode( $this->list_of( $conversation, 'entries' ) ),
@@ -392,11 +341,7 @@ final class Conversation_Store {
 			return false;
 		}
 
-		/*
-		 * A conversation read back from a stored chat carries its name. If that
-		 * chat is gone now, it was deleted while this copy was in use — by its
-		 * owner, or with its owner — and writing it again would undo the deletion.
-		 */
+		// A named conversation whose chat is gone was deleted mid-turn; don't resurrect it.
 		if ( null === $post && array_key_exists( 'name', $conversation ) ) {
 			return false;
 		}
@@ -614,13 +559,7 @@ final class Conversation_Store {
 
 		$name = $this->cancel_name( $conversation_id, $user_id );
 
-		/*
-		 * The marker is written by a different request, so the value this request
-		 * cached on its first read is stale by definition. Both cache locations a
-		 * transient can occupy are dropped before reading: the `transient` group
-		 * when an external object cache is in use, and the underlying option when
-		 * the value lives in the options table.
-		 */
+		// Another request writes the marker, so drop both caches a transient can live in before reading.
 		wp_cache_delete( $name, 'transient' );
 		wp_cache_delete( '_transient_' . $name, 'options' );
 		wp_cache_delete( '_transient_timeout_' . $name, 'options' );
@@ -692,8 +631,7 @@ final class Conversation_Store {
 			return null;
 		}
 
-		// The query already matched the slug and the author; both are compared
-		// again so a filter on the query cannot hand over a conversation either.
+		// Re-checked so a query filter cannot hand over someone else's conversation.
 		if ( null !== $user_id && (int) $post->post_author !== $user_id ) {
 			return null;
 		}
@@ -702,9 +640,7 @@ final class Conversation_Store {
 	}
 
 	/**
-	 * Reports whether a conversation ID can name a chat.
-	 *
-	 * The ID is the post slug, so it must already be in the form a slug takes.
+	 * Reports whether a conversation ID (the post slug) is in slug form.
 	 *
 	 * @since x.x.x
 	 *
@@ -754,9 +690,7 @@ final class Conversation_Store {
 	/**
 	 * Inserts or updates a chat post.
 	 *
-	 * The name is plain text that has already been sanitized, so the title's kses
-	 * filter is lifted for the write: for a user without `unfiltered_html` it would
-	 * otherwise turn an ampersand into `&amp;` again on every save.
+	 * Lifts title kses, which would re-encode `&` on every save for users without `unfiltered_html`.
 	 *
 	 * @since x.x.x
 	 *
@@ -827,11 +761,7 @@ final class Conversation_Store {
 	/**
 	 * Reads the post IDs of chats, every one or one user's, oldest first.
 	 *
-	 * The IDs are read straight from the posts table, not through WP_Query. The
-	 * readers run while the experiment is off (a user is deleted, or their
-	 * personal data exported or erased) and during uninstall, when the post type
-	 * and its archived status are not registered, and WP_Query silently drops a
-	 * status that is not registered: archived chats would be skipped.
+	 * Bypasses WP_Query, which drops the archived status when it is unregistered (experiment off, uninstall).
 	 *
 	 * @since x.x.x
 	 *
@@ -854,10 +784,6 @@ final class Conversation_Store {
 
 	/**
 	 * Deletes chats, every one or one user's, in batches.
-	 *
-	 * The IDs come from {@see self::chat_ids()}, so archived chats are deleted
-	 * too while the post type is not registered, rather than reassigned with the
-	 * rest of a deleted user's content.
 	 *
 	 * @since x.x.x
 	 *

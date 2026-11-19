@@ -17,44 +17,8 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Persists a proposal — a set of drafts, or a template — until a person approves or declines it.
  *
- * Four properties are load bearing.
- *
- * **The medium is a user-scoped transient**, for the same reasons
- * {@see Conversation_Store} gives: a proposal is session lifetime, belongs to an
- * unproven experiment, and holds generated body text that should expire on its
- * own rather than sit in an autoloaded option. It shares the plugin's `wpai_`
- * transient prefix, so {@see \WordPress\AI\Admin\Uninstall::delete_transients()}
- * removes it without naming it.
- *
- * **A proposal belongs to one user and one conversation.** Capability is not
- * identity: on a site with two administrators, a capability check alone would
- * let the second one execute the first one's stored proposal by ID, and the
- * resolved values that person approved on screen would not be the ones written.
- * The transient key is derived from the owner's user ID, the stored owner is
- * compared again on load, and the conversation is compared at execution time —
- * three checks that are independent of the capability check.
- *
- * **A proposal expires.** The expiry is stored on the record and compared on
- * every read rather than left to the transient's own lifetime, so an object
- * cache that serves a stale row cannot make an old confirmation executable.
- *
- * **A proposal is bounded.** {@see self::MAX_ITEMS} caps how much a person is
- * asked to approve at once, in the same spirit as the search ability's row
- * bound. Set approval is the weakest point of the write path: the deeper the
- * list, the less of it anybody reads, and injected instructions win by appending
- * to an otherwise legitimate batch.
- *
- * **A proposal is approved at most once.** {@see self::claim()} inserts a
- * per-proposal lock row with `INSERT IGNORE`, as core's
- * `WP_Upgrader::create_lock()` does, so of two approvals racing from two tabs
- * only the one whose insert lands writes. Re-reading the transient cannot
- * settle that race on its own: each request reads its own object cache. A proposal left `executing` for longer than
- * {@see self::LOCK_TTL} was interrupted part way, and reads as `failed` from
- * then on, with whatever results it saved.
- *
- * **The kinds are a registry.** The tool list, the abilities that end a turn,
- * the abilities a follow-up withholds and the system instruction are built from
- * {@see self::kinds()}, which is filterable and which the write gate narrows.
+ * Proposals are owner-scoped transients; expiry is checked against the stored `expires`, not
+ * the transient lifetime, and {@see self::claim()} ensures a proposal is approved at most once.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -90,11 +54,7 @@ final class Proposal_Store {
 	public const MAX_ITEMS = 20;
 
 	/**
-	 * How long a stored proposal outlives its expiry, in seconds.
-	 *
-	 * The transient is kept this much longer than {@see self::TTL}, so a read
-	 * after `expires` still finds the record, can tell it expired, and deletes it,
-	 * rather than finding nothing and calling it not found.
+	 * How long a stored proposal outlives its expiry, in seconds, so a late read reports it expired, not missing.
 	 *
 	 * @since x.x.x
 	 *
@@ -143,9 +103,7 @@ final class Proposal_Store {
 	/**
 	 * Returns the kinds of proposal this store accepts, keyed by name.
 	 *
-	 * Read on every call rather than once, so a kind registered after the store
-	 * was built is accepted, and turning write proposals off takes effect at once,
-	 * for proposals already stored as much as for new ones.
+	 * Not cached, so the write gate also applies at once to proposals already stored.
 	 *
 	 * @since x.x.x
 	 *
@@ -154,9 +112,6 @@ final class Proposal_Store {
 	public function kinds(): array {
 		/**
 		 * Filters the kinds of proposal the AI Workspace accepts.
-		 *
-		 * Each kind brings its own propose ability, capability and instruction
-		 * sentence, so adding one here is what offers it to the model.
 		 *
 		 * @since x.x.x
 		 *
@@ -171,10 +126,7 @@ final class Proposal_Store {
 		/**
 		 * Filters whether the agent may propose changes to existing content and settings.
 		 *
-		 * Off, the kinds that change something that exists are left out: their
-		 * propose abilities are not offered, the instruction does not name them,
-		 * and a proposal of one already stored can no longer be approved. Kinds
-		 * that only create, such as drafts, are not affected.
+		 * Kinds that only create, such as drafts, are not affected.
 		 *
 		 * @since x.x.x
 		 *
@@ -213,11 +165,7 @@ final class Proposal_Store {
 	}
 
 	/**
-	 * Returns the kind a stored proposal belongs to.
-	 *
-	 * A proposal stored before proposals had kinds carries none, and is a draft.
-	 * Drafts are still stored without one, so their records stay exactly as they
-	 * were.
+	 * Returns the kind a stored proposal belongs to; drafts are stored without one.
 	 *
 	 * @since x.x.x
 	 *
@@ -297,9 +245,7 @@ final class Proposal_Store {
 	}
 
 	/**
-	 * Loads a proposal that has not expired.
-	 *
-	 * An expired proposal is deleted here and reported as missing.
+	 * Loads a proposal that has not expired; an expired one is deleted and reported as missing.
 	 *
 	 * @since x.x.x
 	 *
@@ -326,9 +272,7 @@ final class Proposal_Store {
 	/**
 	 * Loads a proposal, expired or not, for its owner.
 	 *
-	 * A proposal still `executing` after {@see self::LOCK_TTL} was interrupted
-	 * part way, and is returned, and saved, as `failed`, keeping the results it
-	 * saved before it stopped.
+	 * One still `executing` after {@see self::LOCK_TTL} was interrupted, and is saved as `failed`.
 	 *
 	 * @since x.x.x
 	 *
@@ -348,11 +292,7 @@ final class Proposal_Store {
 			return null;
 		}
 
-		/*
-		 * The key already scopes the read to one user; the stored owner is
-		 * compared again so a hand-written transient cannot hand over a
-		 * proposal either.
-		 */
+		// Re-checked so a hand-written transient cannot hand over a proposal.
 		if ( ! isset( $stored['user_id'] ) || (int) $stored['user_id'] !== $user_id ) {
 			return null;
 		}
@@ -372,8 +312,6 @@ final class Proposal_Store {
 
 	/**
 	 * Deletes an expired proposal and records that it expired.
-	 *
-	 * It is deleted here, so the expiry is recorded once: the next read finds nothing.
 	 *
 	 * @since x.x.x
 	 *
@@ -418,30 +356,14 @@ final class Proposal_Store {
 			return false;
 		}
 
-		/*
-		 * The transient's own lifetime is a floor, not the authority. The
-		 * `expires` value stored on the record is what {@see self::get()}
-		 * enforces, so re-saving an executed proposal cannot extend the window
-		 * in which it could be executed again.
-		 */
+		// The stored `expires`, not this lifetime, is enforced, so re-saving cannot extend the window.
 		return set_transient( $this->transient_name( $proposal_id, $user_id ), $proposal, self::TTL + self::GRACE );
 	}
 
 	/**
 	 * Claims a proposal for one approval.
 	 *
-	 * The lock is one `INSERT IGNORE` into the options table, the pattern core's
-	 * `WP_Upgrader::create_lock()` uses. The unique `option_name` key lets only
-	 * one insert land, so of two requests claiming the same proposal at once
-	 * exactly one holds it. `add_option()` is not used because it writes with
-	 * `ON DUPLICATE KEY UPDATE`, which lets a second insert of a different value
-	 * succeed.
-	 *
-	 * A lock older than {@see self::LOCK_TTL} belongs to a request that died. It
-	 * is read straight from the table, since the insert bypasses the options
-	 * cache, then deleted and claimed again. Only the row holding the value read
-	 * is deleted: two requests can read the same stale lock, and the second one
-	 * must not delete the fresh lock the first one has taken since.
+	 * `INSERT IGNORE`, as `WP_Upgrader::create_lock()` does; `add_option()` upserts, so it can't lock.
 	 *
 	 * @since x.x.x
 	 *
@@ -544,14 +466,7 @@ final class Proposal_Store {
 	}
 
 	/**
-	 * Applies the person's edits to a proposal's items.
-	 *
-	 * An edit may change only an item's `value`: never its key, its snapshot,
-	 * or what it targets (a post, a field, an option). Each edited item goes
-	 * back through its kind's `normalize_item()`, so an edit meets exactly the
-	 * rules the model's values met. The item keeps the snapshot it was proposed with,
-	 * so a stale check still compares against the value the person was shown.
-	 * Nothing is stored here; the caller saves the result.
+	 * Applies the person's edits to a proposal's items; the caller saves the result.
 	 *
 	 * @since x.x.x
 	 *
@@ -694,10 +609,6 @@ final class Proposal_Store {
 	/**
 	 * Reads a stored proposal's transient.
 	 *
-	 * A fresh read goes past this request's own object cache, so a request that
-	 * just took the lock sees what the request before it saved rather than the
-	 * copy it read itself before taking the lock.
-	 *
 	 * @since x.x.x
 	 *
 	 * @param string $name  The transient name.
@@ -760,17 +671,7 @@ final class Proposal_Store {
 				);
 			}
 
-			/*
-			 * Only the kind's own fields survive. A model that supplies extra
-			 * properties — a prose summary of what it claims it will write, for
-			 * instance — has them dropped here, so the confirmation surface can only
-			 * ever render values that are going to be written (R16).
-			 *
-			 * A snapshot is the server's record of the target as it was when the
-			 * item was proposed, so one supplied with a new item is dropped before
-			 * the kind sees it, and the kind takes its own. {@see self::apply_edits()}
-			 * deliberately keeps the stored one instead.
-			 */
+			// The server takes its own snapshot; never trust one the model supplied.
 			unset( $item[ Proposal_Kind::SNAPSHOT_FIELD ] );
 
 			$prepared = $kind->normalize_item( $item );

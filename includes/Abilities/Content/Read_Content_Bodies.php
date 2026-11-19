@@ -20,39 +20,9 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Class - Read_Content_Bodies
  *
- * Registers the read-only `ai/read-content-bodies` ability, which returns the full body
- * of a small number of posts named by ID.
+ * Registers the read-only `ai/read-content-bodies` ability, which returns the full body of posts named by ID.
  *
- * This is a sibling of {@see Search_Content}, and exists for the same reason: a
- * conversational surface needs to read the posts it finds, and `core/content-query` is
- * registered behind the Custom Abilities experiment. Depending on that ability would
- * make this tool appear and disappear with a switch that has nothing to do with it, so
- * the reading path is registered here instead and every ability consumer — the AI
- * Workspace, the MCP surface, and the Abilities Explorer — gets the same behavior.
- *
- * Two properties are load bearing:
- *
- *  - At most {@see self::MAX_POSTS} posts are returned per call. That is a context
- *    limit for the model, not an access control, and it is enforced both in the input
- *    schema and again in {@see self::execute_read_content_bodies()} so it survives a
- *    transport that never validated the input.
- *  - Every returned body is filtered at execute time by the requesting user's own
- *    capabilities, using the same read permission walk {@see Search_Content} performs,
- *    so a body the user could not otherwise read is never returned. The permission
- *    callback can only gate the request coarsely, because which posts the given IDs
- *    resolve to is unknown until they are loaded.
- *
- * An ID that names no post and an ID that names a post the user may not read are
- * reported identically, in `unavailable`. The caller supplied the IDs, so this
- * discloses nothing it did not already know, and it keeps the two cases
- * indistinguishable.
- *
- * For that reason this ability deliberately reports no withheld count, even though
- * {@see Search_Content} does. This is not an oversight to be tidied away: splitting
- * `unavailable` into "no such post" and "withheld", even as a bare number, answers
- * "does post 4211 exist?" for the exact IDs the caller named, one call at a time.
- * A search aggregates over a query the caller never enumerated, so a count there
- * stands for no particular post and discloses nothing comparable.
+ * Missing and unreadable IDs are both reported in `unavailable`, with no withheld count, so it can't probe existence.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -79,9 +49,6 @@ final class Read_Content_Bodies {
 	/**
 	 * Maximum number of posts whose bodies are returned in one call.
 	 *
-	 * A body is far longer than a search row, so the cap is much lower than the search
-	 * ability's. See {@see self::normalize_ids()}.
-	 *
 	 * @since x.x.x
 	 * @var int
 	 */
@@ -89,9 +56,6 @@ final class Read_Content_Bodies {
 
 	/**
 	 * Hooks the ability into the Abilities API.
-	 *
-	 * The `content` category is registered as a fallback so the ability can be enabled
-	 * on its own, without the experiment that registers {@see Content}.
 	 *
 	 * @since x.x.x
 	 */
@@ -127,10 +91,6 @@ final class Read_Content_Bodies {
 	 * @since x.x.x
 	 */
 	public function register(): void {
-		/*
-		 * Nothing is readable when no post type is exposed to abilities, so the tool is
-		 * not offered at all rather than offered and always empty.
-		 */
 		if ( array() === $this->get_exposed_post_types() ) {
 			return;
 		}
@@ -158,8 +118,7 @@ final class Read_Content_Bodies {
 						'readonly'    => true,
 						'destructive' => false,
 						'idempotent'  => true,
-						// MCP clients assume open-world (may reach external systems) when the
-						// hint is absent; this ability only reads the local database.
+						// MCP clients assume open-world when the hint is absent.
 						'open_world'  => false,
 					),
 					'show_in_rest' => true,
@@ -171,12 +130,7 @@ final class Read_Content_Bodies {
 	/**
 	 * Permission callback for the `ai/read-content-bodies` ability.
 	 *
-	 * This gate is coarse by necessity: which posts the requested IDs resolve to, and
-	 * therefore which capabilities apply, is unknown until they are loaded. It only
-	 * checks that the caller is authenticated and that at least one post type is exposed
-	 * to abilities. Row-level read permission is enforced in
-	 * {@see self::execute_read_content_bodies()}, which is the check that keeps bodies
-	 * the caller cannot read out of the result.
+	 * Coarse by necessity; per-post read permission is enforced at execute time.
 	 *
 	 * @since x.x.x
 	 *
@@ -196,14 +150,6 @@ final class Read_Content_Bodies {
 	/**
 	 * Executes the `ai/read-content-bodies` ability.
 	 *
-	 * {@see \WP_Ability::execute()} always runs {@see self::check_permission()} first, so
-	 * this only needs to enforce what the gate could not: every requested post is checked
-	 * against the current user's read permission before its body is included, mirroring
-	 * the row filtering {@see Search_Content} performs.
-	 *
-	 * Unreadable IDs are returned in `unavailable` alongside IDs that match no post, and
-	 * are deliberately not counted separately; see the class docblock.
-	 *
 	 * @since x.x.x
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
@@ -215,7 +161,7 @@ final class Read_Content_Bodies {
 		$posts       = array();
 		$unavailable = array();
 
-		// A GET transport delivers the flag as a string, so it is parsed, not compared.
+		// GET delivers the flag as a string.
 		$raw = isset( $input['raw'] ) && is_scalar( $input['raw'] ) && true === rest_sanitize_boolean( (string) $input['raw'] );
 
 		foreach ( $this->normalize_ids( $input ) as $post_id ) {
@@ -238,10 +184,7 @@ final class Read_Content_Bodies {
 	/**
 	 * Normalizes the requested post IDs to a unique, bounded list.
 	 *
-	 * Clamping here as well as in the input schema keeps the bound in force on transports
-	 * that do not validate input against the schema. A GET request delivers list inputs as
-	 * scalar/CSV strings, so they are parsed the same way schema validation did
-	 * (wp_parse_list) and are honored regardless of transport, mirroring {@see Content}.
+	 * Clamped here too, for transports that skip schema validation.
 	 *
 	 * @since x.x.x
 	 *
@@ -279,9 +222,7 @@ final class Read_Content_Bodies {
 	/**
 	 * Returns the post types exposed through the Abilities API, keyed by name.
 	 *
-	 * Deliberately resolved on every call rather than cached: post types can be
-	 * unregistered or re-registered with different arguments between the ability
-	 * being registered and the ability being used.
+	 * Not cached: post types can be re-registered between registration and use.
 	 *
 	 * @since x.x.x
 	 *
@@ -300,10 +241,7 @@ final class Read_Content_Bodies {
 	/**
 	 * Checks if a post can be read by the current user.
 	 *
-	 * Mirrors `check_read_permission()` in {@see Search_Content} — itself a mirror of the
-	 * REST posts controller's read permission — including the inherited-parent walk, so
-	 * the abilities cannot disagree about what a user may see. This is the filter that
-	 * keeps a body the caller cannot read out of the result.
+	 * Mirrors {@see Search_Content}'s check, itself a mirror of the REST posts controller.
 	 *
 	 * @since x.x.x
 	 *
@@ -323,19 +261,11 @@ final class Read_Content_Bodies {
 			return false;
 		}
 
-		/*
-		 * Treat publicly viewable posts as readable. This checks both the post type
-		 * and post status using Core's viewability helpers, which is stricter than
-		 * checking the status object's `public` flag alone.
-		 */
 		if ( is_post_publicly_viewable( $post ) ) {
 			return true;
 		}
 
-		/*
-		 * Use the normalized status for the status object lookup. For attachments,
-		 * get_post_status() resolves `inherit` through the parent before returning.
-		 */
+		// Resolves an attachment's `inherit` through its parent.
 		$post_status = get_post_status( $post );
 		if ( ! is_string( $post_status ) ) {
 			return false;
@@ -346,27 +276,16 @@ final class Read_Content_Bodies {
 			return false;
 		}
 
-		/*
-		 * Core maps `read_post` for public statuses to the post type's plain `read`
-		 * capability. Publicly viewable posts already returned above, so a remaining
-		 * public status is public but not viewable and should require edit access.
-		 */
+		// Public but not viewable: core's `read_post` would only require `read`.
 		if ( $post_status_object->public ) {
 			return current_user_can( 'edit_post', $post->ID );
 		}
 
-		/*
-		 * For non-public statuses, defer to Core's meta-capability mapping. This
-		 * handles own drafts, private posts, and statuses that require edit access.
-		 */
 		if ( current_user_can( 'read_post', $post->ID ) ) {
 			return true;
 		}
 
-		/*
-		 * Mirror the REST posts controller's inherited-parent behavior, but keep the
-		 * ability fail-closed for missing parents or parent loops.
-		 */
+		// Inherited-parent walk, fail-closed on missing parents or loops.
 		if (
 			'inherit' === $post->post_status &&
 			$post->post_parent > 0 &&
@@ -384,10 +303,7 @@ final class Read_Content_Bodies {
 	/**
 	 * Formats a readable post into a result row.
 	 *
-	 * The body of a password-protected post is withheld unless the current user can edit
-	 * that post, mirroring the REST posts controller. For such an editor the cookie-based
-	 * password gate is suspended only while this post's body is built, so other protected
-	 * posts a filter may render stay locked.
+	 * A password-protected body is withheld unless the user can edit the post, as in REST.
 	 *
 	 * @since x.x.x
 	 *
@@ -415,12 +331,7 @@ final class Read_Content_Bodies {
 	/**
 	 * Builds the result row for a post.
 	 *
-	 * The stored markup is added only when asked for and only for a post the
-	 * current user can edit: it is what a content change has to be built from,
-	 * and a user who may only read a post has no change to build, while markup
-	 * can carry what the rendered text does not, such as an unpublished block's
-	 * attributes. It is returned exactly as stored, unrendered, and reaches the
-	 * model as the same untrusted site content as the plain-text body.
+	 * Stored markup is editor-only: it can carry what rendered text hides, such as block attributes.
 	 *
 	 * @since x.x.x
 	 *
@@ -443,10 +354,7 @@ final class Read_Content_Bodies {
 			'edit_link'         => $this->get_edit_link( $post ),
 		);
 
-		/*
-		 * Re-checked here rather than trusted from the caller: the field's
-		 * presence is a permission guarantee, like `edit_link`'s.
-		 */
+		// Re-checked: the field's presence is a permission guarantee.
 		if (
 			$include_raw
 			&& ! $is_protected
@@ -462,13 +370,7 @@ final class Read_Content_Bodies {
 	/**
 	 * Returns the editor URL for a post the current user can edit.
 	 *
-	 * The URL doubles as the permission proof: it is present only when the current user
-	 * can edit the post, so a consumer offering an edit affordance does not have to
-	 * re-derive the capability, and cannot construct an editor URL for a post the user
-	 * may only read. Mirrors {@see Search_Content}, including the deliberately redundant
-	 * capability check: the emptiness of this field is a permission guarantee consumers
-	 * rely on, and that guarantee should not rest on the internals of a core function
-	 * that is free to change.
+	 * Consumers treat a non-empty URL as permission proof, hence the explicit capability check.
 	 *
 	 * @since x.x.x
 	 *
@@ -485,10 +387,6 @@ final class Read_Content_Bodies {
 
 	/**
 	 * Filters {@see post_password_required()} to unlock only posts the current user can edit.
-	 *
-	 * Added by {@see self::format_post()} while formatting a password-protected post the
-	 * current user can edit, so the body resolves to its real value without also
-	 * unlocking other protected posts a content filter may render.
 	 *
 	 * @since x.x.x
 	 *
@@ -517,10 +415,6 @@ final class Read_Content_Bodies {
 		add_filter( 'protected_title_format', $strip );
 		add_filter( 'private_title_format', $strip );
 
-		/*
-		 * The format filters are removed in a finally block so a throw from a title
-		 * filter cannot leave them attached for the rest of the request.
-		 */
 		try {
 			return get_the_title( $post );
 		} finally {
@@ -541,16 +435,7 @@ final class Read_Content_Bodies {
 	}
 
 	/**
-	 * Returns the whole post body as plain text.
-	 *
-	 * The body is rendered through the `the_content` filter chain, mirroring the REST
-	 * posts controller, and then stripped of markup. The model is given text to reason
-	 * about, not markup to reproduce: block comments and HTML attributes are noise in the
-	 * context window, and stripping them removes an obvious carrier for markup the
-	 * transcript would otherwise have to render inert again downstream.
-	 *
-	 * Post globals are prepared and restored around the filters so filters relying on
-	 * loop globals render against the requested post, mirroring {@see Content}.
+	 * Returns the post body rendered through `the_content` and stripped to plain text.
 	 *
 	 * @since x.x.x
 	 *
@@ -568,11 +453,6 @@ final class Read_Content_Bodies {
 		$GLOBALS['post'] = $post;
 		setup_postdata( $post );
 
-		/*
-		 * The global post context is restored in a finally block so a throw from a
-		 * content filter cannot leave it pointing at this post for the rest of the
-		 * request.
-		 */
 		try {
 			/** This filter is documented in wp-includes/post-template.php. */
 			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core content filter to mirror REST rendering.

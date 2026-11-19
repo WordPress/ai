@@ -15,11 +15,6 @@ use WordPress\AI\Abilities\Show_In_Abilities;
 /**
  * Read_Content_Bodies ability test case.
  *
- * This ability returns whole post bodies rather than excerpts, so the tests are
- * weighted almost entirely towards leakage: every body it hands back must be a body
- * the requesting user could have read anyway, and the five-post cap must hold on a
- * transport that never validated the input schema.
- *
  * @since x.x.x
  *
  * @covers \WordPress\AI\Abilities\Content\Read_Content_Bodies
@@ -70,7 +65,7 @@ class Read_Content_BodiesTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
-		// Mark the curated core post types (post, page) as exposed to abilities.
+		// Expose post and page to abilities.
 		( new Show_In_Abilities() )->register();
 
 		$this->ensure_ability_category( 'content' );
@@ -86,15 +81,13 @@ class Read_Content_BodiesTest extends WP_UnitTestCase {
 			wp_unregister_ability( self::ABILITY );
 		}
 
-		// Restore the curated post types to their unmarked state to avoid leaking into other tests.
 		foreach ( array( 'post', 'page' ) as $post_type ) {
 			$object = get_post_type_object( $post_type );
 			if ( ! $object ) {
 				continue;
 			}
 
-			// WordPress 7.2 declares the property, and unsetting a declared property leaves it
-			// uninitialized, so restore core's default rather than removing it.
+			// Unsetting a property WP 7.2 declares leaves it uninitialized, so restore the default.
 			if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
 				$object->show_in_abilities = true;
 			} else {
@@ -267,9 +260,6 @@ class Read_Content_BodiesTest extends WP_UnitTestCase {
 	/**
 	 * The execute callback clamps to five posts even when schema validation is bypassed.
 	 *
-	 * The cap is a context limit that must hold on any transport, so it is enforced in
-	 * the callback as well as in the input schema.
-	 *
 	 * @since x.x.x
 	 */
 	public function test_execute_callback_clamps_to_five_without_schema_validation(): void {
@@ -345,8 +335,7 @@ class Read_Content_BodiesTest extends WP_UnitTestCase {
 	/**
 	 * An unknown or unreadable ID is reported as unavailable rather than as an error.
 	 *
-	 * The two are deliberately indistinguishable: a caller cannot tell a post that does
-	 * not exist from one they may not read.
+	 * The two match so a caller cannot probe for posts they may not read.
 	 *
 	 * @since x.x.x
 	 */
@@ -388,7 +377,6 @@ class Read_Content_BodiesTest extends WP_UnitTestCase {
 			'The private body must not appear anywhere in the ability output.'
 		);
 
-		// An editor, who can read private posts, does receive it.
 		$this->login_as( 'editor' );
 
 		$editor_result = $this->execute( array( 'ids' => array( $private_id ) ) );

@@ -17,18 +17,9 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Class - Find_Admin_Screens
  *
- * Registers the read-only `ai/find-admin-screens` ability, which turns a short
- * description of a task, such as "hide my site from google", into links to the
- * admin screens that handle it. It is how the AI Workspace answers "where do I…"
- * with a link, and it is registered for every ability consumer, like
- * {@see Get_Site_Info}.
+ * Registers the read-only `ai/find-admin-screens` ability, which links a task description to admin screens.
  *
- * The screens come from a curated map of core screens (`admin-screens.php`),
- * extensible through the `wpai_admin_screens` filter, because the admin menu is
- * not built during a REST request. Matching is word scoring on the server with no
- * model call; the agent's own model chooses among the results. Only screens the
- * current user can open are returned, and every URL is built with `admin_url()`,
- * so a link never comes from model text and never leaves the admin host.
+ * Uses a curated map because the admin menu is not built during a REST request.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -182,7 +173,6 @@ final class Find_Admin_Screens {
 						'readonly'    => true,
 						'destructive' => false,
 						'idempotent'  => true,
-						// This ability only reads a map held on the local site.
 						'open_world'  => false,
 					),
 					'show_in_rest' => true,
@@ -194,8 +184,7 @@ final class Find_Admin_Screens {
 	/**
 	 * Permission callback for the `ai/find-admin-screens` ability.
 	 *
-	 * Any authenticated user may ask: each screen is checked against the user's
-	 * own capabilities before it is returned, so the coarse gate has nothing to add.
+	 * Each screen's own capability is checked before it is returned.
 	 *
 	 * @since x.x.x
 	 *
@@ -255,7 +244,6 @@ final class Find_Admin_Screens {
 			);
 		}
 
-		// Most query words matched first, then a match on the title, then map order.
 		usort(
 			$scored,
 			static function ( array $a, array $b ): int {
@@ -285,10 +273,6 @@ final class Find_Admin_Screens {
 	/**
 	 * Returns the screen map, filtered and validated.
 	 *
-	 * An entry is dropped unless it has a title, a capability, and a path that is
-	 * relative to the admin directory: no scheme, no leading slash or backslash, so
-	 * `admin_url()` cannot be pointed at another host.
-	 *
 	 * @since x.x.x
 	 *
 	 * @return list<array{title: string, section: string, path: string, keywords: list<string>, capability: string}> The screens.
@@ -299,11 +283,8 @@ final class Find_Admin_Screens {
 		/**
 		 * Filters the admin screens the `ai/find-admin-screens` ability can return.
 		 *
-		 * Each entry is an array with a `title`, a `path` relative to the admin
-		 * directory (passed to `admin_url()`), a `capability` the user must have
-		 * to be offered it, and optionally `keywords` (a list of words or phrases
-		 * a person might use for it) and a short `section` such as "Settings".
-		 * Entries earlier in the list win ties.
+		 * Entries need `title`, `path` (relative to the admin directory) and `capability`;
+		 * `keywords` and `section` are optional. Earlier entries win ties.
 		 *
 		 * @since x.x.x
 		 *
@@ -357,7 +338,6 @@ final class Find_Admin_Screens {
 			return false;
 		}
 
-		// Nothing before the query string may carry a scheme, a host or a parent directory.
 		$file = (string) strtok( $path, '?#' );
 
 		return 1 === preg_match( '#^[a-z0-9_\-./]+$#i', $file ) && false === strpos( $file, '..' ) && false === strpos( $file, '//' );
@@ -395,9 +375,7 @@ final class Find_Admin_Screens {
 	/**
 	 * Reduces a word to a rough stem, so "comments" matches "comment".
 	 *
-	 * Only plurals are folded. The result never ends in a further plural, so
-	 * stemming a stem returns it unchanged and "setting" meets "settings". There
-	 * is no "-ing" rule: it took "setting" to "sett" but "settings" only to "setting".
+	 * Only plurals are folded; an "-ing" rule would stem "setting" and "settings" differently.
 	 *
 	 * @since x.x.x
 	 *

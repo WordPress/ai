@@ -27,8 +27,6 @@ const {
 
 test.describe( 'Abilities Explorer', () => {
 	test.beforeEach( async ( { requestUtils } ) => {
-		// Every test starts with the Explorer on, the fixtures registered, and
-		// no owner exclusion or policy switch left behind.
 		await enableExplorer( requestUtils );
 	} );
 
@@ -181,8 +179,7 @@ test.describe( 'Abilities Explorer', () => {
 
 			await expect( snackbar( page, REMOVED ) ).toBeVisible();
 			await expect( reader ).toHaveCount( 0 );
-			// The only matching row is gone, so DataViews shows no table; focus
-			// lands on the labelled list region either way.
+			// With no rows DataViews renders no table, so focus goes to the list region.
 			await expect(
 				page.getByRole( 'region', { name: 'Abilities list' } )
 			).toBeFocused();

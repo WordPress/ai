@@ -17,22 +17,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Class - Get_Site_Info
  *
- * Registers the read-only `ai/get-site-info` ability, which returns a fixed set of
- * facts about the site: its name, tagline, home URL, language, timezone, date and
- * time formats, and active theme. It is how the AI Workspace answers questions
- * about the site, and it is registered for every ability consumer, like
- * {@see \WordPress\AI\Abilities\Content\List_Terms}.
- *
- * The name, tagline, home URL, language and theme are visible on the front end, and
- * the timezone and formats shape every date the site prints, so the ability requires
- * only an authenticated user, like the other workspace reads. The WordPress and
- * PHP versions are added only for a user who can `view_site_health_checks`, the
- * meta capability core uses for Site Health, which shows the same versions. It
- * maps to `install_plugins`, so on multisite only a super admin gets them.
- *
- * It never returns the admin email, the WordPress address (`siteurl`), database
- * details or the plugin list, which is what keeps it narrower than
- * `core/get-site-info` and `core/get-environment-info`.
+ * Registers the read-only `ai/get-site-info` ability: public site facts, narrower than `core/get-site-info`.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -77,14 +62,8 @@ final class Get_Site_Info {
 				'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'input_schema'        => array(
 					'type'                 => 'object',
-					/*
-					 * No `properties` key: an empty one is sent to the model as
-					 * `"properties": []`, and OpenAI refuses the whole request
-					 * because `[]` is not an object. `additionalProperties`
-					 * already refuses any input.
-					 */
+					// No empty `properties`: it encodes as `[]`, which OpenAI rejects.
 					'additionalProperties' => false,
-					// Lets the ability run with no input at all, as `core/get-site-info` does.
 					'default'              => array(),
 				),
 				'output_schema'       => $this->get_output_schema(),
@@ -95,7 +74,6 @@ final class Get_Site_Info {
 						'readonly'    => true,
 						'destructive' => false,
 						'idempotent'  => true,
-						// This ability only reads the local site.
 						'open_world'  => false,
 					),
 					'show_in_rest' => true,
@@ -135,7 +113,6 @@ final class Get_Site_Info {
 			'tagline'        => wp_specialchars_decode( (string) get_bloginfo( 'description' ), ENT_QUOTES ),
 			'home_url'       => (string) home_url( '/' ),
 			'language'       => (string) get_locale(),
-			// A named zone, or the UTC offset such as `-05:00` when none is set.
 			'timezone'       => (string) wp_timezone_string(),
 			'date_format'    => (string) get_option( 'date_format' ),
 			'time_format'    => (string) get_option( 'time_format' ),
@@ -143,9 +120,7 @@ final class Get_Site_Info {
 			'is_block_theme' => wp_is_block_theme(),
 		);
 
-		// Versions say which known vulnerabilities apply, so only a user who can see
-		// them in Site Health gets them. On multisite that is a super admin, not a
-		// sub-site administrator who has `manage_options`.
+		// Versions reveal applicable vulnerabilities; gate them like Site Health does.
 		if ( current_user_can( 'view_site_health_checks' ) ) {
 			$info['wp_version']  = (string) get_bloginfo( 'version' );
 			$info['php_version'] = PHP_VERSION;

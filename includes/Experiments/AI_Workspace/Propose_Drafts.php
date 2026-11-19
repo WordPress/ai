@@ -18,28 +18,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Registers the `ai/propose-drafts` ability, which proposes drafts without writing any.
  *
- * This is the model's only reach toward the write path, and it does not touch the
- * posts table. It records a set of resolved field values in {@see Proposal_Store}
- * and hands back an identifier. Nothing is written until a person approves the
- * stored values through {@see REST\Proposal_Controller}, in a separate
- * authenticated request that re-checks capability at write time (R15, KTD8).
- *
- * There is deliberately no registered write ability anywhere in this feature. A
- * registered ability is reachable by every ability consumer on the site — the MCP
- * surface, the Abilities Explorer, any third-party caller — and none of them have
- * a confirm gate, so a write ability would make R15 true inside the workspace and
- * false everywhere else. Keeping the write private to the proposal flow makes the
- * gate a property of the write path rather than of one controller.
- *
- * Two further properties are load bearing:
- *
- * - **It is hidden from the REST and MCP surfaces** (`show_in_rest` and
- *   `meta.mcp.public` are false), and
- *   it refuses outright when it is not running inside a workspace turn, so a
- *   remote agent cannot even accumulate proposals for someone else to approve.
- * - **The proposal is bound to the conversation it was made in**, read from
- *   {@see Turn_Context} rather than from the model's arguments, because a value
- *   the model supplies is attacker-influenceable.
+ * The conversation comes from {@see Turn_Context}, never the model's arguments, which are attacker-influenceable.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -116,9 +95,6 @@ final class Propose_Drafts {
 	/**
 	 * Returns the ability's registration args.
 	 *
-	 * The workspace registers the ability, so it carries the feature's access
-	 * control tag.
-	 *
 	 * @since x.x.x
 	 *
 	 * @return array<string, mixed>|null The registration args, or null when no post type is exposed.
@@ -149,12 +125,7 @@ final class Propose_Drafts {
 					'idempotent'  => false,
 					'open_world'  => false,
 				),
-				/*
-				 * Withheld from the REST and MCP surfaces on purpose; MCP
-				 * exposure reads `mcp.public`, not `show_in_rest`. A
-				 * proposal is only meaningful inside a workspace turn, which
-				 * is where the person who has to approve it is.
-				 */
+				// Only meaningful inside a workspace turn; MCP reads `mcp.public`, not `show_in_rest`.
 				'show_in_rest' => false,
 				'mcp'          => array( 'public' => false ),
 			),
@@ -162,11 +133,7 @@ final class Propose_Drafts {
 	}
 
 	/**
-	 * Permission callback for the ability.
-	 *
-	 * Coarse by necessity: the per-item post type and status checks need the
-	 * input, and they run again in {@see Proposal_Store::create()} and once more
-	 * at write time.
+	 * Permission callback for the ability; per-item checks run in {@see Proposal_Store::create()} and at write time.
 	 *
 	 * @since x.x.x
 	 *

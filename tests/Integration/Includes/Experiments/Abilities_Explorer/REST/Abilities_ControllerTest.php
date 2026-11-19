@@ -754,10 +754,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * A removed ability is not reported as held, with no workspace bootstrap.
 	 *
-	 * The Explorer is a separate experiment from the AI Workspace, so on a site
-	 * with no function-calling connector this screen is the only one that loads.
-	 * A removal that depended on the workspace's bootstrap would show a removed
-	 * ability as one the assistant holds, next to the action offering to return it.
+	 * The Explorer can load without the AI Workspace, so removal must not depend on its bootstrap.
 	 *
 	 * @since x.x.x
 	 */
@@ -778,9 +775,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * An ability exposed by the general public flag is reported on both channels.
 	 *
-	 * WordPress 7.1 added `meta.public`, and a channel resolves as
-	 * `meta[channel] ?? meta.public ?? the channel default`. Core applies that to
-	 * `show_in_rest` at registration; nothing applies it to `mcp.public`.
+	 * Core resolves `show_in_rest` from `meta.public` (WP 7.1+); nothing does that for `mcp.public`.
 	 *
 	 * @since x.x.x
 	 */
@@ -835,9 +830,6 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 
 	/**
 	 * The policy switch withdraws admitted abilities and brings them back.
-	 *
-	 * Both directions, and the declarations after each. An inverted switch would
-	 * satisfy any test that only checked that the option had been written.
 	 *
 	 * @since x.x.x
 	 */
@@ -1288,10 +1280,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Skips a test on a WordPress whose abilities carry no general `public` flag.
-	 *
-	 * WordPress 7.1 introduced the `public` ability meta and resolved
-	 * `show_in_rest` from it. On 7.0 the key does not exist.
+	 * Skips a test on a WordPress whose abilities carry no general `public` flag (before 7.1).
 	 *
 	 * @since x.x.x
 	 */

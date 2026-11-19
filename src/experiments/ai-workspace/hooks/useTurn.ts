@@ -38,31 +38,24 @@ interface TurnOutcome {
 	response: TurnResponse | null;
 	streamed: boolean;
 	error: { code: string; message: string } | null;
-	// True when this request was aborted deliberately, which is the person
-	// pressing Stop. An aborted request reports a failure of its own -- a
-	// rejected fetch, or a read that ended early -- and that failure describes
-	// the abort rather than the turn, so it must not be read as one.
+	// True when Stop aborted the request; its resulting failure is not the turn's.
 	aborted: boolean;
 }
 
 const SENTENCE_BOUNDARY = /[.!?…](\s|$)|\n\n/;
 
 /**
- * How often, in milliseconds, a turn whose connection dropped checks the saved
- * chat for its reply.
+ * Poll interval, in milliseconds, for a dropped turn's saved reply.
  */
 const RECOVERY_INTERVAL = 3000;
 
 /**
- * How long, in milliseconds, a turn whose connection dropped keeps checking
- * before it reports the failure. A turn runs several rounds, and each round
- * may wait two minutes for the model.
+ * How long, in milliseconds, to poll for a dropped turn; each round may wait minutes for the model.
  */
 const RECOVERY_WINDOW = 10 * 60 * 1000;
 
 /**
- * HTTP statuses a proxy in front of WordPress answers with when it stops
- * waiting for a slow request. WordPress itself keeps running the turn.
+ * Proxy timeout statuses; WordPress itself keeps running the turn.
  */
 const GATEWAY_TIMEOUTS = [ 502, 503, 504, 524 ];
 
@@ -139,10 +132,7 @@ function readString( value: unknown, key: string ): string {
 /**
  * Drives one conversation: sending turns, streaming them, and stopping them.
  *
- * The turn is consumed with `fetch` and a stream reader rather than
- * `EventSource`, which is GET-only, cannot carry the REST nonce as a header, and
- * would silently re-issue — and re-bill — the turn through its uncancellable
- * auto-reconnect.
+ * Uses `fetch` rather than `EventSource`, which is GET-only, can't send the nonce header, and auto-reconnects (re-billing the turn).
  *
  * @param data Localized data provided by the server.
  * @return The conversation state and its controls.
@@ -153,36 +143,22 @@ export function useTurn( data: LocalizedData ) {
 	const [ isRunning, setIsRunning ] = useState( false );
 	const [ isStopping, setIsStopping ] = useState( false );
 	const [ announcement, setAnnouncement ] = useState( '' );
-	// Mirrored into state as well as the ref: the ref keeps the turn transport
-	// synchronous, and the confirmation surface needs to re-render when a
-	// conversation is first identified by the server.
+	// State mirror of `conversationId` so cards re-render when the server assigns it.
 	const [ conversation, setConversation ] = useState( '' );
-	// Outcomes approvals reported into a reopened chat, keyed by proposal ID.
 	const [ outcomes, setOutcomes ] = useState<
 		Record< string, ProposalExecution >
 	>( {} );
-	// Bumped whenever a turn settles, so the history list knows to refresh.
+	// Bumped when a turn settles so the history list refreshes.
 	const [ settled, setSettled ] = useState( 0 );
-	/*
-	 * True while a stored chat loads. Nothing can be sent meanwhile: the screen
-	 * is about to show a different chat, and a turn started now would bind the
-	 * screen to whichever conversation it ran in.
-	 */
+	// Sending is blocked while a stored chat loads.
 	const [ isOpening, setIsOpening ] = useState( false );
 	const opening = useRef( false );
 
 	const conversationId = useRef( '' );
-	/*
-	 * Which conversation the screen is showing. Switching chats, or starting a
-	 * new one, bumps it, and a turn or a load that began under an older value
-	 * leaves the transcript alone when it settles: its result belongs to a chat
-	 * the person has already left.
-	 */
+	// Bumped on chat switch; work started under an older value is discarded.
 	const generation = useRef( 0 );
 
-	// Mirrors `isRunning` for callbacks that settle after an await. A proposal
-	// card starts its follow-up once its own request returns, and the state it
-	// captured at click time no longer says whether a turn has started since.
+	// Mirrors `isRunning` for callbacks that read it after an await.
 	const running = useRef( false );
 	const controller = useRef< AbortController | null >( null );
 	const announcedTo = useRef( 0 );
@@ -226,14 +202,7 @@ export function useTurn( data: LocalizedData ) {
 	/**
 	 * Waits for a turn whose connection dropped, then reads it from the saved chat.
 	 *
-	 * The browser can lose a turn's response while WordPress is still running
-	 * it: WordPress Playground gives up on any request after 25 seconds, and a
-	 * proxy in front of a site may give up sooner than PHP does. The server
-	 * says whether the turn is running or done, and saves its entry under the
-	 * ID the client sent, so the reply is read from there instead.
-	 *
-	 * A turn the server never received is reported as the failure it was,
-	 * after two checks that find no sign of it, rather than waited on.
+	 * Playground drops requests after 25 seconds and proxies may time out before PHP does.
 	 *
 	 * @param chatId  The chat the turn runs in.
 	 * @param turnId  The turn's ID.
@@ -364,11 +333,7 @@ export function useTurn( data: LocalizedData ) {
 			const abort = new AbortController();
 			controller.current = abort;
 
-			/*
-			 * The turn's ID, and for a first turn the new chat's, are chosen
-			 * here so the turn can be found in the saved chat if its response
-			 * is lost on the way back.
-			 */
+			// Client-chosen IDs let a lost response be found in the saved chat.
 			const turnId = newUuid();
 			const newChatId = '' === conversationId.current ? newUuid() : '';
 			const chatId = conversationId.current || newChatId;
@@ -384,8 +349,7 @@ export function useTurn( data: LocalizedData ) {
 						'Content-Type': 'application/json',
 						Accept: 'text/event-stream, application/json',
 						'X-WP-Nonce': data.rest.nonce,
-						// Asks for the streaming transport. A host that cannot
-						// stream answers with plain JSON instead.
+						// A host that cannot stream answers with plain JSON.
 						'X-WP-AI-Stream': '1',
 					},
 					body: JSON.stringify( {
@@ -426,8 +390,7 @@ export function useTurn( data: LocalizedData ) {
 				! contentType.includes( 'text/event-stream' ) ||
 				! response.body
 			) {
-				// Buffered fallback: the host could not stream, so the whole
-				// turn arrives at once as JSON.
+				// Buffered fallback: the whole turn arrives at once as JSON.
 				let payload: unknown = null;
 
 				try {
@@ -647,11 +610,7 @@ export function useTurn( data: LocalizedData ) {
 				followUp
 			);
 
-			/*
-			 * The person switched chats while this turn ran; nothing of it is
-			 * shown. The list still refreshes, because a first turn left this way
-			 * finishes on the server as a new chat.
-			 */
+			// Switched chats mid-turn: show nothing, but refresh the list for a new chat.
 			if ( started !== generation.current ) {
 				setSettled( ( count ) => count + 1 );
 				return;
@@ -665,15 +624,7 @@ export function useTurn( data: LocalizedData ) {
 						return entry;
 					}
 
-					/*
-					 * A deliberate stop is authoritative. The aborted request
-					 * settles either as a transport failure or with nothing
-					 * read, and rewriting the entry from that would replace the
-					 * stopped state the person asked for with an error they did
-					 * not cause. The status is asserted rather than left alone
-					 * because the abort can also come from `stop()`'s own
-					 * fallback, where the entry is still streaming.
-					 */
+					// A deliberate stop wins over the error the aborted request reports.
 					if ( outcome.aborted ) {
 						return { ...entry, status: 'cancelled' };
 					}
@@ -686,8 +637,7 @@ export function useTurn( data: LocalizedData ) {
 								'ai'
 							);
 
-						// The card above already says what happened; this only
-						// says the assistant's own reply did not arrive.
+						// The card above already reports the outcome.
 						if ( followUp ) {
 							detail = __(
 								'The assistant couldn’t follow up on this.',
@@ -757,13 +707,7 @@ export function useTurn( data: LocalizedData ) {
 	/**
 	 * Asks the assistant to follow up once a proposal was approved or discarded.
 	 *
-	 * It runs once per outcome and is never retried: the server owes exactly one
-	 * follow-up and refuses a second. While another turn is running the
-	 * follow-up is skipped, since the person has already moved on.
-	 *
-	 * A card whose request settles after the person opened another chat, or
-	 * started a new one, names a conversation that is no longer on screen, and
-	 * no follow-up is started for it.
+	 * Never retried (the server allows one), and skipped while another turn runs or the chat changed.
 	 *
 	 * @param turnScope       The scope of the turn that proposed.
 	 * @param forConversation The conversation the settled proposal belongs to.
@@ -788,16 +732,9 @@ export function useTurn( data: LocalizedData ) {
 	);
 
 	/**
-	 * Stops the in-flight turn.
+	 * Stops the in-flight turn via the cancel route, so server-side work stops too.
 	 *
-	 * Stopping calls the cancel route so the loop stops between rounds; closing
-	 * the reader alone would leave server-side work running (R9). The reader is
-	 * kept open afterwards so the terminated turn still reports its real status.
-	 *
-	 * A conversation's first turn is the one case where the identifier is not
-	 * known yet — the server mints it — so there the reader is closed and the
-	 * turn is marked stopped locally while the current round finishes server
-	 * side. Every later turn is cancelled at the server.
+	 * A first turn has no conversation ID yet, so it is only aborted locally.
 	 */
 	const stop = useCallback( async (): Promise< void > => {
 		if ( ! isRunning ) {
@@ -836,19 +773,13 @@ export function useTurn( data: LocalizedData ) {
 				} ),
 			} );
 		} catch {
-			// The turn still terminates through its own response; a failed
-			// cancel call must not leave the transcript stuck.
+			// A failed cancel call must not leave the transcript stuck.
 			controller.current?.abort();
 		}
 	}, [ data.rest.nonce, endpoint, isRunning ] );
 
 	/**
 	 * Leaves the conversation on screen, stopping any turn still running in it.
-	 *
-	 * The request is aborted so nothing more reaches the transcript, and a turn
-	 * the server already knows the chat for is cancelled there too, so it stops
-	 * between rounds rather than running on unseen. A first turn has no chat yet
-	 * to cancel; it finishes server-side and appears in the list as a new chat.
 	 */
 	const leave = useCallback( (): void => {
 		generation.current += 1;
@@ -878,7 +809,7 @@ export function useTurn( data: LocalizedData ) {
 	}, [ data.rest.nonce, endpoint, isRunning ] );
 
 	/**
-	 * Starts a new chat. The one on screen stays in the history list.
+	 * Starts a new chat.
 	 */
 	const clear = useCallback( (): void => {
 		leave();

@@ -13,22 +13,14 @@ import { __, sprintf } from '@wordpress/i18n';
 import type { WorkspaceSeed } from '../types';
 
 /**
- * Query argument the command palette's Ask AI row carries its prompt in, as
- * `Admin_Page::PROMPT_QUERY_ARG` names it.
+ * Query argument carrying the command palette's prompt (`Admin_Page::PROMPT_QUERY_ARG`).
  */
 export const PROMPT_QUERY_ARG = 'wpai-prompt';
 
 /**
  * Builds the prompt the workspace opens with after a handoff.
  *
- * A prompt from the command palette is used as it is: the person typed it,
- * and it lands in the composer for them to send or change.
- *
- * The seeded post's title is author-controlled text, so it is never sent on the
- * person's behalf: it lands in the composer, where the person reads it and can
- * edit or discard it before any turn is taken. The prompt names the post rather
- * than carrying it, because the assistant must read the body through the
- * permission-checked tool path like any other content.
+ * The post title is author-controlled, so it only prefills the composer and is never sent automatically.
  *
  * @param seed The seeded post, or null when there was no handoff.
  * @return The prompt to prefill, or an empty string.
@@ -57,9 +49,6 @@ export function getSeedPrompt( seed: WorkspaceSeed | null ): string {
 /**
  * Builds the explanation shown when a handoff could not put its post in scope.
  *
- * A denial is reported as a denial. The workspace never falls back to whatever
- * the client happened to know about the post.
- *
  * @param seed The seeded post, or null when there was no handoff.
  * @return The explanation, or null when there is nothing to explain.
  */
@@ -85,11 +74,7 @@ export function getSeedNotice( seed: WorkspaceSeed | null ): string | null {
 }
 
 /**
- * Removes the command palette's prompt from a workspace URL, keeping every
- * other parameter.
- *
- * The prompt is read once. Once it is in the composer it leaves the URL, so a
- * reload does not fill the composer again.
+ * Removes the command palette's prompt from a workspace URL so a reload does not refill the composer.
  *
  * @param href The current URL.
  * @return The URL without the prompt.

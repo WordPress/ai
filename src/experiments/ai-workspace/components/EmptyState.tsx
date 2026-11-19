@@ -9,15 +9,9 @@ import { Button } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 
 /**
- * Renders the starting state of a conversation (R2).
+ * Renders the starting state of a conversation.
  *
- * The four suggestions are the workspace's capability classes phrased the way a
- * person would type them: a retrieval question, an audit, a multi-post plan and
- * a template. Each asks only for what the tool list can deliver, so each ends in
- * something to act on: choices, a filtered list, drafts to approve or a template
- * to approve. Choosing one fills the composer rather than sending it — the
- * prompt is a starting point to edit, not a command to run, which matters most
- * for the two that go on to propose writes.
+ * Suggestions fill the composer rather than sending, so the person can edit them first.
  *
  * @param props          Component props.
  * @param props.onSelect Called with the chosen prompt text.

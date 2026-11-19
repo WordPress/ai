@@ -17,9 +17,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Streams one model round, or reports that this host cannot stream.
  *
- * Separating this from {@see Model_Client_Interface} keeps every reference to the
- * third-party Anthropic provider's classes behind one seam: an implementation may
- * name them, callers never do.
+ * Keeps provider-specific streaming classes behind one seam; callers never name them.
  *
  * @since x.x.x
  */
@@ -27,10 +25,6 @@ interface Stream_Driver_Interface {
 
 	/**
 	 * Streams a model round.
-	 *
-	 * Returning null means "this host could not stream this round" — because no
-	 * streaming model is available, or because the attempt failed — and asks the
-	 * caller to fall back to a buffered request rather than failing the turn.
 	 *
 	 * @since x.x.x
 	 *

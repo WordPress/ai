@@ -14,10 +14,6 @@ use WordPress\AI\Abilities\Show_In_Abilities;
 /**
  * List_Terms ability test case.
  *
- * The ability lists the categories and tags a site uses, with how many posts each
- * holds, so the assistant can see what has been covered. These tests pin what it
- * lists, how it orders, and what it refuses.
- *
  * @since x.x.x
  */
 class List_TermsTest extends WP_UnitTestCase {
@@ -76,15 +72,13 @@ class List_TermsTest extends WP_UnitTestCase {
 			wp_unregister_ability( self::ABILITY );
 		}
 
-		// Restore the curated post types to their unmarked state to avoid leaking into other tests.
 		foreach ( array( 'post', 'page' ) as $post_type ) {
 			$object = get_post_type_object( $post_type );
 			if ( ! $object ) {
 				continue;
 			}
 
-			// WordPress 7.2 declares the property, and unsetting a declared property leaves it
-			// uninitialized, so restore core's default rather than removing it.
+			// Unsetting a property WP 7.2 declares leaves it uninitialized, so restore the default.
 			if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
 				$object->show_in_abilities = true;
 			} else {

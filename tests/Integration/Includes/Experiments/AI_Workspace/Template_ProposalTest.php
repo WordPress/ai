@@ -25,11 +25,6 @@ use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Wo
 /**
  * Template proposal test case.
  *
- * A template is live for every visitor as soon as it is approved, so these tests
- * pin what may be proposed, what the card is shown, and that approval creates
- * exactly the template that was shown, once, without touching one someone has
- * already edited.
- *
  * @since x.x.x
  *
  * @covers \WordPress\AI\Experiments\AI_Workspace\Template_Writer
@@ -490,10 +485,7 @@ class Template_ProposalTest extends WP_UnitTestCase {
 	/**
 	 * A script outside the blocks never reaches the stored template.
 	 *
-	 * Depending on the WordPress version, `wp_kses_post()` either leaves the
-	 * script's text behind, which is then refused as HTML outside the blocks, or
-	 * drops the element whole, which leaves only the blocks. Either way, no script
-	 * is stored.
+	 * Depending on the WordPress version, `wp_kses_post()` keeps the script's text or drops it whole.
 	 *
 	 * @since x.x.x
 	 */

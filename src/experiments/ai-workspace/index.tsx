@@ -1,9 +1,5 @@
 /**
  * AI Workspace admin screen entry point.
- *
- * Renders the app shell — a transcript region, a context-scope control and a
- * multi-line prompt input — and drives one conversation through the turn route,
- * or shows an explanatory state when the workspace cannot operate.
  */
 
 /**
@@ -45,11 +41,6 @@ import type { Availability, LocalizedData } from './types';
 /**
  * Renders the screen chrome shared by every workspace state.
  *
- * The workspace takes over the admin screen, so it carries its own identity and
- * its own way back rather than borrowing the surrounding wp-admin furniture.
- * The unavailable states use the same frame: a person who lands here with no
- * credentials should still see where they are.
- *
  * @param props          Component props.
  * @param props.actions  Header actions, when the state has any.
  * @param props.children The screen body.
@@ -79,10 +70,7 @@ function WorkspaceFrame( {
 }
 
 /**
- * Returns the explanatory message for a workspace that cannot operate.
- *
- * The wording and notice type follow the AI settings screen, so a site with no
- * usable connector reads the same problem the same way on both screens.
+ * Returns the explanatory message for a workspace that cannot operate, worded as on the AI settings screen.
  *
  * @param availability Availability reported by the server.
  * @return The explanation, or null when the workspace is ready.
@@ -134,8 +122,7 @@ function UnavailableState( {
 		return null;
 	}
 
-	// The same notice, at the same width, as the AI settings screen, so the
-	// two places that send someone to the Connectors screen read alike.
+	// Matches the AI settings screen's notice.
 	return (
 		<div className="ai-workspace__unavailable">
 			<UINotice.Root intent={ message.status }>
@@ -153,8 +140,7 @@ function UnavailableState( {
 }
 
 /**
- * The width at and below which the history panel is a drawer, as wp-admin's own
- * mobile breakpoint.
+ * Width at and below which the history panel is a drawer (wp-admin's mobile breakpoint).
  */
 const DRAWER_QUERY = '(max-width: 782px)';
 
@@ -179,14 +165,9 @@ function isNarrow(): boolean {
  */
 function WorkspaceApp( { data }: { data: LocalizedData } ) {
 	const seed = data.seed ?? null;
-	/*
-	 * A handoff opens the composer with a prompt naming the seeded post. It is
-	 * prefilled rather than sent: the title in it is author-controlled text, so
-	 * the person reads and approves it before any turn is taken.
-	 */
 	const [ prompt, setPrompt ] = useState( () => getSeedPrompt( seed ) );
 	const seedNotice = getSeedNotice( seed );
-	// A prompt from a link was written by whoever made the link, so say so until the person changes or sends it.
+	// A prompt from a link was written by the link's author; flag it until edited or sent.
 	const [ fromLink, setFromLink ] = useState(
 		() => seed?.status === 'prompt' && '' !== seed.prompt
 	);
@@ -195,7 +176,6 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 		setFromLink( false );
 	}, [] );
 
-	// The palette's prompt is in the composer now, so a reload must not bring it back.
 	useEffect( () => {
 		const next = urlWithoutPrompt( window.location.href );
 
@@ -318,12 +298,7 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 		}
 	}, [ clear, closeDrawer, narrow ] );
 
-	/*
-	 * A chat named in the URL reopens when the screen loads. The URL is left
-	 * alone until that load settles, so a reload that fails to reach the server
-	 * keeps the chat in the address to try again; only a chat that is gone is
-	 * dropped from it.
-	 */
+	// Reopen the chat named in the URL; drop it from the URL only if the chat is gone.
 	const loading = useRef( false );
 	const opened = useRef( false );
 
@@ -367,8 +342,7 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 		}
 	}, [ conversationId ] );
 
-	// Focus returns to the input when a turn finishes, so a keyboard user is
-	// never left with focus on a control that has just been disabled.
+	// Return focus to the input after a turn, since it was disabled while running.
 	useEffect( () => {
 		if ( isRunning ) {
 			hasRun.current = true;
@@ -439,11 +413,7 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 				</aside>
 
 				<div className="ai-workspace__app">
-					{ /*
-					 * The one polite live region for this screen. The transcript itself
-					 * updates on every streamed chunk and is deliberately not live;
-					 * this region is updated at sentence boundaries and on completion.
-					 */ }
+					{ /* The screen's only live region; updated at sentence boundaries. */ }
 					<div
 						className="screen-reader-text"
 						aria-live="polite"

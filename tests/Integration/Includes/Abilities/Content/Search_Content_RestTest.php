@@ -18,9 +18,7 @@ use WordPress\AI\Abilities\Show_In_Abilities;
 /**
  * Search_Content and List_Terms REST test case.
  *
- * Both abilities are read-only, so they run over GET, where every input arrives
- * as a string: booleans as "true" or "false", and lists comma-separated. These
- * tests run the filters that way, so a filter is never dropped for its type.
+ * Runs the filters over GET, where every input arrives as a string.
  *
  * @since x.x.x
  */
@@ -110,15 +108,13 @@ class Search_Content_RestTest extends WP_UnitTestCase {
 			wp_unregister_ability( $ability_name );
 		}
 
-		// Restore the curated post types to their unmarked state to avoid leaking into other tests.
 		foreach ( array( 'post', 'page' ) as $post_type ) {
 			$object = get_post_type_object( $post_type );
 			if ( ! $object ) {
 				continue;
 			}
 
-			// WordPress 7.2 declares the property, and unsetting a declared property leaves it
-			// uninitialized, so restore core's default rather than removing it.
+			// Unsetting a property WP 7.2 declares leaves it uninitialized, so restore the default.
 			if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
 				$object->show_in_abilities = true;
 			} else {

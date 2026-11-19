@@ -211,12 +211,7 @@ export const disableAllFeatures = async ( requestUtils: RequestUtils ) => {
 };
 
 /**
- * Turns an experiment on or off by writing its setting over REST.
- *
- * enableExperiment() and disableExperiment() load the settings screen and click
- * the toggle, which is the thing to do when the toggle is what a test covers.
- * When it is only setup, this skips the page load: it writes the same
- * `wpai_feature_{id}_enabled` setting the toggle saves.
+ * Turns an experiment on or off over REST, skipping the settings screen.
  *
  * @param requestUtils The requestUtils fixture from the test context.
  * @param featureId    The feature ID, e.g. 'ai-workspace'.
@@ -453,15 +448,10 @@ export const selectFirstParagraph = async ( editor: Editor ) => {
 };
 
 /**
- * Seeds dummy provider API keys.
- *
- * With no `providers` argument this seeds OpenAI only and leaves the other
- * providers as they were. Passing `providers` seeds exactly those and clears
- * every other one, so the request cannot be answered by a provider the spec did
- * not ask for.
+ * Seeds dummy provider API keys (OpenAI by default).
  *
  * @param requestUtils The requestUtils fixture from the test context.
- * @param providers    Optional. Provider IDs to seed exclusively.
+ * @param providers    Optional. Provider IDs to seed; all others are cleared.
  */
 export const seedCredentials = async (
 	requestUtils: RequestUtils,
@@ -516,14 +506,8 @@ export type ScenarioReport = {
 /**
  * Activates a sequenced mock scenario and resets its call counters.
  *
- * A scenario names a fixture under
- * `tests/e2e-testing/responses/{Provider}/scenarios/`, whose `sequence` array
- * answers successive provider calls within a single turn. That is what makes a
- * tool-calling round trip drivable offline: the first entry asks for a tool, the
- * next answers from its result.
- *
  * @param requestUtils The requestUtils fixture from the test context.
- * @param scenario     The scenario identifier, matching the fixture filename.
+ * @param scenario     Fixture filename under `responses/{Provider}/scenarios/`.
  */
 export const activateMockScenario = async (
 	requestUtils: RequestUtils,

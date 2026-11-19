@@ -1,14 +1,5 @@
 /**
- * End-to-end coverage for AI Workspace proposals that change existing content.
- *
- * A post's title, excerpt or content, and the site title or tagline, are
- * changed in place, and a published post or the site's identity changes for
- * visitors at once. So the card shows the current value beside the new one,
- * lets the person edit the new one, and holds up when the edit is refused, when
- * the field changed in the meantime, and when the same chat is open twice.
- *
- * The fixtures name post 1, the "Hello world!" post a fresh install seeds,
- * which the E2E plugin puts back before each test.
+ * End-to-end coverage for AI Workspace proposals that change existing content (fixtures name post 1).
  */
 /**
  * External dependencies
@@ -229,10 +220,8 @@ test.describe( 'AI Workspace update proposals', () => {
 			new RegExp( NEW_TITLE )
 		);
 
-		// The post is published, so the card says the change goes live.
 		await expect( item ).toContainText( 'live for visitors' );
 
-		// Edit is reachable by keyboard, and moves focus into the field.
 		await item.getByRole( 'button', { name: /^Edit/ } ).focus();
 		await page.keyboard.press( 'Enter' );
 		const field = item.getByRole( 'textbox', { name: 'New title' } );
@@ -240,7 +229,6 @@ test.describe( 'AI Workspace update proposals', () => {
 		await expect( field ).toHaveValue( NEW_TITLE );
 		await field.fill( 'Welcome, edited by hand' );
 
-		// The current title stays in view for comparison.
 		await expect(
 			item.locator( '.ai-workspace__change-current' )
 		).toHaveText( /Hello world!/ );
@@ -290,7 +278,6 @@ test.describe( 'AI Workspace update proposals', () => {
 			'Hello world!'
 		);
 
-		// Fixing the edit lets it through.
 		await field.fill( 'A shorter title' );
 		await card.getByRole( 'button', { name: 'Apply 1 change' } ).click();
 		await expect(
@@ -356,8 +343,7 @@ test.describe( 'AI Workspace update proposals', () => {
 			secondCard.getByRole( 'button', { name: 'Apply 1 change' } )
 		).toBeVisible( { timeout: 30000 } );
 
-		// The first page's write takes a while on the server, and its answer
-		// is held back until the second page has had its say.
+		// Slow the first page's write and hold its answer until the second page has acted.
 		await setWriteDelay( requestUtils, 3 );
 
 		let release: () => void = () => {};
@@ -523,7 +509,6 @@ test.describe( 'AI Workspace update proposals', () => {
 			'Review 3 changes'
 		);
 
-		// Content is rendered, not shown as markup, on both sides.
 		const content = cardItem( card, 'Content of “Hello world!”' );
 		await expect(
 			content.locator( '.ai-workspace__change-current' )
@@ -534,7 +519,6 @@ test.describe( 'AI Workspace update proposals', () => {
 		await expect( content ).not.toContainText( '<!-- wp:paragraph' );
 		await expect( content ).not.toContainText( '<p>' );
 
-		// Editing the content shows the markup with a live preview under it.
 		await content.getByRole( 'button', { name: /^Edit/ } ).click();
 		const markup = content.getByRole( 'textbox', { name: 'New content' } );
 		await expect( markup ).toHaveValue(
@@ -628,7 +612,6 @@ test.describe( 'AI Workspace update proposals', () => {
 
 		const done = page.getByRole( 'region', { name: 'Updated 1 change' } );
 		await expect( done ).toBeVisible();
-		// The outcome keeps the new value once the side-by-side view is gone.
 		await expect( done ).toContainText( `Now: ${ NEW_TAGLINE }` );
 		await expect(
 			done.getByRole( 'link', { name: /^Open/ } )

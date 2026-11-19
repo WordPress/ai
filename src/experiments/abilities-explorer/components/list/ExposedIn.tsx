@@ -1,9 +1,4 @@
 /**
- * The "Exposed in" cell: where an ability is offered, and why the assistant
- * does not hold it when it does not.
- */
-
-/**
  * WordPress dependencies
  */
 import { __ } from '@wordpress/i18n';
@@ -15,13 +10,7 @@ import { getSettings } from '../../settings';
 import type { AbilityListItem } from '../../types';
 
 /**
- * The assistant state an ability is in, and the value the "Exposed in"
- * filter matches on.
- *
- * Three states, not two. An ability held back only by the temporary admission
- * gate has done everything asked of it, and showing it as "not the assistant"
- * next to abilities that declared nothing would tell its author to go and fix
- * something that is already correct.
+ * An ability's assistant state; `pending` means only the admission gate holds it back.
  */
 export type AssistantState = 'on' | 'pending' | 'off';
 
@@ -63,11 +52,7 @@ const STATE_ICONS: Record< AssistantState, string > = {
 };
 
 /**
- * Returns the reason line for an ability the assistant does not hold.
- *
- * The commonest reason, `not_public`, is left unsaid: the badge already reads
- * "not the assistant", and repeating it under every such row buries the rows
- * where the reason is the interesting part.
+ * Returns the reason line for an ability the assistant does not hold; `not_public` is too common to show.
  *
  * @param item The ability.
  * @return The reason, or null when none is shown.
@@ -118,10 +103,6 @@ export default function ExposedIn( { item }: { item: AbilityListItem } ) {
 				<span
 					className={ `ability-surface-badge ability-surface ability-surface-${ state }` }
 				>
-					{ /*
-					 * The icon is decorative and the word carries the meaning:
-					 * an icon alone would leave a screen reader with nothing.
-					 */ }
 					<span
 						className={ `dashicons ${ STATE_ICONS[ state ] }` }
 						aria-hidden="true"
@@ -130,12 +111,7 @@ export default function ExposedIn( { item }: { item: AbilityListItem } ) {
 				</span>
 			</span>
 			{ 'on' === state && (
-				/*
-				 * Collapsed, because a full tool description per row buries the
-				 * table. Not a tooltip: this is the exact string handed to the
-				 * model, passed through unchanged and never trimmed (#588), and
-				 * judging it means reading and selecting long-form prose.
-				 */
+				// Not a tooltip: the exact model-facing text is long and must be selectable.
 				<details className="ability-surface-details">
 					<summary>{ __( 'Text the model sees', 'ai' ) }</summary>
 					<p className="description ability-surface-description">

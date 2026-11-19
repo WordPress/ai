@@ -27,15 +27,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Provides the `/ai/v1/workspace/messages` routes.
  *
- * Both routes carry a capability check that runs on every request and does not
- * depend on nonce validation (R3); cookie-authenticated requests additionally
- * have to clear core's REST nonce check before the callback is reached.
- *
- * Cancellation is a second route rather than client-abort detection. PHP only
- * observes a disconnected client after it writes output, so a buffered turn
- * cannot detect one at all, and the test suite's strict no-output setting forbids
- * the write that would make detection testable. The cancel route writes a marker
- * that the turn loop re-reads between rounds (R9).
+ * Cancel is its own route because PHP cannot see a disconnected client until it writes output.
  *
  * @since x.x.x
  */
@@ -78,9 +70,7 @@ final class Turn_Controller {
 	public const TURN_STATE_PREFIX = 'wpai_workspace_turn_';
 
 	/**
-	 * How long a turn's running or done marker survives, in seconds.
-	 *
-	 * Longer than any turn runs, so a marker outlives the turn it describes.
+	 * How long a turn's running or done marker survives, in seconds; longer than any turn runs.
 	 *
 	 * @since x.x.x
 	 *
@@ -89,10 +79,7 @@ final class Turn_Controller {
 	public const TURN_STATE_TTL = HOUR_IN_SECONDS;
 
 	/**
-	 * Capability required to use the workspace, matching the admin screen.
-	 *
-	 * The check itself passes the literal so the capability sniff can verify it;
-	 * this constant documents it for callers.
+	 * Capability required to use the workspace; the check passes the literal so phpcs can verify it.
 	 *
 	 * @since x.x.x
 	 *
@@ -192,11 +179,7 @@ final class Turn_Controller {
 							'type'    => 'string',
 							'default' => '',
 						),
-						/*
-						 * Asks for the one turn owed after a proposal outcome. It
-						 * carries no message: the outcome is already the last
-						 * message in the conversation.
-						 */
+						// The turn owed after a proposal outcome; the outcome is already the last message.
 						'follow_up'           => array(
 							'type'    => 'boolean',
 							'default' => false,
@@ -206,22 +189,13 @@ final class Turn_Controller {
 							'default'           => '',
 							'sanitize_callback' => 'sanitize_text_field',
 						),
-						/*
-						 * The ID a new chat is stored under, chosen by the
-						 * client, so it can find the chat if the connection
-						 * drops before the reply arrives. Only for a first
-						 * turn; the server mints one when it is left out.
-						 */
+						// Client-chosen so it can find a new chat if the connection drops before the reply.
 						'new_conversation_id' => array(
 							'type'              => 'string',
 							'default'           => '',
 							'validate_callback' => array( self::class, 'validate_optional_uuid' ),
 						),
-						/*
-						 * Names this turn's transcript entry, so a client whose
-						 * connection dropped can tell when the turn has finished
-						 * by reading the saved chat.
-						 */
+						// Lets a client whose connection dropped find this turn's entry in the saved chat.
 						'turn_id'             => array(
 							'type'              => 'string',
 							'default'           => '',
@@ -237,11 +211,7 @@ final class Turn_Controller {
 			)
 		);
 
-		/*
-		 * Reports whether a turn is running or done, for a client whose
-		 * connection dropped. A turn the server never received is unknown,
-		 * so that client can report the failure instead of waiting.
-		 */
+		// Turn state for a client whose connection dropped; `unknown` means the server never got it.
 		register_rest_route(
 			self::API_NAMESPACE,
 			'/workspace/messages/(?P<turn_id>[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})',
@@ -369,11 +339,7 @@ final class Turn_Controller {
 			return $conversation;
 		}
 
-		/*
-		 * A follow-up is owed only once per reported outcome. Checking the flag
-		 * here, rather than trusting the client to ask once, is what keeps an
-		 * approval from turning into repeated model calls.
-		 */
+		// Enforced server-side so one approval cannot trigger repeated model calls.
 		if ( $follow_up && empty( $conversation[ Conversation_Store::FOLLOW_UP_OWED ] ) ) {
 			return new WP_Error(
 				'workspace_no_follow_up_owed',
@@ -385,8 +351,7 @@ final class Turn_Controller {
 		$tools = $this->selector->get_tool_names( $scope );
 
 		if ( Tool_Selector::SCOPE_SITE === $scope && array() === $tools ) {
-			// Site Context says why it cannot use tools instead of quietly
-			// answering from base knowledge as though it were General Knowledge (R7).
+			// Say why, rather than quietly answering from base knowledge.
 			return $this->unavailable_response(
 				$conversation,
 				self::STATUS_TOOLS_UNAVAILABLE,
@@ -398,8 +363,6 @@ final class Turn_Controller {
 			return $this->unavailable_response( $conversation, self::STATUS_MODEL_UNAVAILABLE, 'no_text_generation' );
 		}
 
-		// The function-calling gate runs before the first model call, not after a
-		// failed one (R4, KTD4).
 		if ( array() !== $tools && ! $this->client->supports_function_calling() ) {
 			return $this->unavailable_response( $conversation, self::STATUS_MODEL_UNAVAILABLE, 'no_function_calling' );
 		}
@@ -407,11 +370,7 @@ final class Turn_Controller {
 		$runner = new Turn_Runner( $this->selector, $this->store, $this->client );
 
 		/**
-		 * Filters the callback that receives assistant text deltas as they stream.
-		 *
-		 * Returning a callable turns the turn's model call into a streaming one.
-		 * The workspace's own transcript surface supplies the emitter; this route
-		 * writes no output of its own.
+		 * Filters the callback that receives assistant text deltas; a callable makes the turn stream.
 		 *
 		 * @since x.x.x
 		 *
@@ -440,17 +399,6 @@ final class Turn_Controller {
 				'rounds'          => $result['rounds'],
 				'max_rounds'      => $result['max_rounds'],
 				'tools'           => $result['tools'],
-				/*
-				 * Each record names the ability, its outcome and its duration,
-				 * and carries the ability's own result under `result` so the
-				 * transcript can render it. That value is null unless the call
-				 * succeeded, and is never widened past what the ability
-				 * returned under the caller's own capabilities. `retrieval`
-				 * summarizes the same result in one shape common to every
-				 * ability, so the transcript can describe a lookup without
-				 * knowing any ability's output; it is null when there is
-				 * nothing to summarize.
-				 */
 				'tool_calls'      => $result['tool_calls'],
 				'messages'        => $result['messages'],
 				'text'            => $result['text'],
@@ -538,11 +486,7 @@ final class Turn_Controller {
 	}
 
 	/**
-	 * Loads the requested conversation, or starts a new one.
-	 *
-	 * A conversation ID that does not resolve for this user is reported as not
-	 * found rather than silently starting a new conversation, so one person's
-	 * conversation ID can never read another person's transcript.
+	 * Loads the requested conversation, or starts a new one; an unknown ID is not found, never a new chat.
 	 *
 	 * @since x.x.x
 	 *

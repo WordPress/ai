@@ -15,16 +15,7 @@ import { check as checkIcon, globe as globeIcon } from '@wordpress/icons';
 import type { ContextScope as Scope } from '../types';
 
 /**
- * Renders the two scopes the turn route accepts (R6).
- *
- * Scope belongs to the message about to be sent, so the control sits in the
- * composer and states the current scope on its face rather than hiding it
- * behind a label. Each option carries its own explanation, which is where the
- * limits belong: they describe that option, not the control as a whole.
- *
- * The control never claims more than the server will do: when Site Context has
- * no tools to offer, the turn reports it and the transcript says so rather than
- * quietly answering as though General Knowledge had been chosen (R7).
+ * Renders the two scopes the turn route accepts.
  *
  * @param props          Component props.
  * @param props.value    The selected scope.
@@ -41,8 +32,7 @@ export default function ContextScope( {
 	onChange: ( scope: Scope ) => void;
 	disabled: boolean;
 } ) {
-	// Named rather than indexed, so the selected scope is total over the union
-	// and needs no fallback that could silently misreport the active scope.
+	// Named rather than indexed so `selected` needs no fallback.
 	const site = {
 		value: 'site' as const,
 		label: __( 'Site Context', 'ai' ),

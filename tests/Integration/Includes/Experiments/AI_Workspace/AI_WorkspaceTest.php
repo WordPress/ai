@@ -92,7 +92,6 @@ class AI_WorkspaceTest extends WP_UnitTestCase {
 		$this->assertTrue( $died, 'Rendering the workspace while logged out should have called wp_die().' );
 		$this->assertStringNotContainsString( 'ai-workspace-root', $output );
 
-		// Assets must not be enqueued for a user without the capability.
 		$page->enqueue_assets();
 
 		$this->assertFalse( wp_script_is( 'ai_workspace', 'enqueued' ) );
@@ -347,8 +346,6 @@ class AI_WorkspaceTest extends WP_UnitTestCase {
 
 	/**
 	 * An administrator left out of the feature's access list is refused on every route.
-	 *
-	 * The routes are not abilities, so the ability-level gate does not cover them.
 	 *
 	 * @since x.x.x
 	 *

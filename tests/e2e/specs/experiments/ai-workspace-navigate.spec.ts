@@ -1,10 +1,5 @@
 /**
  * End-to-end coverage for finding an admin screen from the AI Workspace.
- *
- * "Where do I change the timezone?" runs `ai/find-admin-screens`, and the
- * answer links Settings → General. The link is on the site's own admin host,
- * so the transcript renders it as a live anchor, and following it opens the
- * screen.
  */
 /**
  * WordPress dependencies
@@ -59,9 +54,7 @@ test.describe( 'AI Workspace navigation', () => {
 			/\/wp-admin\/options-general\.php$/
 		);
 
-		// The screen finder ran on the server and succeeded.
 		const tools = turn.locator( '.ai-workspace__tools' );
-		// Finding a screen isn't a content lookup, so the summary says so plainly.
 		await expect( tools.locator( 'summary' ) ).toHaveText(
 			'Checked the site (1 step)'
 		);
@@ -71,7 +64,7 @@ test.describe( 'AI Workspace navigation', () => {
 		);
 		await expect( tools ).toContainText( 'success' );
 
-		// Both fixture entries answered the turn: the tool round trip happened.
+		// Two fixture entries served means the tool round trip happened.
 		expect(
 			( await getMockScenarioReport( requestUtils ) ).calls[
 				'Anthropic/workspace-navigate'

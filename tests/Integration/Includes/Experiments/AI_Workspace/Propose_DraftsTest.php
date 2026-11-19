@@ -20,13 +20,6 @@ use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Wo
 /**
  * Propose_Drafts test case.
  *
- * The proposal ability is the model's only reach toward the write path, so these
- * tests are about what it refuses: proposing outside a workspace turn, proposing
- * more items than a person can meaningfully review, proposing a status the user
- * cannot write, and smuggling a prose summary into the stored values. They also
- * assert that the ability stays off the REST and MCP surfaces, which have no
- * confirm gate.
- *
  * @since x.x.x
  *
  * @covers \WordPress\AI\Experiments\AI_Workspace\Propose_Drafts
@@ -104,8 +97,7 @@ class Propose_DraftsTest extends WP_UnitTestCase {
 				continue;
 			}
 
-			// WordPress 7.2 declares the property, and unsetting a declared property leaves it
-			// uninitialized, so restore core's default rather than removing it.
+			// Unsetting a property WordPress 7.2 declares leaves it uninitialized, so restore the default.
 			if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
 				$object->show_in_abilities = true;
 			} else {
@@ -217,9 +209,6 @@ class Propose_DraftsTest extends WP_UnitTestCase {
 	/**
 	 * The proposal ability is withheld from the REST and MCP surfaces.
 	 *
-	 * MCP exposure reads `mcp.public`, not `show_in_rest`, and a plugin ability
-	 * is exposed unless it declares `mcp.public` as false, so both are checked.
-	 *
 	 * @since x.x.x
 	 */
 	public function test_proposal_ability_is_hidden_from_rest_and_mcp(): void {
@@ -315,10 +304,6 @@ class Propose_DraftsTest extends WP_UnitTestCase {
 
 	/**
 	 * A model-supplied summary never reaches the stored proposal.
-	 *
-	 * R16 exists because the model's description of a write is
-	 * attacker-influenceable. The store keeps only the declared item fields, so
-	 * the confirmation surface has nothing but resolved values to render.
 	 *
 	 * @since x.x.x
 	 */

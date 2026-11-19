@@ -1,23 +1,8 @@
 /**
- * Reads post markup into the node tree the markdown renderer draws.
+ * Reads post markup, via an inert `DOMParser` document and an allowlist, into the markdown renderer's node tree.
  *
- * A post's current and proposed content is HTML: block markup, model output,
- * or the person's own edit. The card shows it rendered, as the reader will see
- * it, without ever handing markup to the browser to render. The markup is
- * parsed in a `DOMParser` document, which runs no script and loads nothing, and
- * then walked against an allowlist into the same {@link BlockNode} tree
- * `renderMarkdown()` produces, so the same React renderer draws it and the same
- * rules hold (R19, KTD9):
- *
- * - Elements outside the allowlist are not rendered; their text is.
- * - Scripts, styles and templates produce nothing (`wp_kses_post` strips them).
- * - Anything else that survives `wp_kses_post` and would render, play or load
- *   on the live site is described in place as plain text, never drawn: block
- *   delimiters (a dynamic block such as `core/rss` renders server side), media
- *   and embeds, and form controls. An approver must not approve markup they
- *   were never shown.
- * - An image is described in place and never fetched.
- * - A link is live only on this site's host, and always shows where it goes.
+ * Anything that would render, play or load on the live site is described as text, so approvers see what they approve.
+ * Images are never fetched; links are live only on this site's host.
  */
 
 /**
@@ -46,8 +31,7 @@ const SKIPPED = [
 ];
 
 /**
- * Elements described in place rather than drawn, with the attributes worth
- * showing for each. URL attributes are shown as text; nothing is fetched.
+ * Elements described in place rather than drawn; URL attributes are shown as text, never fetched.
  */
 const WITHHELD: Record<
 	string,
@@ -107,24 +91,13 @@ const NAME_ONLY = [ 'srcdoc', 'autoplay', 'loop', 'muted', 'controls' ];
 const MAX_DETAIL = 160;
 
 /**
- * Matches a self-closing block comment delimiter (`<!-- wp:rss {...} /-->`).
- *
- * A self-closing block has no inner HTML: what it shows is rendered on the
- * server, so the card would otherwise show nothing for it. An opening
- * delimiter is not matched, because a paired block's content is already
- * rendered between its delimiters, and marking every paragraph would bury the
- * blocks that need a look. A closing delimiter (`/wp:`) does not match. The
- * settings an opening delimiter carries are compared on their own, by
- * {@link changedBlockSettings}.
+ * Matches a self-closing block delimiter (`<!-- wp:rss {...} /-->`), whose output is server-rendered and otherwise invisible.
  */
 const BLOCK_DELIMITER =
 	/^\s*wp:([a-z][a-z0-9_-]*(?:\/[a-z][a-z0-9_-]*)?)(\s+(\{[\s\S]*\}))?\s*\/\s*$/;
 
 /**
- * Matches an opening or self-closing block delimiter anywhere in raw markup,
- * capturing its name and its JSON attributes. A closing delimiter (`/wp:`)
- * does not match. The attributes end at the `}` followed by the end of the
- * comment, so nested objects are kept whole.
+ * Matches an opening or self-closing block delimiter, capturing its name and JSON attributes (nested objects kept whole).
  */
 const ANY_DELIMITER =
 	/<!--\s+wp:([a-z][a-z0-9_-]*(?:\/[a-z][a-z0-9_-]*)?)\s+(?:(\{[\s\S]*?\})\s+)?\/?-->/g;
@@ -197,8 +170,7 @@ function truncate( text: string ): string {
  * Describes a block comment delimiter, when the comment is one.
  *
  * @param comment The comment's text.
- * @return The description, or `null` for a closing delimiter or any other
- *         comment.
+ * @return The description, or `null` for any other comment.
  */
 function blockDelimiter( comment: string ): InlineNode | null {
 	const match = BLOCK_DELIMITER.exec( comment );
@@ -407,8 +379,7 @@ function inline( node: Node, options: MarkdownOptions ): InlineNode[] {
  * @return The trimmed nodes, empty when nothing but whitespace was left.
  */
 function trimInline( nodes: InlineNode[] ): InlineNode[] {
-	// Adjacent text nodes are joined first: a skipped comment or element can
-	// leave two runs of whitespace side by side.
+	// Join adjacent text first: a skipped node can leave two whitespace runs side by side.
 	const trimmed: InlineNode[] = [];
 
 	nodes.forEach( ( node ) => {
@@ -444,10 +415,7 @@ function trimInline( nodes: InlineNode[] ): InlineNode[] {
 }
 
 /**
- * Reads the block nodes under a node.
- *
- * Inline content between blocks is gathered into a paragraph of its own, as a
- * browser lays out text that sits directly in a container.
+ * Reads the block nodes under a node, wrapping loose inline content in paragraphs.
  *
  * @param node    The parent node.
  * @param options The renderer options.
@@ -577,10 +545,7 @@ export function renderHtml(
 		return [];
 	}
 
-	// An inert document: nothing in it runs or loads. The leading `<body>`
-	// keeps comments at the very start, such as a post's first block
-	// delimiter, inside the body; the parser would otherwise place them before
-	// the `<html>` element.
+	// An inert document: nothing in it runs or loads. The leading `<body>` keeps a leading block comment inside the body.
 	const parsed = new window.DOMParser().parseFromString(
 		`<body>${ html }`,
 		'text/html'
@@ -588,8 +553,7 @@ export function renderHtml(
 
 	const blocks = blockChildren( parsed.body, options );
 
-	// Comments after a stray `</body>` or `</html>` still land outside the
-	// body. Block delimiters among them are described, not dropped.
+	// Block delimiters after a stray `</body>` or `</html>` land outside the body; describe them too.
 	const outside: InlineNode[] = [];
 
 	[ parsed, parsed.documentElement, parsed.head ].forEach( ( parent ) => {
@@ -612,8 +576,7 @@ export function renderHtml(
 }
 
 /**
- * Writes a parsed attribute value with its object keys sorted, so two
- * delimiters that differ only in key order compare equal.
+ * Writes a parsed attribute value as JSON with object keys sorted, for comparison.
  *
  * @param value The parsed value.
  * @return The canonical JSON.
@@ -639,10 +602,7 @@ function canonical( value: unknown ): string {
 }
 
 /**
- * Lists each block's settings in raw markup, by block name.
- *
- * A block with no settings is left out: adding or removing a plain paragraph
- * shows in the rendered content already.
+ * Lists each block's settings in raw markup, by block name, skipping blocks with none.
  *
  * @param html The raw markup.
  * @return The canonical settings of each block, keyed by block name.
@@ -678,11 +638,7 @@ function blockSettings( html: string ): Map< string, string[] > {
 }
 
 /**
- * Names the blocks whose settings differ between two versions of post markup.
- *
- * A block's settings sit in its delimiter (`<!-- wp:query {...} -->`) and are
- * not rendered, so a change that only alters a wrapping block -- a Query
- * Loop's query, a binding -- would otherwise look the same on both sides.
+ * Names the blocks whose (unrendered) delimiter settings differ between two versions of post markup.
  *
  * @param current  The current raw markup.
  * @param proposed The proposed raw markup.

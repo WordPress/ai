@@ -13,11 +13,6 @@ use WordPress\AI\Abilities\Site\Find_Admin_Screens;
 /**
  * Find_Admin_Screens ability test case.
  *
- * The ability turns a short description of a task into links to the admin
- * screens that handle it. These tests pin the ranking on the queries the
- * Command Palette fallback (#1250) was built around, that a user is only ever
- * sent to a screen they can open, and that every link stays on the admin host.
- *
  * @since x.x.x
  *
  * @covers \WordPress\AI\Abilities\Site\Find_Admin_Screens
@@ -333,7 +328,6 @@ class Find_Admin_ScreensTest extends WP_UnitTestCase {
 			}
 		}
 
-		// The same query does reach the Plugins screen for an administrator.
 		$this->assertContains( admin_url( 'plugins.php' ), $this->urls( $this->find_as( 'administrator', 'plugins' ) ) );
 	}
 

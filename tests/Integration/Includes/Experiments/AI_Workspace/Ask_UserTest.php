@@ -16,11 +16,6 @@ use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Wo
 /**
  * Ask_User test case.
  *
- * The question ability writes nothing, so these tests are about its shape: what
- * the schema refuses, that a valid question comes back trimmed, and
- * that, like the proposal ability, it stays off the REST and MCP surfaces and
- * outside workspace turns.
- *
  * @since x.x.x
  *
  * @covers \WordPress\AI\Experiments\AI_Workspace\Ask_User
@@ -135,9 +130,6 @@ class Ask_UserTest extends WP_UnitTestCase {
 	/**
 	 * Returns inputs of only spaces, which the schema's `pattern` refuses.
 	 *
-	 * The length, count and uniqueness bounds are plain JSON-schema keywords
-	 * that core validates, so they are not repeated here.
-	 *
 	 * @since x.x.x
 	 *
 	 * @return array<string, array{0: array<string, mixed>}> The invalid inputs.
@@ -212,8 +204,7 @@ class Ask_UserTest extends WP_UnitTestCase {
 	/**
 	 * It is withheld from the REST and MCP surfaces, and declares that it writes nothing.
 	 *
-	 * MCP exposure reads `mcp.public`, not `show_in_rest`, and a plugin ability
-	 * is exposed unless it declares `mcp.public` as false, so both are checked.
+	 * MCP exposure reads `mcp.public`, not `show_in_rest`, so both are checked.
 	 *
 	 * @since x.x.x
 	 */

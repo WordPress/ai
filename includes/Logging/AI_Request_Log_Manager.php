@@ -204,9 +204,7 @@ class AI_Request_Log_Manager {
 	 *
 	 * `ai_client` covers generations made through the AI Client SDK. `mcp_tool`
 	 * and `ability` are for consumers that surface abilities themselves, such as
-	 * an MCP server or a direct ability invocation. `agent` records the AI
-	 * Workspace agent's tool calls and proposal events, so its audit trail can
-	 * be filtered on its own.
+	 * an MCP server or a direct ability invocation. `agent` is the AI Workspace agent.
 	 *
 	 * @since 1.3.0
 	 * @since x.x.x Added the `agent` type.

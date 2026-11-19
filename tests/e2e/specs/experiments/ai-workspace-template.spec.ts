@@ -1,9 +1,5 @@
 /**
  * End-to-end coverage for AI Workspace template proposals.
- *
- * A template is live for visitors as soon as it is created, so the card shows
- * the markup without a click, says what it replaces, and nothing is written
- * until the person approves it.
  */
 /**
  * WordPress dependencies
@@ -90,7 +86,6 @@ test.describe( 'AI Workspace template proposals', () => {
 			]
 		).toBe( 1 );
 
-		// The card says what it is, what it replaces, and that it goes live.
 		await expect( card ).toContainText(
 			'Template 404, for the theme Twenty Twenty-Five.'
 		);
@@ -99,7 +94,6 @@ test.describe( 'AI Workspace template proposals', () => {
 		);
 		await expect( card ).toContainText( 'live for visitors' );
 
-		// The markup is shown without any interaction, and there is no checkbox.
 		await expect( card.locator( 'code' ) ).toBeVisible();
 		await expect( card.locator( 'code' ) ).toContainText(
 			'We could not find that page'
@@ -125,14 +119,11 @@ test.describe( 'AI Workspace template proposals', () => {
 			/\/wp-admin\/site-editor\.php\?/
 		);
 
-		// The assistant follows up once.
 		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 2 );
 		await expect(
 			page.locator( '.ai-workspace__turn' ).nth( 1 )
 		).toContainText( 'Your 404 template is in place.', { timeout: 30000 } );
 
-		// The link lands on the new template in the Site Editor, which titles
-		// the page after the template it opened.
 		await open.click();
 		await expect( page ).toHaveURL( /site-editor\.php/ );
 		await expect( page ).toHaveTitle( /^Page not found ‹ Template/, {

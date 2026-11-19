@@ -34,16 +34,6 @@ function formatDate( value: string ): string {
 /**
  * Renders one tool result as a fixed, read-only table.
  *
- * The table is deliberately plainer than the one on the request-log screen:
- * inside a chat message there is no room for a search box, filter chips or a
- * layout switcher, and the rows are a snapshot of one tool call rather than a
- * dataset to explore. The view state is therefore fixed and controlled — the
- * component composes only the layout, so none of that chrome renders — and no
- * field is sortable, hideable or filterable.
- *
- * Every value shown came back from the ability, which filtered its rows by the
- * requesting user's own capabilities at execute time. Nothing is fetched here.
- *
  * @param props        Component props.
  * @param props.result The narrowed post list.
  * @return The rendered table, or an empty state.
@@ -58,8 +48,6 @@ export default function ResultsTable( { result }: { result: PostResultSet } ) {
 		layout: {},
 	} ) );
 
-	// The view is fixed, so changes are accepted only to keep DataViews
-	// controlled; nothing here re-queries or re-sorts the rows.
 	const onChangeView = useCallback( ( next: View ) => {
 		setView( next );
 	}, [] );
@@ -122,11 +110,7 @@ export default function ResultsTable( { result }: { result: PostResultSet } ) {
 				id: 'edit-post',
 				label: __( 'Edit', 'ai' ),
 				isPrimary: true,
-				/*
-				 * Only rows the ability reported as editable offer this. A row
-				 * that carries no editor URL is one the tool did not vouch for,
-				 * and guessing one would produce an action that denies.
-				 */
+				// Only rows the ability reported as editable carry an edit link.
 				isEligible: ( item: PostResultRow ) =>
 					typeof item.edit_link === 'string' && '' !== item.edit_link,
 				callback: ( items: PostResultRow[] ) => {
@@ -161,12 +145,7 @@ export default function ResultsTable( { result }: { result: PostResultSet } ) {
 
 	return (
 		<div className="ai-workspace__results">
-			{ /*
-			 * The wrapper caps its own height and scrolls, so a long result set
-			 * stays inside the message instead of stretching the transcript.
-			 * `minHeight: 0` keeps it from refusing to shrink in the flex column
-			 * the transcript lays out.
-			 */ }
+			{ /* `minHeight: 0` lets the scroll wrapper shrink in the transcript's flex column. */ }
 			<div
 				style={ {
 					minHeight: 0,

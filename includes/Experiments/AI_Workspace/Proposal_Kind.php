@@ -15,17 +15,6 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Describes one kind of thing a proposal may write, such as drafts or a template.
  *
- * Every kind goes through the same approval path: {@see Proposal_Store} stores
- * what the model proposed, {@see REST\Proposal_Controller} shows it and runs it
- * once a person approves, and nothing else writes. A kind supplies only what
- * differs between them:
- *
- * - **Its fields and their sanitizer**, run when the proposal is stored, so the
- *   card shows exactly what will be written.
- * - **The capability check and the writer**, run again when the person approves,
- *   because a capability can be revoked in between.
- * - **What the card is shown**, which is only ever the stored values.
- *
  * @internal This interface should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
  * @since x.x.x
@@ -35,12 +24,7 @@ interface Proposal_Kind {
 	/**
 	 * Every outcome an item can have, in the order the counts are reported.
 	 *
-	 * Kinds that create report `created`, `failed`, `denied`, `duplicate` and
-	 * `deselected`. Kinds that change something that exists also report
-	 * `updated`, `unchanged` (it already had the new value), `stale` (it changed
-	 * after the proposal was made, so nothing was written) and `locked` (another
-	 * user is editing it). A kind reports every count, at zero when it never has
-	 * that outcome, so the client and the model always read the same shape.
+	 * A kind reports every count, at zero when it never has that outcome.
 	 *
 	 * @since x.x.x
 	 *
@@ -51,9 +35,7 @@ interface Proposal_Kind {
 	/**
 	 * The item field holding the value an update item's target had when it was proposed, or a hash of it.
 	 *
-	 * An update kind sets it in {@see self::normalize_item()} only when the item
-	 * has none yet, so an item the person edits keeps the snapshot it was
-	 * proposed with. The store keeps it across edits whatever the edit says.
+	 * Set only when absent, so a person's edit keeps the original snapshot.
 	 *
 	 * @since x.x.x
 	 *
@@ -82,10 +64,6 @@ interface Proposal_Kind {
 	/**
 	 * Returns the name of the ability the model calls to propose this kind.
 	 *
-	 * The tool list, the abilities that end a turn, the abilities a follow-up
-	 * turn withholds and the system instruction are all built from the kinds,
-	 * so a new kind is offered by being registered and nowhere else.
-	 *
 	 * @since x.x.x
 	 *
 	 * @return string The ability name.
@@ -113,8 +91,7 @@ interface Proposal_Kind {
 	/**
 	 * Reports whether the kind changes something that already exists.
 	 *
-	 * Update kinds are the ones the `wpai_workspace_write_proposals_enabled`
-	 * filter turns off. Kinds that only create stay on either way.
+	 * Update kinds are the ones the `wpai_workspace_write_proposals_enabled` filter turns off.
 	 *
 	 * @since x.x.x
 	 *
@@ -125,9 +102,6 @@ interface Proposal_Kind {
 	/**
 	 * Reports whether the person may edit an item's proposed values before approving.
 	 *
-	 * An edit is run back through {@see self::normalize_item()}, so it meets the
-	 * same rules as the model's values.
-	 *
 	 * @since x.x.x
 	 *
 	 * @return bool True when edits are accepted.
@@ -135,10 +109,7 @@ interface Proposal_Kind {
 	public function accepts_edits(): bool;
 
 	/**
-	 * Normalizes, sanitizes and validates one proposed item.
-	 *
-	 * Only the kind's own fields survive, so anything else the model supplied,
-	 * such as a summary of what it claims it will write, never reaches the card.
+	 * Normalizes, sanitizes and validates one proposed item, keeping only the kind's own fields.
 	 *
 	 * @since x.x.x
 	 *
@@ -159,10 +130,6 @@ interface Proposal_Kind {
 
 	/**
 	 * Writes the selected items of an approved proposal.
-	 *
-	 * `$on_item` is called with each item's outcome as soon as that item is
-	 * done, deselected items included, so a write that dies part way leaves the
-	 * outcomes of the items it did write on the stored proposal.
 	 *
 	 * @since x.x.x
 	 *

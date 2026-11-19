@@ -24,11 +24,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Provides the `/ai/v1/workspace/conversations` routes.
  *
- * A user lists, opens, renames, archives, restores and deletes their own chats
- * here. Every route checks the same capability as the turn route before it looks
- * at a chat, and a chat the caller does not own is reported as not found rather
- * than forbidden, so a conversation ID never confirms that someone else's chat
- * exists.
+ * Another user's chat is reported as not found, not forbidden, so an ID never confirms it exists.
  *
  * @since x.x.x
  */
@@ -348,14 +344,7 @@ final class Conversation_Controller {
 	}
 
 	/**
-	 * Builds the full view of a chat, from which the transcript is redrawn.
-	 *
-	 * The transcript is the entry records, one per turn, rather than the model
-	 * messages, which hold provider-shaped tool traffic. The one thing a turn's
-	 * entry cannot hold is what happened after it ended: a proposal approved later
-	 * reports its outcome into the messages as a `wp_write_result` record, and a
-	 * discard as a `wp_proposal_discarded` record, so those records are returned
-	 * alongside the entries.
+	 * Builds the full view of a chat, with proposal outcomes recorded after their turn ended.
 	 *
 	 * @since x.x.x
 	 *
@@ -376,10 +365,6 @@ final class Conversation_Controller {
 	/**
 	 * Collects the proposal outcomes reported into a chat's messages.
 	 *
-	 * Each item that names a post is given that post's type, status and edit link
-	 * as they are now, so a reopened chat can link to what was written. The link
-	 * is given only when the reader may edit the post, as core's own edit link is.
-	 *
 	 * @since x.x.x
 	 *
 	 * @param list<mixed> $messages The stored model messages.
@@ -393,11 +378,7 @@ final class Conversation_Controller {
 				continue;
 			}
 
-			/*
-			 * The server appends an approval's outcome as a user message. A model
-			 * reply that happens to look like one is the model's text, and is
-			 * never shown as an outcome.
-			 */
+			// Outcomes are appended as user messages; model text that mimics one is ignored.
 			if ( ! isset( $message['role'] ) || 'user' !== $message['role'] ) {
 				continue;
 			}
@@ -422,11 +403,6 @@ final class Conversation_Controller {
 
 	/**
 	 * Reads the proposal outcome one message part reports, if it reports one.
-	 *
-	 * An approval reports a `wp_write_result`. A discard reports a
-	 * `wp_proposal_discarded`, returned marked `discarded` with every item's
-	 * outcome `discarded`, so a reopened chat shows the card as discarded rather
-	 * than as still waiting for an answer.
 	 *
 	 * @since x.x.x
 	 *
@@ -484,7 +460,6 @@ final class Conversation_Controller {
 		$post_id = isset( $item['post_id'] ) ? (int) $item['post_id'] : 0;
 		$post    = $post_id > 0 ? get_post( $post_id ) : null;
 
-		// An item that wrote nothing keeps what was reported for it.
 		if ( ! $post instanceof WP_Post ) {
 			return array_merge( array( 'edit_link' => '' ), $item );
 		}

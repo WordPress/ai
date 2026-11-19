@@ -14,10 +14,6 @@ use WordPress\AI\Experiments\AI_Workspace\Conversation_Store;
 /**
  * Conversation_Privacy test case.
  *
- * A person's saved chats, archived ones included, are in Tools → Export
- * Personal Data and removed by Tools → Erase Personal Data, whether or not the
- * experiment is on (R16, KTD13).
- *
  * @since x.x.x
  *
  * @covers \WordPress\AI\Experiments\AI_Workspace\Conversation_Privacy
@@ -118,8 +114,6 @@ class Conversation_PrivacyTest extends WP_UnitTestCase {
 
 	/**
 	 * Unregisters the chat post type and archived status, as when the experiment is off.
-	 *
-	 * The next test's set-up registers them again.
 	 *
 	 * @since x.x.x
 	 */

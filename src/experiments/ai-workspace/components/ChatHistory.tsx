@@ -221,12 +221,7 @@ function ChatRow( {
 }
 
 /**
- * Renders the history panel.
- *
- * The list is the server's, refetched when a turn settles so a new chat, or one
- * that moved to the top, shows without a reload. Rename, archive and delete
- * each go to the server first and change the list only once it agrees, so the
- * panel never shows a state the server does not hold.
+ * Renders the history panel; changes apply to the list only after the server confirms them.
  *
  * @param props            Component props.
  * @param props.rest       The REST transport data.

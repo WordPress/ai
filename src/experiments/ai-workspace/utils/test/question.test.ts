@@ -1,8 +1,5 @@
 /**
  * Unit coverage for the AI Workspace question narrowing.
- *
- * The narrowing decides which choices a question card shows, so it is asserted
- * directly rather than through the browser.
  */
 /**
  * External dependencies

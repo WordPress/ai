@@ -20,12 +20,7 @@ use function WordPress\AI\has_valid_ai_credentials;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Registers and renders the AI Workspace admin screen under `Tools`.
- *
- * The screen is capability gated on every request: once when the menu entry is
- * built, once when WordPress dispatches the page, and once again in the render
- * callback so that a direct call can never emit the app shell or its localized
- * data to a user who lacks the capability.
+ * Registers and renders the AI Workspace admin screen.
  *
  * @since x.x.x
  */
@@ -86,10 +81,7 @@ final class Admin_Page {
 	private const MAX_SEED_TITLE_LENGTH = 200;
 
 	/**
-	 * Position in the admin menu.
-	 *
-	 * Below Settings, so a top-level entry does not push Posts and Pages down
-	 * for everyone who never opens it.
+	 * Position in the admin menu, below Settings so it does not push Posts and Pages down.
 	 *
 	 * @since x.x.x
 	 *
@@ -98,9 +90,7 @@ final class Admin_Page {
 	private const MENU_POSITION = 81;
 
 	/**
-	 * Admin bar node the workspace entry hangs under.
-	 *
-	 * Core adds it at priority 70; the workspace entry is added after.
+	 * Admin bar node the workspace entry hangs under (added by core at priority 70).
 	 *
 	 * @since x.x.x
 	 *
@@ -150,9 +140,6 @@ final class Admin_Page {
 	/**
 	 * Adds the top-level Workspace menu.
 	 *
-	 * Labelled "Workspace" rather than "AI", which the plugin's settings page
-	 * already uses.
-	 *
 	 * @since x.x.x
 	 */
 	public function add_menu(): void {
@@ -175,9 +162,6 @@ final class Admin_Page {
 
 	/**
 	 * Adds Workspace to the admin bar's New menu.
-	 *
-	 * The workspace URL with no `chat` parameter opens a new space, so the
-	 * entry needs nothing beyond the page URL.
 	 *
 	 * @since x.x.x
 	 *
@@ -211,9 +195,6 @@ final class Admin_Page {
 	/**
 	 * Adds the class that aligns this screen with the admin frame.
 	 *
-	 * The class only scopes the frame styles: the screen drops wp-admin's
-	 * content padding and footer, as Settings > AI does. The admin menu stays.
-	 *
 	 * @since x.x.x
 	 *
 	 * @param string $classes Space-separated list of admin body classes.
@@ -233,12 +214,7 @@ final class Admin_Page {
 			return;
 		}
 
-		/*
-		 * The transcript renders tool results with DataViews, whose styles ship
-		 * with the plugin because `wp-dataviews` is not a registered style on
-		 * every supported WordPress version. The bundled copy is used only when
-		 * WordPress does not register its own.
-		 */
+		// `wp-dataviews` is not a registered style on every supported WordPress version.
 		$dataviews_css = WPAI_PLUGIN_DIR . 'build/admin/dataviews.css';
 
 		if ( ! wp_styles()->query( 'wp-dataviews' ) && file_exists( $dataviews_css ) ) {
@@ -258,10 +234,7 @@ final class Admin_Page {
 
 		Asset_Loader::enqueue_style( self::ASSET_HANDLE, self::ASSET_PATH );
 
-		/*
-		 * DataViews ships its own UI strings, which WordPress only inlines in
-		 * block-editor contexts, so they are loaded explicitly here.
-		 */
+		// Core only inlines DataViews strings in block-editor contexts.
 		wp_set_script_translations( 'wp-dataviews', 'default' );
 
 		Asset_Loader::localize_script(
@@ -271,11 +244,6 @@ final class Admin_Page {
 				'rest'          => array(
 					'nonce'  => wp_create_nonce( 'wp_rest' ),
 					'root'   => esc_url_raw( rest_url() ),
-					/*
-					 * Only routes that exist are advertised, and every path is
-					 * sourced from the constant its controller registers with,
-					 * so the map cannot drift from the routes themselves.
-					 */
 					'routes' => array(
 						'messages'      => Turn_Controller::MESSAGES_ROUTE,
 						'cancel'        => Turn_Controller::CANCEL_ROUTE,
@@ -285,14 +253,7 @@ final class Admin_Page {
 				),
 				'availability'  => $this->get_availability(),
 				'connectorsUrl' => admin_url( 'options-connectors.php' ),
-				/*
-				 * The block editor handoff carries a post identity and nothing
-				 * more. The workspace reads a body only through the
-				 * permission-checked tool path, so there is one enforcement
-				 * path and no trust is placed in a client-supplied body. The
-				 * command palette's handoff carries a plain-text prompt for
-				 * the composer.
-				 */
+				// A post handoff carries only its ID; the body is read through the permission-checked tool path.
 				'seed'          => $this->get_seed(),
 			)
 		);
@@ -315,23 +276,7 @@ final class Admin_Page {
 	}
 
 	/**
-	 * Resolves what a handoff opened the workspace with.
-	 *
-	 * A prompt from the command palette's Ask AI row takes precedence over a
-	 * post from the block editor, so the composer holds what the person just
-	 * typed.
-	 *
-	 * The prompt is carried as plain text: tags are stripped, whitespace is
-	 * flattened to one line, and it is cut to {@see self::MAX_SEED_PROMPT_LENGTH}
-	 * characters. It is placed in the composer and never sent on the person's
-	 * behalf.
-	 *
-	 * For a post, only its identity is carried. The title travels with it so the
-	 * screen can name what it was opened for, and because a title is author
-	 * controlled it is flattened to a single clamped line before it leaves the
-	 * server: a title cannot then smuggle a multi-line instruction block into
-	 * the prompt the workspace prefills. The client treats it as untrusted
-	 * content regardless.
+	 * Resolves what a handoff opened the workspace with; a palette prompt wins over an editor post.
 	 *
 	 * @since x.x.x
 	 *
@@ -424,7 +369,7 @@ final class Admin_Page {
 	}
 
 	/**
-	 * Flattens and clamps a seeded post title.
+	 * Flattens and clamps a seeded post title, so an author can't smuggle a multi-line instruction into the prompt.
 	 *
 	 * @since x.x.x
 	 *

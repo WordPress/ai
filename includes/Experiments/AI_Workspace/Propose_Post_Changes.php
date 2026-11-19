@@ -17,13 +17,6 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Registers the `ai/propose-post-changes` ability, which proposes new post titles, excerpts or content without writing them.
  *
- * It is {@see Propose_Drafts} for changes to existing posts, and it holds to the
- * same rules: it records the exact values in {@see Proposal_Store} and writes
- * nothing, it is hidden from the REST and MCP surfaces, it refuses outside a
- * workspace turn, and the proposal is bound to the conversation read from
- * {@see Turn_Context}. {@see Post_Field_Writer} validates each item and writes
- * it once a person approves it.
- *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
  * @since x.x.x
@@ -99,9 +92,6 @@ final class Propose_Post_Changes {
 	/**
 	 * Returns the ability's registration args.
 	 *
-	 * The workspace registers the ability, so it carries the feature's access
-	 * control tag.
-	 *
 	 * @since x.x.x
 	 *
 	 * @return array<string, mixed> The registration args.
@@ -126,12 +116,7 @@ final class Propose_Post_Changes {
 					'idempotent'  => false,
 					'open_world'  => false,
 				),
-				/*
-				 * Withheld from the REST and MCP surfaces on purpose; MCP
-				 * exposure reads `mcp.public`, not `show_in_rest`. A
-				 * proposal is only meaningful inside a workspace turn, which
-				 * is where the person who has to approve it is.
-				 */
+				// Only meaningful inside a workspace turn; MCP reads `mcp.public`, not `show_in_rest`.
 				'show_in_rest' => false,
 				'mcp'          => array( 'public' => false ),
 			),
@@ -139,10 +124,7 @@ final class Propose_Post_Changes {
 	}
 
 	/**
-	 * Permission callback for the ability.
-	 *
-	 * Coarse by necessity: `edit_post` for each item's post needs the input, and
-	 * it runs in {@see Post_Field_Writer::normalize_item()} and again at write time.
+	 * Permission callback for the ability; per-post `edit_post` runs in {@see Post_Field_Writer::normalize_item()} and at write time.
 	 *
 	 * @since x.x.x
 	 *
@@ -175,14 +157,7 @@ final class Propose_Post_Changes {
 		$input = rest_sanitize_object( $input );
 		$items = isset( $input['items'] ) && is_array( $input['items'] ) ? $input['items'] : array();
 
-		/*
-		 * Two values for one field of one post would leave the person to approve
-		 * both, see the second reported stale once the first is written, and only
-		 * the first survive. So each field of each post may be named once. Edits
-		 * cannot change which post or field an item names, so checking here
-		 * suffices. Keyed as the writer normalizes them, so `"12"` and `12`, or
-		 * `Title` and `title`, are one field.
-		 */
+		// Two values for one field would leave the second stale once the first is written; keyed as the writer normalizes.
 		$seen = array();
 
 		foreach ( $items as $item ) {

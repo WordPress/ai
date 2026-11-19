@@ -22,11 +22,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Reports whether any configured connector exposes a function-calling model.
  *
- * The repository ships `ensure_text_generation_supported()` and
- * `ensure_image_generation_supported()` on `Abstract_Ability`, but nothing that
- * asks for function declarations, so this gate is net new (KTD4). It is answered
- * from model metadata rather than by making a request, so it is cheap enough to
- * run before every turn and on every render of the workspace screen.
+ * Reads model metadata instead of making a request, so it is cheap enough to run on every render.
  *
  * @since x.x.x
  */
@@ -67,18 +63,7 @@ final class Function_Calling_Support {
 						}
 					}
 				} catch ( Throwable $e ) {
-					/*
-					 * A provider that cannot be reached or cannot describe its models is
-					 * treated as offering no function calling, so an unreachable connector
-					 * degrades the screen rather than breaking it.
-					 *
-					 * An Error is re-thrown rather than swallowed. Catching everything here
-					 * once turned a programming mistake in this method into a permanent,
-					 * silent "no compatible model available" that no test could see: the
-					 * screen degraded correctly for the wrong reason, so nothing looked
-					 * broken. A bug in this file should surface; an unreachable provider
-					 * should not.
-					 */
+					// An unreachable provider counts as no support, but an Error is a bug here and must surface.
 					if ( $e instanceof Error ) {
 						throw $e;
 					}
@@ -91,9 +76,7 @@ final class Function_Calling_Support {
 		/**
 		 * Filters whether a function-calling-capable model is available.
 		 *
-		 * Allows third-party plugins to declare function-calling support for
-		 * connectors that do not expose model metadata, without triggering a
-		 * live API request.
+		 * Lets plugins declare support for connectors that do not expose model metadata.
 		 *
 		 * @since x.x.x
 		 *

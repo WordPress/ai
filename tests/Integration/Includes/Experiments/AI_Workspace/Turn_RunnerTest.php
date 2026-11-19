@@ -26,15 +26,6 @@ use WordPress\AiClient\Messages\Enums\MessageRoleEnum;
 /**
  * Turn_Runner system instruction test case.
  *
- * The instruction is derived from the surface actually admitted (R7), so these
- * tests drive a whole turn with a scripted model and read back the instruction
- * the runner built. They assert two separate claims that the old hard-coded
- * paragraph welded together: that a proposal tool exists and should be called,
- * and that the model cannot write to the site itself.
- *
- * `get_system_instruction()` is private, so the instruction is read through the
- * public `wpai_workspace_system_instruction` filter rather than by reflection.
- *
  * @since x.x.x
  *
  * @covers \WordPress\AI\Experiments\AI_Workspace\Turn_Runner
@@ -140,8 +131,7 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 				continue;
 			}
 
-			// WordPress 7.2 declares the property, and unsetting a declared property leaves it
-			// uninitialized, so restore core's default rather than removing it.
+			// Unsetting a property WordPress 7.2 declares leaves it uninitialized, so restore the default.
 			if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
 				$object->show_in_abilities = true;
 			} else {
@@ -215,12 +205,6 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 
 	/**
 	 * Replaces the curated search ability with a fixture that writes directly.
-	 *
-	 * The curated floor is the only way an ability that fails R1a can reach the
-	 * surface: the effect-class check runs on the merged candidate map after
-	 * `wpai_workspace_tool_candidates`, so a filter-added mutating ability is
-	 * never admitted. Standing a mutating fixture in the floor's shoes is
-	 * therefore the only honest way to exercise the case.
 	 *
 	 * @since x.x.x
 	 */
@@ -334,9 +318,6 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 	/**
 	 * The question tool is named, with the rule that every reply ends on a next step.
 	 *
-	 * A model that has fully answered tends to stop on plain text, so the rule
-	 * says a next step is owed even then.
-	 *
 	 * @since x.x.x
 	 */
 	public function test_instruction_names_the_question_tool_when_it_is_admitted(): void {
@@ -393,11 +374,6 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 	/**
 	 * Scenario 3b: the proposal tool is a non-R1a ability that still cannot write.
 	 *
-	 * `ai/propose-drafts` registers `readonly => false` and reaches the surface
-	 * through the curated floor, so it fails R1a. It writes nothing directly all
-	 * the same — it stores values a person approves — so the denial is still
-	 * true and must not be dropped mechanically.
-	 *
 	 * @since x.x.x
 	 */
 	public function test_instruction_denies_writing_when_the_proposal_tool_is_the_only_non_read_only_ability(): void {
@@ -412,10 +388,6 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 
 	/**
 	 * Scenario 3c: an admitted ability that writes directly drops the denial, and only the denial.
-	 *
-	 * The two claims are separate. A direct writer on the surface makes the
-	 * denial false, but the proposal tool is still there and still the route to
-	 * a draft the person approves.
 	 *
 	 * @since x.x.x
 	 */

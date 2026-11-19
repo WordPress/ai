@@ -13,9 +13,6 @@ use WordPress\AI\Abilities\Site\Get_Site_Info;
 /**
  * Get_Site_Info ability test case.
  *
- * The ability answers questions about the site from a fixed set of fields. These
- * tests pin which fields each role gets, so nothing outside that set leaks.
- *
  * @since x.x.x
  *
  * @covers \WordPress\AI\Abilities\Site\Get_Site_Info
@@ -208,8 +205,7 @@ class Get_Site_InfoTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A user with `manage_options` but not `view_site_health_checks`, such as a sub-site
-	 * administrator on multisite, gets no versions.
+	 * A user with `manage_options` but not `view_site_health_checks` gets no versions.
 	 *
 	 * @since x.x.x
 	 */
@@ -261,9 +257,7 @@ class Get_Site_InfoTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The input schema, as declared to the model, holds no empty list where
-	 * JSON Schema expects an object. OpenAI refused every request that offered
-	 * this ability while it sent `"properties": []`.
+	 * The declared input schema never sends `properties` as an empty list, which OpenAI refuses.
 	 *
 	 * @since x.x.x
 	 */

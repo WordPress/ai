@@ -28,10 +28,7 @@ import { changedBlockSettings } from '../utils/render-html';
 import type { ProposalItem } from '../types';
 
 /**
- * Shows one value as the reader will see it.
- *
- * Content is post markup and is rendered through the sanitised renderer; every
- * other field is plain text and is shown as text.
+ * Shows one value as the reader will see it; only content is rendered as markup.
  *
  * @param props       Component props.
  * @param props.field The field the value belongs to.
@@ -55,12 +52,7 @@ function Value( { field, value }: { field: string; value: string } ) {
 }
 
 /**
- * Renders one proposed change with its current value, its new value, a way to
- * edit the new value, and its checkbox.
- *
- * The current value stays rendered while the new one is edited, so the two can
- * be compared. A message the server returned for an edit is shown under the
- * field it is about.
+ * Renders one proposed change: current value, editable new value and checkbox.
  *
  * @param props            Component props.
  * @param props.item       The proposed change.
@@ -112,7 +104,6 @@ function ProposedChange( {
 			? changedBlockSettings( item.current, edit ?? item.value )
 			: [];
 
-	// The server's message sits under the field, as its help text.
 	const invalid =
 		'' === error ? {} : { help: error, 'aria-invalid': true as const };
 

@@ -35,8 +35,7 @@ const setSettings = ( requestUtils, settings ) =>
 	} );
 
 /**
- * Switches the E2E Testing plugin's Explorer fixtures, and clears the
- * assistant's owner exclusions and policy switch either way.
+ * Switches the E2E Testing plugin's Explorer fixtures and resets the surface options.
  *
  * @param {Object}  requestUtils The requestUtils fixture.
  * @param {boolean} enabled      Whether the fixtures are registered.
@@ -68,8 +67,7 @@ const payloadRow = ( list, slug ) =>
 	list.items.find( ( item ) => item.slug === slug );
 
 /**
- * Matches requests to one of the Explorer's REST routes, whether the site uses
- * pretty permalinks (`/wp-json/ai/v1/...`) or plain ones (`?rest_route=...`).
+ * Matches requests to an Explorer REST route under pretty or plain permalinks.
  *
  * @param {string} route The route path, such as `/ai/v1/abilities/surface`.
  * @return {(url: URL|string) => boolean} A URL predicate for `page.route()` and `waitForResponse()`.
@@ -118,8 +116,7 @@ const dataRows = ( page ) =>
 const row = ( page, text ) => dataRows( page ).filter( { hasText: text } );
 
 /**
- * A filter chip. The chips precede the table, whose column headers carry the
- * same names, so the first match is the chip.
+ * A filter chip; it precedes the same-named column header, so the first match is the chip.
  *
  * @param {Object} page  The page.
  * @param {string} label The filter's field label.
@@ -192,8 +189,7 @@ const savedView = ( page ) =>
 	);
 
 /**
- * Searches the list, so a row is on the first page however many abilities
- * the site registers.
+ * Searches the list so the row lands on the first page.
  *
  * @param {Object} page The page.
  * @param {string} text The search text.
@@ -240,8 +236,7 @@ const runnerInput = ( page ) =>
 	page.getByRole( 'textbox', { name: 'Ability test input (JSON)' } );
 
 /**
- * One message in the runner's validation panel. The same words are also
- * spoken through a live region, so the panel's list item is matched.
+ * One message in the runner's validation panel, not its live-region copy.
  *
  * @param {Object} page The page.
  * @param {string} text The message.
@@ -263,8 +258,7 @@ const expectSingleHeading = async ( page ) => {
 };
 
 /**
- * Turns the Explorer on, registers the E2E Testing plugin's fixtures, and
- * clears any owner exclusion or policy switch left behind.
+ * Turns the Explorer on with its fixtures and a clean surface state.
  *
  * @param {Object} requestUtils The requestUtils fixture.
  */

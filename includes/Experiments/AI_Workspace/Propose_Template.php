@@ -17,16 +17,6 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Registers the `ai/propose-template` ability, which proposes a block template without writing it.
  *
- * It is {@see Propose_Drafts} for templates, and it holds to the same rules: it
- * records the exact values in {@see Proposal_Store} and writes nothing, it is
- * hidden from the REST and MCP surfaces, it refuses outside a workspace turn, and
- * the proposal is bound to the conversation read from {@see Turn_Context}.
- * {@see Template_Writer} creates the template once a person approves it.
- *
- * On a classic theme it returns an error that says why, written for the model to
- * pass on, so the person hears that templates need a block theme rather than
- * seeing a tool fail.
- *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
  * @since x.x.x
@@ -102,9 +92,6 @@ final class Propose_Template {
 	/**
 	 * Returns the ability's registration args.
 	 *
-	 * The workspace registers the ability, so it carries the feature's access
-	 * control tag.
-	 *
 	 * @since x.x.x
 	 *
 	 * @return array<string, mixed> The registration args.
@@ -125,12 +112,7 @@ final class Propose_Template {
 					'idempotent'  => false,
 					'open_world'  => false,
 				),
-				/*
-				 * Withheld from the REST and MCP surfaces on purpose; MCP
-				 * exposure reads `mcp.public`, not `show_in_rest`. A
-				 * proposal is only meaningful inside a workspace turn, which
-				 * is where the person who has to approve it is.
-				 */
+				// Only meaningful inside a workspace turn; MCP reads `mcp.public`, not `show_in_rest`.
 				'show_in_rest' => false,
 				'mcp'          => array( 'public' => false ),
 			),
@@ -138,10 +120,7 @@ final class Propose_Template {
 	}
 
 	/**
-	 * Permission callback for the ability.
-	 *
-	 * Deliberately says nothing about the theme. On a classic theme the call has
-	 * to run, so its error can tell the person why there is no template.
+	 * Permission callback for the ability; ignores the theme so a classic theme reaches the explanatory error.
 	 *
 	 * @since x.x.x
 	 *

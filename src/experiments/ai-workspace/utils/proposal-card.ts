@@ -1,6 +1,5 @@
 /**
- * What the proposal card says and links to, kept apart from the component so
- * each rule can be tested on its own.
+ * What the proposal card says and links to, kept apart from the component for testing.
  */
 
 /**
@@ -46,15 +45,7 @@ const PRESELECTABLE_STATUSES = [ 'draft', 'pending' ];
 /**
  * Returns the item keys the card starts with checked.
  *
- * A single draft or pending item starts checked, so "write a post about X" is
- * one click to create and one to open. A batch starts unchecked: an instruction
- * planted in content the assistant read wins by appending an item to an
- * otherwise legitimate batch, so each item in one is chosen deliberately. An
- * item that would be published or made private is never preselected, and
- * neither is anything in a proposal that has already been executed.
- *
- * A template proposal holds one template and has no checkbox, so its one item
- * is the selection; its card says plainly that it goes live when created.
+ * Batches start unchecked so an item appended by prompt injection must be chosen deliberately.
  *
  * @param proposal The stored proposal.
  * @return The keys to start with checked.
@@ -66,11 +57,7 @@ export function initialSelection( proposal: Proposal ): string[] {
 		return [];
 	}
 
-	/*
-	 * Every change of an update card starts checked: each one sits beside the
-	 * value it replaces, so the card is read item by item before anything is
-	 * applied, and the person unchecks what they do not want.
-	 */
+	// Update changes start checked: each is shown beside the value it replaces.
 	if ( isUpdate( proposal ) ) {
 		return proposal.items.map( ( item ) => item.key );
 	}
@@ -90,10 +77,7 @@ export function initialSelection( proposal: Proposal ): string[] {
 }
 
 /**
- * Says what creating a template changes for visitors.
- *
- * A template is live as soon as it is created, so the card says so before
- * anyone approves it, and names the theme's own template when it replaces one.
+ * Says what creating a template, which is live at once, changes for visitors.
  *
  * @param item The proposed template.
  * @return The notice.
@@ -133,12 +117,7 @@ export function openLabel( item: ProposalItemOutcome ): string {
 }
 
 /**
- * Names what approving the given items will do, with the count.
- *
- * Publishing is named whenever it is part of it, because that puts something
- * on the site. Drafts are named as drafts, because that is what a person asked
- * for; any other mix falls back to "items", and each row still says how it is
- * saved.
+ * Names what approving the given items will do, with the count; publishing is always named.
  *
  * @param items The items the label describes.
  * @param count How many will be written.
@@ -216,10 +195,7 @@ export function createdLabel( created: ProposalItemOutcome[] ): string {
 }
 
 /**
- * Reports whether an outcome points at a post that can be opened.
- *
- * True for a created item and for a duplicate, which points at the post an
- * earlier approval created.
+ * Reports whether an outcome (created or duplicate) points at a post that can be opened.
  *
  * @param item The outcome.
  * @return Whether it can be opened.
@@ -229,12 +205,7 @@ export function canOpen( item: ProposalItemOutcome ): boolean {
 }
 
 /**
- * Builds a link to the admin list that holds the given items.
- *
- * The list is the post type's own screen, narrowed to the status they were
- * saved with when they share one, and newest first, so they are at the top.
- * The admin URL is resolved from an item's edit link rather than assumed. Items
- * of different post types have no single list, so they get no link.
+ * Builds a link to the admin list that holds the given items, when they share a post type.
  *
  * @param items The items to list, each one that can be opened.
  * @return The list's URL and label, or null.
@@ -292,9 +263,6 @@ export function isUpdate( proposal: Proposal ): boolean {
 /**
  * Reports whether an execution result is the outcome of an update.
  *
- * An update item names the field it changed. A discarded proposal names none,
- * and is told apart by its `discarded` flag instead.
- *
  * @param execution The execution result.
  * @return Whether it reports changes rather than creations.
  */
@@ -310,13 +278,7 @@ export function isUpdateExecution( execution: ProposalExecution ): boolean {
 }
 
 /**
- * Names each field an update item can change.
- *
- * `name` is how the editor names a post field; a site setting has none, since
- * its card is named by the label the server sends. `edit` labels the field that
- * edits the new value.
- *
- * Built on each call, so the strings are translated in the current locale.
+ * Names each field an update item can change; built per call so strings use the current locale.
  *
  * @param field The field.
  * @return The labels, or undefined for a field this card does not know.
@@ -355,9 +317,6 @@ function postFieldName( field: string ): string {
 
 /**
  * Names what one update item changes, such as `Title of “Hello world!”`.
- *
- * A site setting is named by its own label, which the server sends as the
- * item's title.
  *
  * @param item The proposed change, or the outcome of one.
  * @return The label.

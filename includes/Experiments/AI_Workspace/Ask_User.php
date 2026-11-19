@@ -17,15 +17,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Registers the `ai/ask-user` ability, which asks the person a question with choices.
  *
- * The ability does nothing on the server. It hands back the question and the
- * choices it was given, and calling it ends the turn ({@see Turn_Runner}), so
- * the model waits for the answer instead of guessing one. The transcript shows
- * the choices as buttons, and a click sends the chosen text as the person's next
- * message, through the same path as typing it. A typed reply works just as well.
- *
- * Like {@see Propose_Drafts}, it is hidden from the REST and MCP surfaces and
- * refuses outside a workspace turn: a question is only meaningful where the
- * person who answers it is.
+ * Calling it ends the turn; the person's answer arrives as their next message.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -81,9 +73,6 @@ final class Ask_User {
 	/**
 	 * Returns the ability's registration args.
 	 *
-	 * The workspace registers the ability, so it carries the feature's access
-	 * control tag.
-	 *
 	 * @since x.x.x
 	 *
 	 * @return array<string, mixed> The registration args.
@@ -109,12 +98,7 @@ final class Ask_User {
 					'idempotent'  => true,
 					'open_world'  => false,
 				),
-				/*
-				 * Withheld from the REST and MCP surfaces on purpose; MCP
-				 * exposure reads `mcp.public`, not `show_in_rest`. A
-				 * question is only meaningful inside a workspace turn, which
-				 * is where the person who has to answer it is.
-				 */
+				// Workspace-only. MCP exposure reads `mcp.public`, not `show_in_rest`.
 				'show_in_rest' => false,
 				'mcp'          => array( 'public' => false ),
 			),
@@ -122,10 +106,7 @@ final class Ask_User {
 	}
 
 	/**
-	 * Permission callback for the ability.
-	 *
-	 * The same capability the workspace's turn endpoint requires, so the ability
-	 * asks for nothing more than being in the workspace already does.
+	 * Permission callback for the ability; matches the turn endpoint's capability.
 	 *
 	 * @since x.x.x
 	 *
@@ -141,9 +122,7 @@ final class Ask_User {
 	/**
 	 * Executes the ability.
 	 *
-	 * The input has already been validated against the schema, so the question
-	 * and choices are returned as given, trimmed: the composer trims what it
-	 * sends, so a choice is stored as the exact text a click on it will send.
+	 * Choices are trimmed to match the exact text the composer sends on click.
 	 *
 	 * @since x.x.x
 	 *
@@ -185,7 +164,6 @@ final class Ask_User {
 					'description' => __( 'The question, in one short sentence.', 'ai' ),
 					'minLength'   => 1,
 					'maxLength'   => self::MAX_QUESTION_LENGTH,
-					// Not blank: a question of only spaces has nothing to show.
 					'pattern'     => '\\S',
 				),
 				'choices'  => array(

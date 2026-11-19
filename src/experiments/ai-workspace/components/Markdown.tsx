@@ -1,11 +1,5 @@
 /**
- * Renders assistant markdown as React elements.
- *
- * Nothing in this file produces an HTML string and nothing is ever passed to
- * `dangerouslySetInnerHTML`; every node from {@link renderMarkdown} becomes an
- * element or a text child, so model-supplied markup can only ever be displayed
- * (R19). Code blocks get a copy affordance and never an insert affordance
- * (KTD9).
+ * Renders assistant markdown as React elements, never via `dangerouslySetInnerHTML`.
  */
 
 /**
@@ -56,8 +50,7 @@ function Inline( { node }: { node: InlineNode } ) {
 		case 'code':
 			return <code>{ node.value }</code>;
 		case 'image':
-			// An image is never fetched. It is described in place, so a model
-			// cannot turn a rendered response into an outbound request.
+			// Never fetched, so a model cannot trigger an outbound request.
 			return (
 				<span className="ai-workspace__inert">
 					{ sprintf(
@@ -79,10 +72,7 @@ function Inline( { node }: { node: InlineNode } ) {
 }
 
 /**
- * Describes post markup that would render, play or load on the live site.
- *
- * Plain text only: nothing is played, embedded or fetched, and the detail
- * (attributes, URLs, labels) is shown as data.
+ * Describes, as plain text, post markup that would render, play or load on the live site.
  *
  * @param props      Component props.
  * @param props.node The withheld node.
@@ -218,17 +208,11 @@ function InlineList( { nodes }: { nodes: InlineNode[] } ) {
 
 /**
  * Line count above which a code block starts collapsed.
- *
- * A generated template runs to dozens of lines; shown in full it pushed the
- * rest of the answer, and the next turn, out of the transcript.
  */
 const COLLAPSE_AFTER_LINES = 12;
 
 /**
- * Renders a fenced code block with a copy affordance.
- *
- * A long block is collapsed until the person asks to see all of it. The copy
- * control always takes the whole block, collapsed or not.
+ * Renders a fenced code block with a copy affordance; long blocks start collapsed.
  *
  * @param props          Component props.
  * @param props.language The fence's language, or an empty string.
@@ -242,8 +226,6 @@ function CodeBlock( { language, value }: { language: string; value: string } ) {
 	const lineCount = value.split( '\n' ).length;
 	const collapsible = lineCount > COLLAPSE_AFTER_LINES;
 
-	// The icon shows a check for a moment, so the copy is visible as well as
-	// announced.
 	useEffect( () => {
 		if ( ! copied ) {
 			return undefined;
@@ -410,13 +392,7 @@ export default function Markdown( { source }: { source: string } ) {
 }
 
 /**
- * Renders post markup as the reader sees it, through the same node tree.
- *
- * Used for a post's current and proposed content on an update card. The markup
- * is read by {@link renderHtml}, never handed to the browser to render.
- *
- * Parsing is memoized on the markup, so a card that re-renders for another
- * reason, such as a checkbox, does not parse a post's content again.
+ * Renders post markup through {@link renderHtml}, never handing it to the browser.
  *
  * @param props        Component props.
  * @param props.source The post markup.

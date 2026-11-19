@@ -15,12 +15,6 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Performs one model round for a workspace turn.
  *
- * The turn loop owns permission filtering, provenance, logging and the round
- * cap; this contract owns nothing but "send these messages, offer these tools,
- * hand back the assistant's reply". Keeping the two apart is what lets the loop
- * be tested without a network, since the tool broker is the part that has to be
- * proven.
- *
  * @since x.x.x
  */
 interface Model_Client_Interface {
@@ -45,10 +39,6 @@ interface Model_Client_Interface {
 
 	/**
 	 * Runs one model round.
-	 *
-	 * A reply usually comes as one message. Some connectors return it as several,
-	 * such as a sentence and then a tool call, and those come back as a list in
-	 * the order they arrived, to be replayed as they are.
 	 *
 	 * @since x.x.x
 	 *

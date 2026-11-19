@@ -1,6 +1,5 @@
 /**
- * Narrows the chat history routes' untrusted payloads to the shapes the
- * workspace renders.
+ * Narrows the chat history routes' untrusted payloads.
  */
 
 /**
@@ -163,10 +162,6 @@ export function toStoredChat( value: unknown ): StoredChat | null {
 /**
  * Rebuilds the transcript from a chat's stored turn records.
  *
- * Each record already holds what the transcript shows for a finished turn: the
- * prompt, the reply text, the status and the tool calls. The model messages are
- * never read here.
- *
  * @param chat The stored chat.
  * @return The transcript entries, oldest first.
  */
@@ -292,11 +287,7 @@ export type SavedTurn =
 	| { response: null; errorCode: string };
 
 /**
- * Finds a turn's entry in a saved chat, by the ID the client sent with it.
- *
- * A turn's entry is saved when the turn ends, so finding it means the turn is
- * over. It is what a client whose connection dropped reads instead of the
- * response it never received.
+ * Finds a turn's entry in a saved chat; it exists only once the turn has ended.
  *
  * @param chat   The saved chat.
  * @param turnId The turn's ID.

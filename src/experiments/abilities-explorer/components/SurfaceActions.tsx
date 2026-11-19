@@ -1,13 +1,4 @@
 /**
- * The row actions that change the AI Workspace assistant's tool surface:
- * "Remove from assistant" and "Return to assistant".
- *
- * Changes are pessimistic: the row's control is disabled until the
- * server answers, a second click while it is pending sends nothing, and the
- * row only changes when the surface route's response is applied.
- */
-
-/**
  * WordPress dependencies
  */
 import {
@@ -49,9 +40,7 @@ export function getSurfaceChangeMessage( change: SurfaceChange ): string {
 }
 
 /**
- * The row change an ability offers, if any: return an owner-excluded ability,
- * remove one the assistant holds, and nothing otherwise. An owner exclusion
- * wins.
+ * Returns the row change an ability offers, if any.
  *
  * @param item The ability.
  * @return The change, or null when the row offers none.
@@ -74,11 +63,9 @@ export function getRowSurfaceChange(
  * What one row's surface control shows and does.
  */
 export interface RowSurfaceAction {
-	/** "Remove from assistant" or "Return to assistant". */
 	label: string;
-	/** True while this row's change is pending; a click then sends nothing. */
+	/** True while this row's change is pending. */
 	disabled: boolean;
-	/** Starts the change. Does nothing while one is pending. */
 	onActivate: () => void;
 }
 
@@ -90,15 +77,13 @@ export type GetRowSurfaceAction = (
 ) => RowSurfaceAction | null;
 
 /**
- * Carries the list's `GetRowSurfaceAction` to the Name cells, which DataViews
- * renders without a way to pass props through. Null outside the list.
+ * Passes `GetRowSurfaceAction` to Name cells, since DataViews can't pass props through.
  */
 export const RowSurfaceActionContext =
 	createContext< GetRowSurfaceAction | null >( null );
 
 /**
- * Returns a row's surface control from the list, or null when the row offers
- * none or there is no list around it.
+ * Returns a row's surface control from the list, or null when it has none.
  *
  * @param item The ability.
  * @return The control, or null.
@@ -114,14 +99,12 @@ export function useRowSurfaceAction(
 interface UseSurfaceActionsOptions {
 	/** Applies a surface response; false when it was stale. */
 	onSurfaceResponse: ( response: SurfaceResponse ) => boolean;
-	/** Called once a change has settled, whether it succeeded or failed. */
+	/** Called once a change has succeeded or failed. */
 	onSettled?: ( slug: string ) => void;
 }
 
 /**
- * Returns a function that describes each row's control for removing an
- * ability from the assistant or returning it, with the per-row pending state
- * it needs.
+ * Returns a function that describes each row's remove/return control.
  *
  * @param options                   Hook options.
  * @param options.onSurfaceResponse Applies a surface response to the list.
@@ -134,10 +117,7 @@ export function useSurfaceActions( {
 }: UseSurfaceActionsOptions ): GetRowSurfaceAction {
 	const { notify, reportError } = useExplorer();
 
-	/*
-	 * The ref guards against a second click in the same tick, before the
-	 * disabled state has rendered; the state drives the rendering.
-	 */
+	// The ref blocks a double click before the disabled state renders.
 	const pendingRef = useRef< Set< string > >( new Set() );
 	const [ pending, setPending ] = useState< ReadonlySet< string > >(
 		() => new Set()
@@ -166,11 +146,7 @@ export function useSurfaceActions( {
 			try {
 				const response = await changeSurface( change, item.slug );
 
-				/*
-				 * A stale response is dropped by `onSurfaceResponse`. The change
-				 * itself still happened, and "no change" (already applied, for
-				 * example from another tab) is a success too.
-				 */
+				// A stale or "no change" response is still a success.
 				onSurfaceResponse( response );
 				notify( 'success', getSurfaceChangeMessage( change ) );
 			} catch ( error ) {

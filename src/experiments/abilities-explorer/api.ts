@@ -104,14 +104,7 @@ export function changeSurface(
 }
 
 /**
- * Orders list and surface responses so a late one never undoes a change the
- * screen has already shown.
- *
- * Sequence numbers are tracked per row, for the full list, and for the policy
- * state separately. A single-row response only competes with responses that
- * cover that row, so two removes on different rows that answer out of order are
- * both applied, and a full list read before a row change keeps that row's newer
- * state instead of reverting it.
+ * Drops late list and surface responses, tracking the list, each row and the policy separately.
  */
 export interface ResponseSequencer {
 	/**
@@ -139,7 +132,7 @@ export interface ResponseSequencer {
 	 *
 	 * @param slug     The row's ability name.
 	 * @param sequence The response's `sequence`.
-	 * @return True when neither that row nor a newer full list has been applied since.
+	 * @return True when neither that row nor a newer full list has been applied.
 	 */
 	claimRow: ( slug: string, sequence: number ) => boolean;
 	/**

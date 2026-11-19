@@ -45,21 +45,13 @@ export interface ListViewProps {
 	policy: PolicyState | null;
 	/** True while the list is loading. */
 	isLoading: boolean;
-	/**
-	 * Applies a surface route response to the list. Returns false when the
-	 * response is stale because a newer one has already been applied.
-	 */
+	/** Applies a surface response; false when it was stale. */
 	onSurfaceResponse: ( response: SurfaceResponse ) => boolean;
 }
 
 const PER_PAGE = 20;
 const SUPPORTED_LAYOUTS = [ 'table' ];
 
-/*
- * The table layout. "Exposed in" gets a minimum width so its badges and reason
- * text never squeeze or clip; the Name column takes what the others leave.
- * A saved view gets these styles too (see `restoreView()`).
- */
 const TABLE_LAYOUT = {
 	styles: {
 		description: { width: '50%' },
@@ -199,17 +191,8 @@ export default function ListView( {
 	}, [ items, view, fields ] );
 
 	/*
-	 * Counts settled row surface changes. The count is set in the same batch
-	 * as the response, so the effect runs once the list has rendered with it.
-	 *
-	 * The row's surface button survives a label flip, so focus normally stays
-	 * on it.
-	 * When the change takes the row out of an active "Exposed in" filter, or
-	 * leaves it with no surface action to offer, the focused button is gone
-	 * and focus has fallen to the body: move it to the labelled list region
-	 * instead of leaving the user at the top of the page. The region is used
-	 * rather than the table because a filtered list can end up empty, and
-	 * DataViews then renders no table at all.
+	 * When a surface change removes the focused row button (filtered out or no action left),
+	 * move focus to the list region; the table itself is gone when the list ends up empty.
 	 */
 	const [ settledCount, setSettledCount ] = useState( 0 );
 
@@ -258,10 +241,6 @@ export default function ListView( {
 				aria-label={ __( 'Abilities list', 'ai' ) }
 				tabIndex={ -1 }
 			>
-				{ /*
-				 * No DataViews `actions`: the row actions sit under the name,
-				 * as in `WP_List_Table`, rendered by the Name field.
-				 */ }
 				<RowSurfaceActionContext.Provider value={ getRowSurfaceAction }>
 					<DataViews< AbilityListItem >
 						data={ data }

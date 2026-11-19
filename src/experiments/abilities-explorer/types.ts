@@ -93,8 +93,7 @@ interface SurfaceResponseBase {
 }
 
 /**
- * The surface route's payload. Remove and restore answer with the updated
- * row; a policy change answers with the full list.
+ * The surface route's payload: the updated row, or the full list for a policy change.
  */
 export type SurfaceResponse =
 	| ( SurfaceResponseBase & {

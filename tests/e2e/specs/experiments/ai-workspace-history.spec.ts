@@ -1,10 +1,5 @@
 /**
  * End-to-end coverage for the AI Workspace chat history panel.
- *
- * The flow it guards is the one the review asked for: start a new chat, then
- * find the old one again. Every change here goes through the conversations
- * routes, so each assertion that survives a reload is about what the server
- * stored, not what the panel happens to be showing.
  */
 /**
  * WordPress dependencies
@@ -112,7 +107,6 @@ test.describe( 'AI Workspace chat history', () => {
 			exact: true,
 		} );
 
-		// The chat appears under the name it was given from its first message.
 		await expect( row ).toBeVisible();
 
 		await panel.getByRole( 'button', { name: 'New space' } ).click();
@@ -136,7 +130,6 @@ test.describe( 'AI Workspace chat history', () => {
 		await sendAndWait( page, 'One more thing' );
 		await expect( panel.getByRole( 'listitem' ) ).toHaveCount( 1 );
 
-		// A reload reopens it, from the URL.
 		await page.reload();
 		await expect( turns ).toHaveCount( 3, { timeout: 30000 } );
 	} );
@@ -312,7 +305,6 @@ test.describe( 'AI Workspace chat history', () => {
 			} )
 			.click();
 
-		// While the chat loads, the composer is inert.
 		await expect(
 			page.getByLabel( 'Message', { exact: true } )
 		).toBeDisabled();
@@ -367,7 +359,6 @@ test.describe( 'AI Workspace chat history', () => {
 			.getByRole( 'button', { name: 'New space' } )
 			.click();
 
-		// The turn is cancelled on the server, not just hidden.
 		await cancelled;
 
 		// Once the held request would have answered, nothing of it appears.
@@ -468,7 +459,6 @@ test.describe( 'AI Workspace chat history with proposals', () => {
 			} )
 			.click();
 
-		// The outcome comes back from the chat itself, link and all.
 		await expect(
 			page.getByRole( 'link', { name: 'Open draft' } )
 		).toBeVisible( { timeout: 30000 } );

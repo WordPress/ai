@@ -15,9 +15,6 @@ use WordPress\AI\Abilities\Show_In_Abilities;
 /**
  * Search_Content ability test case.
  *
- * These tests are deliberately weighted towards capability leakage: every row the
- * ability returns must be a row the requesting user could have read anyway.
- *
  * @since x.x.x
  */
 class Search_ContentTest extends WP_UnitTestCase {
@@ -75,7 +72,7 @@ class Search_ContentTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
-		// Mark the curated core post types (post, page) as exposed to abilities.
+		// Expose post and page to abilities.
 		( new Show_In_Abilities() )->register();
 
 		$this->ensure_ability_category( 'content' );
@@ -91,15 +88,13 @@ class Search_ContentTest extends WP_UnitTestCase {
 			wp_unregister_ability( self::ABILITY );
 		}
 
-		// Restore the curated post types to their unmarked state to avoid leaking into other tests.
 		foreach ( array( 'post', 'page' ) as $post_type ) {
 			$object = get_post_type_object( $post_type );
 			if ( ! $object ) {
 				continue;
 			}
 
-			// WordPress 7.2 declares the property, and unsetting a declared property leaves it
-			// uninitialized, so restore core's default rather than removing it.
+			// Unsetting a property WP 7.2 declares leaves it uninitialized, so restore the default.
 			if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
 				$object->show_in_abilities = true;
 			} else {
@@ -245,10 +240,7 @@ class Search_ContentTest extends WP_UnitTestCase {
 	/**
 	 * Caps a search matching more posts than the cap at 20 items, with correct totals.
 	 *
-	 * Pagination alone never counts as withholding: `total` far exceeds the returned
-	 * rows, but every missing post is on a later page and readable, so nothing was kept
-	 * back. A count derived by subtracting the page size from the total would report 30
-	 * posts hidden by role on an ordinary search. `examined` counts only this page.
+	 * Pagination alone never counts as withholding.
 	 *
 	 * @since x.x.x
 	 */
@@ -278,7 +270,6 @@ class Search_ContentTest extends WP_UnitTestCase {
 		$this->assertSame( 20, $result['examined'], 'Only the rows this page was built from are examined.' );
 		$this->assertSame( 0, $result['withheld'], 'Rows on later pages are paginated away, not withheld.' );
 
-		// Asking for more than the cap is rejected by the schema rather than honored.
 		$rejected = $this->execute(
 			array(
 				'search'   => 'Zebrafish',
@@ -292,9 +283,6 @@ class Search_ContentTest extends WP_UnitTestCase {
 
 	/**
 	 * The execute callback clamps the page size even when schema validation is bypassed.
-	 *
-	 * The cap is a context limit that must hold on any transport, so it is enforced in
-	 * the callback as well as in the input schema.
 	 *
 	 * @since x.x.x
 	 */
@@ -398,9 +386,6 @@ class Search_ContentTest extends WP_UnitTestCase {
 	/**
 	 * Withholds another author's unpublished post from a contributor but returns it to an editor.
 	 *
-	 * The coarse status gate lets a contributor query these statuses at all — they can
-	 * edit their own — so this is the execute-time row filter, not the permission callback.
-	 *
 	 * @since x.x.x
 	 *
 	 * @dataProvider data_unpublished_statuses
@@ -444,10 +429,7 @@ class Search_ContentTest extends WP_UnitTestCase {
 	/**
 	 * Withholds another author's private post from an author who cannot read it.
 	 *
-	 * The author is also given `edit_pages`, so both exposed post types pass the status
-	 * gate and the query spans two post types. WP_Query then runs without the `perm`
-	 * gate and returns every private post, so it is the execute-time row filter that
-	 * has to drop the one the author cannot read, and count it as withheld.
+	 * Spanning two post types makes WP_Query skip its `perm` gate, so the row filter must drop it.
 	 *
 	 * @since x.x.x
 	 */
@@ -474,7 +456,7 @@ class Search_ContentTest extends WP_UnitTestCase {
 			'post_type' => array( 'post', 'page' ),
 		);
 
-		// The logged-in user object, so the granted capability applies to this request.
+		// Grant on the current user object so it applies to this request.
 		$this->login_as( 'author' );
 		$author = wp_get_current_user();
 		$author->add_cap( 'edit_pages' );
@@ -491,7 +473,6 @@ class Search_ContentTest extends WP_UnitTestCase {
 		$this->assertContains( $own_private_id, $private_ids, 'An author should still see their own private post.' );
 		$this->assertSame( 1, $result['withheld'], 'Guard: the row filter, not the SQL, dropped the private post.' );
 
-		// An editor, who can read private posts, does see it.
 		$this->login_as( 'editor' );
 
 		$this->assertContains( $private_id, $this->result_ids( $this->execute( $input ) ), 'An editor should see the private post.' );
@@ -664,11 +645,7 @@ class Search_ContentTest extends WP_UnitTestCase {
 	/**
 	 * The withheld count is exactly the rows the execute-time permission walk dropped.
 	 *
-	 * The query is deliberately spread over two post types so `WP_Query` runs without
-	 * the `perm` gate and hands the row filter rows it must reject. The capability is
-	 * denied through `map_meta_cap`, which is how a plugin narrows read access in
-	 * practice, and it is denied for exactly one of the three matching drafts. The
-	 * examined count is the rows the page was built from, before that walk.
+	 * Spanning two post types makes WP_Query skip its `perm` gate, so the row filter sees the rows.
 	 *
 	 * @since x.x.x
 	 */
@@ -721,11 +698,7 @@ class Search_ContentTest extends WP_UnitTestCase {
 	/**
 	 * A post type dropped for permission reasons reports no withheld count at all.
 	 *
-	 * A contributor may query drafts of posts but not of pages, so the page post type
-	 * is removed before the query is built and its rows never reach the per-row walk.
-	 * The page-level count is then not the whole permission story, and reporting it as
-	 * an integer would state "nothing else was kept back" on the strength of a check
-	 * that never saw those rows. Null is the only honest answer, and it is not 0.
+	 * Null, not 0: the dropped type's rows never reached the per-row check.
 	 *
 	 * @since x.x.x
 	 */
@@ -779,11 +752,6 @@ class Search_ContentTest extends WP_UnitTestCase {
 
 	/**
 	 * Reports no withheld count from the early return when a post type was dropped.
-	 *
-	 * A term filter that names no existing term returns before any query runs, and that
-	 * early return builds its own result, so it has to make the same claim the queried
-	 * path does: a post type excluded by the status gate means no page-level number can
-	 * stand for the permission outcome, and 0 would say one did.
 	 *
 	 * @since x.x.x
 	 */
@@ -911,9 +879,6 @@ class Search_ContentTest extends WP_UnitTestCase {
 
 	/**
 	 * A tag, a date range and the featured-image filter narrow the list together.
-	 *
-	 * The fixtures cover every combination of tag, year and featured image, so
-	 * only one post can match all three filters.
 	 *
 	 * @since x.x.x
 	 */

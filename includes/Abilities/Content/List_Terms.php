@@ -20,19 +20,9 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Class - List_Terms
  *
- * Registers the read-only `ai/list-terms` ability, which lists the categories, tags
- * and other public terms a site uses, with how many published posts each holds. It
- * is how the AI Workspace sees what a site already covers, and it is registered for
- * every ability consumer, like {@see Search_Content}.
+ * Registers the read-only `ai/list-terms` ability for public taxonomies' terms and post counts.
  *
- * Only publicly viewable taxonomies attached to a post type exposed to abilities are
- * listed, the same set {@see Search_Filters::viewable_taxonomies()} lets posts be
- * filtered by. Their terms, and the published-post counts WordPress keeps for them, are
- * already shown to any visitor, so the ability adds no permission check beyond
- * requiring an authenticated user.
- *
- * Kept until `core/terms-query` lands in this plugin (#1099, #1084); the workspace
- * can list that one instead once it does.
+ * Kept until `core/terms-query` lands in this plugin (#1099, #1084).
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -172,9 +162,6 @@ final class List_Terms {
 	/**
 	 * Executes the `ai/list-terms` ability.
 	 *
-	 * A taxonomy that is not listable is refused here as well as in the schema, so a
-	 * caller that skips schema validation still cannot list a private taxonomy.
-	 *
 	 * @since x.x.x
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
@@ -208,8 +195,7 @@ final class List_Terms {
 			);
 		}
 
-		$by_count = isset( $input['orderby'] ) && 'count' === $input['orderby'];
-		// Empty terms are hidden unless the caller says otherwise.
+		$by_count   = isset( $input['orderby'] ) && 'count' === $input['orderby'];
 		$hide_empty = false !== Search_Filters::read_flag( $input['hide_empty'] ?? null );
 		$per_page   = isset( $input['per_page'] ) && is_scalar( $input['per_page'] ) ? absint( $input['per_page'] ) : self::DEFAULT_PER_PAGE;
 		$per_page   = max( 1, min( self::MAX_PER_PAGE, $per_page ) );

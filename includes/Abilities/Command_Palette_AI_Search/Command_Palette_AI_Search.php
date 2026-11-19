@@ -16,10 +16,6 @@ use WordPress\AI\Experiments\AI_Workspace\AI_Workspace;
 /**
  * Command palette AI search WordPress Ability.
  *
- * Runs only from the command palette, which sends the commands it has. It is
- * not an agent tool: it makes its own model call, so it is annotated
- * open-world and the workspace's tool policy never admits it.
- *
  * @since x.x.x
  */
 class Command_Palette_AI_Search extends Abstract_Ability {
@@ -127,7 +123,7 @@ class Command_Palette_AI_Search extends Abstract_Ability {
 			);
 		}
 
-		// List each command as an ID the model can return, so it never has to repeat a name.
+		// Short IDs so the model never has to repeat a command name.
 		$lines = array();
 		foreach ( $commands as $index => $command ) {
 			$keywords = array_filter( array_map( 'sanitize_text_field', (array) ( $command['keywords'] ?? array() ) ) );
@@ -188,12 +184,7 @@ class Command_Palette_AI_Search extends Abstract_Ability {
 	protected function meta(): array {
 		return array(
 			'show_in_rest' => true,
-			/*
-			 * Open-world because it calls the AI provider. It writes nothing,
-			 * but it is not marked read-only: the REST run route only accepts
-			 * GET for a read-only ability, and the palette's command list is
-			 * too long for a URL.
-			 */
+			// Not read-only: REST runs read-only abilities via GET, and the command list is too long for a URL.
 			'annotations'  => array(
 				'destructive' => false,
 				'idempotent'  => true,

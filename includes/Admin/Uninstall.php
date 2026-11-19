@@ -411,14 +411,7 @@ final class Uninstall {
 	 * @since 1.3.0
 	 */
 	private static function delete_transients(): void {
-		/*
-		 * Every transient the plugin writes carries the `wpai_` prefix, so this
-		 * sweep covers them without naming each one. That includes the AI
-		 * Workspace's cancellation markers and write proposals, which are stored
-		 * as `wpai_workspace_cancel_*` and `wpai_workspace_proposal_*` and can hold
-		 * unwritten draft bodies until they expire on their own, and conversations
-		 * left over from before chats were stored as posts (`wpai_workspace_conv_*`).
-		 */
+		// Includes AI Workspace proposals, which can hold unwritten draft bodies.
 		$prefix = '_transient_';
 
 		foreach ( self::get_option_names_by_prefix( $prefix . 'wpai_' ) as $option_name ) {
@@ -441,9 +434,6 @@ final class Uninstall {
 
 	/**
 	 * Deletes every AI Workspace chat on the current site.
-	 *
-	 * Chats are posts of a private type that hold retrieved post content, and they
-	 * are kept until their owner deletes them, so nothing else would remove them.
 	 *
 	 * @since x.x.x
 	 */

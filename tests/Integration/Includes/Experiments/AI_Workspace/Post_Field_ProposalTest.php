@@ -27,11 +27,6 @@ use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Wo
 /**
  * Post-field proposal test case.
  *
- * A change to a published post is live as soon as it is approved, so these
- * tests pin what may be proposed, what the card is shown, and that approval
- * writes exactly the value that was shown, only when nobody changed the field in
- * between, and reports it to the model.
- *
  * @since x.x.x
  *
  * @covers \WordPress\AI\Experiments\AI_Workspace\Post_Field_Writer
@@ -244,7 +239,7 @@ class Post_Field_ProposalTest extends WP_UnitTestCase {
 	 * @return \WP_REST_Response The response.
 	 */
 	private function execute( array $proposal, ?array $edits = null ) {
-		// An approval is refused once its chat is gone (R7), so the chat is stored first.
+		// An approval is refused once its chat is gone, so store the chat first.
 		$conversations = new Conversation_Store();
 
 		if ( null === $conversations->get( self::CONVERSATION, get_current_user_id() ) ) {
@@ -729,9 +724,6 @@ class Post_Field_ProposalTest extends WP_UnitTestCase {
 	/**
 	 * Block editor markup that kses only re-serializes, removing nothing.
 	 *
-	 * Kses rewrites `<img .../>` as `<img ... />`, entities, a bare `<` in text
-	 * and spacing in a style attribute; none of that removes anything.
-	 *
 	 * @since x.x.x
 	 *
 	 * @return array<string, array{0: string}> The stored content.
@@ -964,7 +956,7 @@ class Post_Field_ProposalTest extends WP_UnitTestCase {
 			$this->assertSame( $code, $result->get_error_code() );
 		}
 
-		// The tool's schema already limits the field; the writer refuses any other one too, such as from an edit.
+		// The writer refuses other fields too, not just the tool's schema.
 		$other = ( new Post_Field_Writer() )->normalize_item(
 			array(
 				'post_id' => $page,
@@ -1048,10 +1040,6 @@ class Post_Field_ProposalTest extends WP_UnitTestCase {
 
 	/**
 	 * A post saved by a save hook keeps its own columns while another post's field is written.
-	 *
-	 * The columns of the post being written are kept as stored, but only that
-	 * post's: a hook that updates a different post during the write must not
-	 * hand it this post's title, excerpt or content.
 	 *
 	 * @since x.x.x
 	 */

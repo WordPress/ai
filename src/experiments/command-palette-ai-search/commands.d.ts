@@ -1,6 +1,5 @@
 /**
- * Type declarations for the parts of `@wordpress/commands` used here, which
- * ships without type declarations.
+ * Types for the parts of `@wordpress/commands` used here; the package ships none.
  */
 
 declare module '@wordpress/commands' {

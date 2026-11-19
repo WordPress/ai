@@ -1,11 +1,5 @@
 /**
- * Command palette AI search, part of the AI Workspace experiment.
- *
- * Adds a command loader to the command palette that asks the
- * `ai/command-palette-ai-search` ability which registered commands answer a search
- * the palette found nothing for, and shows them as normal palette results.
- * Users who can open the workspace also get an "Ask AI" row that carries the
- * search into it.
+ * Command palette loader that asks AI for matching commands when the palette finds none.
  */
 
 /**
@@ -33,8 +27,7 @@ type AbilityResponse = {
 };
 
 /**
- * Where the Ask AI row leads. The server sends it only to users who can open
- * the workspace.
+ * Where the Ask AI row leads; sent only to users who can open the workspace.
  */
 type AskAISettings = {
 	workspaceUrl: string;
@@ -58,10 +51,7 @@ const RECHECK_MS = 150;
 const SETTLE_TIMEOUT_MS = 2000;
 const MIN_LENGTH = 3;
 
-/*
- * The ability's input limits, as its input schema sets them. A request past
- * any of them is refused outright, so the payload is cut to fit first.
- */
+// The ability's input schema limits; a request over any of them is refused.
 const MAX_QUERY_LENGTH = 200;
 const MAX_COMMANDS = 500;
 const MAX_NAME_LENGTH = 200;
@@ -119,8 +109,6 @@ function getAskAICommand(
 /**
  * Checks whether the palette shows any results other than this loader's.
  *
- * cmdk unmounts the items that don't match the search, so only matches are in the DOM.
- *
  * @return Whether the palette found something without AI.
  */
 function hasOtherResults(): boolean {
@@ -132,9 +120,6 @@ function hasOtherResults(): boolean {
 /**
  * Checks whether the palette has finished loading and found nothing.
  *
- * The palette shows its empty state only once every command loader has
- * finished and nothing matched the search.
- *
  * @return Whether the palette settled with no results.
  */
 function isPaletteEmpty(): boolean {
@@ -142,7 +127,7 @@ function isPaletteEmpty(): boolean {
 }
 
 /**
- * Counts the characters in a string the way the ability's schema does.
+ * Counts code points, as the ability's schema does.
  *
  * @param text The text.
  * @return The number of characters.
@@ -192,7 +177,7 @@ function useCommandPaletteAISearchLoader( {
 	const query = search.trim();
 	const key = query.toLowerCase();
 	const eligible = query.length >= MIN_LENGTH;
-	// Results of null mean the palette found something itself, so this loader shows nothing.
+	// Null results: the palette found something itself.
 	const [ answer, setAnswer ] = useState< {
 		key: string;
 		results: WPCommand[] | null;
@@ -253,7 +238,7 @@ function useCommandPaletteAISearchLoader( {
 
 		const ask = (): void => {
 			const commands = getRegisteredCommands();
-			// A cut name would not match its command, so those commands are left out.
+			// A truncated name would no longer match its command.
 			const sent = commands
 				.filter(
 					( command ) => getLength( command.name ) <= MAX_NAME_LENGTH
@@ -295,7 +280,6 @@ function useCommandPaletteAISearchLoader( {
 						return;
 					}
 
-					// Only commands from the list that was sent can be shown.
 					const results = ( response?.commands ?? [] )
 						.map( ( name ) =>
 							sent.find( ( command ) => command.name === name )
@@ -314,11 +298,7 @@ function useCommandPaletteAISearchLoader( {
 				} );
 		};
 
-		/*
-		 * Only ask the model once the palette has finished and found nothing.
-		 * Other loaders, like the post search, can still be fetching when the
-		 * debounce runs out, so wait for them, and give up if they take too long.
-		 */
+		// Other loaders (e.g. post search) may still be fetching after the debounce.
 		const check = (): void => {
 			if ( hasOtherResults() ) {
 				finish( null );
@@ -376,7 +356,6 @@ function useCommandPaletteAISearchLoader( {
 	}
 
 	// The query goes into each searchLabel because cmdk only re-reads keywords when an item's value changes.
-	// Ask AI comes after the suggestions, and stays when the request failed.
 	return {
 		isLoading: false,
 		commands: [

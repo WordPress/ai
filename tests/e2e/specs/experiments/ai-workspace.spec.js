@@ -11,8 +11,7 @@ import { setExperimentEnabled } from '../../utils/helpers';
 const EXPERIMENT_ID = 'ai-workspace';
 const WORKSPACE_PAGE = 'admin.php?page=ai-workspace';
 
-// The mocked OpenAI responses fixture answers every workspace turn with this
-// text (see tests/e2e-testing/responses/OpenAI/responses.json).
+// The mocked OpenAI responses fixture answers every workspace turn with this text.
 const MOCKED_RESPONSE =
 	'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure';
 
@@ -58,19 +57,16 @@ test.describe( 'AI Workspace transcript', () => {
 			/⌘\/Ctrl \+ Enter to send/
 		);
 
-		// No second line of help text under the field.
 		await expect(
 			page.locator(
 				'.ai-workspace__composer .components-base-control__help'
 			)
 		).toHaveCount( 0 );
 
-		// The shortcut still reaches assistive technology, without a placeholder.
 		await expect( input ).toHaveAccessibleDescription(
 			'Press Command or Control and Enter to send.'
 		);
 
-		// And the shortcut it names sends the message.
 		await input.fill( 'What should I write about next?' );
 		await input.press( 'ControlOrMeta+Enter' );
 
@@ -85,8 +81,6 @@ test.describe( 'AI Workspace transcript', () => {
 	} ) => {
 		await page.locator( '.ai-workspace__suggestion' ).first().click();
 
-		// The prompt is a starting point to edit, so it lands in the input and
-		// no turn is taken.
 		await expect(
 			page.getByLabel( 'Message', { exact: true } )
 		).not.toHaveValue( '' );
@@ -96,7 +90,6 @@ test.describe( 'AI Workspace transcript', () => {
 	test( 'offers exactly the two context scopes', async ( { page } ) => {
 		const scope = page.getByRole( 'button', { name: 'Context scope' } );
 
-		// The control states the active scope on its face.
 		await expect( scope ).toContainText( 'Site Context' );
 
 		await scope.click();
@@ -120,28 +113,22 @@ test.describe( 'AI Workspace transcript', () => {
 			.fill( 'What should I write about next?' );
 		await page.getByRole( 'button', { name: 'Send' } ).click();
 
-		// The person's own message is echoed, and the assistant's answer lands
-		// in the same turn. Whether it arrived over the streaming transport or
-		// through the buffered fallback, the rendered result is the same.
 		const turn = page.locator( '.ai-workspace__turn' ).first();
 		await expect( turn ).toContainText( 'What should I write about next?' );
 		await expect( turn ).toContainText( MOCKED_RESPONSE, {
 			timeout: 30000,
 		} );
 
-		// The turn is terminated, so the in-progress state is gone.
 		await expect( page.locator( '.ai-workspace__progress' ) ).toHaveCount(
 			0
 		);
 
-		// Focus returns to the input when the turn completes.
 		await expect(
 			page.getByLabel( 'Message', { exact: true } )
 		).toBeFocused();
 
 		await page.getByRole( 'button', { name: 'New space' } ).click();
 
-		// Back to the empty state, with only the Chats panel's "New space".
 		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 0 );
 		await expect( page.locator( '.ai-workspace__empty' ) ).toBeVisible();
 		await expect( page.locator( '.ai-workspace__suggestion' ) ).toHaveCount(
@@ -155,7 +142,6 @@ test.describe( 'AI Workspace transcript', () => {
 	test( 'reaches the scope control, the input and the turn controls by keyboard', async ( {
 		page,
 	} ) => {
-		// Starting a new chat is in the history panel, reachable on its own.
 		await expect(
 			page.getByRole( 'button', { name: 'New space' } )
 		).toBeVisible();
@@ -180,22 +166,10 @@ test.describe( 'AI Workspace transcript', () => {
 		expect( order.join( '|' ) ).toContain( 'Stop' );
 		expect( order.join( '|' ) ).toContain( 'Send' );
 	} );
-
-	/*
-	 * Stopping an in-flight turn is not covered here. The e2e environment mocks
-	 * the provider with an instant canned response, so there is no window in
-	 * which a turn is still running for a stop to interrupt; asserting it would
-	 * mean asserting a race. The cancellation route itself is covered by the
-	 * turn endpoint's PHP tests, and the stop control's own state transitions
-	 * are unverified in this suite.
-	 */
 } );
 
 /**
- * Holds every turn request open until it is released.
- *
- * The mocked provider answers at once, so without this there is no window in
- * which a turn is running to look at.
+ * Holds every turn request open until it is released, since the mock answers instantly.
  *
  * @param {import('@playwright/test').Page} page The page.
  * @return {Promise<{ release: () => Promise<void> }>} Lets the held turns go on.
@@ -277,7 +251,6 @@ test.describe( 'AI Workspace Wapuu', () => {
 		await expect( sprite ).toHaveAttribute( 'alt', '' );
 		expect( await spriteLoaded( sprite ) ).toBe( true );
 
-		// The spinner it replaces is gone, and motion is on.
 		await expect( progress.locator( '.components-spinner' ) ).toHaveCount(
 			0
 		);
@@ -303,12 +276,7 @@ test.describe( 'AI Workspace Wapuu', () => {
 
 		await expect( sprite ).toBeVisible();
 
-		/*
-		 * An image's own reduced-motion query is evaluated in a separate
-		 * document and cannot be inspected from here, so the still frame is
-		 * checked where it is made: the source switches every animation off,
-		 * and it still renders.
-		 */
+		// An image's reduced-motion query runs in its own document, so check the source instead.
 		expect( await spriteSource( sprite ) ).toContain( 'animation:none' );
 		expect( await spriteLoaded( sprite ) ).toBe( true );
 	} );
@@ -342,7 +310,6 @@ test.describe( 'AI Workspace Wapuu', () => {
 		await expect( sprite ).toHaveAttribute( 'alt', '' );
 		expect( await spriteLoaded( sprite ) ).toBe( true );
 
-		// Nothing is left looking busy.
 		await expect(
 			page.locator( '.ai-workspace__wapuu--busy' )
 		).toHaveCount( 0 );
@@ -406,8 +373,6 @@ test.describe( 'AI Workspace frame', () => {
 				page.locator( '.ai-workspace__empty' )
 			).toBeVisible();
 
-			// The screen sits in the admin frame like Settings > AI: no footer
-			// under it, and the admin menu still there to leave by.
 			await expect( page.locator( '#wpfooter' ) ).toBeHidden();
 			await expect( page.locator( '#adminmenumain' ) ).toBeAttached();
 

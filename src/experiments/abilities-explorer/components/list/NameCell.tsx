@@ -25,8 +25,7 @@ function Separator() {
 }
 
 /**
- * Renders an ability's name and its row actions, as in `WP_List_Table`:
- * "View", "Test", and the surface action when the row offers one.
+ * Renders an ability's name and its row actions, as in `WP_List_Table`.
  *
  * @param props      Component props.
  * @param props.item The ability.
@@ -55,11 +54,7 @@ export default function NameCell( { item }: { item: AbilityListItem } ) {
 				{ surfaceAction && (
 					<>
 						<Separator />
-						{ /*
-						 * The same button whatever its label, so focus stays on
-						 * it when the label flips. Disabled while pending, but
-						 * still focusable.
-						 */ }
+						{ /* One button for both labels, so focus survives the flip. */ }
 						<Button
 							variant="link"
 							disabled={ surfaceAction.disabled }

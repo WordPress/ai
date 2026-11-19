@@ -22,29 +22,6 @@ use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Wo
 /**
  * Tool_Policy test case.
  *
- * Two questions are under test, and both must fail closed.
- *
- * The first is "can core filter abilities here?". On WordPress 7.0
- * `wp_get_abilities()` takes no parameters, and PHP silently discards extra
- * arguments to userland functions, so a probe that only asks whether the
- * function exists reports "supported" on a WordPress that ignores the filter
- * and hands back the entire registry. That is default-allow on the plugin's
- * stated minimum, so the probe has to inspect the signature rather than trust
- * the name.
- *
- * The second is "does this ability declare conversational-surface
- * eligibility?". WordPress 7.1 answers that through one precedence chain: the
- * `ai-workspace` channel's own `public` key, then the general `meta.public`
- * flag, then the channel's default. Nothing is eligible by silence — core seeds
- * `meta.public` to `false` on every ability at registration, so an author who
- * expressed no opinion has already been given one — and the comparison is
- * strict, so `1` and `"true"` are not eligibility either.
- *
- * Inheritance widens who is eligible, which is why the effect-class check
- * carries more weight than it used to: "public" says an ability may be shown to
- * clients, not that it is safe to hand to a model that can be talked into
- * calling it.
- *
  * @since x.x.x
  *
  * @covers \WordPress\AI\Experiments\AI_Workspace\Tool_Policy
@@ -54,9 +31,7 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	/**
 	 * The provisional declaration meta key.
 	 *
-	 * Deliberately duplicated here rather than read from the class: the key is
-	 * private to {@see Tool_Policy} because issue #354 owns its public name, and
-	 * the test asserts behavior at the key the class currently honors.
+	 * Duplicated rather than read from the class, where the key is private.
 	 *
 	 * @since x.x.x
 	 *
@@ -67,8 +42,7 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	/**
 	 * The curated floor, in registration order, by name.
 	 *
-	 * Written out rather than derived from {@see Tool_Selector} so a change to
-	 * the shipped surface has to be made deliberately in both places.
+	 * Written out, not derived from Tool_Selector, so a surface change must be made in both places.
 	 *
 	 * @since x.x.x
 	 *
@@ -136,8 +110,7 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 				continue;
 			}
 
-			// WordPress 7.2 declares the property, and unsetting a declared property leaves it
-			// uninitialized, so restore core's default rather than removing it.
+			// Unsetting a property WordPress 7.2 declares leaves it uninitialized, so restore the default.
 			if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
 				$object->show_in_abilities = true;
 			} else {
@@ -152,11 +125,6 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 
 	/**
 	 * The probe reports unsupported when filtered discovery is unavailable.
-	 *
-	 * This is the WordPress 7.0 shape: the discovery function exists, but its
-	 * signature accepts nothing, so any arguments passed to it are discarded and
-	 * the caller gets the whole registry back. Reporting "supported" here would
-	 * turn default-deny into default-allow.
 	 *
 	 * @since x.x.x
 	 */
@@ -200,11 +168,6 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	/**
 	 * The channel's explicit opt-out beats a general `public` flag of true.
 	 *
-	 * The precedence WordPress 7.1 defines, in the direction that has to hold
-	 * for an author to be able to say "show this to clients, but not to the
-	 * assistant". If the general flag won here, naming the channel would be
-	 * unable to narrow anything.
-	 *
 	 * @since x.x.x
 	 */
 	public function test_channel_opt_out_beats_a_true_general_public_flag(): void {
@@ -239,9 +202,6 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	/**
 	 * The channel's explicit opt-in beats a general `public` flag of false.
 	 *
-	 * The other direction of the same rule: an ability an author keeps out of
-	 * general client exposure can still be offered to this surface deliberately.
-	 *
 	 * @since x.x.x
 	 */
 	public function test_channel_opt_in_beats_a_false_general_public_flag(): void {
@@ -270,10 +230,6 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 
 	/**
 	 * A generally public ability is admitted without ever naming the channel.
-	 *
-	 * This is the inheritance working, and the reason the discovery query can no
-	 * longer carry a meta condition on the channel key: this ability would never
-	 * have matched one.
 	 *
 	 * @since x.x.x
 	 */
@@ -308,17 +264,6 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	/**
 	 * A public ability with an unsafe effect class is still not admitted.
 	 *
-	 * The check inheritance makes load bearing. `meta.public` is a statement
-	 * about client exposure written for surfaces that only read what an author
-	 * chose to publish; it says nothing about whether an ability is safe to hand
-	 * to a model that site content can talk into calling it. If the effect class
-	 * stopped being enforced here, inheriting from the general flag would mean
-	 * "every public ability is callable by the assistant".
-	 *
-	 * One end-to-end case is enough here: each annotation is tested
-	 * independently against the predicate in
-	 * {@see self::test_effect_class_predicate()}.
-	 *
 	 * @since x.x.x
 	 */
 	public function test_public_ability_with_an_unsafe_effect_class_is_not_admitted(): void {
@@ -352,11 +297,6 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 
 	/**
 	 * Loosely truthy channel declarations do not match.
-	 *
-	 * Core validates the general `meta.public` flag as a boolean at
-	 * registration, so it cannot arrive loose. The channel's own key gets no
-	 * such validation, which makes this the one place a typo could be read as an
-	 * opt-in, and strictness is what stops it.
 	 *
 	 * @since x.x.x
 	 *
@@ -413,10 +353,6 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 
 	/**
 	 * Data provider for the effect-class predicate.
-	 *
-	 * Each of the three annotations is dropped independently, because core
-	 * defaults every annotation to `null` and absence has to fail closed on all
-	 * three rather than on the first one somebody remembered.
 	 *
 	 * @since x.x.x
 	 *
@@ -558,10 +494,6 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	/**
 	 * A stored exclusion for an ability that is gone is not reported.
 	 *
-	 * The stored value is deliberately left alone, so deactivating and
-	 * reactivating the plugin that owns the ability restores the owner's
-	 * decision rather than silently re-admitting it.
-	 *
 	 * @since x.x.x
 	 */
 	public function test_owner_exclusions_are_validated_against_the_registry_on_read(): void {
@@ -584,10 +516,6 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 
 	/**
 	 * On the fail-closed branch every non-curated ability blames the policy.
-	 *
-	 * The declaration-specific reasons would all be lies here: with the policy
-	 * off, an ability that declared perfectly and one that declared nothing are
-	 * excluded for exactly the same cause.
 	 *
 	 * @since x.x.x
 	 */
@@ -647,13 +575,6 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	/**
 	 * The report covers abilities admission never admitted.
 	 *
-	 * This is the whole reason reporting is a separate, argument-free
-	 * enumeration of the registry. Admission hands back only what it admitted,
-	 * so it can never explain a non-match — and an ability that was not admitted
-	 * is exactly the one the owner needs explained. That holds whether the
-	 * narrowing happens in the discovery query or, as it does now, per item
-	 * after it.
-	 *
 	 * @since x.x.x
 	 */
 	public function test_report_enumerates_abilities_admission_never_admitted(): void {
@@ -681,9 +602,6 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 
 	/**
 	 * An ability site code removed says so, rather than blaming the reader.
-	 *
-	 * "Withheld from you because of your capabilities" would send an owner to
-	 * check roles for a removal that roles had no part in.
 	 *
 	 * @since x.x.x
 	 */
@@ -731,10 +649,6 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 
 	/**
 	 * A filter-added ability dropped for its effect class is told so.
-	 *
-	 * It carries no declaration, so the declaration-side walk would call it
-	 * undeclared — true, and not the reason it is missing. Site code did opt it
-	 * in; the effect class is what refused it.
 	 *
 	 * @since x.x.x
 	 */
@@ -892,11 +806,7 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	/**
 	 * Builds a policy whose probe targets a named fixture function.
 	 *
-	 * `.wp-env.json` pins core to the latest release, so WordPress 7.0's
-	 * zero-parameter `wp_get_abilities()` cannot be installed locally. The probe
-	 * therefore reads the name of the function it inspects from an overridable
-	 * seam, and the fixture functions at the foot of this file stand in for the
-	 * two signatures that matter.
+	 * wp-env cannot install WordPress 7.0, so fixtures stand in for its `wp_get_abilities()` signature.
 	 *
 	 * @since x.x.x
 	 *
@@ -935,14 +845,6 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 
 	/**
 	 * A withheld ability is refused however impeccably it annotates itself.
-	 *
-	 * The effect class asks whether an ability writes or reaches outside the
-	 * site. It cannot ask whether handing it to a model is a bad idea. Since the
-	 * surface inherits from `meta.public`, and `core/get-user-info` ships public,
-	 * read-only and not destructive, the only thing keeping a reader of people's
-	 * personal data off the surface was an absent `open_world` hint -- an
-	 * annotation it would be correct for core to add. This is the lock that does
-	 * not depend on core never adding it.
 	 *
 	 * @since x.x.x
 	 */
@@ -1085,9 +987,6 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 if ( ! function_exists( __NAMESPACE__ . '\\wpai_test_zero_parameter_abilities' ) ) {
 	/**
 	 * Stands in for WordPress 7.0's `wp_get_abilities()`, which accepts nothing.
-	 *
-	 * PHP discards extra arguments to userland functions, so calling this with a
-	 * filter returns the whole registry regardless.
 	 *
 	 * @since x.x.x
 	 *

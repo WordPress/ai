@@ -35,24 +35,10 @@ import type {
 const QUESTION_ABILITY = 'ai/ask-user';
 
 /**
- * Summarises what a turn retrieved, as one line (R24, R25).
+ * Summarises what a turn retrieved, as one line.
  *
- * The counts come from the server's own `retrieval` summary, never from
- * arithmetic over a result set. A withheld count in particular is not the gap
- * between a search's `total` and its rows: that gap also contains everything
- * pagination left on later pages, so deriving it would announce posts "hidden
- * by your role" on an ordinary search that simply has more pages.
- *
- * `withheld` is null when the ability reports no count, which is not the same
- * as zero. Null is rendered as silence rather than "none withheld", because
- * only a counting ability can make that claim.
- *
- * "Searched" is `examined`, the rows the ability looked at, not `returned`, the
- * rows that survived its permission filter. Rendering `returned` there would put
- * two numbers side by side that have already had one subtracted from the other,
- * so "searched 8 · 3 hidden" would describe eleven posts the person never had.
- * An ability that reports no `examined` falls back to `returned`, which under-
- * states rather than invents.
+ * Counts come from the server's `retrieval` summary, not `total - rows` (which would count later pages as hidden).
+ * "Searched" uses `examined` (before the permission filter), so it already includes the hidden rows.
  *
  * @param toolCalls The turn's tool invocations.
  * @return The trace line, or null when nothing reported a retrieval.
@@ -75,10 +61,7 @@ function retrievalTrace( toolCalls: ToolCallRecord[] ): string | null {
 		if ( 'read' === summary.kind ) {
 			read += summary.returned;
 		} else {
-			/*
-			 * Clamped to `returned` so a server that ever reported the two out of
-			 * order still cannot render fewer posts searched than were shown.
-			 */
+			// Clamped so "searched" is never fewer than were shown.
 			searched +=
 				'number' === typeof summary.examined
 					? Math.max( summary.examined, summary.returned )
@@ -112,11 +95,6 @@ function retrievalTrace( toolCalls: ToolCallRecord[] ): string | null {
 		);
 	}
 
-	/*
-	 * Named as a capability outcome, not as missing content: the count says how
-	 * many rows the person's own permissions kept back, and deliberately never
-	 * identifies them.
-	 */
 	if ( null !== withheld && withheld > 0 ) {
 		parts.push(
 			sprintf(
@@ -136,11 +114,7 @@ function retrievalTrace( toolCalls: ToolCallRecord[] ): string | null {
 }
 
 /**
- * Collects the proposals a turn produced, in the order they were made.
- *
- * Only the identifier is taken from the tool result. Everything the person then
- * reviews is fetched back from the server's stored copy, so the confirmation
- * cannot show one thing and write another (R16).
+ * Collects the proposal IDs a turn produced, in order.
  *
  * @param toolCalls The turn's tool invocations.
  * @return The proposal identifiers.
@@ -230,11 +204,6 @@ function explainReason( reason: string ): string {
 /**
  * Renders the tool activity for one turn as a labelled, collapsible step.
  *
- * Each invocation record reports which ability ran, how it ended and how long
- * it took, and carries the ability's own result. A result that narrows to a
- * post list is rendered as a table; anything else is left to the assistant's
- * prose, because the transcript can only render shapes it understands.
- *
  * @param props           Component props.
  * @param props.toolCalls The tool invocations.
  * @return The rendered steps, or null when there were none.
@@ -244,14 +213,6 @@ function ToolSteps( { toolCalls }: { toolCalls: ToolCallRecord[] } ) {
 		return null;
 	}
 
-	/*
-	 * The trace is the disclosure's summary rather than a second element above
-	 * it: that keeps what the assistant retrieved on one always-visible line
-	 * (R24) while the per-invocation detail stays one interaction away, which
-	 * is what the plan asks for without rendering the same facts twice. An
-	 * ability that reports no retrieval summary falls back to naming the steps,
-	 * so a tool this component does not understand still discloses that it ran.
-	 */
 	const trace = retrievalTrace( toolCalls );
 
 	return (
@@ -295,9 +256,6 @@ function ToolSteps( { toolCalls }: { toolCalls: ToolCallRecord[] } ) {
 
 /**
  * Renders the terminal state of one turn.
- *
- * The round cap is its own state: the model ended the turn, so it is neither a
- * success nor a transport failure and it offers no retry (R10).
  *
  * @param props         Component props.
  * @param props.entry   The transcript entry.
@@ -384,11 +342,7 @@ function TurnState( {
 }
 
 /**
- * Renders the conversation.
- *
- * The transcript itself is not a live region: it updates on every chunk, and
- * announcing that would flood assistive technology. Announcements come from the
- * single polite region the app renders, at sentence boundaries.
+ * Renders the conversation; not a live region, since the app announces at sentence boundaries.
  *
  * @param props                Component props.
  * @param props.entries        The transcript entries.
@@ -398,8 +352,7 @@ function TurnState( {
  * @param props.conversationId The conversation being rendered.
  * @param props.onFollowUp     Asks the assistant to follow up a settled proposal.
  * @param props.onAnswer       Sends a question's choice as the next message.
- * @param props.outcomes       Outcomes already reported into a reopened chat,
- *                             keyed by proposal ID.
+ * @param props.outcomes       Reported outcomes, keyed by proposal ID.
  * @return The rendered transcript.
  */
 export default function Transcript( {
@@ -428,13 +381,7 @@ export default function Transcript( {
 	return (
 		<ol className="ai-workspace__turns">
 			{ entries.map( ( entry, index ) => {
-				/*
-				 * A question can be answered only while the person has sent
-				 * nothing after it. Their next message is what answered it: a
-				 * click on a choice and a typed reply both arrive that way. An
-				 * automatic follow-up, after a proposal was settled, is not an
-				 * answer, so it leaves the question open once it has finished.
-				 */
+				// The next non-follow-up message answers a question; follow-ups leave it open.
 				const later = entries.slice( index + 1 );
 				const answer = later.find( ( item ) => ! item.followUp );
 				const isLive =
@@ -458,10 +405,7 @@ export default function Transcript( {
 							className="ai-workspace__message ai-workspace__message--assistant"
 							aria-label={ __( 'Assistant response', 'ai' ) }
 						>
-							{ /*
-							 * A question is rendered as its own card below, so
-							 * it is not also listed as a lookup step.
-							 */ }
+							{ /* Questions render as their own card below. */ }
 							<ToolSteps
 								toolCalls={ entry.toolCalls.filter(
 									( call ) =>

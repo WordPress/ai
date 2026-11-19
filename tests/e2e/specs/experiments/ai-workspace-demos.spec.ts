@@ -1,11 +1,5 @@
 /**
- * End-to-end coverage for the AI Workspace starter prompts.
- *
- * Each of the four suggestions on the empty state is sent as it is worded, and
- * each must end in something the person can act on: choices, a filtered list
- * with choices, drafts to approve or a template to approve. The model's tool
- * calls are scripted by fixtures, so these prove the wiring and the wording,
- * not what a live model would choose to do.
+ * End-to-end coverage for the AI Workspace starter prompts, with the model scripted by fixtures.
  */
 /**
  * External dependencies
@@ -43,10 +37,7 @@ const SCENARIOS = join(
 );
 
 /**
- * What each choice the demo fixtures offer leads to.
- *
- * A choice the workspace cannot carry out would end a demo on a dead end, so
- * every choice must map to a read tool or a registered proposal kind.
+ * The tool each demo choice leads to; a choice with no tool would be a dead end.
  */
 const CHOICE_TOOLS: Record< string, string > = {
 	'Draft topic 1': 'ai/propose-drafts',
@@ -58,9 +49,7 @@ const CHOICE_TOOLS: Record< string, string > = {
 };
 
 /**
- * The prompt each suggestion fills the composer with.
- *
- * Pinned so the wording keeps asking only for what the tools can deliver.
+ * The prompt each suggestion fills the composer with, pinned to what the tools can deliver.
  */
 const PROMPTS: Record< string, string > = {
 	'Find a gap':
@@ -99,8 +88,7 @@ async function sendSuggestion(
 	await activateMockScenario( utils, scenario );
 	await admin.visitAdminPage( WORKSPACE_PAGE );
 
-	// Scoped to the empty state: earlier chats named after the same prompt
-	// are listed in the Chats panel too.
+	// Scoped: the Chats panel can list an earlier chat with the same name.
 	await page
 		.locator( '.ai-workspace__suggestions' )
 		.getByRole( 'button', { name: new RegExp( `^${ label }` ) } )

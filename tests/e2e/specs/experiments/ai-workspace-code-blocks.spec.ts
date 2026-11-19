@@ -20,12 +20,7 @@ import {
 const EXPERIMENT_ID = 'ai-workspace';
 const WORKSPACE_PAGE = 'admin.php?page=ai-workspace';
 
-/*
- * The `workspace-code` scenario answers with one 40-line html block and one
- * 5-line php block (tests/e2e-testing/responses/Anthropic/scenarios/). Like
- * the tool loop specs, it is served by the Anthropic mock, so Anthropic is
- * seeded alone and OpenAI is restored afterwards.
- */
+// The `workspace-code` scenario (a 40-line html and a 5-line php block) is served only by the Anthropic mock.
 const seedAnthropic = ( requestUtils: RequestUtils ) =>
 	seedCredentials( requestUtils, [ 'anthropic' ] );
 
@@ -65,7 +60,6 @@ test.describe( 'AI Workspace code blocks', () => {
 		await expect( toggle ).toHaveAccessibleName( 'Show all 40 lines' );
 		await expect( toggle ).toHaveAttribute( 'aria-expanded', 'false' );
 
-		// Collapsed, the block shows only part of its text.
 		const clipped = await pre.evaluate(
 			( node ) => node.scrollHeight > node.clientHeight + 1
 		);
@@ -142,8 +136,6 @@ test.describe( 'AI Workspace code blocks', () => {
 			'Copied'
 		);
 
-		// The control itself shows the copy took, for anyone not using a
-		// screen reader.
 		await expect(
 			block.getByRole( 'button', { name: 'Copied' } )
 		).toBeVisible();

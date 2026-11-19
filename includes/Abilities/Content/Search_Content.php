@@ -21,30 +21,9 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Class - Search_Content
  *
- * Registers the read-only `ai/search-content` ability, which runs a full-text search
- * across the post types exposed to abilities via `show_in_abilities` and returns a
- * bounded list of matching posts as titles and excerpts. Without a search term it
- * lists the newest posts instead, and either way the list can be narrowed by a
- * taxonomy term, a date range and whether a post has a featured image.
+ * Registers the read-only `ai/search-content` ability: full-text search returning titles and excerpts.
  *
- * This is a sibling of {@see Content}, not a change to it: `core/content-query` is kept
- * byte-similar to WordPress core's copy, and its registered description states that its
- * lookups and filters are exact-match only. Rather than widen that ability, this class
- * adds search as its own ability so every ability consumer — the AI Workspace, the MCP
- * surface, and the Abilities Explorer — gets the same behavior.
- *
- * Two properties are load bearing:
- *
- *  - The result set is capped at {@see self::MAX_PER_PAGE} items. That is a context
- *    limit for the model, not an access control.
- *  - Every returned row is filtered at execute time by the requesting user's own
- *    capabilities, using the same read permission walk `core/content-query` performs,
- *    so a result set never contains an item the user could not otherwise read. The
- *    permission callback can only gate the request coarsely, because the matching
- *    rows are unknown until the query runs.
- *
- * Full body content is deliberately never returned. A body is read separately, and
- * for a handful of posts at a time, by {@see Read_Content_Bodies}.
+ * Separate from {@see Content} because `core/content-query` stays close to core's exact-match copy.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -77,10 +56,7 @@ final class Search_Content {
 	private const DEFAULT_PER_PAGE = 10;
 
 	/**
-	 * Maximum number of results returned per page.
-	 *
-	 * A search hands its results to a model as conversation context, so the page size
-	 * is capped low on purpose. See {@see self::normalize_per_page()}.
+	 * Maximum number of results returned per page, kept low because results become model context.
 	 *
 	 * @since x.x.x
 	 * @var int
@@ -97,9 +73,6 @@ final class Search_Content {
 
 	/**
 	 * Hooks the ability into the Abilities API.
-	 *
-	 * The `content` category is registered as a fallback so the ability can be enabled
-	 * on its own, without the experiment that registers {@see Content}.
 	 *
 	 * @since x.x.x
 	 */
@@ -135,10 +108,6 @@ final class Search_Content {
 	 * @since x.x.x
 	 */
 	public function register(): void {
-		/*
-		 * Post types must be registered with `show_in_abilities` before the ability is
-		 * registered so they are included in its input schema.
-		 */
 		$post_types = array_keys( $this->get_exposed_post_types() );
 		if ( empty( $post_types ) ) {
 			return;
@@ -148,9 +117,6 @@ final class Search_Content {
 			wp_unregister_ability( self::ABILITY );
 		}
 
-		/*
-		 * Internal statuses (e.g. `inherit`) are excluded, matching `core/content-query`.
-		 */
 		$statuses = array_values( get_post_stati( array( 'internal' => false ) ) );
 
 		wp_register_ability(
@@ -172,8 +138,7 @@ final class Search_Content {
 						'readonly'    => true,
 						'destructive' => false,
 						'idempotent'  => true,
-						// MCP clients assume open-world (may reach external systems) when the
-						// hint is absent; this ability only reads the local database.
+						// MCP clients assume open-world when the hint is absent.
 						'open_world'  => false,
 					),
 					'show_in_rest' => true,
@@ -185,11 +150,7 @@ final class Search_Content {
 	/**
 	 * Permission callback for the `ai/search-content` ability.
 	 *
-	 * This gate is coarse by necessity: which rows a search matches is unknown until the
-	 * query runs, so it only checks that the caller is authenticated and that at least one
-	 * exposed post type may be queried with the requested statuses. Row-level read
-	 * permission is enforced in {@see self::execute_search_content()}, which is the check
-	 * that keeps results free of posts the caller cannot read.
+	 * Coarse by necessity; per-row read permission is enforced at execute time.
 	 *
 	 * @since x.x.x
 	 *
@@ -207,42 +168,11 @@ final class Search_Content {
 	/**
 	 * Executes the `ai/search-content` ability.
 	 *
-	 * {@see \WP_Ability::execute()} always runs {@see self::check_permission()} first, so
-	 * this only needs to enforce what the gate could not: every matched row is checked
-	 * against the current user's read permission before it is included, mirroring the
-	 * row filtering `core/content-query` performs in query mode.
-	 *
-	 * Totals come from the underlying query and may therefore exceed the number of
-	 * returned rows, matching `core/content-query` and the REST posts controller.
-	 *
-	 * `total` exceeds the returned rows for two unrelated reasons — the rest of the
-	 * matches are on later pages, and the permission walk dropped some of this page —
-	 * so the difference between them says nothing about either. `withheld` reports the
-	 * second reason on its own: it counts the rows this call built its page from and
-	 * then dropped, and pagination never contributes to it. A consumer that wants to
-	 * tell a person their role kept something back must read `withheld`; deriving it as
-	 * `total - count( results )` would report every unvisited page as hidden by role.
-	 *
-	 * `withheld` is null, not a number, when {@see self::queryable_post_types()} dropped
-	 * a whole post type for permission reasons before the query ran. Rows of that post
-	 * type never reach the row filter, so the per-row count is no longer the whole
-	 * permission story and reporting it as an integer would state "nothing more was kept
-	 * back" on the strength of a walk that never saw those rows. How many rows the
-	 * unsearched post types would have matched is not knowable without querying them
-	 * under capabilities the caller does not hold, so no count is invented for them.
-	 *
-	 * `examined` counts the rows this page was built from, before the row filter ran, so
-	 * a consumer can say how much was looked at without reading `results` as that number.
-	 * It is not a permission figure and never identifies a row.
+	 * `withheld` counts rows on this page the permission check dropped; don't derive it from `total`.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
-	 * Without a search term the newest posts are listed, and the same row filter and
-	 * counts apply. A taxonomy filter that names a taxonomy this ability does not list
-	 * is refused rather than ignored, so a typo can never widen the list to every post;
-	 * one that names terms the taxonomy does not have matches nothing.
-	 *
 	 * @return array{results: list<array<string, mixed>>, total: int, total_pages: int, examined: int, withheld: int|null}|\WP_Error The bounded, filtered result set, or an error for an unknown taxonomy or an impossible date.
 	 */
 	public function execute_search_content( $input = array() ) {
@@ -260,19 +190,10 @@ final class Search_Content {
 			return $date_query;
 		}
 
-		/*
-		 * Resolved once, because the dropped list is as load bearing as the queryable
-		 * one: a post type the status gate removed here is a permission outcome the
-		 * per-row count below can never see.
-		 */
 		$resolved   = $this->resolve_post_types( $input );
 		$post_types = $resolved['queryable'];
 
-		/*
-		 * A whole post type was excluded for permission reasons, so the page-level
-		 * count answers only for the types that were searched. Report no count at all
-		 * rather than a number that reads as the whole story.
-		 */
+		// A dropped post type makes the per-row `withheld` count incomplete, so report null.
 		$permission_gap = array() !== $resolved['dropped'];
 
 		$empty = array(
@@ -283,7 +204,7 @@ final class Search_Content {
 			'withheld'    => $permission_gap ? null : 0,
 		);
 
-		// A filter that names terms the taxonomy does not have matches nothing.
+		// Unknown terms match nothing rather than widening the list.
 		if ( array() === $post_types || ( null !== $tax && array() === $tax['term_ids'] ) ) {
 			return $empty;
 		}
@@ -291,13 +212,6 @@ final class Search_Content {
 		$per_page = $this->normalize_per_page( $input );
 		$page     = isset( $input['page'] ) ? max( 1, $this->input_int( $input['page'] ) ) : 1;
 
-		/*
-		 * Relevance is left to WP_Query, which orders search results by it and falls
-		 * back to post date; without a term there is nothing to rank, so the newest
-		 * posts come first. `posts_per_page` is always clamped, so the query is
-		 * bounded regardless of the caller's input. The meta and term caches are
-		 * primed because every row reports its terms and featured image.
-		 */
 		$query_args = array(
 			'post_type'              => $post_types,
 			'post_status'            => $this->normalize_statuses( $input ),
@@ -337,16 +251,7 @@ final class Search_Content {
 			$query_args['meta_query'] = $featured_image; // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- A featured-image filter the caller asked for, on a bounded page.
 		}
 
-		/*
-		 * `perm` is only asked for when a single post type is queried. WP_Query resolves
-		 * the readable-status capabilities from the queried post type, and for a query
-		 * spanning more than one post type it falls back to the placeholder capability
-		 * `read_private_multiple_post_types`, which nobody holds — narrowing private
-		 * statuses to the caller's own posts even for an administrator. That would hide
-		 * readable posts rather than expose unreadable ones, but the row filter below is
-		 * the authoritative check either way, so the redundant SQL gate is only added
-		 * where core can express it correctly.
-		 */
+		// Multi-type queries check `read_private_multiple_post_types`, which nobody holds.
 		if ( 1 === count( $post_types ) ) {
 			$query_args['perm'] = 'readable';
 		}
@@ -356,12 +261,6 @@ final class Search_Content {
 
 		$results = array();
 
-		/*
-		 * Counted here, one row at a time, rather than derived from the totals: this
-		 * loop is the only place that knows which rows the permission walk rejected.
-		 * A row that is not a post at all is not a permission outcome and is skipped
-		 * without being counted.
-		 */
 		$withheld = 0;
 
 		foreach ( $query->posts as $post ) {
@@ -411,11 +310,7 @@ final class Search_Content {
 	}
 
 	/**
-	 * Parses a raw list input into a list of strings.
-	 *
-	 * A GET request delivers list inputs as scalar/CSV strings; this parses them the
-	 * same way schema validation did (wp_parse_list) so they are honored regardless of
-	 * transport, mirroring {@see Content}.
+	 * Parses a raw list input, which GET delivers as a CSV string, into a list of strings.
 	 *
 	 * @since x.x.x
 	 *
@@ -435,17 +330,6 @@ final class Search_Content {
 	/**
 	 * Resolves the post types the current user may search with the requested statuses.
 	 *
-	 * A request naming no post type searches every exposed post type, so the status gate
-	 * is applied per post type and the types that fail it are dropped rather than failing
-	 * the whole request: a contributor searching drafts can still search their own posts
-	 * even though they cannot query draft pages. A post type named explicitly by the
-	 * caller but not exposed to abilities fails the request outright, so an unexposed post
-	 * type is never silently searched or silently skipped.
-	 *
-	 * This is both the permission gate and the query's post type list, so the two cannot
-	 * disagree. It is a coarse gate only: each matched row is still checked individually
-	 * by {@see self::check_read_permission()}.
-	 *
 	 * @since x.x.x
 	 *
 	 * @param array<mixed> $input The ability input.
@@ -458,15 +342,7 @@ final class Search_Content {
 	/**
 	 * Resolves the requested post types into the ones that may be searched and the ones dropped.
 	 *
-	 * The dropped list exists because dropping a post type here is a permission outcome
-	 * that the execute-time row filter can never observe: those rows are excluded from
-	 * the SQL, so they are never counted as withheld. A caller that reports a permission
-	 * figure has to know this list was non-empty, or it will report the page's own count
-	 * as though it were the whole story. See {@see self::execute_search_content()}.
-	 *
-	 * A post type named explicitly but not exposed to abilities fails the request
-	 * outright and is not a drop: both lists come back empty, so nothing is reported as
-	 * withheld for a request that was refused rather than narrowed.
+	 * A named post type that isn't exposed refuses the request: both lists come back empty.
 	 *
 	 * @since x.x.x
 	 *
@@ -523,10 +399,7 @@ final class Search_Content {
 	/**
 	 * Normalizes the requested per-page value to the supported bounds.
 	 *
-	 * Mirrors `normalize_per_page()` in the users ability, with a lower ceiling: search
-	 * results are model context, so the cap is {@see self::MAX_PER_PAGE}. Clamping here
-	 * as well as in the input schema keeps the bound in force on transports that do not
-	 * validate input against the schema.
+	 * Clamped here too, for transports that skip schema validation.
 	 *
 	 * @since x.x.x
 	 *
@@ -542,9 +415,7 @@ final class Search_Content {
 	/**
 	 * Returns the query total, recovering it when WP_Query skipped the count.
 	 *
-	 * WP_Query leaves `found_posts` at 0 when a requested page has no rows. Re-run a
-	 * minimal unpaged query so a caller who paged past the end still learns how many
-	 * posts matched, mirroring {@see Content}.
+	 * WP_Query leaves `found_posts` at 0 for a page past the end.
 	 *
 	 * @since x.x.x
 	 *
@@ -573,9 +444,7 @@ final class Search_Content {
 	/**
 	 * Returns the post types exposed through the Abilities API, keyed by name.
 	 *
-	 * Deliberately resolved on every call rather than cached: post types can be
-	 * unregistered or re-registered with different arguments between the ability
-	 * being registered and the ability being used.
+	 * Not cached: post types can be re-registered between registration and use.
 	 *
 	 * @since x.x.x
 	 *
@@ -592,10 +461,7 @@ final class Search_Content {
 	}
 
 	/**
-	 * Resolves a capability name from a post type's capability map.
-	 *
-	 * The capability map is a plain object with untyped properties, so guard the
-	 * lookup and fail closed with `do_not_allow` when the name cannot be resolved.
+	 * Resolves a capability name from a post type's capability map, failing closed.
 	 *
 	 * @since x.x.x
 	 *
@@ -612,11 +478,7 @@ final class Search_Content {
 	/**
 	 * Checks whether the current user may query the requested statuses.
 	 *
-	 * Mirrors `can_query_statuses()` in {@see Content}, which in turn mirrors the REST
-	 * posts controller's conservative collection-status gate: requesting non-default
-	 * statuses requires edit access, except `private`, which may be queried by users who
-	 * can read private posts. Passing this gate does not make a row readable; every row
-	 * is still checked individually at execute time.
+	 * Mirrors `can_query_statuses()` in {@see Content}.
 	 *
 	 * @since x.x.x
 	 *
@@ -649,10 +511,7 @@ final class Search_Content {
 	/**
 	 * Checks if a post can be read by the current user.
 	 *
-	 * Mirrors `check_read_permission()` in {@see Content} — itself a mirror of the REST
-	 * posts controller's read permission — including the inherited-parent walk, so the
-	 * two abilities cannot disagree about what a user may see. This is the row filter
-	 * that keeps a search result set free of posts the caller cannot read.
+	 * Mirrors `check_read_permission()` in {@see Content}, itself a mirror of the REST posts controller.
 	 *
 	 * @since x.x.x
 	 *
@@ -672,19 +531,11 @@ final class Search_Content {
 			return false;
 		}
 
-		/*
-		 * Treat publicly viewable posts as readable. This checks both the post type
-		 * and post status using Core's viewability helpers, which is stricter than
-		 * checking the status object's `public` flag alone.
-		 */
 		if ( is_post_publicly_viewable( $post ) ) {
 			return true;
 		}
 
-		/*
-		 * Use the normalized status for the status object lookup. For attachments,
-		 * get_post_status() resolves `inherit` through the parent before returning.
-		 */
+		// Resolves an attachment's `inherit` through its parent.
 		$post_status = get_post_status( $post );
 		if ( ! is_string( $post_status ) ) {
 			return false;
@@ -695,27 +546,16 @@ final class Search_Content {
 			return false;
 		}
 
-		/*
-		 * Core maps `read_post` for public statuses to the post type's plain `read`
-		 * capability. Publicly viewable posts already returned above, so a remaining
-		 * public status is public but not viewable and should require edit access.
-		 */
+		// Public but not viewable: core's `read_post` would only require `read`.
 		if ( $post_status_object->public ) {
 			return current_user_can( 'edit_post', $post->ID );
 		}
 
-		/*
-		 * For non-public statuses, defer to Core's meta-capability mapping. This
-		 * handles own drafts, private posts, and statuses that require edit access.
-		 */
 		if ( current_user_can( 'read_post', $post->ID ) ) {
 			return true;
 		}
 
-		/*
-		 * Mirror the REST posts controller's inherited-parent behavior, but keep the
-		 * ability fail-closed for missing parents or parent loops.
-		 */
+		// Inherited-parent walk, fail-closed on missing parents or loops.
 		if (
 			'inherit' === $post->post_status &&
 			$post->post_parent > 0 &&
@@ -733,10 +573,7 @@ final class Search_Content {
 	/**
 	 * Formats a readable post into a search result.
 	 *
-	 * The excerpt of a password-protected post is withheld unless the current user can
-	 * edit that post, mirroring the REST posts controller. For such an editor the
-	 * cookie-based password gate is suspended only while this post's excerpt is built,
-	 * so other protected posts a filter may render stay locked.
+	 * A password-protected excerpt is withheld unless the user can edit the post, as in REST.
 	 *
 	 * @since x.x.x
 	 *
@@ -788,17 +625,7 @@ final class Search_Content {
 	/**
 	 * Returns the editor URL for a post the current user can edit.
 	 *
-	 * The URL doubles as the permission proof: it is present only when the current user
-	 * can edit the post, so a consumer offering an edit affordance does not have to
-	 * re-derive the capability, and cannot construct an editor URL for a post the user
-	 * may only read.
-	 *
-	 * The explicit capability check is deliberate redundancy. {@see get_edit_post_link()}
-	 * already returns nothing for a user who cannot edit, so this gate changes no
-	 * behaviour today -- verified by mutation, where removing it left the tests green.
-	 * It is kept because the emptiness of this field is a permission guarantee consumers
-	 * rely on, and that guarantee should not rest on the internals of a core function
-	 * that is free to change.
+	 * Consumers treat a non-empty URL as permission proof, hence the explicit capability check.
 	 *
 	 * @since x.x.x
 	 *
@@ -815,10 +642,6 @@ final class Search_Content {
 
 	/**
 	 * Filters {@see post_password_required()} to unlock only posts the current user can edit.
-	 *
-	 * Added by {@see self::format_post()} while formatting a password-protected post the
-	 * current user can edit, so the excerpt resolves to its real value without also
-	 * unlocking other protected posts an excerpt filter may render.
 	 *
 	 * @since x.x.x
 	 *
@@ -847,10 +670,6 @@ final class Search_Content {
 		add_filter( 'protected_title_format', $strip );
 		add_filter( 'private_title_format', $strip );
 
-		/*
-		 * The format filters are removed in a finally block so a throw from a title
-		 * filter cannot leave them attached for the rest of the request.
-		 */
 		try {
 			return get_the_title( $post );
 		} finally {
@@ -871,16 +690,7 @@ final class Search_Content {
 	}
 
 	/**
-	 * Returns the post excerpt as plain text.
-	 *
-	 * Applies the `get_the_excerpt` filter chain, which generates a trimmed excerpt from
-	 * the post content when the post has no explicit excerpt, then strips markup so the
-	 * result is usable as model context. Post globals are prepared and restored around
-	 * the filters so filters relying on loop globals render against the requested post,
-	 * mirroring the REST posts controller and {@see Content}.
-	 *
-	 * The `the_excerpt` filter is deliberately not applied: it only adds display markup
-	 * that is stripped again here.
+	 * Returns the post excerpt, via `get_the_excerpt`, as plain text.
 	 *
 	 * @since x.x.x
 	 *
@@ -898,11 +708,6 @@ final class Search_Content {
 		$GLOBALS['post'] = $post;
 		setup_postdata( $post );
 
-		/*
-		 * The global post context is restored in a finally block so a throw from an
-		 * excerpt filter cannot leave it pointing at this post for the rest of the
-		 * request.
-		 */
 		try {
 			/** This filter is documented in wp-includes/post-template.php. */
 			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core excerpt filter to mirror REST rendering.
@@ -1011,10 +816,7 @@ final class Search_Content {
 			),
 		);
 
-		/*
-		 * Offered only when there is a taxonomy to filter by: an empty `enum` is not
-		 * a valid schema, and a filter with nothing to name has no use.
-		 */
+		// An empty `enum` is not a valid schema.
 		if ( array() !== $taxonomies ) {
 			$schema['properties']['tax'] = array(
 				'type'                 => 'object',
@@ -1045,9 +847,6 @@ final class Search_Content {
 
 	/**
 	 * Builds the output schema for the `ai/search-content` ability.
-	 *
-	 * Result rows carry identifying metadata plus a title and an excerpt. Full body
-	 * content is intentionally absent: it belongs to {@see Read_Content_Bodies}.
 	 *
 	 * @since x.x.x
 	 *

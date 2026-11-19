@@ -1,10 +1,5 @@
 /**
  * Browser coverage for "Ask AI" from the command palette into the AI Workspace.
- *
- * When the palette finds nothing for a search, a workspace user is offered an
- * "Ask in AI Workspace: <query>" row after any AI suggestions. Choosing it opens the
- * workspace with the query in the composer, unsent, and the query is removed
- * from the URL so a reload does not bring it back.
  */
 /**
  * External dependencies
@@ -204,10 +199,7 @@ test.describe( 'AI Workspace handoff from the command palette', () => {
 		admin,
 		page,
 	} ) => {
-		/*
-		 * Opened by URL: typing 2,000 characters into the palette makes its
-		 * own fuzzy matching take minutes. The cap is the server's either way.
-		 */
+		// Opened by URL: typing 2,000 characters makes the palette's fuzzy matching take minutes.
 		await admin.visitAdminPage(
 			'admin.php',
 			`page=ai-workspace&wpai-prompt=${ 'a'.repeat( 2000 ) }`

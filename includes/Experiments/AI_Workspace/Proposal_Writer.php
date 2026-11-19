@@ -15,23 +15,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Writes the items of a confirmed proposal, one log row per attempt.
  *
- * There is deliberately no ability wrapping a writer, and nothing but
- * {@see REST\Proposal_Controller} calls one. A registered write ability would be
- * reachable by every ability consumer on the site — the MCP surface, the
- * Abilities Explorer, any third-party caller — none of which has a confirm gate,
- * which would make the gate a property of one controller rather than of the
- * write path. Keeping the write private is what makes R15 hold everywhere.
- *
- * Three properties are load bearing, and every kind inherits them:
- *
- * - **Capability is re-checked per item at write time.** The proposal was
- *   validated when it was made, and a capability can be revoked in between.
- * - **Items are independent.** One item that cannot be written does not stop the
- *   others, and each reports its own outcome (R17). Nothing is retried here.
- * - **Writes are idempotent per item.** Each created post carries the item's
- *   idempotency token in meta, so re-executing the same proposal — a double
- *   submit, a retried request — finds the existing post instead of writing a
- *   second one.
+ * Deliberately not an ability: only {@see REST\Proposal_Controller}, which enforces the confirm gate, may write.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -107,17 +91,7 @@ abstract class Proposal_Writer implements Proposal_Kind {
 	/**
 	 * Finds the post an item already created, if it created one.
 	 *
-	 * The token lives in post meta rather than only on the stored proposal, so
-	 * idempotency survives the proposal transient being evicted between two
-	 * executions of the same request.
-	 *
-	 * Every registered status is listed rather than passing `any`, which drops
-	 * the statuses flagged `exclude_from_search` — `trash` among them. Trashing
-	 * the post an item created would otherwise hide it from this lookup and let
-	 * a replay of the same proposal write the post a second time, which is the
-	 * one thing the token exists to prevent. A trashed row still reports
-	 * `duplicate`: the item was written once already, and re-creating it would
-	 * undo a deliberate deletion rather than honour it.
+	 * Lists every status rather than `any`, which skips `trash` and would let a replay recreate a trashed post.
 	 *
 	 * @since x.x.x
 	 *

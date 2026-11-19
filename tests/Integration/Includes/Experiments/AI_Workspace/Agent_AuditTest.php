@@ -19,10 +19,6 @@ use WordPress\AI\Logging\Logging_Integration;
 /**
  * Agent_Audit test case.
  *
- * Every agent event is one log row of the `agent` type and one call of the
- * `wpai_agent_event` hook, and the hook fires whether or not the AI Request
- * Logging experiment is on (R14, R15).
- *
  * @since x.x.x
  *
  * @covers \WordPress\AI\Experiments\AI_Workspace\Agent_Audit

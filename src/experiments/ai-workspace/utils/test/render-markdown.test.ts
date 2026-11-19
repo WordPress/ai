@@ -1,10 +1,5 @@
 /**
  * Unit coverage for the AI Workspace restricted-subset markdown renderer.
- *
- * The renderer is the R19 / KTD9 security boundary and is pure logic, so it is
- * asserted directly rather than through the browser.
- *
- * External dependencies
  */
 /**
  * External dependencies
@@ -143,9 +138,6 @@ describe( 'AI Workspace markdown renderer', () => {
 	} );
 
 	test( 'keeps numbering across a list broken up by paragraphs', () => {
-		// A model writing a numbered lineup puts prose between the items, which
-		// splits one list into several. Without the opening ordinal, every run
-		// restarted at 1 and the reader saw five items all numbered "1.".
 		const blocks = renderMarkdown(
 			[
 				'1. **First title**',
@@ -320,15 +312,12 @@ describe( 'AI Workspace markdown renderer', () => {
 			OPTIONS
 		);
 
-		// One paragraph, not three: a single newline is a break, not a new block.
 		expect( blocks ).toHaveLength( 1 );
 		expect( blocks[ 0 ]?.type ).toBe( 'paragraph' );
 
 		const types = inlineNodes( blocks ).map( ( node ) => node.type );
 
-		// Two breaks for three lines, and no newline smuggled into a text node --
-		// a newline inside a text node collapses to a space when rendered, which
-		// is what silently flattened a limerick into one run-on line.
+		// A newline inside a text node would render as a space.
 		expect( types.filter( ( type ) => 'break' === type ) ).toHaveLength(
 			2
 		);

@@ -1,12 +1,5 @@
 /**
- * Coverage for the AI Workspace post-markup renderer, `renderHtml()`.
- *
- * The update card shows a post's proposed content through `renderHtml()`, so
- * it is the boundary between markup an approver approves and markup they see.
- * It needs `DOMParser`, which Node does not have, so the module and the one it
- * imports are transpiled with TypeScript and run in a blank browser page.
- * Nothing here needs the WordPress site; the page is `about:blank` with the
- * modules added as an inline script.
+ * Coverage for the AI Workspace post-markup renderer, `renderHtml()`, run in a blank page since it needs `DOMParser`.
  */
 
 /**
@@ -30,8 +23,7 @@ const ALLOWED_HOST = 'example.test';
 const GLOBAL_NAME = 'AiWorkspaceRenderHtml';
 
 /**
- * The modules the renderer needs, by the specifier `render-html.ts` imports
- * them with. `render-markdown.ts` imports nothing.
+ * The modules the renderer needs, keyed by the specifier `render-html.ts` imports them with.
  */
 const MODULES: Record< string, string > = {
 	'./render-markdown': 'render-markdown.ts',
@@ -39,10 +31,7 @@ const MODULES: Record< string, string > = {
 };
 
 /**
- * Transpiles the renderer into a script that sets one global.
- *
- * Each module becomes a CommonJS function behind a small `require`, so the
- * script needs no bundler and runs as plain browser JavaScript.
+ * Transpiles the renderer into a bundler-free script that sets one global.
  *
  * @return The script source.
  */

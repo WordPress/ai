@@ -18,9 +18,6 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Proposes and writes posts of any type exposed to abilities.
  *
- * This is the kind {@see Propose_Drafts} stores, and the kind a proposal stored
- * before proposals had kinds is read as.
- *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
  * @since x.x.x
@@ -111,10 +108,6 @@ final class Draft_Writer extends Proposal_Writer {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * Proposing drafts writes nothing, but a user who cannot edit any post has
-	 * nothing to gain from being offered it, and its own permission callback
-	 * refuses them anyway.
-	 *
 	 * @since x.x.x
 	 */
 	public function capability(): string {
@@ -176,11 +169,7 @@ final class Draft_Writer extends Proposal_Writer {
 			);
 		}
 
-		/*
-		 * A status the user cannot reach fails the proposal outright. Silently
-		 * downgrading it to a draft would write something other than what the
-		 * person was shown and approved.
-		 */
+		// Refuse rather than downgrade, so what is written matches what the person approved.
 		// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 		if ( in_array( $status, self::PUBLISH_STATUSES, true ) && ! current_user_can( $this->post_type_cap( $post_type_object, 'publish_posts' ) ) ) {
 			return new WP_Error(
@@ -201,25 +190,8 @@ final class Draft_Writer extends Proposal_Writer {
 		}
 
 		/*
-		 * Body text is sanitized here, when it is stored, and not later when it is
-		 * written. The confirmation screen renders the stored values, so filtering
-		 * at store time keeps what the person was shown identical to what is
-		 * written (R16); filtering at write time would show one thing and write
-		 * another.
-		 *
-		 * It is unconditional, and deliberately not left to WordPress. The screen
-		 * is gated on `manage_options`, so the approving user almost always holds
-		 * `unfiltered_html` and core's own `content_save_pre` kses pass never runs
-		 * for them — yet this text is model output derived from site content a
-		 * lower-privileged author can write, so its provenance is not the
-		 * approver's. The approver is also not a reliable filter: the body sits
-		 * behind a collapsed `<details>`, so it may be approved unread.
-		 *
-		 * `wp_kses_post()` is the right ruleset rather than something stricter:
-		 * it strips scripts and event handlers while leaving block delimiter
-		 * comments intact, so a proposed block document survives it, and it is the
-		 * same ruleset core would apply to both fields on save for a user without
-		 * `unfiltered_html`.
+		 * Kses at store time, unconditionally: the approver usually has `unfiltered_html`,
+		 * but this is model output derived from content lower-privileged authors can write.
 		 */
 		return array(
 			'post_type' => $post_type,
@@ -270,10 +242,7 @@ final class Draft_Writer extends Proposal_Writer {
 			return $this->outcome( $item, 'failed', 0, 'invalid_post_type', __( 'That post type can no longer be written to.', 'ai' ) );
 		}
 
-		/*
-		 * Re-checked here, not only when the proposal was made: a capability can
-		 * be revoked between the two requests, and this is the one that writes.
-		 */
+		// Re-checked: a capability can be revoked after the proposal was made.
 		$denied = $this->denial_reason( $post_type_object, $status );
 
 		if ( '' !== $denied ) {

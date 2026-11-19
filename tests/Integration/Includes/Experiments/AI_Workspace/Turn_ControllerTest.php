@@ -35,11 +35,6 @@ use WordPress\AiClient\Tools\DTO\FunctionCall;
 /**
  * Turn_Controller and Turn_Runner test case.
  *
- * The model is always a scripted fake, so no request ever leaves the site and the
- * assertions are about the parts that have to be proven: which tools are declared,
- * what comes back from a tool the user cannot run, what the model is handed, what
- * is written to the request log, and whether the loop can be stopped.
- *
  * @since x.x.x
  *
  * @covers \WordPress\AI\Experiments\AI_Workspace\REST\Turn_Controller
@@ -173,8 +168,7 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 				continue;
 			}
 
-			// WordPress 7.2 declares the property, and unsetting a declared property leaves it
-			// uninitialized, so restore core's default rather than removing it.
+			// Unsetting a property WordPress 7.2 declares leaves it uninitialized, so restore the default.
 			if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
 				$object->show_in_abilities = true;
 			} else {
@@ -481,8 +475,7 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A turn's entry keeps the ID the client gave the turn, including a turn
-	 * that ends in an error.
+	 * A turn's entry keeps the client's turn ID, even when the turn errors.
 	 *
 	 * @since x.x.x
 	 */
@@ -564,8 +557,7 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A new chat ID that is already one of the person's chats is refused, so
-	 * a repeated first turn cannot overwrite that chat.
+	 * A new chat ID already in use is refused, so a repeated first turn cannot overwrite it.
 	 *
 	 * @since x.x.x
 	 */
@@ -588,8 +580,7 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Another user's chat ID cannot be claimed for a new chat: the turn runs,
-	 * but nothing is written over the other chat.
+	 * A new chat cannot be written over another user's chat ID.
 	 *
 	 * @since x.x.x
 	 */
@@ -630,8 +621,7 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A turn the server never received is unknown, and one it ran is done,
-	 * for its own user only.
+	 * The state route reports an unreceived turn as unknown and a run one as done, for its own user only.
 	 *
 	 * @since x.x.x
 	 */
@@ -865,11 +855,6 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Allows or denies the same ability, input and user identically either way in.
 	 *
-	 * A draft search is the role-dependent decision: it needs `edit_posts`, so a
-	 * subscriber is refused and the other roles are not. The body read is given
-	 * real IDs, so it reaches its permission check rather than failing input
-	 * validation first.
-	 *
 	 * @since x.x.x
 	 */
 	public function test_allow_or_deny_matches_direct_ability_execution(): void {
@@ -1009,8 +994,7 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 
 		$client = new Scripted_Model_Client( array(), $this->tool_call_message( self::SEARCH_ABILITY, array( 'search' => 'loop' ) ) );
 
-		// Stands in for the cancel route firing from another request while the
-		// first model round is in flight.
+		// Stands in for the cancel route firing from another request mid-round.
 		$client->on_generate = static function () use ( $store, $conversation, $user_id ): void {
 			$store->cancel( $conversation['id'], $user_id );
 		};
@@ -1207,8 +1191,7 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 
 		$sent = $client->calls[0]['messages'];
 
-		// Seven stored messages would open on an answer, so the window starts one later,
-		// on a question, and then carries the new one.
+		// Seven stored messages would open on an answer, so the window starts one later, on a question.
 		$this->assertCount( 7, $sent );
 		$this->assertTrue( $sent[0]->getRole()->isUser() );
 		$this->assertSame( 'Question 28', $sent[0]->getParts()[0]->getText() );
@@ -1288,12 +1271,6 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 
 	/**
 	 * Delivers injected instructions in retrieved content as untrusted data only.
-	 *
-	 * The search tool returns excerpt-length text and the body read tool returns
-	 * the whole body, so both carry the injected sentence back. A contributor
-	 * wrote the post; the administrator's session reads it, because the workspace
-	 * is gated on `manage_options`. Each result must arrive under `data` inside
-	 * the untrusted provenance envelope, and never reach the system instruction.
 	 *
 	 * @since x.x.x
 	 */
@@ -1467,9 +1444,6 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * A turn records its withheld call, its proposal and its proposing call, in that order (R14, R15).
 	 *
-	 * The proposal is stored while the propose call runs, so its `created` event
-	 * comes before the row for the call itself.
-	 *
 	 * @since x.x.x
 	 */
 	public function test_a_turn_records_a_withheld_call_and_a_proposal_in_order(): void {
@@ -1516,10 +1490,6 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 
 	/**
 	 * A search invocation carries a normalized retrieval summary.
-	 *
-	 * The summary exists so the transcript can say what was looked up without
-	 * knowing any ability's result shape. Every number in it comes from the
-	 * payload the ability returned; nothing here is re-queried or inferred.
 	 *
 	 * @since x.x.x
 	 */
@@ -1634,10 +1604,6 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * A paginated search reports nothing withheld.
 	 *
-	 * The summary would be worse than useless if it turned an ordinary paged search
-	 * into "your role hid 3 posts", so the runner repeats the ability's own count
-	 * rather than deriving one from the total it is handed.
-	 *
 	 * @since x.x.x
 	 */
 	public function test_retrieval_summary_never_counts_paginated_rows_as_withheld(): void {
@@ -1690,10 +1656,6 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 
 	/**
 	 * The body read summary reports no withheld count at all.
-	 *
-	 * The read ability answers for IDs the caller named, and reports an unknown ID
-	 * and an unreadable one identically. A count there would be an existence oracle
-	 * for those exact IDs, so it reports none and the summary carries null.
 	 *
 	 * @since x.x.x
 	 */
@@ -1761,10 +1723,6 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * The echoed query is flattened and clamped before it leaves the server.
 	 *
-	 * The search term is model-supplied and reaches the transcript, so it is
-	 * treated like every other untrusted string on this surface: reduced to one
-	 * line and clamped, so it cannot smuggle a multi-line block into the trace.
-	 *
 	 * @since x.x.x
 	 */
 	public function test_retrieval_query_is_flattened_and_clamped(): void {
@@ -1816,11 +1774,6 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 
 	/**
 	 * Every function call is answered, even one this plugin does not own.
-	 *
-	 * A provider that requires each tool call to carry a matching result rejects
-	 * the whole replayed history when one goes unanswered, so a model inventing a
-	 * tool name alongside a real one would end the conversation rather than the
-	 * round -- and would keep ending it for as long as the stored history lives.
 	 *
 	 * @since x.x.x
 	 */
@@ -1878,8 +1831,6 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 		$unknown_payload = $answered['call_unknown'];
 		$this->assertIsArray( $unknown_payload );
 
-		// The answer travels inside the same provenance envelope every tool
-		// result carries, so the model reads it as untrusted data like any other.
 		$envelope = $unknown_payload['wp_tool_result'] ?? array();
 		$this->assertIsArray( $envelope );
 		$this->assertSame( 'error', $envelope['status'] ?? '', 'An unrecognised call is an error, not a success.' );
@@ -1961,9 +1912,6 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Stores a conversation whose proposal outcome has been reported to the model.
 	 *
-	 * Mirrors what the proposal controller leaves behind after an approval: the
-	 * outcome as the last message, and one follow-up owed.
-	 *
 	 * @since x.x.x
 	 *
 	 * @param int  $user_id The owner.
@@ -2014,9 +1962,7 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A proposal that arrives as its own message, after the sentence announcing
-	 * it, still runs and ends the turn. The OpenAI connector returns a reply in
-	 * that shape, and reading only its first message lost the call.
+	 * A proposal in a later message of the reply (as OpenAI returns it) still runs and ends the turn.
 	 *
 	 * @since x.x.x
 	 */
@@ -2046,9 +1992,7 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A reply that came as several messages is replayed in that shape: each
-	 * call keeps its own message and is answered in a message of its own,
-	 * because the OpenAI connector refuses a call that shares a message.
+	 * A multi-message reply is replayed one call per message, since OpenAI refuses calls that share one.
 	 *
 	 * @since x.x.x
 	 */
@@ -2127,8 +2071,6 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 
 	/**
 	 * Reports a question the schema refuses to the model, and lets the turn go on.
-	 *
-	 * Which inputs the schema refuses is covered by Ask_UserTest; one is enough here.
 	 *
 	 * @since x.x.x
 	 */
@@ -2249,7 +2191,6 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 		$this->assertContains( self::SEARCH_ABILITY, $client->calls[0]['abilities'], 'Read tools stay available to the follow-up.' );
 		$this->assertContains( Ask_User::ABILITY, $client->calls[0]['abilities'], 'A follow-up may still ask a question, though it may not propose.' );
 
-		// The model was handed the reported outcome as the last message, not a new prompt.
 		$handed = $client->calls[0]['messages'];
 		$this->assertCount( 3, $handed );
 		$this->assertStringContainsString( 'wp_write_result', (string) wp_json_encode( end( $handed )->toArray() ) );
@@ -2264,7 +2205,6 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 		$this->assertSame( '', $record['prompt'] );
 		$this->assertFalse( $stored[ Conversation_Store::FOLLOW_UP_OWED ] );
 
-		// The returned messages are the new ones only, so nothing reads as a prompt.
 		$this->assertCount( 1, $data['messages'] );
 
 		$again = $this->dispatch_turn(
@@ -2311,9 +2251,6 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 
 	/**
 	 * An outcome recorded while a turn runs survives that turn's save.
-	 *
-	 * A second card settled during the first card's follow-up appends its outcome
-	 * to the stored conversation; the follow-up's own save must not erase it.
 	 *
 	 * @since x.x.x
 	 */
@@ -2478,8 +2415,7 @@ class Scripted_Model_Client implements Model_Client_Interface {
 	public $on_generate = null;
 
 	/**
-	 * Scripted replies, consumed in order. A list stands for a reply that came
-	 * as several messages, as the OpenAI connector returns one.
+	 * Scripted replies, consumed in order; a list is one reply split over several messages.
 	 *
 	 * @var list<\WordPress\AiClient\Messages\DTO\Message|non-empty-list<\WordPress\AiClient\Messages\DTO\Message>>
 	 */

@@ -1,8 +1,5 @@
 /**
- * Type declaration for SVG imports.
- *
- * `@wordpress/scripts` runs an SVG imported from script through `url-loader`,
- * so its default export is the file as a data URI.
+ * SVG imports: `@wordpress/scripts` turns them into data URI strings.
  */
 
 declare module '*.svg' {

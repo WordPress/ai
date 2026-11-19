@@ -15,11 +15,6 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Writes the selected items of a proposal and logs each attempt in one shape.
  *
- * Each kind keeps its own per-item write, its own outcome record and the
- * kind-specific fields of its log row; this holds what is the same for all of
- * them, so every kind returns the same result shape and its writes join the
- * others in one log view.
- *
  * @internal This trait should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
  * @since x.x.x
@@ -27,10 +22,7 @@ defined( 'ABSPATH' ) || exit;
 trait Proposal_Writes {
 
 	/**
-	 * Writes the selected items of a proposal.
-	 *
-	 * An item that was not selected is reported as `deselected` and writes
-	 * nothing. `$on_item` receives each item's outcome as soon as it is done.
+	 * Writes the selected items of a proposal; unselected items are reported as `deselected`.
 	 *
 	 * @since x.x.x
 	 *
@@ -108,10 +100,7 @@ trait Proposal_Writes {
 	abstract protected function deselected_outcome( array $item ): array;
 
 	/**
-	 * Returns the kind-specific fields of an item's log row.
-	 *
-	 * They follow the proposal ID and item key in the row's `proposal` context.
-	 * No field values are logged.
+	 * Returns the kind-specific fields of an item's log row; never field values.
 	 *
 	 * @since x.x.x
 	 *
@@ -121,10 +110,7 @@ trait Proposal_Writes {
 	abstract protected function log_details( array $item ): array;
 
 	/**
-	 * Writes the single log row for one write attempt.
-	 *
-	 * The shape matches the rows {@see Turn_Runner} writes for tool calls, so
-	 * reads and writes from one conversation join in a single log view (KTD10).
+	 * Writes the log row for one write attempt, in the same shape as {@see Turn_Runner}'s tool-call rows.
 	 *
 	 * @since x.x.x
 	 *

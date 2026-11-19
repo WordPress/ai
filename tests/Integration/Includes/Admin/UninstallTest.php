@@ -540,9 +540,6 @@ class UninstallTest extends WP_UnitTestCase {
 	/**
 	 * Uninstall deletes archived chats, though the plugin is not booted then.
 	 *
-	 * Uninstall runs without the experiment, so neither the chat post type nor its
-	 * archived status is registered.
-	 *
 	 * @since x.x.x
 	 */
 	public function test_uninstall_deletes_archived_chats_without_the_status_registered(): void {

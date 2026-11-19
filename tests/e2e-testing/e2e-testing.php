@@ -58,8 +58,7 @@ add_action( 'wp_abilities_api_categories_init', 'ai_e2e_register_explorer_catego
 add_action( 'wp_abilities_api_init', 'ai_e2e_register_explorer_abilities' );
 add_action( 'admin_enqueue_scripts', 'ai_e2e_enqueue_explorer_field' );
 
-// Register the Abilities Explorer's assistant fixtures, switched on per spec through a REST
-// endpoint so no other spec sees extra abilities or declaration-based admission.
+// Register the Abilities Explorer's assistant fixtures, switched on per spec so other specs don't see them.
 add_action( 'rest_api_init', 'ai_e2e_register_explorer_fixtures_endpoint' );
 add_action( 'wp_abilities_api_init', 'ai_e2e_register_explorer_fixtures' );
 add_filter( 'wpai_workspace_tool_admission_enabled', 'ai_e2e_explorer_admission' );
@@ -124,12 +123,7 @@ function ai_e2e_credential_options() {
 /**
  * Seeds dummy provider keys so has_ai_credentials() returns true.
  *
- * With no `providers` parameter this seeds OpenAI and leaves the other providers
- * untouched, which is what the majority of specs expect. A spec that needs a
- * single named provider — the AI Workspace scenario specs need Anthropic, since
- * that is the only provider the mock has a tool-calling sequence for — passes
- * `providers`, and every provider not listed is cleared so the turn cannot be
- * answered by a provider the spec did not ask for.
+ * Seeds OpenAI by default; with `providers`, seeds only those and clears the rest.
  *
  * @param WP_REST_Request|null $request Optional. The request.
  * @return WP_REST_Response
@@ -241,10 +235,6 @@ function ai_e2e_activate_scenario( $request ) {
 /**
  * Reports the active scenario and the number of calls it has served.
  *
- * The call counts are what make a sequence verifiable from a spec: a turn that
- * really drove a tool call and then a final message consumed two entries, and a
- * turn that answered in one round consumed one.
- *
  * @return WP_REST_Response
  */
 function ai_e2e_report_scenario() {
@@ -296,16 +286,7 @@ function ai_e2e_active_scenario() {
 /**
  * Returns the next response body from the active scenario, if it has one.
  *
- * A scenario fixture lives at `responses/{Provider}/scenarios/{scenario}.json` and
- * holds a `sequence` array of complete provider response bodies. Each matching
- * request consumes the next entry, so one spec can drive a whole turn — request,
- * tool call, tool result, final message — from a single file. The last entry is
- * repeated once the sequence is exhausted, so a turn that runs one round more
- * than the fixture anticipated still terminates instead of falling through to the
- * substring-matched default and answering with something unrelated.
- *
- * The counter is stored rather than held in memory because a turn's rounds all
- * run inside one request but a spec reads the count back in a later one.
+ * Reads `responses/{Provider}/scenarios/{scenario}.json`; the last entry repeats once the sequence runs out.
  *
  * @param string $provider The provider directory name, e.g. 'Anthropic'.
  * @return string|null The response body as JSON, or null when no scenario applies.
@@ -414,10 +395,7 @@ function ai_e2e_filter_min_content_length( $content_length, $feature_id ) {
 /**
  * Registers a REST endpoint for slowing post writes.
  *
- * POST /ai-e2e/v1/write-delay — every post write sleeps for `seconds` before it
- * is saved, or none does when `seconds` is 0. The AI Workspace update-proposal
- * spec uses it to approve from a second page while the first approval is still
- * writing.
+ * POST /ai-e2e/v1/write-delay — each post write sleeps `seconds` first; 0 turns it off.
  */
 function ai_e2e_register_write_delay_endpoint() {
 	register_rest_route(
@@ -454,9 +432,7 @@ function ai_e2e_register_write_delay_endpoint() {
 /**
  * Registers a REST endpoint for putting back the post a fresh install seeds.
  *
- * POST /ai-e2e/v1/first-post/reset — recreates post 1, "Hello world!", with the
- * title, content and excerpt a fresh install gives it, and publishes it. Other
- * specs delete every post, and the update-proposal fixtures name post 1.
+ * POST /ai-e2e/v1/first-post/reset — other specs delete every post, but the update-proposal fixtures name post 1.
  */
 function ai_e2e_register_first_post_endpoint() {
 	register_rest_route(
@@ -502,9 +478,6 @@ function ai_e2e_reset_first_post() {
 
 /**
  * Sleeps before a post is saved, when a spec asked for a write delay.
- *
- * The REST server answers each request in its own PHP process, so another
- * request is served while this one sleeps.
  *
  * @param array $data The post data about to be saved.
  * @return array The post data, unchanged.
@@ -790,9 +763,7 @@ const AI_E2E_EXPLORER_FIXTURES_OPTION = 'ai_e2e_explorer_fixtures';
 /**
  * Registers the REST endpoint that switches the Abilities Explorer fixtures.
  *
- * POST /ai-e2e/v1/explorer-fixtures { enabled: bool } — switches the fixtures,
- * and always clears the assistant's owner exclusions and policy switch, so a
- * spec starts and ends with the surface options unset.
+ * POST /ai-e2e/v1/explorer-fixtures { enabled: bool } — also clears the assistant's surface options.
  */
 function ai_e2e_register_explorer_fixtures_endpoint() {
 	register_rest_route(
@@ -863,11 +834,7 @@ function ai_e2e_explorer_withheld( $withheld ) {
 }
 
 /**
- * Registers the Abilities Explorer fixtures while they are switched on.
- *
- * - `ai-e2e/assistant-reader` declares itself fit for the assistant, so with
- *   admission on it is on the assistant and offers "Remove from assistant".
- * - `ai-e2e/withheld-reader` declares the same, but is withheld.
+ * Registers the Abilities Explorer fixtures (one admitted, one withheld) while they are switched on.
  */
 function ai_e2e_register_explorer_fixtures() {
 	if ( ! function_exists( 'wp_register_ability' ) || ! ai_e2e_explorer_fixtures_enabled() ) {
@@ -939,10 +906,7 @@ function ai_e2e_enqueue_explorer_field( $hook_suffix ) {
 /**
  * Builds the command palette AI search mock response.
  *
- * Command IDs depend on the order of the commands in the palette, so the
- * command each search should find is looked up in the request. Searches about
- * hiding the site from search engines return Settings > Reading, and searches
- * about spam comments return Comments; any other search returns no commands.
+ * Command IDs depend on palette order, so the expected command's ID is looked up in the request.
  *
  * @param string $fixture The fixture file name.
  * @param string $body    The request body.

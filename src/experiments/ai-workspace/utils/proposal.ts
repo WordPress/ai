@@ -13,11 +13,7 @@ import type {
 } from '../types';
 
 /**
- * The abilities whose successful result carries a stored proposal, one per kind.
- *
- * A copy of the server's list, which is built from the proposal kinds
- * (`Proposal_Store::proposal_abilities()`); `Proposal_StoreTest` fails when the
- * two differ, so add a new kind's ability here too.
+ * The abilities whose result carries a stored proposal; `Proposal_StoreTest` keeps this in sync with the server.
  */
 export const PROPOSAL_ABILITIES = [
 	'ai/propose-drafts',
@@ -83,9 +79,7 @@ function toRecord( value: unknown ): Record< string, unknown > | null {
 /**
  * Reads the proposal identifier out of a proposal ability's tool result.
  *
- * Only the identifier is taken. Everything the confirmation renders is read
- * back from the server's stored copy of the proposal, never from the tool
- * result, so the values shown are the values that will be written (R16).
+ * Only the ID is taken; everything shown is re-read from the server's stored copy.
  *
  * @param value The raw tool result.
  * @return The proposal ID, or an empty string when the result is not one.
@@ -156,7 +150,7 @@ export function toProposal( value: unknown ): Proposal | null {
 	} );
 
 	return {
-		// A draft proposal carries no kind, as before proposals had kinds.
+		// Draft proposals predate kinds and carry none.
 		kind: readString( record, 'kind' ) || 'draft',
 		proposal_id: readString( record, 'proposal_id' ),
 		conversation_id: readString( record, 'conversation_id' ),
@@ -231,10 +225,7 @@ export function toProposalExecution(
 }
 
 /**
- * Reads whether a proposal response says the assistant may follow up.
- *
- * Anything but a literal `true` is no, so a malformed response never starts a
- * model turn.
+ * Reads whether a proposal response says the assistant may follow up; only a literal `true` counts.
  *
  * @param value A proposal execute or discard response.
  * @return True when the server owes a follow-up.
@@ -245,9 +236,6 @@ export function readFollowUp( value: unknown ): boolean {
 
 /**
  * Reads a refused edit out of an execute error response.
- *
- * The server names the edited item it refused, so its message can sit beside
- * that item's field. An error that names no item is not an edit error.
  *
  * @param value The raw error response.
  * @return The item key and the server's message, or null.
@@ -269,10 +257,7 @@ export function toEditError(
 }
 
 /**
- * Reads the stored outcome out of an execute error response.
- *
- * An approval whose write stopped part way answers with an error that still
- * carries what it wrote, and whether the assistant may follow up on it.
+ * Reads the partial outcome an execute error response still carries.
  *
  * @param value The raw error response.
  * @return The outcome, or null when the error carries none.

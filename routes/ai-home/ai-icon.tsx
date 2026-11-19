@@ -8,13 +8,7 @@ export default function AIIcon( {
 	size,
 }: {
 	className?: string;
-	/**
-	 * Intrinsic size in pixels. The mark carries no width or height of its own,
-	 * so a consumer that renders it outside a stylesheet that sizes
-	 * `.wpai-icon` gets the viewBox's 236px. Pass a size in those places --
-	 * an icon slot in a menu, for instance -- rather than shipping a
-	 * stylesheet only to constrain one glyph.
-	 */
+	/** Size in pixels, for use where no stylesheet sizes `.wpai-icon`. */
 	size?: number;
 } ) {
 	return (

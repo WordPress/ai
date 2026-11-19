@@ -31,8 +31,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Provides the `/ai/v1/workspace/proposals` routes.
  *
- * This is the only path in the feature that writes content, and it is reached
- * only by an authenticated request a person made after seeing the stored values.
+ * The feature's only write path, reached only by a person approving the stored values.
  *
  * @since x.x.x
  */
@@ -162,11 +161,7 @@ final class Proposal_Controller {
 								'required' => true,
 								'items'    => array( 'type' => 'string' ),
 							),
-							/*
-							 * The person's edits to proposed values, keyed by
-							 * item key. Each edited item is validated again by
-							 * its kind before anything is written.
-							 */
+							// Keyed by item key; each kind revalidates edited items.
 							'edits'           => array(
 								'type'     => 'object',
 								'required' => false,
@@ -241,22 +236,14 @@ final class Proposal_Controller {
 			return $proposal;
 		}
 
-		/*
-		 * An executed proposal has already written, and one that is executing or
-		 * failed part way may have. Discarding it now would tell the model
-		 * nothing was written, which may be the opposite of what happened.
-		 */
+		// A started approval may have written; discarding would tell the model nothing was.
 		if ( ! $this->is_pending( $proposal ) ) {
 			return $this->already_approved();
 		}
 
 		$user_id = get_current_user_id();
 
-		/*
-		 * An approval claims the proposal before it saves it as `executing`, so
-		 * the stored status alone cannot rule one out. The discard takes the same
-		 * claim: while an approval holds it, nothing is deleted.
-		 */
+		// An approval claims before saving `executing`, so the status alone cannot rule one out.
 		if ( ! $this->store->claim( $proposal_id, $user_id ) ) {
 			return $this->already_approved();
 		}
@@ -286,7 +273,6 @@ final class Proposal_Controller {
 				'proposal_id'     => $proposal_id,
 				'conversation_id' => $conversation_id,
 				'declined'        => true,
-				// Whether the client may ask the assistant to follow up.
 				'follow_up'       => $this->report_discard_to_model( $conversation_id, $proposal_id, $proposal ),
 			),
 			200
@@ -324,12 +310,7 @@ final class Proposal_Controller {
 			return $proposal;
 		}
 
-		/*
-		 * The conversation is compared independently of the capability check.
-		 * Capability is not identity, and a proposal approved in one conversation
-		 * must not be executable from another one — including by the same person
-		 * in a different thread, where the values on screen are not these values.
-		 */
+		// Capability is not identity: a proposal is executable only from the conversation that showed it.
 		$conversation_id = isset( $proposal['conversation_id'] ) && is_string( $proposal['conversation_id'] )
 			? $proposal['conversation_id']
 			: '';
@@ -344,11 +325,7 @@ final class Proposal_Controller {
 
 		$user_id = get_current_user_id();
 
-		/*
-		 * A proposal belongs to its chat. Once the chat is gone, deleted by its
-		 * owner or erased with their personal data, nothing it proposed may be
-		 * written: the person can no longer see what they would be approving.
-		 */
+		// With its chat gone, the person can no longer see what they would be approving.
 		if ( null === $this->conversations->get( $conversation_id, $user_id ) ) {
 			$this->store->delete( $proposal_id, $user_id );
 
@@ -421,11 +398,7 @@ final class Proposal_Controller {
 			return $this->stored_response( null === $current ? $proposal : $current );
 		}
 
-		/*
-		 * Read again past this request's cache now the claim is held: a request
-		 * that finished and released the claim between this one's first read and
-		 * its claim has already written.
-		 */
+		// Re-read uncached: another request may have written and released the claim since the first read.
 		$current = $this->store->find( $proposal_id, $user_id, true );
 
 		if ( null === $current || ! $this->is_pending( $current ) ) {
@@ -475,7 +448,6 @@ final class Proposal_Controller {
 				array(
 					'proposal_id'     => $proposal_id,
 					'conversation_id' => $conversation_id,
-					// Whether the client may ask the assistant to follow up.
 					'follow_up'       => $reported,
 					'items'           => $results['items'],
 				),
@@ -486,12 +458,7 @@ final class Proposal_Controller {
 	}
 
 	/**
-	 * Settles a proposal whose writer threw part way.
-	 *
-	 * The results saved before the throw are kept, so the proposal reads as
-	 * `failed` with exactly what was written, and the model is told about those
-	 * as it would be about a finished write. Nothing is retried. The error
-	 * carries the stored outcome, so the card can show it.
+	 * Settles a proposal whose writer threw part way, keeping and reporting what was written.
 	 *
 	 * @since x.x.x
 	 *
@@ -542,10 +509,6 @@ final class Proposal_Controller {
 	/**
 	 * Builds the response for an approval that wrote nothing because the proposal was already settled.
 	 *
-	 * It carries the results stored so far, in the envelope a first approval
-	 * returns, so a second tab shows what the first one wrote. No follow-up is
-	 * owed: the first approval already reported the outcome to the model.
-	 *
 	 * @since x.x.x
 	 *
 	 * @param array<string, mixed> $proposal The stored proposal.
@@ -566,7 +529,6 @@ final class Proposal_Controller {
 	private function stored_results( array $proposal ): array {
 		$items = isset( $proposal['results'] ) && is_array( $proposal['results'] ) ? array_values( $proposal['results'] ) : array();
 
-		// Outcomes that are not strings cannot be counted; `counts()` drops unknown ones.
 		$tally = array_count_values( array_filter( array_column( $items, 'outcome' ), 'is_string' ) );
 
 		return array_merge(
@@ -599,12 +561,7 @@ final class Proposal_Controller {
 	}
 
 	/**
-	 * Loads a proposal for the current user.
-	 *
-	 * A proposal that does not resolve for this user is reported as not found
-	 * whatever the reason — it never existed, it belongs to someone else, or it
-	 * expired — so a proposal ID cannot be used to probe for another person's
-	 * pending writes.
+	 * Loads a proposal for the current user; another user's is reported as not found.
 	 *
 	 * @since x.x.x
 	 *
@@ -623,15 +580,7 @@ final class Proposal_Controller {
 			);
 		}
 
-		/*
-		 * The stored record outlives its expiry by a grace period, so an expired
-		 * proposal is told apart from a missing one before it is deleted.
-		 *
-		 * Only a pending proposal expires this way. One an approval has started
-		 * on is returned past its expiry, so reopening it shows what was written
-		 * rather than "expired". It cannot be approved again, and its transient
-		 * still lapses on its own, {@see Proposal_Store::GRACE} after its last save.
-		 */
+		// Only a pending proposal expires here; a started one still shows what was written.
 		if ( $this->is_pending( $proposal ) && $this->store->is_expired( $proposal ) ) {
 			$this->store->expire( $proposal );
 
@@ -695,15 +644,7 @@ final class Proposal_Controller {
 	}
 
 	/**
-	 * Presents a proposal as the confirmation surface reads it.
-	 *
-	 * Only the stored resolved values are returned. There is no field here for a
-	 * summary, and the store dropped anything the model supplied beyond the
-	 * declared item fields, so the confirmation cannot render the assistant's
-	 * description of a write in place of the write itself (R16).
-	 *
-	 * A draft proposal carries no `kind`, exactly as before proposals had kinds,
-	 * and the card reads a missing kind as drafts.
+	 * Presents only the stored values, never a model-written summary, so the card shows the actual write.
 	 *
 	 * @since x.x.x
 	 *
@@ -742,11 +683,6 @@ final class Proposal_Controller {
 			$presentation['kind'] = $kind->name();
 		}
 
-		/*
-		 * Once approval has started, the card shows what was written rather than
-		 * asking again: a second tab, a page loaded while another window is still
-		 * writing, and an interrupted write all read their outcome from here.
-		 */
 		if ( ! $this->is_pending( $proposal ) ) {
 			$presentation['results'] = $this->stored_results( $proposal );
 		}
@@ -756,11 +692,6 @@ final class Proposal_Controller {
 
 	/**
 	 * Tells the model what actually happened, without retrying anything.
-	 *
-	 * The outcome is appended to the conversation as data, in the same untrusted
-	 * envelope shape tool results use, so the next turn's history states which
-	 * items exist and which do not. Nothing here retries a failed item: R17
-	 * makes that the person's decision.
 	 *
 	 * @since x.x.x
 	 *
@@ -783,10 +714,6 @@ final class Proposal_Controller {
 				'error_code' => isset( $item['error_code'] ) ? $item['error_code'] : '',
 			);
 
-			/*
-			 * An update kind also names the field it changed and either the value
-			 * it wrote or, for long values such as content, only its length.
-			 */
 			foreach ( array( 'field', 'value', 'length' ) as $detail ) {
 				if ( ! isset( $item[ $detail ] ) ) {
 					continue;
@@ -818,9 +745,6 @@ final class Proposal_Controller {
 
 	/**
 	 * Tells the model the person discarded a proposal.
-	 *
-	 * Without this the next turn's history would still show the proposal as
-	 * pending, and the model could not tell a discard from no answer at all.
 	 *
 	 * @since x.x.x
 	 *
@@ -855,10 +779,6 @@ final class Proposal_Controller {
 
 	/**
 	 * Appends a proposal outcome to the conversation and owes it one follow-up.
-	 *
-	 * The outcome goes in as data, in the same untrusted envelope shape tool
-	 * results use. Nothing is recorded, and no follow-up is owed, when the
-	 * conversation has expired or was never there.
 	 *
 	 * @since x.x.x
 	 *

@@ -13,10 +13,6 @@ use WordPress\AI\Experiments\AI_Workspace\Conversation_Store;
 /**
  * Conversation_Store test case.
  *
- * Chats are private posts kept until their owner deletes them. These tests pin
- * who can reach a chat, what survives WordPress's own cleanup, and that a stored
- * transcript comes back exactly as it was written.
- *
  * @since x.x.x
  *
  * @covers \WordPress\AI\Experiments\AI_Workspace\Conversation_Store
@@ -72,8 +68,6 @@ class Conversation_StoreTest extends WP_UnitTestCase {
 
 	/**
 	 * Unregisters the chat post type and archived status, as when the experiment is off.
-	 *
-	 * The next test's set-up registers them again.
 	 *
 	 * @since x.x.x
 	 */
@@ -243,9 +237,7 @@ class Conversation_StoreTest extends WP_UnitTestCase {
 	/**
 	 * Deleting a user deletes their chats, archived ones included, before their content is reassigned.
 	 *
-	 * The experiment is off, so neither the post type nor the archived status is
-	 * registered, and a query by status would skip the archived chat and leave it
-	 * to be reassigned with the rest of the user's content.
+	 * With the archived status unregistered, a query by status would miss the archived chat.
 	 *
 	 * @since x.x.x
 	 */
@@ -313,8 +305,7 @@ class Conversation_StoreTest extends WP_UnitTestCase {
 
 		$conversation = $this->save_chat( self::$user_ids['owner'], 'A private question' );
 
-		// The export sends download headers, which the test runner has already
-		// passed; only that warning is swallowed.
+		// Swallow only the headers-already-sent warning from the export's download headers.
 		set_error_handler( // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_set_error_handler -- Swallowing the headers-already-sent warning only.
 			static function ( int $errno, string $errstr ): bool {
 				return E_WARNING === $errno && false !== strpos( $errstr, 'headers already sent' );

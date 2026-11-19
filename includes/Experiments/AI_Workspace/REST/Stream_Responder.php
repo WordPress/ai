@@ -18,30 +18,8 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Streams a workspace turn to the browser as server-sent events.
  *
- * The turn route writes no output of its own; it exposes the
- * `wpai_workspace_stream_emitter` filter and this class is the consumer that
- * turns the filter's text callback into SSE frames. Nothing here decides how a
- * turn runs — it only decides how the turn's text reaches the browser.
- *
- * Three properties keep the emission safe:
- *
- * - **Streaming is opt in per request.** Only a request carrying the
- *   `X-WP-AI-Stream: 1` header is considered, so no existing consumer of the
- *   turn route changes shape.
- * - **Streaming never happens off a live HTTP connection.** The CLI SAPI is
- *   refused outright, which is what keeps this code away from PHPUnit's
- *   `beStrictAboutOutputDuringTests`: the test suite runs under `cli`, so no test
- *   path can reach an `echo` here even if one sets the header.
- * - **Headers are sent lazily, on the first delta.** A host that produced no
- *   streamed text — no streaming model, an unapproved connector, a transport
- *   that would not open, or a turn that failed before any text — has still sent
- *   nothing, so the REST server serves its ordinary JSON body and the client
- *   falls back to the buffered shape. Streaming degrades to a slower answer
- *   rather than to a broken one.
- *
- * The event protocol is: zero or more `delta` events carrying `{"text": "..."}`,
- * then exactly one `result` event carrying the turn route's normal response body
- * or one `error` event carrying its error body, then `done`.
+ * Events: `delta` frames, then one `result` or `error`, then `done`. Headers wait for the first
+ * delta, so a turn that streams nothing still gets the ordinary JSON response.
  *
  * @since x.x.x
  */
@@ -122,11 +100,7 @@ final class Stream_Responder {
 			return false;
 		}
 
-		/*
-		 * Server-sent events need a live HTTP connection. Under the CLI SAPI —
-		 * WP-CLI and, importantly, PHPUnit — there is none, and writing output
-		 * would trip the suite's strict no-output setting.
-		 */
+		// No live connection under CLI, and output would trip PHPUnit's strict no-output setting.
 		if ( 'cli' === PHP_SAPI || 'phpdbg' === PHP_SAPI ) {
 			return false;
 		}
@@ -151,12 +125,7 @@ final class Stream_Responder {
 	}
 
 	/**
-	 * Drops the response headers once the body has already begun.
-	 *
-	 * The REST server sends a response's headers after dispatch returns, which
-	 * for a streamed turn is after the first frame has been written. Removing
-	 * them keeps the server from calling `header()` on a response that is
-	 * already on the wire.
+	 * Drops the response headers, which the REST server would send after the stream has begun.
 	 *
 	 * @since x.x.x
 	 *
@@ -217,15 +186,7 @@ final class Stream_Responder {
 
 		$this->streaming = true;
 
-		/*
-		 * The REST server still sets a status code after dispatch returns, which
-		 * is after this body has begun. Its no-cache headers are the largest part
-		 * of that and can be switched off outright; the single status_header()
-		 * call cannot, so PHP logs one "headers already sent" notice per streamed
-		 * turn. The frame parser on the other end reads line by line and ignores
-		 * anything that is not an `event:` or `data:` line, so a host that prints
-		 * that notice into the response does not corrupt the stream.
-		 */
+		// The REST server's later status_header() still logs one "headers already sent" notice; the client parser ignores it.
 		add_filter( 'rest_send_nocache_headers', '__return_false' );
 
 		if ( ! headers_sent() ) {
@@ -260,11 +221,7 @@ final class Stream_Responder {
 			return;
 		}
 
-		/*
-		 * Neither value is HTML: the event name is a literal defined here and the
-		 * payload is JSON produced by wp_json_encode, written into a
-		 * text/event-stream body. Escaping either for HTML would corrupt the frame.
-		 */
+		// Not HTML: a literal event name and JSON in a text/event-stream body; HTML-escaping would corrupt the frame.
 		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		echo 'event: ' . $event . "\n";
 		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped

@@ -15,28 +15,8 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Names the conversation an ability invocation belongs to, for the length of one request.
  *
- * Abilities are called by WordPress core's function resolver, which passes only
- * the model's own arguments. An ability therefore has no way of knowing which
- * conversation it is serving, and asking the model to supply the conversation ID
- * would make an attacker-influenceable string the thing a stored proposal is
- * bound to. {@see Turn_Runner} enters this context around the tool loop instead,
- * so the binding comes from the request the server already authenticated.
- *
- * Two properties are load bearing:
- *
- * - **It is only ever entered by the turn loop**, and left in a `finally`, so a
- *   context can never outlive the request that opened it.
- * - **It re-checks the current user on every read.** A context left behind by a
- *   long-running process would otherwise be readable by whoever runs next; a
- *   context whose user is not the current user reports itself inactive.
- *
- * The context also remembers, for the length of the turn, a hash of each post's
- * stored markup the model read with `"raw": true`, so a content change proposed
- * later in the turn can be refused when the post changed after it was read.
- *
- * The absence of a context is meaningful: it is what makes a proposal created
- * outside the workspace — by the MCP surface, say — unexecutable, because
- * execution requires the stored conversation to match the request's.
+ * Set by {@see Turn_Runner}, never from model arguments, which are attacker-influenceable. Inactive when the
+ * current user is not the turn's user.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -110,9 +90,7 @@ final class Turn_Context {
 	}
 
 	/**
-	 * Remembers the stored markup of each post a raw read returned.
-	 *
-	 * Hooked to `wp_after_execute_ability` only while a turn is entered.
+	 * Remembers the stored markup of each post a raw read returned, so a later stale edit can be refused.
 	 *
 	 * @since x.x.x
 	 *

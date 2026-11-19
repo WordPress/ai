@@ -353,11 +353,7 @@ final class Abilities_Controller {
 	/**
 	 * Changes the AI Workspace's tool surface.
 	 *
-	 * Remove and restore answer with the updated row; a policy change answers
-	 * with the full list, because it can change every row's reason. A `false`
-	 * from `Tool_Policy` means the stored state already matched (for example,
-	 * the ability was already removed in another tab), which is success with
-	 * `changed` false, not an error.
+	 * `changed` is false when the stored state already matched, such as a removal made in another tab.
 	 *
 	 * @since x.x.x
 	 *
@@ -394,7 +390,6 @@ final class Abilities_Controller {
 			);
 		}
 
-		// Stored names are validated against the registry on read, so only a name that resolves to an ability is ever written.
 		$resolved = $this->resolve( $name );
 
 		if ( is_wp_error( $resolved ) ) {
@@ -426,9 +421,6 @@ final class Abilities_Controller {
 
 	/**
 	 * Returns every ability as a list item.
-	 *
-	 * Goes through `Ability_Handler::get_all_abilities()` so exclusion reasons
-	 * are computed once for the request, not once per row.
 	 *
 	 * @since 1.5.0
 	 *
@@ -535,15 +527,7 @@ final class Abilities_Controller {
 	}
 
 	/**
-	 * Returns a sequence number for a response.
-	 *
-	 * The server's clock in microseconds, read after any write the request
-	 * made and before the state the response carries is read. On one server,
-	 * a response with a higher number therefore reflects every change a
-	 * response with a lower number reported, so the client keeps the highest
-	 * number it has seen and drops any response that carries a lower one: a
-	 * list refresh that started before a change cannot overwrite it. The value
-	 * stays well inside JavaScript's safe-integer range.
+	 * Returns a microsecond timestamp the client uses to drop responses older than one it has applied.
 	 *
 	 * @since x.x.x
 	 *

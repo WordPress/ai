@@ -26,17 +26,7 @@ import {
 const EXPERIMENT_ID = 'ai-workspace';
 const WORKSPACE_PAGE = 'admin.php?page=ai-workspace';
 
-/*
- * These specs drive the workspace against sequenced Anthropic fixtures, which is
- * the only provider the mock has a tool-calling round trip for. Anthropic is
- * seeded exclusively so the turn cannot be answered by another configured
- * provider, and OpenAI is restored afterwards because the rest of the suite
- * assumes the state global setup left behind.
- *
- * Nothing here reaches the network: `pre_http_request` answers both the models
- * lookup and every round of the turn from
- * `tests/e2e-testing/responses/Anthropic/`.
- */
+// Only the Anthropic mock has tool-calling sequences; OpenAI is restored afterwards for the rest of the suite.
 const seedAnthropic = ( requestUtils: RequestUtils ) =>
 	seedCredentials( requestUtils, [ 'anthropic' ] );
 
@@ -70,31 +60,20 @@ test.describe( 'AI Workspace tool loop', () => {
 
 		const turn = page.locator( '.ai-workspace__turn' ).first();
 
-		// The answer comes from the second fixture entry, which the model can
-		// only have reached by way of the tool call in the first one.
+		// Only reachable through the tool call in the first fixture entry.
 		await expect( turn ).toContainText(
 			'The search returned the seeded fixture entry titled AI E2E Sample Content.',
 			{ timeout: 30000 }
 		);
 
-		// The tool step records the ability that actually ran, not the fixture.
 		const tools = turn.locator( '.ai-workspace__tools' );
 
-		// The retrieval trace is the always-visible summary (U13/R24): it names
-		// what the turn retrieved before the detail is opened. The count comes
-		// from the server's own retrieval summary, so asserting it here proves
-		// the whole path -- ability, turn response, transcript -- carried it.
 		await expect( tools.locator( 'summary' ) ).toContainText( 'Searched' );
 		await expect( tools.locator( 'summary' ) ).not.toContainText(
 			'Checked the site'
 		);
 
-		/*
-		 * An administrator can read everything the fixture seeds, so nothing is
-		 * withheld and the trace must stay silent about permissions rather than
-		 * claim "none hidden". The withheld count itself is exercised
-		 * server-side, where a role can actually be denied a row.
-		 */
+		// Nothing is withheld from an admin, so the trace says nothing about permissions.
 		await expect( tools.locator( 'summary' ) ).not.toContainText(
 			'hidden by your permissions'
 		);
@@ -103,12 +82,9 @@ test.describe( 'AI Workspace tool loop', () => {
 		);
 		await expect( tools ).toContainText( 'success' );
 
-		// The ability's own rows are rendered, so the result reached the
-		// transcript rather than only the model.
 		await tools.locator( 'summary' ).click();
 		await expect( tools ).toContainText( 'AI E2E Sample Content' );
 
-		// Two entries of one fixture answered one turn: the sequence advanced.
 		const report = await getMockScenarioReport( requestUtils );
 		expect( report.scenario ).toBe( 'workspace-search' );
 		expect( report.calls[ 'Anthropic/workspace-search' ] ).toBe( 2 );
@@ -122,10 +98,6 @@ test.describe( 'AI Workspace tool loop', () => {
 		await activateMockScenario( requestUtils, 'workspace-search' );
 		await admin.visitAdminPage( WORKSPACE_PAGE );
 
-		// The first turn consumes both entries of the two-entry sequence. The
-		// second turn is served the last one again — a terminating message — so
-		// it ends cleanly instead of falling through to the substring-matched
-		// default and answering with something unrelated.
 		for ( const prompt of [ 'First question.', 'Second question.' ] ) {
 			await page.getByLabel( 'Message', { exact: true } ).fill( prompt );
 			await page.getByRole( 'button', { name: 'Send' } ).click();
@@ -144,13 +116,7 @@ test.describe( 'AI Workspace tool loop', () => {
 		admin,
 		page,
 	} ) => {
-		/*
-		 * The turn is held open and never answered, so the only thing that can
-		 * settle the request is the abort that Stop performs. That is the case
-		 * the regression lives in: on a conversation's first turn there is no
-		 * identifier to cancel with, so Stop closes the reader locally and the
-		 * aborted request then settles on its own with a transport failure.
-		 */
+		// A first turn has no ID to cancel, so Stop aborts locally and the request later fails on its own.
 		await page.route(
 			( url ) =>
 				url.href.includes( 'workspace/messages' ) &&
@@ -174,16 +140,12 @@ test.describe( 'AI Workspace tool loop', () => {
 		const turn = page.locator( '.ai-workspace__turn' ).first();
 		await expect( turn ).toContainText( 'You stopped this response.' );
 
-		// The aborted request settles a moment later. The stopped state has to
-		// survive it: the person stopped the turn, so nothing may report a
-		// failure they did not cause.
+		// The stopped state must survive the aborted request settling.
 		await page.waitForTimeout( 1000 );
 		await expect( turn ).toContainText( 'You stopped this response.' );
 		await expect( turn ).not.toContainText( 'Send this message again' );
 		await expect( turn.locator( '.components-notice' ) ).toHaveCount( 0 );
 
-		// The workspace's own live region reports the stop, not a failure, so a
-		// screen reader is not told the turn broke.
 		await expect(
 			page.locator( '.screen-reader-text[aria-live="polite"]' )
 		).toHaveText( 'Response stopped.' );
@@ -236,14 +198,12 @@ test.describe( 'AI Workspace questions', () => {
 			card.getByRole( 'button', { name: 'Fewer parts' } )
 		).toBeEnabled();
 
-		// Asking is not a lookup, so it is not listed as one.
 		await expect(
 			turns.first().locator( '.ai-workspace__tools' )
 		).toHaveCount( 0 );
 
 		await card.getByRole( 'button', { name: 'Fewer parts' } ).click();
 
-		// The choice is sent exactly as if it had been typed.
 		await expect( turns ).toHaveCount( 2 );
 		await expect(
 			turns.nth( 1 ).locator( '.ai-workspace__message--user' )
@@ -252,7 +212,6 @@ test.describe( 'AI Workspace questions', () => {
 			timeout: 30000,
 		} );
 
-		// The answered card can't be answered again, and shows what was sent.
 		for ( const choice of [
 			'Create these 5 drafts',
 			'Change the angle',
@@ -381,8 +340,7 @@ test.describe( 'AI Workspace proposal confirmation', () => {
 		} );
 		await expect( review ).toBeVisible( { timeout: 30000 } );
 
-		// Proposing ended the turn: the model said what it would propose and
-		// was not asked to carry on past its own card.
+		// Proposing ended the turn.
 		const turns = page.locator( '.ai-workspace__turn' );
 		await expect( turns ).toHaveCount( 1 );
 		await expect( turns.first() ).toContainText(
@@ -394,32 +352,26 @@ test.describe( 'AI Workspace proposal confirmation', () => {
 			]
 		).toBe( 1 );
 
-		// The values shown are read back from the server's stored proposal.
 		await expect( review ).toContainText( 'Proposed E2E Draft' );
 		await expect( review ).toContainText( 'post — will be saved as draft' );
 
 		// Proposing wrote nothing.
 		expect( await draftTitles( requestUtils ) ).toEqual( [] );
 
-		// The item starts selected, so the one main button does what was asked.
 		await expect(
 			review.getByRole( 'checkbox', { name: 'Proposed E2E Draft' } )
 		).toBeChecked();
 		await review.getByRole( 'button', { name: 'Create 1 draft' } ).click();
 
-		// One created draft: the card leads with the way into it.
 		const created = page.getByRole( 'region', { name: 'Created 1 draft' } );
 		await expect( created ).toContainText( 'Proposed E2E Draft' );
 
-		// The draft is real, and carries the values the person approved.
 		const [ draft ] = await drafts( requestUtils );
 		expect( draft?.title ).toBe( 'Proposed E2E Draft' );
 		await expect(
 			created.getByRole( 'link', { name: 'Open draft' } )
 		).toHaveAttribute( 'href', editLink( draft?.id ?? 0 ) );
 
-		// The assistant follows up once, in a turn with no message of the
-		// person's, and the card keeps its outcome above it.
 		await expect( turns ).toHaveCount( 2 );
 		await expect( turns.nth( 1 ) ).toContainText( FOLLOW_UP_REPLY, {
 			timeout: 30000,
@@ -467,7 +419,6 @@ test.describe( 'AI Workspace proposal confirmation', () => {
 		).toBeVisible();
 		expect( await draftTitles( requestUtils ) ).toEqual( [] );
 
-		// A discard is followed up too, so the assistant knows the outcome.
 		const followUp = page.locator( '.ai-workspace__turn' ).nth( 1 );
 		await expect( followUp ).toContainText( FOLLOW_UP_REPLY, {
 			timeout: 30000,
@@ -537,9 +488,6 @@ test.describe( 'AI Workspace proposal confirmation', () => {
 	} ) => {
 		await admin.visitAdminPage( WORKSPACE_PAGE );
 
-		// The read-back of the stored proposal fails at the transport, which is
-		// what an offline tab or a dropped connection looks like. The dialog
-		// must reach a terminal state rather than sit on its spinner.
 		await page.route(
 			( url ) => url.href.includes( 'workspace/proposals' ),
 			( route ) => route.abort( 'failed' )
@@ -578,11 +526,7 @@ test.describe( 'AI Workspace proposal confirmation', () => {
 		} );
 		await expect( review ).toBeVisible( { timeout: 30000 } );
 
-		// Only the execute call fails, so the proposal loaded normally and the
-		// failure lands on the approval itself, where the controls are already
-		// disabled and a lost rejection would leave them that way. The card's
-		// read-back still reaches the server and finds the proposal pending,
-		// which is what lets it say nothing was created.
+		// Only execute fails; the card's read-back still finds the proposal pending.
 		await page.route(
 			( url ) =>
 				url.href.includes( 'workspace/proposals' ) &&
@@ -599,7 +543,6 @@ test.describe( 'AI Workspace proposal confirmation', () => {
 			} )
 		).toBeVisible();
 
-		// No control is left disabled mid-flight, and nothing was written.
 		await expect(
 			page.getByRole( 'button', { name: /^Create \d+ draft/ } )
 		).toHaveCount( 0 );
@@ -668,7 +611,6 @@ test.describe( 'AI Workspace proposal card', () => {
 		await card.getByRole( 'checkbox', { name: SERIES[ 0 ] } ).uncheck();
 		await expect( create ).toHaveText( 'Create 2 drafts' );
 
-		// Each body is still one click away, behind "Preview".
 		await expect(
 			card.getByText( 'Blocks are the pieces a page is built from.', {
 				exact: false,
@@ -713,12 +655,7 @@ test.describe( 'AI Workspace proposal card', () => {
 	test( 'says why an item was not created, and opens the rest', async ( {
 		page,
 	} ) => {
-		/*
-		 * The server is real; only its answer is rewritten, so the second item
-		 * reads as failed and the third as a duplicate of an earlier approval.
-		 * Neither can be forced from a mocked model, and what is under test
-		 * here is how the card shows them.
-		 */
+		// A mocked model can't force a failed or duplicate item, so the server's answer is rewritten.
 		await page.route(
 			( url ) => url.href.includes( '/execute' ),
 			async ( route ) => {
@@ -745,7 +682,6 @@ test.describe( 'AI Workspace proposal card', () => {
 		await checkSeries( page );
 		await page.getByRole( 'button', { name: 'Create 3 drafts' } ).click();
 
-		// One draft was created, so it leads with the way into it.
 		const created = page.getByRole( 'region', { name: 'Created 1 draft' } );
 		await expect( created ).toBeVisible();
 		await expect(
@@ -761,7 +697,6 @@ test.describe( 'AI Workspace proposal card', () => {
 			created.getByRole( 'link', { name: `Open “${ SERIES[ 1 ] }”` } )
 		).toHaveCount( 0 );
 
-		// A duplicate still points at the draft an earlier approval made.
 		const duplicate = created
 			.getByRole( 'listitem' )
 			.filter( { hasText: SERIES[ 2 ] } );
@@ -820,8 +755,7 @@ async function drafts(
 }
 
 /**
- * Matches the block editor link WordPress gives a post, on whatever host the
- * suite runs against.
+ * Matches a post's block editor link on any host.
  *
  * @param id The post ID.
  * @return A pattern for the edit link.

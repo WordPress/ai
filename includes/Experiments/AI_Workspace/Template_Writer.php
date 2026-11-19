@@ -19,22 +19,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Proposes and writes one new block template for the active theme.
  *
- * Approval creates a `wp_template` post for the active theme, which is the same
- * row the Site Editor writes when someone saves a template there. Three rules
- * bound it:
- *
- * - **It only creates.** A template someone already edited for this theme is
- *   never overwritten, so a slug that already has one is refused. Editing an
- *   existing template is follow-up work.
- * - **It may replace a template file the theme ships**, such as `404.html`. The
- *   new template takes over from the file, the card says so before approval, and
- *   the Site Editor's Reset puts the theme's own version back.
- * - **The markup is block markup.** It is filtered with `wp_kses_post()` when the
- *   proposal is stored, for the reasons {@see Draft_Writer::normalize_item()}
- *   gives, and then refused if it holds no blocks, any HTML outside them, or a
- *   block the site does not register. A
- *   template is shown to every visitor as soon as it is approved, so markup the
- *   block editor would not recognize is not let through.
+ * Only creates: an edited template is never overwritten, though a theme file template may be (Reset restores it).
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -90,8 +75,6 @@ final class Template_Writer extends Proposal_Writer {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * One template per proposal, so the card has one thing to approve.
-	 *
 	 * @since x.x.x
 	 */
 	public function max_items(): int {
@@ -119,9 +102,6 @@ final class Template_Writer extends Proposal_Writer {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * Templates belong to the theme, so only someone who may edit the theme is
-	 * offered a way to propose one.
-	 *
 	 * @since x.x.x
 	 */
 	public function capability(): string {
@@ -138,11 +118,7 @@ final class Template_Writer extends Proposal_Writer {
 	}
 
 	/**
-	 * Returns the template slugs that may be proposed.
-	 *
-	 * The standard template hierarchy, as core lists it, less the per-format
-	 * archives. A `page-{slug}` template for one page is allowed as well, by
-	 * {@see self::is_allowed_slug()}.
+	 * Returns core's default template slugs, less the per-format archives.
 	 *
 	 * @since x.x.x
 	 *
@@ -151,7 +127,7 @@ final class Template_Writer extends Proposal_Writer {
 	public static function standard_slugs(): array {
 		$slugs = array();
 
-		// Keys such as `404` come back as integers, so each is cast back to the slug.
+		// Keys such as `404` come back as integers.
 		foreach ( array_keys( get_default_block_template_types() ) as $slug ) {
 			$slug = (string) $slug;
 
@@ -248,9 +224,6 @@ final class Template_Writer extends Proposal_Writer {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * The theme and whether a file template is being replaced are read when the
-	 * card loads, not stored, so the card reflects the site as it is now.
-	 *
 	 * @since x.x.x
 	 */
 	public function present_item( array $item ): array {
@@ -289,10 +262,7 @@ final class Template_Writer extends Proposal_Writer {
 			return $this->outcome( $item, 'failed', 0, 'classic_theme', __( 'The active theme no longer uses block templates.', 'ai' ) );
 		}
 
-		/*
-		 * Re-checked here, not only when the proposal was made: a capability can
-		 * be revoked between the two requests, and this is the one that writes.
-		 */
+		// Re-checked: the capability may have been revoked since the proposal.
 		// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- The capability is the literal edit_theme_options, held in a constant.
 		if ( ! current_user_can( self::CAPABILITY ) ) {
 			$this->log( $item, $proposal_id, $conversation_id, Turn_Runner::LOG_STATUS_DENIED, 0, 'cannot_edit_theme_options', 'The user may no longer edit templates.' );
@@ -316,11 +286,7 @@ final class Template_Writer extends Proposal_Writer {
 			return $this->outcome( $item, 'failed', 0, 'template_exists', __( 'This site already has an edited version of that template, so it was left as it is.', 'ai' ) );
 		}
 
-		/*
-		 * `wp_insert_post()` unslashes what it is given. Block markup carries
-		 * backslashes in its attribute JSON (`\u002d`), so the values are slashed
-		 * first, or the template written would differ from the one approved.
-		 */
+		// `wp_insert_post()` unslashes, which would strip the backslashes in block attribute JSON (`\u002d`).
 		$post_id = wp_insert_post(
 			wp_slash(
 				array(
@@ -390,9 +356,6 @@ final class Template_Writer extends Proposal_Writer {
 	/**
 	 * Returns why a template cannot be proposed for this site and user, if it cannot.
 	 *
-	 * The message is written for the model to pass on, so the person hears why
-	 * rather than seeing a tool fail.
-	 *
 	 * @since x.x.x
 	 *
 	 * @return \WP_Error|null The refusal, or null when a template may be proposed.
@@ -435,11 +398,7 @@ final class Template_Writer extends Proposal_Writer {
 	}
 
 	/**
-	 * Reports whether markup is only blocks.
-	 *
-	 * The parser returns anything outside the block comments as a block with no
-	 * name. Whitespace between blocks is fine; anything else is HTML the block
-	 * editor would show as a classic block, or would not show at all.
+	 * Reports whether markup is only blocks; the parser returns HTML outside block comments as a nameless block.
 	 *
 	 * @since x.x.x
 	 *
@@ -464,12 +423,7 @@ final class Template_Writer extends Proposal_Writer {
 	}
 
 	/**
-	 * Returns the first block name the site does not register, at any depth.
-	 *
-	 * A block the site does not have renders nothing, or its saved HTML raw, and
-	 * the Site Editor shows it as unsupported, so a template naming one would go
-	 * live broken. A model inventing a plausible name such as `core/hero` is the
-	 * likely way that happens.
+	 * Returns the first block name the site does not register, at any depth (models invent names like `core/hero`).
 	 *
 	 * @since x.x.x
 	 *

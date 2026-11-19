@@ -2,13 +2,7 @@
 /**
  * The curated map of core admin screens behind the `ai/find-admin-screens` ability.
  *
- * Each entry names a screen by its menu title, the `admin_url()` path that opens
- * it, the words a person might use when they mean it, and the capability core
- * requires to open it. The order breaks ties, so the more common screen of two
- * equally good matches comes first.
- *
- * The block-theme Site Editor and the classic Customizer are mutually exclusive
- * here, matching what core shows in the Appearance menu.
+ * Order breaks ties between equally good matches.
  *
  * @package WordPress\AI\Abilities\Site
  *

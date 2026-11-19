@@ -1,10 +1,5 @@
 /**
  * Unit coverage for the AI Workspace tool-result narrowing.
- *
- * The narrowing decides what a tool result is allowed to put on screen, so it
- * is asserted directly rather than through the browser.
- *
- * External dependencies
  */
 /**
  * External dependencies

@@ -1,10 +1,5 @@
 /**
- * Block editor handoff into the AI Workspace.
- *
- * The action carries the post's identity to the workspace and nothing else.
- * The body is never handed over: the workspace reads content through the
- * permission-checked tool path, so there is one enforcement path and no trust
- * is placed in a client-supplied body.
+ * Block editor handoff into the AI Workspace. Only the post ID is passed; the workspace reads content via permission-checked tools.
  */
 
 /**
@@ -22,11 +17,7 @@ import { addQueryArgs } from '@wordpress/url';
  */
 import AIIcon from '../../../routes/ai-home/ai-icon';
 
-/**
- * Data the server localizes onto this bundle.
- */
 interface HandoffData {
-	/** Absolute admin URL of the workspace screen. */
 	workspaceUrl: string;
 	/** Query argument the workspace reads the seeded post from. */
 	postArg: string;
@@ -64,7 +55,6 @@ function OpenInWorkspace(): JSX.Element | null {
 	const openWorkspace = () => {
 		noticesDispatch.removeNotice( NOTICE_ID );
 
-		// A post that has never been persisted has no identity to hand over.
 		if ( ! postId ) {
 			noticesDispatch.createErrorNotice(
 				__(

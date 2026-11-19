@@ -14,11 +14,6 @@ use WordPress\AI\Experiments\AI_Workspace\Proposal_Kind;
 /**
  * Provides a minimal kind for the generic proposal flow and the kinds filter.
  *
- * It carries one `value` per item, takes a snapshot when the item has none, and
- * records what it was asked to write instead of writing anything. It can be told
- * to throw on a given item, to stand in for a request that dies mid-write, and
- * can be built as a kind that only creates, to test the write gate.
- *
  * @since x.x.x
  */
 final class Test_Update_Kind implements Proposal_Kind {

@@ -50,10 +50,7 @@ import type {
 } from '../types';
 
 /**
- * How the confirmation is currently behaving.
- *
- * `waiting` is an approval another window is still writing: this card writes
- * nothing and shows that window's outcome once it is stored.
+ * How the confirmation is currently behaving; `waiting` means another window is writing.
  */
 type ConfirmState =
 	| 'loading'
@@ -64,8 +61,7 @@ type ConfirmState =
 	| 'error';
 
 /**
- * How long to wait between reads of a proposal another window is writing, in
- * milliseconds.
+ * Poll interval, in milliseconds, while another window writes the proposal.
  */
 const WAIT_INTERVAL = 1000;
 
@@ -105,8 +101,7 @@ function outcomeLabel( outcome: string ): string {
 }
 
 /**
- * Renders one row per item, with why an item was not created and a way to
- * open any item that points at a post.
+ * Renders one outcome row per item.
  *
  * @param props       Component props.
  * @param props.items The outcomes to list.
@@ -149,8 +144,7 @@ function OutcomeRows( { items }: { items: ProposalItemOutcome[] } ) {
 }
 
 /**
- * Renders what an update changed, one row per change, each with a way to the
- * post or settings screen it changed.
+ * Renders what an update changed, one row per change.
  *
  * @param props             Component props.
  * @param props.execution   The execution result.
@@ -191,11 +185,7 @@ function UpdateOutcomes( {
 									'' !== item.error_message &&
 									': ' + item.error_message }
 							</span>
-							{ /*
-							 * What the field now holds, so the card keeps the
-							 * change once the side-by-side view is gone. Content
-							 * is reported by length only, so it shows nothing here.
-							 */ }
+							{ /* Content is reported by length only, so it shows nothing here. */ }
 							{ ( 'updated' === item.outcome ||
 								'unchanged' === item.outcome ) &&
 								'' !== item.value && (
@@ -226,11 +216,6 @@ function UpdateOutcomes( {
 
 /**
  * Renders what happened after approval, with the way into the result.
- *
- * One created item gets one prominent button to open it, with any other item's
- * outcome listed under it. Several get a row each with its own "Open", and a
- * link to the list that holds them all. An item that was not created says why,
- * in its own row.
  *
  * @param props             Component props.
  * @param props.execution   The execution result.
@@ -313,23 +298,14 @@ function Outcomes( {
 }
 
 /**
- * Renders the stored values of a proposal and the controls that approve them.
- *
- * The values shown are read back from the server's stored copy of the proposal,
- * never from the assistant's message: R16 exists because the model's summary of
- * what it will write is influenced by the same untrusted content the assistant
- * read. A single draft starts selected, so the card's main button does what was
- * asked for; a batch starts unchecked, so an item appended to an otherwise
- * legitimate batch has to be chosen deliberately ({@link initialSelection}).
+ * Renders the server's stored copy of a proposal and the controls that approve it.
  *
  * @param props                Component props.
  * @param props.proposalId     The proposal to confirm.
  * @param props.conversationId The conversation the proposal belongs to.
  * @param props.rest           The REST transport data.
- * @param props.onSettled      Called once the proposal is approved or discarded,
- *                             with whether the assistant may follow up.
- * @param props.stored         The outcome already reported into a reopened
- *                             chat, shown as it is with nothing fetched.
+ * @param props.onSettled      Called on approve/discard with whether to follow up.
+ * @param props.stored         Outcome already reported into a reopened chat.
  * @return The confirmation surface.
  */
 export default function ConfirmProposal( {
@@ -354,11 +330,8 @@ export default function ConfirmProposal( {
 	const [ execution, setExecution ] = useState< ProposalExecution | null >(
 		stored ?? null
 	);
-	// True when the approval that wrote the outcome stopped part way.
 	const [ interrupted, setInterrupted ] = useState( false );
-	// The person's edits to proposed values, keyed by item, while open.
 	const [ edits, setEdits ] = useState< Record< string, string > >( {} );
-	// The server's message about a refused edit, keyed by item.
 	const [ editErrors, setEditErrors ] = useState< Record< string, string > >(
 		{}
 	);
@@ -366,9 +339,7 @@ export default function ConfirmProposal( {
 	const { proposals } = rest.routes;
 	const base = ( proposals ?? '' ) + '/' + proposalId;
 
-	// Set false once this confirmation leaves the transcript -- clearing the
-	// conversation unmounts it mid-request -- so a reply that arrives afterwards
-	// updates nothing.
+	// Clearing the conversation can unmount this mid-request.
 	const mounted = useRef( true );
 
 	useEffect( () => {
@@ -379,14 +350,7 @@ export default function ConfirmProposal( {
 		};
 	}, [] );
 
-	/*
-	 * Total by construction: every caller drives a dialog whose controls are
-	 * already disabled while the request is out, so a rejection that escaped
-	 * here would strand the dialog on `loading` or `working` with no way back
-	 * short of a reload. A transport that never reached the server is reported
-	 * as its own failure rather than as a refusal, because the two differ in
-	 * what the person can conclude about the server's state.
-	 */
+	// Never rejects: an escaped rejection would strand the card on `loading` or `working`.
 	const request = useCallback(
 		async ( url: string, method: string, body?: string ) => {
 			let response: Response;
@@ -426,12 +390,7 @@ export default function ConfirmProposal( {
 	// The waiting loop calls the latest `settle` without depending on itself.
 	const settleRef = useRef< ( narrowed: Proposal ) => void >( () => {} );
 
-	/*
-	 * Shows a stored outcome, or waits for one while another window writes.
-	 * Nothing here writes: it only reads the proposal back until its approval
-	 * has finished, which the server bounds by failing an approval that runs
-	 * too long.
-	 */
+	// Shows a stored outcome, or polls while another window writes it.
 	const settle = useCallback(
 		( narrowed: Proposal ): void => {
 			const outcome = settledOutcome( narrowed );
@@ -444,8 +403,7 @@ export default function ConfirmProposal( {
 			}
 
 			if ( 'executing' !== narrowed.status ) {
-				// The other window let go without writing; this one may approve.
-				// The person's own choices stand: nothing they unticked comes back.
+				// The other window let go without writing; keep this person's selection.
 				setProposal( narrowed );
 				setSelected( ( current ) =>
 					current.filter( ( key ) =>
@@ -618,12 +576,7 @@ export default function ConfirmProposal( {
 
 		const narrowed = ok ? toProposalExecution( payload ) : null;
 
-		/*
-		 * The server refuses with a 4xx before it claims the proposal, so that
-		 * wrote nothing. Anything else -- a 5xx, no answer, an answer that could
-		 * not be read -- may have come after a write, so the proposal is read
-		 * back before the card says what happened.
-		 */
+		// Only a 4xx is known to have written nothing; anything else may follow a write.
 		if ( ! narrowed && ! ( sent && status >= 400 && status < 500 ) ) {
 			const current = await request( base, 'GET' );
 
@@ -694,11 +647,7 @@ export default function ConfirmProposal( {
 			return;
 		}
 
-		/*
-		 * An approval that wrote owes the assistant a follow-up. One that owes
-		 * none found the proposal already approved, perhaps still being written
-		 * in another window, so its stored outcome is read back instead.
-		 */
+		// No follow-up means another window already approved it; read its outcome.
 		if ( ! narrowed.follow_up ) {
 			const current = await request( base, 'GET' );
 
@@ -708,10 +657,7 @@ export default function ConfirmProposal( {
 
 			const reread = current.ok ? toProposal( current.payload ) : null;
 
-			/*
-			 * Still pending means another window holds the approval but has not
-			 * started writing yet, so this one waits for it as for one that has.
-			 */
+			// Still pending: another window holds the approval but has not started writing.
 			if ( reread ) {
 				settle(
 					'pending' === reread.status
@@ -745,11 +691,7 @@ export default function ConfirmProposal( {
 			return;
 		}
 
-		/*
-		 * A discard is refused once an approval has started, perhaps in another
-		 * window, so a failed one reads the proposal back: if it is no longer
-		 * pending, the card shows what that approval did.
-		 */
+		// A discard is refused once an approval started elsewhere; show that outcome.
 		if ( ! ok ) {
 			const current = await request( base, 'GET' );
 
@@ -767,9 +709,7 @@ export default function ConfirmProposal( {
 
 		setProposal( null );
 		setState( 'error' );
-		// A failed delete leaves the proposal stored and still approvable, so
-		// claiming it was discarded would be a claim about the server that this
-		// request never established.
+		// A failed delete leaves the proposal stored, so don't claim it was discarded.
 		const updating = proposal ? isUpdate( proposal ) : false;
 
 		if ( updating ) {
@@ -1009,8 +949,7 @@ export default function ConfirmProposal( {
 					} }
 				>
 					{ createLabel(
-						// With nothing checked, the label keeps naming what the
-						// card holds, so it reads "Create 0 drafts".
+						// With nothing checked, still name what the card holds ("Create 0 drafts").
 						chosen.length > 0 ? chosen : proposal.items,
 						selected.length
 					) }
