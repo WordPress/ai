@@ -182,6 +182,45 @@ class Settings_RegistrationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that maybe_extend_revalidation_timeout() adds the timeout filter when
+	 * the settings route is requested with different casing, since the REST
+	 * server matches routes case-insensitively.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_maybe_extend_adds_filter_on_mixed_case_settings_route(): void {
+		$registration = new Settings_Registration( new Registry() );
+		$request      = new WP_REST_Request( 'POST', '/wp/v2/Settings' );
+
+		$registration->maybe_extend_revalidation_timeout( null, null, $request );
+
+		$this->assertNotFalse(
+			has_filter( 'http_request_timeout', array( $registration, 'extend_revalidation_timeout' ) ),
+			'The http_request_timeout filter should be registered for a mixed-case settings route.'
+		);
+
+		remove_filter( 'http_request_timeout', array( $registration, 'extend_revalidation_timeout' ) );
+	}
+
+	/**
+	 * Tests that maybe_extend_revalidation_timeout() ignores routes that only
+	 * start with the settings route.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_maybe_extend_ignores_routes_with_settings_prefix(): void {
+		$registration = new Settings_Registration( new Registry() );
+		$request      = new WP_REST_Request( 'POST', '/wp/v2/settings-extra' );
+
+		$registration->maybe_extend_revalidation_timeout( null, null, $request );
+
+		$this->assertFalse(
+			has_filter( 'http_request_timeout', array( $registration, 'extend_revalidation_timeout' ) ),
+			'The timeout filter should not be added for a route that only starts with the settings route.'
+		);
+	}
+
+	/**
 	 * Tests that maybe_extend_revalidation_timeout() ignores non-settings routes.
 	 *
 	 * @since 1.4.0

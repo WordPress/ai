@@ -20,11 +20,11 @@ import TitleToolbar from './TitleToolbar';
  * Creates a reusable retry function that will attempt to execute a callback
  * when a condition is met, retrying up to a maximum number of times.
  *
- * @param {Function} checkFn    Function that returns true when condition is met.
- * @param {Function} callback   Function to execute when condition is met.
- * @param {number}   maxRetries Maximum number of retry attempts.
- * @param {number}   delay      Delay in milliseconds between retries.
- * @return {Function} A function that starts the retry process.
+ * @param {() => boolean} checkFn    Function that returns true when condition is met.
+ * @param {() => void}    callback   Function to execute when condition is met.
+ * @param {number}        maxRetries Maximum number of retry attempts.
+ * @param {number}        delay      Delay in milliseconds between retries.
+ * @return {() => void} A function that starts the retry process.
  */
 function createRetry(
 	checkFn: () => boolean,
@@ -62,9 +62,9 @@ function createRetry(
 /**
  * Creates reusable focus/blur event handlers with optional delay on blur.
  *
- * @param {Function} onFocus   Function to call on focus event.
- * @param {Function} onBlur    Function to call on blur event.
- * @param {number}   blurDelay Delay in milliseconds before calling onBlur.
+ * @param {() => void} onFocus   Function to call on focus event.
+ * @param {() => void} onBlur    Function to call on blur event.
+ * @param {number}     blurDelay Delay in milliseconds before calling onBlur.
  * @return {Object} Object with focus and blur handler functions.
  */
 function createFocusBlurHandlers(
@@ -85,10 +85,10 @@ function createFocusBlurHandlers(
  *
  * @param {HTMLElement} element        The element to attach listeners to.
  * @param {Object}      handlers       Object containing focus and blur handler functions.
- * @param {Function}    handlers.focus Callback to handle focus event.
- * @param {Function}    handlers.blur  Callback to handle blur event.
+ * @param {() => void}  handlers.focus Callback to handle focus event.
+ * @param {() => void}  handlers.blur  Callback to handle blur event.
  * @param {boolean}     useFocusIn     Whether to use focusin/focusout instead of focus/blur.
- * @return {Function} Cleanup function to remove the event listeners.
+ * @return {() => void} Cleanup function to remove the event listeners.
  */
 function setupEventListeners(
 	element: HTMLElement,

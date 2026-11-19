@@ -1,0 +1,46 @@
+/**
+ * Excerpt field summary in the WordPress 7.2 editor inspector, rendered by
+ * the `@ai/excerpt-field` script module (packages/excerpt-field).
+ */
+
+.ai-excerpt-field__summary {
+	display: block;
+	flex: 1 1 auto;
+
+	.ai-excerpt-inline-button {
+		float: inline-end;
+	}
+}
+
+.ai-excerpt-field__generate {
+	display: flex;
+	align-self: start;
+	position: relative;
+	z-index: 1;
+}
+
+.dataforms-layouts-panel__field-trigger--label-top:has(> .ai-excerpt-field__generate) {
+
+	> .dataforms-layouts-panel__field-control {
+		grid-column: 1;
+	}
+
+	> .ai-excerpt-field__generate {
+		grid-row: 2;
+		grid-column: 2;
+		margin-block-start: 4px;
+	}
+}
+
+.ai-excerpt-field__excerpt {
+	display: -webkit-box;
+	overflow: hidden;
+	text-align: start;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 3;
+	line-clamp: 3;
+}
+
+.ai-excerpt-field__placeholder {
+	color: var(--wpds-color-foreground-content-neutral-weak);
+}

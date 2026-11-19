@@ -558,4 +558,39 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 		$this->assertInstanceOf( \WP_Error::class, $result );
 		$this->assertSame( 'post_not_found', $result->get_error_code() );
 	}
+
+	/**
+	 * Test that generate_reply() keeps percent signs in the AI response.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_generate_reply_keeps_percent_signs(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_reply' );
+		$method->setAccessible( true );
+
+		$mock_builder = $this->getMockBuilder( \WP_AI_Client_Prompt_Builder::class )
+			->disableOriginalConstructor()
+			->addMethods( array( 'is_supported_for_text_generation', 'generate_text' ) )
+			->getMock();
+
+		$mock_builder->method( 'is_supported_for_text_generation' )
+			->willReturn( true );
+
+		$mock_builder->method( 'generate_text' )
+			->willReturn( "Teşekkürler! Tüm ürünlerde %50 indirim var.\n\nTişörtler %100 pamuk." );
+
+		add_filter(
+			'wpai_suggest_reply_prompt_builder',
+			static function () use ( $mock_builder ) {
+				return $mock_builder;
+			}
+		);
+
+		$result = $method->invoke( $this->ability, 'İndirim ne kadar?' );
+
+		remove_all_filters( 'wpai_suggest_reply_prompt_builder' );
+
+		$this->assertSame( "Teşekkürler! Tüm ürünlerde %50 indirim var.\n\nTişörtler %100 pamuk.", $result );
+	}
 }

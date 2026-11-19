@@ -20,6 +20,7 @@
 		"@wordpress/i18n": "*",
 		"@wordpress/notices": "*",
 		"@wordpress/primitives": "*",
-		"@wordpress/ui": "*"
+		"@wordpress/ui": "*",
+		"@wordpress/url": "*"
 	}
 }

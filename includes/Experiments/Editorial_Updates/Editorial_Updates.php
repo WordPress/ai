@@ -43,10 +43,11 @@ class Editorial_Updates extends Abstract_Feature {
 	 */
 	protected function load_metadata(): array {
 		return array(
-			'label'       => __( 'Editorial Updates', 'ai' ),
-			'description' => __( 'Applies pending editorial Notes to your content and saves the post, without a preview. Use revisions to review or undo the changes. Requires an AI connector that includes support for text generation models.', 'ai' ),
-			'category'    => Experiment_Category::EDITOR,
-			'usage'       => array(
+			'label'          => __( 'Editorial Updates', 'ai' ),
+			'description'    => __( 'Applies pending editorial Notes to your content and saves the post, without a preview. Use revisions to review or undo the changes. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'category'       => Experiment_Category::EDITOR,
+			'access_control' => true,
+			'usage'          => array(
 				'trigger'  => 'on_demand',
 				'runs'     => __( 'When you click Apply Editorial Updates, which also saves the post', 'ai' ),
 				'sends'    => __( 'Each block with pending Notes, with surrounding content', 'ai' ),
@@ -62,6 +63,14 @@ class Editorial_Updates extends Abstract_Feature {
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function register_ui(): void {
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ) );
 	}
 
@@ -71,11 +80,12 @@ class Editorial_Updates extends Abstract_Feature {
 	 * @since 0.8.0
 	 */
 	public function register_abilities(): void {
-		wp_register_ability(
+		$this->register_feature_ability(
 			'ai/' . $this->get_id(),
 			array(
 				'label'         => $this->get_label(),
 				'description'   => $this->get_description(),
+				'category'      => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'ability_class' => Editorial_Updates_Ability::class,
 			),
 		);
@@ -89,19 +99,15 @@ class Editorial_Updates extends Abstract_Feature {
 	public function enqueue_assets(): void {
 		Asset_Loader::enqueue_script( 'editorial_updates', 'experiments/editorial-updates', array( 'include_core_abilities' => true ) );
 
-		$post_type        = get_post_type();
-		$post_type_object = $post_type ? get_post_type_object( $post_type ) : null;
-		$rest_base        = $post_type_object && $post_type_object->rest_base
-			? $post_type_object->rest_base
-			: null;
+		$post_type = get_post_type();
 
 		Asset_Loader::localize_script(
 			'editorial_updates',
 			'EditorialUpdatesData',
 			array(
-				'enabled'   => $this->is_enabled(),
-				'rest_base' => $rest_base,
-				'admin_url' => admin_url(),
+				'enabled'    => $this->is_enabled(),
+				'rest_route' => $post_type ? rest_get_route_for_post_type_items( $post_type ) : '',
+				'admin_url'  => admin_url(),
 			)
 		);
 	}

@@ -80,6 +80,16 @@ class Plugin_Installer {
 			return;
 		}
 
+		// Don't allow automatic installation on Multisite.
+		if ( is_multisite() ) {
+			update_option(
+				self::HANDLED_OPTION,
+				__( 'Automatic installation is not available on Multisite. A network administrator can install and activate the plugin.', 'ai' ),
+				true
+			);
+			return;
+		}
+
 		// Activation is the minimum capability for either path; bail before the disk scan.
 		if ( ! current_user_can( 'activate_plugins' ) ) {
 			return;

@@ -323,13 +323,14 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * When core already provides core/content-query, the plugin's version replaces it.
+	 * When core already provides core/content-query, the plugin keeps it instead of registering its copy.
 	 *
 	 * Plugin: this test has no equivalent in the core tests.
 	 *
 	 * @since 1.2.0
+	 * @since x.x.x Asserts that the core-provided ability is kept rather than replaced.
 	 */
-	public function test_override_replaces_existing_core_content_query(): void {
+	public function test_keeps_existing_core_content_query(): void {
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
@@ -349,11 +350,11 @@ class ContentTest extends WP_UnitTestCase {
 			array_pop( $wp_current_filter );
 		}
 
-		$this->assertSame( 'Core Provided', wp_get_ability( 'core/content-query' )->get_label(), 'The core-provided ability should be registered before the plugin override.' );
+		$this->assertSame( 'Core Provided', wp_get_ability( 'core/content-query' )->get_label(), 'The core-provided ability should be registered before the plugin registers its copy.' );
 
 		$this->register_ability();
 
-		$this->assertSame( 'Query Content', wp_get_ability( 'core/content-query' )->get_label(), 'The plugin-provided content ability should replace the existing one.' );
+		$this->assertSame( 'Core Provided', wp_get_ability( 'core/content-query' )->get_label(), 'The core-provided content ability should be kept.' );
 	}
 
 	/**
@@ -860,6 +861,7 @@ class ContentTest extends WP_UnitTestCase {
 			}
 			$this->assertStringContainsString( "in ISO 8601 format using the site's timezone.", $post_schema['properties'][ $name ]['properties']['site']['description'], sprintf( 'The %s.site description should say the date uses the site timezone.', $name ) );
 		}
+		$this->assertSame( 'uri', $post_schema['properties']['link']['format'], 'The link should use the uri format.' );
 
 		$this->assertSame( 'object', $pagination['type'], 'The pagination should describe an object.' );
 		$this->assertFalse( $pagination['additionalProperties'], 'The pagination should not allow keys besides the totals.' );
@@ -900,6 +902,85 @@ class ContentTest extends WP_UnitTestCase {
 		}
 
 		return $found;
+	}
+
+	/**
+	 * Returns posts whose permalinks take different forms.
+	 *
+	 * With pretty permalinks, a draft still links to its plain `?p=ID` form, while a
+	 * published post and a private page the current user can read link to their pretty
+	 * permalinks.
+	 *
+	 * @return array<string, array{post_type: string, post_status: string, plain_permalink: bool}> Post test cases.
+	 */
+	public static function data_posts_with_different_permalink_forms(): array {
+		return array(
+			'published post' => array(
+				'post_type'       => 'post',
+				'post_status'     => 'publish',
+				'plain_permalink' => false,
+			),
+			'draft post'     => array(
+				'post_type'       => 'post',
+				'post_status'     => 'draft',
+				'plain_permalink' => true,
+			),
+			'private page'   => array(
+				'post_type'       => 'page',
+				'post_status'     => 'private',
+				'plain_permalink' => false,
+			),
+		);
+	}
+
+	/**
+	 * Results validate against the output schema, which declares the `uri` format for the
+	 * link, whatever form the permalink takes.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_posts_with_different_permalink_forms
+	 *
+	 * @param string $post_type       The post type to create.
+	 * @param string $post_status     The post status to create.
+	 * @param bool   $plain_permalink Whether the post links to its plain `?p=ID` permalink.
+	 */
+	public function test_results_validate_against_the_output_schema_for_each_permalink_form( string $post_type, string $post_status, bool $plain_permalink ): void {
+		// Plugin: core's test suite uses pretty permalinks by default; the plugin's suite does not.
+		$this->set_permalink_structure( '/%postname%/' );
+
+		$post_id = self::factory()->post->create(
+			array(
+				'post_type'   => $post_type,
+				'post_status' => $post_status,
+			)
+		);
+
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$ability = wp_get_ability( 'core/content-query' );
+		$result  = $ability->execute(
+			array(
+				'where'  => array(
+					'type' => $post_type,
+					'ids'  => array( $post_id ),
+				),
+				'fields' => array( 'id', 'type', 'status', 'date', 'modified', 'slug', 'link', 'title', 'excerpt', 'content', 'author', 'parent' ),
+			)
+		);
+
+		$this->assertIsArray( $result, 'The query should succeed.' );
+		$this->assertCount( 1, $result['items'], 'The query should return the post.' );
+
+		$link = $result['items'][0]['link'];
+		if ( $plain_permalink ) {
+			$this->assertSame( home_url( '?p=' . $post_id ), $link, 'Precondition: the post should link to its plain permalink.' );
+		} else {
+			$this->assertStringNotContainsString( '?', $link, 'Precondition: the post should link to its pretty permalink.' );
+		}
+		$this->assertSame( get_permalink( $post_id ), $link, 'The link should be the permalink.' );
+		$this->assertTrue( rest_validate_value_from_schema( $result, $ability->get_output_schema(), 'result' ), 'The result should validate against the output schema.' );
 	}
 
 	/**
@@ -2630,7 +2711,7 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * An author is visible once they have a published post in a post type exposed to
+	 * An author is visible once they have a published post in a viewable post type exposed to
 	 * abilities, whether or not that post type is exposed to the REST API, and not for a
 	 * published post in a post type exposed to the REST API only.
 	 *
@@ -2649,10 +2730,11 @@ class ContentTest extends WP_UnitTestCase {
 		register_post_type(
 			'abilities_cpt',
 			array(
-				'public'            => false,
-				'show_in_rest'      => false,
-				'show_in_abilities' => true,
-				'supports'          => array( 'title', 'author' ),
+				'public'             => false,
+				'publicly_queryable' => true,
+				'show_in_rest'       => false,
+				'show_in_abilities'  => true,
+				'supports'           => array( 'title', 'author' ),
 			)
 		);
 
@@ -2704,7 +2786,7 @@ class ContentTest extends WP_UnitTestCase {
 				$post_ids['abilities_cpt'] => 'abilities_cpt-author',
 			),
 			$slugs,
-			'Only the author with a published post in a post type exposed to abilities should be named.'
+			'Only the author with a published post in a viewable post type exposed to abilities should be named.'
 		);
 
 		$filter = static function ( string $slug ) use ( $ability, $post_ids ) {
@@ -2722,6 +2804,47 @@ class ContentTest extends WP_UnitTestCase {
 		};
 		$this->assertSame( self::EMPTY_RESULT, $filter( 'rest_only_cpt-author' ), 'The slug of an author published only in a post type exposed to the REST API should match no post.' );
 		$this->assertSame( array( $post_ids['abilities_cpt'] ), wp_list_pluck( $filter( 'abilities_cpt-author' )['items'], 'id' ), 'The slug of an author published in a post type exposed to abilities should match their post.' );
+	}
+
+	/**
+	 * Published posts in a non-viewable post type must not make an author's slug visible.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_author_slug_is_not_exposed_by_posts_in_a_non_viewable_post_type(): void {
+		register_post_type(
+			'hidden_author_cpt',
+			array(
+				'public'             => true,
+				'publicly_queryable' => false,
+				'show_in_abilities'  => true,
+				'supports'           => array( 'title', 'author' ),
+			)
+		);
+		$author = self::factory()->user->create_and_get( array( 'role' => 'author' ) );
+		self::factory()->post->create(
+			array(
+				'post_type'   => 'hidden_author_cpt',
+				'post_author' => $author->ID,
+				'post_status' => 'publish',
+			)
+		);
+
+		$this->login_as( 'subscriber' );
+		$this->register_ability();
+		$ability = wp_get_ability( 'core/content-query' );
+
+		foreach ( array( $author->user_nicename, 'no-such-user' ) as $slug ) {
+			$result = $ability->execute(
+				array(
+					'where' => array(
+						'type'   => 'hidden_author_cpt',
+						'author' => array( 'slug' => $slug ),
+					),
+				)
+			);
+			$this->assertSame( self::EMPTY_RESULT, $result, 'A hidden author slug should return zero totals, just like an unknown slug.' );
+		}
 	}
 
 	/**

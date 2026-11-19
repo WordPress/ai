@@ -21,10 +21,10 @@ const { aiImageGenerationData } = window as any;
 /**
  * Uploads an image to the media library.
  *
- * @param {GeneratedImageData} imageData              The generated image data (from generateImage).
- * @param {Object}             options                Optional settings.
- * @param {Function}           options.onProgress     Callback invoked with progress messages.
- * @param                      options.altTextEnabled
+ * @param {GeneratedImageData}    imageData              The generated image data (from generateImage).
+ * @param {Object}                options                Optional settings.
+ * @param {ImageProgressCallback} options.onProgress     Callback invoked with progress messages.
+ * @param {boolean}               options.altTextEnabled
  * @return {Promise<UploadedImage>} A promise that resolves to the uploaded image data.
  */
 export async function uploadImage(

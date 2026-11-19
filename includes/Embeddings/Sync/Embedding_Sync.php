@@ -414,7 +414,7 @@ final class Embedding_Sync {
 	}
 
 	/**
-	 * Clears every target's pauses and releases the objects they postponed.
+	 * Clears every stored pause and releases the objects they postponed.
 	 *
 	 * @since 1.5.0
 	 *
@@ -422,18 +422,7 @@ final class Embedding_Sync {
 	 */
 	public static function clear_pauses(): int {
 		$sync  = self::instance();
-		$until = null;
-
-		foreach ( $sync->registry->get_targets() as $target ) {
-			$target_until = $sync->backoff->get_until_for( $target );
-
-			if ( null !== $target_until ) {
-				$until = max( (int) $until, $target_until );
-			}
-
-			$sync->backoff->clear( $target->get_provider() );
-			$sync->backoff->clear( $target->get_provider(), $target->get_model() );
-		}
+		$until = $sync->backoff->clear_all();
 
 		if ( null === $until ) {
 			return 0;

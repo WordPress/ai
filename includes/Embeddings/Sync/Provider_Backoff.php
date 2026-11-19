@@ -24,6 +24,11 @@ class Provider_Backoff {
 	private const TRANSIENT_PREFIX = 'wpai_embedding_backoff_';
 
 	/**
+	 * Option listing every stored pause.
+	 */
+	private const INDEX_OPTION = 'wpai_embedding_backoff_index';
+
+	/**
 	 * First rate-limit pause, in seconds.
 	 *
 	 * @since 1.5.0
@@ -167,7 +172,38 @@ class Provider_Backoff {
 			return;
 		}
 
-		delete_transient( $this->key( $provider, $model ) );
+		$key = $this->key( $provider, $model );
+
+		delete_transient( $key );
+
+		$index = $this->get_index();
+		unset( $index[ $key ] );
+		$this->save_index( $index );
+	}
+
+	/**
+	 * Clears every stored pause, including those of models no target uses any more.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int|null $now Optional. Unix time. Default now.
+	 * @return int|null Unix time the latest live pause would have ended, or null when none was live.
+	 */
+	public function clear_all( ?int $now = null ): ?int {
+		$now   = $now ?? time();
+		$until = null;
+
+		foreach ( $this->get_index() as $key => $key_until ) {
+			if ( $key_until > $now ) {
+				$until = max( (int) $until, $key_until );
+			}
+
+			delete_transient( $key );
+		}
+
+		delete_option( self::INDEX_OPTION );
+
+		return $until;
 	}
 
 	/**
@@ -185,9 +221,10 @@ class Provider_Backoff {
 	 */
 	private function store( string $provider, int $delay, string $error_class, string $error, int $now, ?string $model = null ): int {
 		$until = $now + $delay;
+		$key   = $this->key( $provider, $model );
 
 		set_transient(
-			$this->key( $provider, $model ),
+			$key,
 			array(
 				'until'       => $until,
 				'delay'       => $delay,
@@ -197,6 +234,15 @@ class Provider_Backoff {
 			),
 			$delay + self::MAX_DELAY
 		);
+
+		// Drop entries whose transients have expired; the rest are cleared by clear_all().
+		$index = array_filter(
+			$this->get_index(),
+			static fn( int $key_until ): bool => $key_until + self::MAX_DELAY > $now
+		);
+
+		$index[ $key ] = $until;
+		$this->save_index( $index );
 
 		return $until;
 	}
@@ -212,5 +258,34 @@ class Provider_Backoff {
 	 */
 	private function key( string $provider, ?string $model = null ): string {
 		return self::TRANSIENT_PREFIX . md5( null === $model ? $provider : $provider . "\0" . $model );
+	}
+
+	/**
+	 * Returns the stored pauses: transient name to the Unix time each ends.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, int> The index.
+	 */
+	private function get_index(): array {
+		$index = get_option( self::INDEX_OPTION, array() );
+
+		return is_array( $index ) ? array_map( 'intval', $index ) : array();
+	}
+
+	/**
+	 * Saves the stored pauses, deleting the option once none are left.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, int> $index Transient name to the Unix time each pause ends.
+	 */
+	private function save_index( array $index ): void {
+		if ( array() === $index ) {
+			delete_option( self::INDEX_OPTION );
+			return;
+		}
+
+		update_option( self::INDEX_OPTION, $index, false );
 	}
 }

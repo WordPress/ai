@@ -41,12 +41,13 @@ class Image_Generation extends Abstract_Feature {
 	 */
 	protected function load_metadata(): array {
 		return array(
-			'label'       => __( 'Image Generation and Editing', 'ai' ),
-			'description' => __( 'Generate and edit images using AI. Requires an AI connector that includes support for image generation models.', 'ai' ),
-			'stability'   => 'stable',
-			'image'       => WPAI_PLUGIN_URL . 'assets/images/showcase-image-generation.webp',
-			'capability'  => 'image_generation',
-			'usage'       => array(
+			'label'          => __( 'Image Generation and Editing', 'ai' ),
+			'description'    => __( 'Generate and edit images using AI. Requires an AI connector that includes support for image generation models.', 'ai' ),
+			'stability'      => 'stable',
+			'image'          => WPAI_PLUGIN_URL . 'assets/images/showcase-image-generation.webp',
+			'capability'     => 'image_generation',
+			'access_control' => true,
+			'usage'          => array(
 				'trigger'  => 'on_demand',
 				'runs'     => __( 'When you click Generate Image or Generate featured image', 'ai' ),
 				'sends'    => __( 'Your prompt; featured images also send post content, title, and post type; editing an image also sends the existing image', 'ai' ),
@@ -61,6 +62,14 @@ class Image_Generation extends Abstract_Feature {
 	public function register(): void {
 		$this->register_post_meta();
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function register_ui(): void {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_inline_assets' ) );
 		add_action( 'admin_menu', array( $this, 'register_admin_menu' ) );
@@ -155,29 +164,32 @@ class Image_Generation extends Abstract_Feature {
 	 * @since 0.2.0
 	 */
 	public function register_abilities(): void {
-		wp_register_ability(
+		$this->register_feature_ability(
 			'ai/' . $this->get_id(),
 			array(
 				'label'         => $this->get_label(),
 				'description'   => $this->get_description(),
+				'category'      => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'ability_class' => Image_Generation_Ability::class,
 			),
 		);
 
-		wp_register_ability(
+		$this->register_feature_ability(
 			'ai/image-import',
 			array(
 				'label'         => __( 'Base64 Image Import', 'ai' ),
 				'description'   => __( 'Imports a base64 encoded image into the media library', 'ai' ),
+				'category'      => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'ability_class' => Image_Import_Ability::class,
 			),
 		);
 
-		wp_register_ability(
+		$this->register_feature_ability(
 			'ai/image-prompt-generation',
 			array(
 				'label'         => __( 'Image Prompt Generation', 'ai' ),
 				'description'   => __( 'Generates a prompt from post content that can be used to generate an image', 'ai' ),
+				'category'      => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'ability_class' => Generate_Image_Prompt_Ability::class,
 			),
 		);
