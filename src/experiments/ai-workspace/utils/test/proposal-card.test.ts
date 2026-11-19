@@ -11,6 +11,7 @@ import { describe, expect, test } from 'vitest';
  */
 import {
 	applyLabel,
+	bulkSelectable,
 	canOpen,
 	changeLabel,
 	createLabel,
@@ -118,6 +119,52 @@ describe( 'AI Workspace proposal card selection', () => {
 		).toEqual( [ 'a' ] );
 		expect(
 			initialSelection( proposal( [ template ], 'executed', 'template' ) )
+		).toEqual( [] );
+	} );
+} );
+
+describe( 'AI Workspace proposal card select all', () => {
+	test( 'selects every draft or pending item in a batch', () => {
+		expect(
+			bulkSelectable(
+				proposal( [ item(), item( { key: 'b', status: 'pending' } ) ] )
+			)
+		).toEqual( [ 'a', 'b' ] );
+	} );
+
+	test( 'leaves out an item that would be published or made private', () => {
+		expect(
+			bulkSelectable(
+				proposal( [
+					item(),
+					item( { key: 'b', status: 'publish' } ),
+					item( { key: 'c', status: 'private' } ),
+				] )
+			)
+		).toEqual( [ 'a' ] );
+	} );
+
+	test( 'offers nothing for a single item, an update, a template, or a settled proposal', () => {
+		const batch = [ item(), item( { key: 'b' } ) ];
+
+		expect( bulkSelectable( proposal( [ item() ] ) ) ).toEqual( [] );
+		expect(
+			bulkSelectable( proposal( batch, 'pending', 'post-field' ) )
+		).toEqual( [] );
+		expect(
+			bulkSelectable( proposal( batch, 'pending', 'template' ) )
+		).toEqual( [] );
+		expect( bulkSelectable( proposal( batch, 'executed' ) ) ).toEqual( [] );
+	} );
+
+	test( 'offers nothing when every item would be published', () => {
+		expect(
+			bulkSelectable(
+				proposal( [
+					item( { status: 'publish' } ),
+					item( { key: 'b', status: 'publish' } ),
+				] )
+			)
 		).toEqual( [] );
 	} );
 } );

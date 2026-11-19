@@ -587,7 +587,11 @@ test.describe( 'AI Workspace proposal card', () => {
 	} ) => {
 		const card = page.getByRole( 'region', { name: 'Create 3 drafts' } );
 
-		// Each item in a batch is chosen deliberately, so none starts checked.
+		// Each item in a batch is chosen deliberately, so none starts checked,
+		// and neither does "Select all".
+		await expect(
+			card.getByRole( 'checkbox', { name: 'Select all' } )
+		).not.toBeChecked();
 		for ( const title of SERIES ) {
 			await expect(
 				card.getByRole( 'checkbox', { name: title } )
@@ -610,6 +614,19 @@ test.describe( 'AI Workspace proposal card', () => {
 
 		await card.getByRole( 'checkbox', { name: SERIES[ 0 ] } ).uncheck();
 		await expect( create ).toHaveText( 'Create 2 drafts' );
+
+		// "Select all" checks what is left, and clearing it unchecks everything.
+		const all = card.getByRole( 'checkbox', { name: 'Select all' } );
+		await expect( all ).not.toBeChecked();
+		await all.check();
+		await expect( create ).toHaveText( 'Create 3 drafts' );
+		for ( const title of SERIES ) {
+			await expect(
+				card.getByRole( 'checkbox', { name: title } )
+			).toBeChecked();
+		}
+		await all.uncheck();
+		await expect( create ).toHaveText( 'Create 0 drafts' );
 
 		await expect(
 			card.getByText( 'Blocks are the pieces a page is built from.', {

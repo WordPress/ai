@@ -27,6 +27,7 @@ import {
 } from '../utils/proposal';
 import {
 	applyLabel,
+	bulkSelectable,
 	canOpen,
 	changeLabel,
 	createLabel,
@@ -895,6 +896,10 @@ export default function ConfirmProposal( {
 	const chosen = proposal.items.filter( ( item ) =>
 		selected.includes( item.key )
 	);
+	const bulk = bulkSelectable( proposal );
+	const bulkChosen = bulk.filter( ( key ) => selected.includes( key ) );
+	// Some items would be published or made private; "Select all" skips them.
+	const bulkSkips = bulk.length > 0 && bulk.length < proposal.items.length;
 
 	return (
 		<section className="ai-workspace__proposal" aria-label={ title }>
@@ -904,6 +909,40 @@ export default function ConfirmProposal( {
 					? __( 'Check it over, then create it.', 'ai' )
 					: __( 'Check the ones you want.', 'ai' ) }
 			</p>
+
+			{ bulk.length > 0 && (
+				<CheckboxControl
+					__nextHasNoMarginBottom
+					className="ai-workspace__proposal-select-all"
+					checked={ bulkChosen.length === bulk.length }
+					indeterminate={
+						bulkChosen.length > 0 && bulkChosen.length < bulk.length
+					}
+					onChange={ ( isChecked: boolean ) =>
+						setSelected( ( current ) =>
+							isChecked
+								? [
+										...current,
+										...bulk.filter(
+											( key ) => ! current.includes( key )
+										),
+								  ]
+								: current.filter(
+										( key ) => ! bulk.includes( key )
+								  )
+						)
+					}
+					label={ __( 'Select all', 'ai' ) }
+					help={
+						bulkSkips
+							? __(
+									'Items that would be published or made private are not included. Check those one by one.',
+									'ai'
+							  )
+							: undefined
+					}
+				/>
+			) }
 
 			{ proposal.items.map( ( item ) => (
 				<div key={ item.key } className="ai-workspace__proposal-item">

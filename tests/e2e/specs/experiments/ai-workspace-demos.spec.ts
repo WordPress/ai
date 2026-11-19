@@ -252,7 +252,11 @@ test.describe( 'AI Workspace starter prompts', () => {
 
 		const card = page.getByRole( 'region', { name: 'Create 5 drafts' } );
 		await expect( card ).toBeVisible( { timeout: 30000 } );
-		await expect( card.getByRole( 'checkbox' ) ).toHaveCount( 5 );
+		// One checkbox per draft, plus "Select all".
+		await expect(
+			card.getByRole( 'checkbox', { name: 'Select all' } )
+		).not.toBeChecked();
+		await expect( card.getByRole( 'checkbox' ) ).toHaveCount( 6 );
 
 		expect( await toolOrder( page ) ).toEqual( [ 'ai/propose-drafts' ] );
 		expect(

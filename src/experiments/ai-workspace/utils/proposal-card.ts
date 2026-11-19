@@ -77,6 +77,29 @@ export function initialSelection( proposal: Proposal ): string[] {
 }
 
 /**
+ * Returns the item keys a batch's "Select all" checkbox selects.
+ *
+ * Only for a pending batch of new items. Publish and private items are left out, so they still take their own click.
+ *
+ * @param proposal The stored proposal.
+ * @return The keys "Select all" selects, or none when the card has no such box.
+ */
+export function bulkSelectable( proposal: Proposal ): string[] {
+	if (
+		'pending' !== proposal.status ||
+		isUpdate( proposal ) ||
+		'template' === proposal.kind ||
+		proposal.items.length < 2
+	) {
+		return [];
+	}
+
+	return proposal.items
+		.filter( ( item ) => PRESELECTABLE_STATUSES.includes( item.status ) )
+		.map( ( item ) => item.key );
+}
+
+/**
  * Says what creating a template, which is live at once, changes for visitors.
  *
  * @param item The proposed template.
