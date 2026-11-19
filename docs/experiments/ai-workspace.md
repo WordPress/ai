@@ -2,13 +2,13 @@
 
 ## Summary
 
-The AI Workspace experiment adds a conversation surface on a dedicated admin screen at `Tools → AI Workspace`, where a site owner can ask questions about their own site. The assistant is given a small allowlist of WordPress Abilities as callable tools; every call runs through `WP_Ability::execute()`, so it can never reach content the requesting user could not read. It cannot change anything on its own: creating drafts or a block template, and changing a post's title, excerpt or content or the site title and tagline, are two-step proposals that a person approves before the server writes. Replies arrive in the transcript whole, once the model has finished; token-by-token streaming from the provider is planned for a follow-up once the PHP AI Client ships streaming ([WordPress/php-ai-client#255](https://github.com/WordPress/php-ai-client/pull/255)).
+The AI Workspace experiment adds a conversation surface on a dedicated admin screen, the top-level **Workspace** menu, where a site owner can ask questions about their own site. The assistant is given a small allowlist of WordPress Abilities as callable tools; every call runs through `WP_Ability::execute()`, so it can never reach content the requesting user could not read. It cannot change anything on its own: creating drafts or a block template, and changing a post's title, excerpt or content or the site title and tagline, are two-step proposals that a person approves before the server writes. Replies arrive in the transcript whole, once the model has finished; token-by-token streaming from the provider is planned for a follow-up once the PHP AI Client ships streaming ([WordPress/php-ai-client#255](https://github.com/WordPress/php-ai-client/pull/255)).
 
 ## Overview
 
 ### For End Users
 
-Enable the experiment at `Settings → AI` and open `Tools → AI Workspace`. The screen requires `manage_options`, and the menu entry is not shown to users who lack it. The workspace supports [access controls](../admin/access-controls.md): when they are on, an administrator who is not allowed gets no menu entry, no editor or Command Palette entry points, and a `wpai_feature_access_denied` error from every workspace route.
+Enable the experiment at `Settings → AI` and open **Workspace** in the admin menu. The screen requires `manage_options`, and the menu entry is not shown to users who lack it. The workspace supports [access controls](../admin/access-controls.md): when they are on, an administrator who is not allowed gets no menu entry, no editor or Command Palette entry points, and a `wpai_feature_access_denied` error from every workspace route.
 
 **Key features:**
 
@@ -651,7 +651,7 @@ Filters whether a function-calling-capable model is available, for connectors th
    - Go to `Settings → AI`, enable global AI features, and toggle **AI Workspace**
    - Ensure valid AI connector credentials are configured
 2. **Hold a conversation:**
-   - Open `Tools → AI Workspace`, choose **Site Context**, and ask something that needs retrieval ("find posts about remote work")
+   - Open **Workspace** in the admin menu, choose **Site Context**, and ask something that needs retrieval ("find posts about remote work")
    - Confirm the reply appears, the tool step lists the call, and a post list renders as a table with editor links
    - Cancel a long turn and confirm the transcript reports the cancellation
    - Clear the conversation and confirm the next turn starts a new space
