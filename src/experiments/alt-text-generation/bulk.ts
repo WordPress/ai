@@ -5,6 +5,7 @@
 /**
  * WordPress dependencies
  */
+import { speak } from '@wordpress/a11y';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import apiFetch from '@wordpress/api-fetch';
 
@@ -60,6 +61,9 @@ function createNotice(
 	if ( container ) {
 		container.prepend( notice );
 	}
+
+	// The notice is added after the page has loaded, so announce it.
+	speak( message, type === 'error' ? 'assertive' : 'polite' );
 
 	return paragraph;
 }
@@ -203,6 +207,7 @@ async function processBulkAltText(): Promise< void > {
 	}
 
 	statusParagraph.textContent = message;
+	speak( message );
 }
 
 document.addEventListener( 'DOMContentLoaded', () => {
