@@ -119,11 +119,6 @@ class AltTextMediaControls {
 	/**
 	 * Handles the generate button click.
 	 *
-	 * The button is marked aria-disabled until the request finishes, and
-	 * repeat clicks return early. It is not natively disabled, because a
-	 * focused button that becomes disabled drops keyboard focus to the
-	 * document.
-	 *
 	 * @since 0.3.0
 	 */
 	public async handleGenerate(): Promise< void > {
