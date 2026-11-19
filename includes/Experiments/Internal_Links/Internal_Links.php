@@ -41,9 +41,10 @@ class Internal_Links extends Abstract_Feature {
 	 */
 	protected function load_metadata(): array {
 		return array(
-			'label'       => __( 'Internal Link Suggestions', 'ai' ),
-			'description' => __( 'Suggests relevant internal links within post content, using existing text as anchor text. All suggestions require editor review before being applied. Requires an AI connector that includes support for text generation and embedding models.', 'ai' ),
-			'category'    => Experiment_Category::EDITOR,
+			'label'          => __( 'Internal Link Suggestions', 'ai' ),
+			'description'    => __( 'Suggests relevant internal links within post content, using existing text as anchor text. All suggestions require editor review before being applied. Requires an AI connector that includes support for text generation and embedding models.', 'ai' ),
+			'category'       => Experiment_Category::EDITOR,
+			'access_control' => true,
 		);
 	}
 
@@ -52,6 +53,14 @@ class Internal_Links extends Abstract_Feature {
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function register_ui(): void {
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ), 5 );
 	}
 
@@ -118,7 +127,7 @@ class Internal_Links extends Abstract_Feature {
 	 * @since x.x.x
 	 */
 	public function register_abilities(): void {
-		wp_register_ability(
+		$this->register_feature_ability(
 			'ai/' . $this->get_id(),
 			array(
 				'label'         => $this->get_label(),

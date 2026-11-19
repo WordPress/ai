@@ -99,6 +99,7 @@ class Internal_LinksTest extends WP_UnitTestCase {
 	public function test_register_hooks_expected_actions(): void {
 		$experiment = new Internal_Links();
 		$experiment->register();
+		$experiment->register_ui();
 
 		$this->assertNotFalse(
 			has_action( 'wp_abilities_api_init', array( $experiment, 'register_abilities' ) ),
