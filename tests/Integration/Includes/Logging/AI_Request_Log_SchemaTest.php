@@ -325,4 +325,29 @@ class AI_Request_Log_SchemaTest extends WP_UnitTestCase {
 		$result = $this->schema->has_fulltext_index();
 		$this->assertIsBool( $result );
 	}
+
+	/**
+	 * Tests that the source column only adds a binary collation for UTF-8 charsets.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_source_column_definition_depends_on_charset(): void {
+		global $wpdb;
+
+		$method = new \ReflectionMethod( AI_Request_Log_Schema::class, 'get_source_column_definition' );
+		$method->setAccessible( true );
+
+		$charset = $wpdb->charset;
+
+		$wpdb->charset = 'utf8mb4';
+		$utf8          = $method->invoke( $this->schema );
+
+		$wpdb->charset = 'latin1';
+		$latin1        = $method->invoke( $this->schema );
+
+		$wpdb->charset = $charset;
+
+		$this->assertSame( 'source VARCHAR(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL', $utf8 );
+		$this->assertSame( 'source VARCHAR(191) DEFAULT NULL', $latin1 );
+	}
 }

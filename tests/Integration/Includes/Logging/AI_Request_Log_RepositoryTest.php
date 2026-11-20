@@ -1027,4 +1027,133 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 
 		$this->assertFalse( get_transient( 'wpai_request_logs_filter_options' ) );
 	}
+
+	/**
+	 * Invokes a private repository method via reflection.
+	 *
+	 * @param string $method_name Method name.
+	 * @param mixed  ...$args     Method arguments.
+	 * @return mixed
+	 */
+	private function invoke_private( string $method_name, ...$args ) {
+		$method = new \ReflectionMethod( AI_Request_Log_Repository::class, $method_name );
+		$method->setAccessible( true );
+
+		return $method->isStatic() ? $method->invoke( null, ...$args ) : $method->invoke( $this->repository, ...$args );
+	}
+
+	/**
+	 * Tests that a failed source breakdown query leaves the breakdown empty and uncached.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_summary_handles_source_query_error(): void {
+		global $wpdb;
+
+		$this->insert_log( $this->plugin_source( 'example-seo' ) );
+
+		$break_query = static function ( string $query ): string {
+			return false !== strpos( $query, 'GROUP BY source' ) ? str_replace( 'GROUP BY source', 'GROUP BY wpai_missing_column', $query ) : $query;
+		};
+		add_filter( 'query', $break_query );
+		$suppressed = $wpdb->suppress_errors( true );
+
+		$summary = $this->repository->get_summary( 'day', true );
+
+		$wpdb->suppress_errors( $suppressed );
+		remove_filter( 'query', $break_query );
+
+		$this->assertSame( 1, $summary['total_requests'] );
+		$this->assertSame( array(), $summary['by_source'] );
+		$this->assertFalse( get_transient( 'wpai_request_logs_summary_day' ), 'A summary without the source breakdown should not be cached.' );
+	}
+
+	/**
+	 * Tests that malformed cached source rows are skipped.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_describe_sources_skips_non_array_rows(): void {
+		$described = $this->invoke_private(
+			'describe_sources',
+			array(
+				'not-a-row',
+				array(
+					'source'   => 'core:wordpress',
+					'requests' => 2,
+				),
+			)
+		);
+
+		$this->assertCount( 1, $described );
+		$this->assertSame( 'core', $described[0]['type'] );
+		$this->assertSame( 2, $described[0]['requests'] );
+		$this->assertSame( 0, $described[0]['tokens'] );
+	}
+
+	/**
+	 * Tests that a source without a type or slug has no key.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_build_source_key_requires_type_and_slug(): void {
+		$this->assertNull( $this->invoke_private( 'build_source_key', array() ) );
+		$this->assertNull( $this->invoke_private( 'build_source_key', array( 'source' => array( 'type' => 'plugin' ) ) ) );
+		$this->assertNull( $this->invoke_private( 'build_source_key', array( 'source' => array( 'slug' => 'example-seo' ) ) ) );
+		$this->assertSame(
+			'plugin:example-seo',
+			$this->invoke_private(
+				'build_source_key',
+				array(
+					'source' => array(
+						'type' => 'plugin',
+						'slug' => 'example-seo',
+					),
+				)
+			)
+		);
+	}
+
+	/**
+	 * Tests that theme sources use the installed theme's name and fall back to the slug.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_describe_source_resolves_theme_names(): void {
+		$theme = wp_get_theme();
+
+		if ( $theme->exists() ) {
+			$installed = $this->invoke_private( 'describe_source', 'theme:' . $theme->get_stylesheet() );
+			$this->assertSame( 'theme', $installed['type'] );
+			$this->assertSame( (string) $theme->get( 'Name' ), $installed['name'] );
+		}
+
+		$missing = $this->invoke_private( 'describe_source', 'theme:wpai-missing-theme' );
+		$this->assertSame( 'theme', $missing['type'] );
+		$this->assertSame( 'wpai-missing-theme', $missing['name'] );
+	}
+
+	/**
+	 * Tests that other source types use the slug as their name.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_describe_source_uses_slug_for_other_types(): void {
+		$this->assertSame(
+			array(
+				'type' => 'mu-plugin',
+				'slug' => 'site-tweaks',
+				'name' => 'site-tweaks',
+			),
+			$this->invoke_private( 'describe_source', 'mu-plugin:site-tweaks' )
+		);
+		$this->assertSame(
+			array(
+				'type' => '',
+				'slug' => '',
+				'name' => '',
+			),
+			$this->invoke_private( 'describe_source', 'no-separator' )
+		);
+	}
 }
