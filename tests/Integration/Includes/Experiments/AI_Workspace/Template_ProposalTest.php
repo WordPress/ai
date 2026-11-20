@@ -11,10 +11,10 @@ use ReflectionProperty;
 use WP_REST_Request;
 use WP_UnitTestCase;
 use WP_User;
+use WordPress\AI\Abilities\AI_Workspace\Propose_Template;
 use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Experiments\AI_Workspace\Conversation_Store;
 use WordPress\AI\Experiments\AI_Workspace\Proposal_Store;
-use WordPress\AI\Experiments\AI_Workspace\Propose_Template;
 use WordPress\AI\Experiments\AI_Workspace\REST\Proposal_Controller;
 use WordPress\AI\Experiments\AI_Workspace\Template_Writer;
 use WordPress\AI\Experiments\AI_Workspace\Turn_Context;
@@ -28,7 +28,7 @@ use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Wo
  * @since x.x.x
  *
  * @covers \WordPress\AI\Experiments\AI_Workspace\Template_Writer
- * @covers \WordPress\AI\Experiments\AI_Workspace\Propose_Template
+ * @covers \WordPress\AI\Abilities\AI_Workspace\Propose_Template
  * @covers \WordPress\AI\Experiments\AI_Workspace\Proposal_Writer
  * @covers \WordPress\AI\Experiments\AI_Workspace\Proposal_Store
  * @covers \WordPress\AI\Experiments\AI_Workspace\REST\Proposal_Controller

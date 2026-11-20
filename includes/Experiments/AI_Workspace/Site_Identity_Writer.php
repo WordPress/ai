@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\AI_Workspace;
 
 use WP_Error;
+use WordPress\AI\Abilities\AI_Workspace\Propose_Site_Identity;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;

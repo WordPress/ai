@@ -2,14 +2,15 @@
 /**
  * The `ai/ask-user` WordPress Ability.
  *
- * @package WordPress\AI\Experiments\AI_Workspace
+ * @package WordPress\AI\Abilities\AI_Workspace
  */
 
 declare( strict_types=1 );
 
-namespace WordPress\AI\Experiments\AI_Workspace;
+namespace WordPress\AI\Abilities\AI_Workspace;
 
 use WP_Error;
+use WordPress\AI\Experiments\AI_Workspace\Turn_Context;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;

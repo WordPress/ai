@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\AI_Workspace;
 
 use WP_Ability;
+use WordPress\AI\Abilities\AI_Workspace\Ask_User;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;

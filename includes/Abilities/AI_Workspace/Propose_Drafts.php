@@ -2,15 +2,17 @@
 /**
  * The `ai/propose-drafts` WordPress Ability.
  *
- * @package WordPress\AI\Experiments\AI_Workspace
+ * @package WordPress\AI\Abilities\AI_Workspace
  */
 
 declare( strict_types=1 );
 
-namespace WordPress\AI\Experiments\AI_Workspace;
+namespace WordPress\AI\Abilities\AI_Workspace;
 
 use WP_Error;
 use WP_Post_Type;
+use WordPress\AI\Experiments\AI_Workspace\Proposal_Store;
+use WordPress\AI\Experiments\AI_Workspace\Turn_Context;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;

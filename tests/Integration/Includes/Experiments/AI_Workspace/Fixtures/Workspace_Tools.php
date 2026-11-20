@@ -23,7 +23,7 @@ final class Workspace_Tools {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param \WordPress\AI\Abilities\Content\Search_Content|\WordPress\AI\Abilities\Content\Read_Content_Bodies|\WordPress\AI\Abilities\Site\Get_Site_Info|\WordPress\AI\Abilities\Site\Find_Admin_Screens|\WordPress\AI\Experiments\AI_Workspace\Propose_Drafts|\WordPress\AI\Experiments\AI_Workspace\Propose_Template|\WordPress\AI\Experiments\AI_Workspace\Propose_Post_Changes|\WordPress\AI\Experiments\AI_Workspace\Propose_Site_Identity|\WordPress\AI\Experiments\AI_Workspace\Ask_User $tool The tool.
+	 * @param \WordPress\AI\Abilities\Content\Search_Content|\WordPress\AI\Abilities\Content\Read_Content_Bodies|\WordPress\AI\Abilities\Site\Get_Site_Info|\WordPress\AI\Abilities\Site\Find_Admin_Screens|\WordPress\AI\Abilities\AI_Workspace\Propose_Drafts|\WordPress\AI\Abilities\AI_Workspace\Propose_Template|\WordPress\AI\Abilities\AI_Workspace\Propose_Post_Changes|\WordPress\AI\Abilities\AI_Workspace\Propose_Site_Identity|\WordPress\AI\Abilities\AI_Workspace\Ask_User $tool The tool.
 	 */
 	public static function register( $tool ): void {
 		$args = $tool->get_ability_args();

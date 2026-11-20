@@ -11,6 +11,7 @@ namespace WordPress\AI\Experiments\AI_Workspace;
 
 use WP_Error;
 use WP_Post_Type;
+use WordPress\AI\Abilities\AI_Workspace\Propose_Drafts;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;

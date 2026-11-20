@@ -2,17 +2,17 @@
 /**
  * Integration tests for the AI Workspace proposal ability.
  *
- * @package WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace
+ * @package WordPress\AI\Tests\Integration\Includes\Abilities\AI_Workspace
  */
 
-namespace WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace;
+namespace WordPress\AI\Tests\Integration\Includes\Abilities\AI_Workspace;
 
 use ReflectionProperty;
 use WP_Ability;
 use WP_UnitTestCase;
+use WordPress\AI\Abilities\AI_Workspace\Propose_Drafts;
 use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Experiments\AI_Workspace\Proposal_Store;
-use WordPress\AI\Experiments\AI_Workspace\Propose_Drafts;
 use WordPress\AI\Experiments\AI_Workspace\Turn_Context;
 use WordPress\AI\Logging\Logging_Integration;
 use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Workspace_Tools;
@@ -22,7 +22,7 @@ use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Wo
  *
  * @since x.x.x
  *
- * @covers \WordPress\AI\Experiments\AI_Workspace\Propose_Drafts
+ * @covers \WordPress\AI\Abilities\AI_Workspace\Propose_Drafts
  * @covers \WordPress\AI\Experiments\AI_Workspace\Proposal_Store
  * @covers \WordPress\AI\Experiments\AI_Workspace\Turn_Context
  */

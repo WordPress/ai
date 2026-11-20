@@ -2,14 +2,14 @@
 /**
  * Integration tests for the AI Workspace question ability.
  *
- * @package WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace
+ * @package WordPress\AI\Tests\Integration\Includes\Abilities\AI_Workspace
  */
 
-namespace WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace;
+namespace WordPress\AI\Tests\Integration\Includes\Abilities\AI_Workspace;
 
 use WP_Ability;
 use WP_UnitTestCase;
-use WordPress\AI\Experiments\AI_Workspace\Ask_User;
+use WordPress\AI\Abilities\AI_Workspace\Ask_User;
 use WordPress\AI\Experiments\AI_Workspace\Turn_Context;
 use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Workspace_Tools;
 
@@ -18,7 +18,7 @@ use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Wo
  *
  * @since x.x.x
  *
- * @covers \WordPress\AI\Experiments\AI_Workspace\Ask_User
+ * @covers \WordPress\AI\Abilities\AI_Workspace\Ask_User
  */
 class Ask_UserTest extends WP_UnitTestCase {
 

@@ -9,6 +9,11 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\AI_Workspace;
 
+use WordPress\AI\Abilities\AI_Workspace\Ask_User;
+use WordPress\AI\Abilities\AI_Workspace\Propose_Drafts;
+use WordPress\AI\Abilities\AI_Workspace\Propose_Post_Changes;
+use WordPress\AI\Abilities\AI_Workspace\Propose_Site_Identity;
+use WordPress\AI\Abilities\AI_Workspace\Propose_Template;
 use WordPress\AI\Abilities\Command_Palette_AI_Search\Command_Palette_AI_Search;
 use WordPress\AI\Abilities\Content\Read_Content_Bodies;
 use WordPress\AI\Abilities\Content\Search_Content;
@@ -83,7 +88,7 @@ class AI_Workspace extends Abstract_Feature {
 	 *
 	 * @since x.x.x
 	 *
-	 * @var list<\WordPress\AI\Abilities\Content\Search_Content|\WordPress\AI\Abilities\Content\Read_Content_Bodies|\WordPress\AI\Abilities\Site\Get_Site_Info|\WordPress\AI\Abilities\Site\Find_Admin_Screens|\WordPress\AI\Experiments\AI_Workspace\Propose_Drafts|\WordPress\AI\Experiments\AI_Workspace\Propose_Template|\WordPress\AI\Experiments\AI_Workspace\Propose_Post_Changes|\WordPress\AI\Experiments\AI_Workspace\Propose_Site_Identity|\WordPress\AI\Experiments\AI_Workspace\Ask_User>
+	 * @var list<\WordPress\AI\Abilities\Content\Search_Content|\WordPress\AI\Abilities\Content\Read_Content_Bodies|\WordPress\AI\Abilities\Site\Get_Site_Info|\WordPress\AI\Abilities\Site\Find_Admin_Screens|\WordPress\AI\Abilities\AI_Workspace\Propose_Drafts|\WordPress\AI\Abilities\AI_Workspace\Propose_Template|\WordPress\AI\Abilities\AI_Workspace\Propose_Post_Changes|\WordPress\AI\Abilities\AI_Workspace\Propose_Site_Identity|\WordPress\AI\Abilities\AI_Workspace\Ask_User>
 	 */
 	private array $tools = array();
 

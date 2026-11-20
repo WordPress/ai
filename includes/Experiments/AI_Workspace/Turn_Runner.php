@@ -12,6 +12,7 @@ namespace WordPress\AI\Experiments\AI_Workspace;
 use Throwable;
 use WP_AI_Client_Ability_Function_Resolver;
 use WP_Ability;
+use WordPress\AI\Abilities\AI_Workspace\Ask_User;
 use WordPress\AiClient\Messages\DTO\Message;
 use WordPress\AiClient\Messages\DTO\MessagePart;
 use WordPress\AiClient\Messages\DTO\UserMessage;

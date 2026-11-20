@@ -8,11 +8,11 @@
 namespace WordPress\AI\Tests\Integration\Experiments\MCP_Adapter;
 
 use WP_UnitTestCase;
-use WordPress\AI\Experiments\AI_Workspace\Ask_User;
-use WordPress\AI\Experiments\AI_Workspace\Propose_Drafts;
-use WordPress\AI\Experiments\AI_Workspace\Propose_Post_Changes;
-use WordPress\AI\Experiments\AI_Workspace\Propose_Site_Identity;
-use WordPress\AI\Experiments\AI_Workspace\Propose_Template;
+use WordPress\AI\Abilities\AI_Workspace\Ask_User;
+use WordPress\AI\Abilities\AI_Workspace\Propose_Drafts;
+use WordPress\AI\Abilities\AI_Workspace\Propose_Post_Changes;
+use WordPress\AI\Abilities\AI_Workspace\Propose_Site_Identity;
+use WordPress\AI\Abilities\AI_Workspace\Propose_Template;
 use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Experiments\MCP_Adapter\Exposure_Overrides;
 use WordPress\AI\Experiments\MCP_Adapter\MCP_Adapter;

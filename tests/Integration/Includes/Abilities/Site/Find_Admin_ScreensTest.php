@@ -9,6 +9,7 @@ namespace WordPress\AI\Tests\Integration\Includes\Abilities\Site;
 
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Site\Find_Admin_Screens;
+use WordPress\AI\Abilities\Utilities\Admin_Screens;
 use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Workspace_Tools;
 
 /**
@@ -236,7 +237,7 @@ class Find_Admin_ScreensTest extends WP_UnitTestCase {
 
 		$words = array();
 
-		foreach ( require WPAI_PLUGIN_DIR . 'includes/Abilities/Site/admin-screens.php' as $screen ) {
+		foreach ( Admin_Screens::get_screens() as $screen ) {
 			$text = implode( ' ', array_merge( array( $screen['title'], $screen['section'] ?? '' ), $screen['keywords'] ) );
 			$text = strtolower( $text );
 

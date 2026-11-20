@@ -8,12 +8,12 @@
 namespace WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace;
 
 use WP_UnitTestCase;
+use WordPress\AI\Abilities\AI_Workspace\Ask_User;
+use WordPress\AI\Abilities\AI_Workspace\Propose_Drafts;
+use WordPress\AI\Abilities\AI_Workspace\Propose_Template;
 use WordPress\AI\Abilities\Content\Read_Content_Bodies;
 use WordPress\AI\Abilities\Content\Search_Content;
 use WordPress\AI\Abilities\Show_In_Abilities;
-use WordPress\AI\Experiments\AI_Workspace\Ask_User;
-use WordPress\AI\Experiments\AI_Workspace\Propose_Drafts;
-use WordPress\AI\Experiments\AI_Workspace\Propose_Template;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Policy;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Selector;
 use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Workspace_Tools;

@@ -11,6 +11,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Abilities\Site;
 
+use WordPress\AI\Abilities\Utilities\Admin_Screens;
+
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
@@ -262,8 +264,6 @@ final class Find_Admin_Screens {
 	 * @return list<array{title: string, section: string, path: string, keywords: list<string>, capability: string}> The screens.
 	 */
 	private function get_screens(): array {
-		$screens = require __DIR__ . '/admin-screens.php';
-
 		/**
 		 * Filters the admin screens the `ai/find-admin-screens` ability can return.
 		 *
@@ -274,7 +274,7 @@ final class Find_Admin_Screens {
 		 *
 		 * @param array<int, array<string, mixed>> $screens The curated core screens.
 		 */
-		$screens = apply_filters( 'wpai_admin_screens', is_array( $screens ) ? $screens : array() );
+		$screens = apply_filters( 'wpai_admin_screens', Admin_Screens::get_screens() );
 
 		if ( ! is_array( $screens ) ) {
 			return array();

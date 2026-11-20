@@ -12,6 +12,7 @@ namespace WordPress\AI\Experiments\AI_Workspace;
 use WP_Block_Template;
 use WP_Block_Type_Registry;
 use WP_Error;
+use WordPress\AI\Abilities\AI_Workspace\Propose_Template;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
