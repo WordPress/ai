@@ -97,6 +97,7 @@ class Table_Caption_GenerationTest extends WP_UnitTestCase {
 	public function test_register_adds_expected_hooks(): void {
 		$experiment = new Table_Caption_Generation();
 		$experiment->register();
+		$experiment->register_ui();
 
 		$this->assertIsInt( has_action( 'wp_abilities_api_init', array( $experiment, 'register_ability' ) ) );
 		$this->assertIsInt( has_action( 'admin_enqueue_scripts', array( $experiment, 'enqueue_assets' ) ) );
