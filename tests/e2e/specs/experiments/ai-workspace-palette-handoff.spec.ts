@@ -26,7 +26,7 @@ const ASK_AI_ROW =
 	'[cmdk-item][data-value^="ai-command-palette-search-ask-ai "]';
 
 /**
- * Matches requests to the command palette AI search ability.
+ * Matches requests to the command palette search ability.
  *
  * @param url The request URL.
  * @return Whether the request runs the ability.

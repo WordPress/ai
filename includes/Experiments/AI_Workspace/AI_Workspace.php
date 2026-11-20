@@ -185,7 +185,7 @@ class AI_Workspace extends Abstract_Feature {
 	}
 
 	/**
-	 * Registers the command palette AI search ability.
+	 * Registers the command palette search ability.
 	 *
 	 * Must run on the `wp_abilities_api_init` hook.
 	 *

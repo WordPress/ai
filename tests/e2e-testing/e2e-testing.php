@@ -904,7 +904,7 @@ function ai_e2e_enqueue_explorer_field( $hook_suffix ) {
 }
 
 /**
- * Builds the command palette AI search mock response.
+ * Builds the command palette search mock response.
  *
  * Command IDs depend on palette order, so the expected command's ID is looked up in the request.
  *

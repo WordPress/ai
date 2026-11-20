@@ -23,6 +23,7 @@ import type {
 	ContextScope,
 	LocalizedData,
 	ProposalExecution,
+	StoredChat,
 	TranscriptEntry,
 	TurnResponse,
 } from '../types';
@@ -837,6 +838,34 @@ export function useTurn( data: LocalizedData ) {
 	 * @param id The chat ID.
 	 * @return What came of it.
 	 */
+	/**
+	 * Reads a stored chat.
+	 *
+	 * @param id The chat's ID.
+	 * @return The response status and the chat, or null when it could not be read.
+	 */
+	const readChat = useCallback(
+		async (
+			id: string
+		): Promise< { status: number; chat: StoredChat | null } > => {
+			const response = await window.fetch(
+				endpoint( 'conversations' ) + '/' + encodeURIComponent( id ),
+				{
+					credentials: 'same-origin',
+					headers: { 'X-WP-Nonce': data.rest.nonce },
+				}
+			);
+
+			return {
+				status: response.status,
+				chat: response.ok
+					? toStoredChat( await response.json() )
+					: null,
+			};
+		},
+		[ data.rest.nonce, endpoint ]
+	);
+
 	const open = useCallback(
 		async ( id: string ): Promise< OpenResult > => {
 			leave();
@@ -845,26 +874,13 @@ export function useTurn( data: LocalizedData ) {
 			opening.current = true;
 			setIsOpening( true );
 
-			let ok = false;
 			let status = 0;
-			let payload: unknown = null;
+			let chat: StoredChat | null = null;
 
 			try {
-				const response = await window.fetch(
-					endpoint( 'conversations' ) +
-						'/' +
-						encodeURIComponent( id ),
-					{
-						credentials: 'same-origin',
-						headers: { 'X-WP-Nonce': data.rest.nonce },
-					}
-				);
-
-				ok = response.ok;
-				status = response.status;
-				payload = await response.json();
+				( { status, chat } = await readChat( id ) );
 			} catch {
-				payload = null;
+				chat = null;
 			}
 
 			// A later open or a new chat owns the loading state now.
@@ -874,8 +890,6 @@ export function useTurn( data: LocalizedData ) {
 
 			opening.current = false;
 			setIsOpening( false );
-
-			const chat = ok ? toStoredChat( payload ) : null;
 
 			if ( ! chat ) {
 				return 404 === status ? 'not-found' : 'failed';
@@ -896,7 +910,7 @@ export function useTurn( data: LocalizedData ) {
 
 			return 'opened';
 		},
-		[ data.rest.nonce, endpoint, leave ]
+		[ leave, readChat ]
 	);
 
 	/**
@@ -919,21 +933,25 @@ export function useTurn( data: LocalizedData ) {
 			}
 
 			const started = generation.current;
-			const url =
-				endpoint( 'conversations' ) +
-				'/' +
-				encodeURIComponent( chatId );
-			const headers = { 'X-WP-Nonce': data.rest.nonce };
 			let status = 0;
 			let payload: unknown = null;
 
 			try {
-				const response = await window.fetch( url + '/dismiss', {
-					method: 'POST',
-					credentials: 'same-origin',
-					headers: { ...headers, 'Content-Type': 'application/json' },
-					body: JSON.stringify( { turn_id: turnId } ),
-				} );
+				const response = await window.fetch(
+					endpoint( 'conversations' ) +
+						'/' +
+						encodeURIComponent( chatId ) +
+						'/dismiss',
+					{
+						method: 'POST',
+						credentials: 'same-origin',
+						headers: {
+							'X-WP-Nonce': data.rest.nonce,
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify( { turn_id: turnId } ),
+					}
+				);
 
 				status = response.status;
 				payload = await response.json();
@@ -962,13 +980,7 @@ export function useTurn( data: LocalizedData ) {
 
 			// Answered or closed elsewhere: show what the chat now holds.
 			try {
-				const response = await window.fetch( url, {
-					credentials: 'same-origin',
-					headers,
-				} );
-				const chat = response.ok
-					? toStoredChat( await response.json() )
-					: null;
+				const { chat } = await readChat( chatId );
 
 				if ( chat && started === generation.current ) {
 					setEntries( toEntries( chat ) );
@@ -980,7 +992,7 @@ export function useTurn( data: LocalizedData ) {
 
 			return 'conflict';
 		},
-		[ data.rest.nonce, endpoint, scope ]
+		[ data.rest.nonce, endpoint, readChat, scope ]
 	);
 
 	/**

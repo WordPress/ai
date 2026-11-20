@@ -1,6 +1,6 @@
 <?php
 /**
- * Command palette AI search WordPress Ability implementation.
+ * Command palette search WordPress Ability implementation.
  *
  * @package WordPress\AI
  */
@@ -14,7 +14,7 @@ use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Experiments\AI_Workspace\AI_Workspace;
 
 /**
- * Command palette AI search WordPress Ability.
+ * Command palette search WordPress Ability.
  *
  * @since x.x.x
  */

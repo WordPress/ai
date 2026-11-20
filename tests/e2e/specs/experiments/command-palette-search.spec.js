@@ -20,7 +20,7 @@ const EXPERIMENT_LABEL = 'AI Workspace';
 const AI_RESULT = '[cmdk-item][data-value^="ai-command-palette-search-"]';
 
 /**
- * Matches requests to the command palette AI search ability, URL-encoded or not.
+ * Matches requests to the command palette search ability, URL-encoded or not.
  *
  * @param {URL} url The request URL.
  * @return {boolean} Whether the request runs the ability.
