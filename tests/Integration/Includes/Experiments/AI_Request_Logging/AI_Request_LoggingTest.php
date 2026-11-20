@@ -56,6 +56,8 @@ class AI_Request_LoggingTest extends WP_UnitTestCase {
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
 		delete_option( 'wpai_feature_ai-request-logging_enabled' );
+		delete_option( AI_Request_Logging::get_field_option_name( 'monthly_token_limit' ) );
+		delete_option( AI_Request_Logging::get_field_option_name( 'alert_threshold' ) );
 		wp_clear_scheduled_hook( 'wpai_request_logs_cleanup' );
 
 		parent::tearDown();
@@ -151,5 +153,77 @@ class AI_Request_LoggingTest extends WP_UnitTestCase {
 		$response = rest_get_server()->dispatch( $request );
 
 		$this->assertSame( 403, $response->get_status() );
+	}
+
+	/**
+	 * Tests that the monthly limit settings are declared for the settings screen.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_settings_fields_include_monthly_limit_and_threshold(): void {
+		$fields = wp_list_pluck( $this->experiment->get_settings_fields(), 'default', 'id' );
+
+		$this->assertSame(
+			array(
+				'monthly_token_limit' => 0,
+				'alert_threshold'     => AI_Request_Logging::DEFAULT_ALERT_THRESHOLD,
+			),
+			$fields
+		);
+	}
+
+	/**
+	 * Tests that the monthly limit settings are registered with sanitizers.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_settings_registers_limit_options(): void {
+		$this->experiment->register_settings();
+
+		$registered = get_registered_settings();
+
+		$this->assertArrayHasKey( AI_Request_Logging::get_field_option_name( 'monthly_token_limit' ), $registered );
+		$this->assertArrayHasKey( AI_Request_Logging::get_field_option_name( 'alert_threshold' ), $registered );
+
+		update_option( AI_Request_Logging::get_field_option_name( 'monthly_token_limit' ), '-50' );
+		update_option( AI_Request_Logging::get_field_option_name( 'alert_threshold' ), '250' );
+
+		$this->assertSame( 0, $this->experiment->get_monthly_token_limit() );
+		$this->assertSame( 100, $this->experiment->get_alert_threshold() );
+	}
+
+	/**
+	 * Tests the limit and threshold sanitizers.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_sanitizers_clamp_values(): void {
+		$this->assertSame( 0, $this->experiment->sanitize_monthly_token_limit( 'abc' ) );
+		$this->assertSame( 0, $this->experiment->sanitize_monthly_token_limit( -1 ) );
+		$this->assertSame( 500000, $this->experiment->sanitize_monthly_token_limit( '500000' ) );
+
+		$this->assertSame( AI_Request_Logging::DEFAULT_ALERT_THRESHOLD, $this->experiment->sanitize_alert_threshold( null ) );
+		$this->assertSame( 1, $this->experiment->sanitize_alert_threshold( 0 ) );
+		$this->assertSame( 100, $this->experiment->sanitize_alert_threshold( 150 ) );
+		$this->assertSame( 75, $this->experiment->sanitize_alert_threshold( '75' ) );
+	}
+
+	/**
+	 * Tests that the monthly token limit can be filtered.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_monthly_token_limit_is_filterable(): void {
+		update_option( AI_Request_Logging::get_field_option_name( 'monthly_token_limit' ), 1000 );
+		$this->assertSame( 1000, $this->experiment->get_monthly_token_limit() );
+
+		$filter = static function (): int {
+			return 2500;
+		};
+		add_filter( 'wpai_monthly_token_limit', $filter );
+
+		$this->assertSame( 2500, $this->experiment->get_monthly_token_limit() );
+
+		remove_filter( 'wpai_monthly_token_limit', $filter );
 	}
 }

@@ -137,6 +137,29 @@ add_filter( 'wpai_request_log_retention_days', function() {
 } );
 ```
 
+### `wpai_monthly_token_limit`
+Filters the monthly token limit used for usage warnings. Defaults to the **Monthly token limit** setting. Return `0` to turn the warnings off.
+
+```php
+add_filter( 'wpai_monthly_token_limit', function() {
+    return 2000000;
+} );
+```
+
+### `wpai_usage_limit_send_email`
+Filters whether to email administrators when usage reaches the alert threshold or the monthly limit. Receives the usage status as the second argument. Return `false` to keep the admin notice but skip the email.
+
+### `wpai_usage_limit_email_recipients`
+Filters who receives usage limit emails. Defaults to the site admin email. Receives the usage status as the second argument.
+
+## Monthly Token Limit
+The experiment has two settings under `Settings → AI`:
+
+- **Monthly token limit** (default `0`, off): the number of tokens AI requests may use in a calendar month, counted in the site's time zone.
+- **Alert threshold (%)** (default `80`): the percentage of the limit at which to start warning.
+
+`Usage_Limit_Monitor` sums `tokens_total` for the current month (cached for five minutes and topped up on `wpai_request_logged`). Once usage reaches the threshold, administrators see a warning notice in wp-admin; once it reaches the limit, the notice becomes an error. Each state is also emailed once per month, and reaching the limit first suppresses the threshold email. The **AI Request Logs** screen shows a meter with this month's usage, the threshold and the reset date. Requests are never blocked.
+
 ## Assets & Data Flow
 1. When `AI Request Logs` is visited, `Asset_Loader` enqueues `admin/ai-request-logs` (`src/admin/ai-request-logs/index.tsx`) plus its stylesheet. The localized payload (`window.AiRequestLogsSettings`) includes REST routes, a nonce, and initial state (summary and filter metadata).
 2. The React app:

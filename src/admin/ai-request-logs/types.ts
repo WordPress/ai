@@ -83,6 +83,16 @@ export interface LogsQuery {
 	fields: string[];
 }
 
+export interface UsageLimitStatus {
+	limit: number;
+	threshold: number;
+	used: number;
+	percent: number;
+	state: 'ok' | 'warning' | 'exceeded';
+	resets_at: string;
+	settings_url: string;
+}
+
 export interface LocalizedSettings {
 	rest: {
 		nonce: string;
@@ -97,6 +107,7 @@ export interface LocalizedSettings {
 		summary: LogSummary;
 		filters: FilterOptions;
 	};
+	usageLimit: UsageLimitStatus | null;
 	connectorsUrl: string;
 	providerMetadata: ProviderMetadataMap;
 }

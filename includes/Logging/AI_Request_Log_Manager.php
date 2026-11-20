@@ -252,6 +252,18 @@ class AI_Request_Log_Manager {
 	}
 
 	/**
+	 * Gets the total tokens used since a point in time.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $since_gmt GMT MySQL datetime (Y-m-d H:i:s) to count from, inclusive.
+	 * @return int Total tokens used since the given time.
+	 */
+	public function get_tokens_since( string $since_gmt ): int {
+		return $this->repository->get_tokens_since( $since_gmt );
+	}
+
+	/**
 	 * Gets distinct values for filter dropdowns.
 	 *
 	 * @since 1.0.0
