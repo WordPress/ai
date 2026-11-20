@@ -15,12 +15,21 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Register a REST endpoint for setting up/tearing down credentials in E2E tests.
 add_action( 'rest_api_init', 'ai_e2e_register_credentials_endpoint' );
 
+// Register a REST endpoint for driving the sequenced response scenarios.
+add_action( 'rest_api_init', 'ai_e2e_register_scenario_endpoint' );
 // Register a REST endpoint for seeding backdated AI request log entries in E2E tests.
 add_action( 'rest_api_init', 'ai_e2e_register_request_logs_endpoint' );
 
 // Register a REST endpoint for overriding a feature's minimum content length in E2E tests.
 add_action( 'rest_api_init', 'ai_e2e_register_min_content_length_endpoint' );
 add_filter( 'wpai_min_content_length', 'ai_e2e_filter_min_content_length', 10, 2 );
+
+// Register a REST endpoint for slowing post writes, so a spec can act while an approval is still writing.
+add_action( 'rest_api_init', 'ai_e2e_register_write_delay_endpoint' );
+add_filter( 'wp_insert_post_data', 'ai_e2e_delay_post_write' );
+
+// Register a REST endpoint for putting back post 1, which the update-proposal fixtures name.
+add_action( 'rest_api_init', 'ai_e2e_register_first_post_endpoint' );
 
 // Mock the HTTP requests and provide known responses.
 add_filter( 'pre_http_request', 'ai_e2e_test_request_mocking', 10, 3 );
@@ -48,6 +57,12 @@ add_action( 'init', 'ai_e2e_register_classic_post_type' );
 add_action( 'wp_abilities_api_categories_init', 'ai_e2e_register_explorer_category' );
 add_action( 'wp_abilities_api_init', 'ai_e2e_register_explorer_abilities' );
 add_action( 'admin_enqueue_scripts', 'ai_e2e_enqueue_explorer_field' );
+
+// Register the Abilities Explorer's assistant fixtures, switched on per spec so other specs don't see them.
+add_action( 'rest_api_init', 'ai_e2e_register_explorer_fixtures_endpoint' );
+add_action( 'wp_abilities_api_init', 'ai_e2e_register_explorer_fixtures' );
+add_filter( 'wpai_workspace_tool_admission_enabled', 'ai_e2e_explorer_admission' );
+add_filter( 'wpai_workspace_withheld_abilities', 'ai_e2e_explorer_withheld' );
 
 // Treat Hello Dolly as a Markdown-serving plugin, so the Markdown Feeds conflict notice can be tested.
 add_filter( 'wpai_markdown_feeds_conflicting_plugins', 'ai_e2e_markdown_conflicting_plugins' );
@@ -93,23 +108,224 @@ function ai_e2e_register_credentials_endpoint() {
 }
 
 /**
- * Seeds a dummy provider key so has_ai_credentials() returns true.
+ * Returns the provider IDs whose credentials this plugin can seed.
  *
- * @return \WP_REST_Response
+ * @return array<string, string> Map of provider ID to its API key option name.
  */
-function ai_e2e_seed_credentials() {
-	update_option( 'connectors_ai_openai_api_key', 'valid-api-key' );
-	return new WP_REST_Response( array( 'seeded' => true ) );
+function ai_e2e_credential_options() {
+	return array(
+		'openai'    => 'connectors_ai_openai_api_key',
+		'google'    => 'connectors_ai_google_api_key',
+		'anthropic' => 'connectors_ai_anthropic_api_key',
+	);
 }
 
 /**
- * Removes the dummy provider key so has_ai_credentials() returns false.
+ * Seeds dummy provider keys so has_ai_credentials() returns true.
+ *
+ * Seeds OpenAI by default; with `providers`, seeds only those and clears the rest.
+ *
+ * @param WP_REST_Request|null $request Optional. The request.
+ * @return WP_REST_Response
+ */
+function ai_e2e_seed_credentials( $request = null ) {
+	$options   = ai_e2e_credential_options();
+	$requested = null;
+
+	if ( $request instanceof WP_REST_Request ) {
+		$param = $request->get_param( 'providers' );
+
+		if ( is_array( $param ) ) {
+			$requested = array_values( array_intersect( array_keys( $options ), $param ) );
+		}
+	}
+
+	$exclusive = null !== $requested;
+	$seed      = $exclusive ? $requested : array( 'openai' );
+
+	foreach ( $options as $provider => $option_name ) {
+		if ( in_array( $provider, $seed, true ) ) {
+			update_option( $option_name, 'valid-api-key' );
+			continue;
+		}
+
+		if ( $exclusive ) {
+			delete_option( $option_name );
+		}
+	}
+
+	return new WP_REST_Response(
+		array(
+			'seeded' => $seed,
+		)
+	);
+}
+
+/**
+ * Removes the dummy provider keys so has_ai_credentials() returns false.
  *
  * @return \WP_REST_Response
  */
 function ai_e2e_clear_credentials() {
-	delete_option( 'connectors_ai_openai_api_key' );
+	foreach ( ai_e2e_credential_options() as $option_name ) {
+		delete_option( $option_name );
+	}
+
 	return new WP_REST_Response( array( 'cleared' => true ) );
+}
+
+/**
+ * Registers REST endpoints for driving sequenced mock responses.
+ *
+ * POST   /ai-e2e/v1/mock/scenario — activates a scenario and resets its call counters.
+ * GET    /ai-e2e/v1/mock/scenario — reports the active scenario and how many calls it served.
+ * DELETE /ai-e2e/v1/mock/scenario — deactivates whatever scenario is active.
+ */
+function ai_e2e_register_scenario_endpoint() {
+	register_rest_route(
+		'ai-e2e/v1',
+		'/mock/scenario',
+		array(
+			array(
+				'methods'             => 'POST',
+				'callback'            => 'ai_e2e_activate_scenario',
+				'permission_callback' => function () {
+					return current_user_can( 'manage_options' );
+				},
+				'args'                => array(
+					'scenario' => array(
+						'type'     => 'string',
+						'required' => true,
+					),
+				),
+			),
+			array(
+				'methods'             => 'GET',
+				'callback'            => 'ai_e2e_report_scenario',
+				'permission_callback' => function () {
+					return current_user_can( 'manage_options' );
+				},
+			),
+			array(
+				'methods'             => 'DELETE',
+				'callback'            => 'ai_e2e_deactivate_scenario',
+				'permission_callback' => function () {
+					return current_user_can( 'manage_options' );
+				},
+			),
+		)
+	);
+}
+
+/**
+ * Activates a scenario and resets its call counters.
+ *
+ * @param WP_REST_Request $request The request.
+ * @return WP_REST_Response
+ */
+function ai_e2e_activate_scenario( $request ) {
+	$scenario = ai_e2e_sanitize_scenario( $request->get_param( 'scenario' ) );
+
+	update_option( 'ai_e2e_mock_scenario', $scenario, false );
+	update_option( 'ai_e2e_mock_calls', array(), false );
+
+	return new WP_REST_Response( array( 'scenario' => $scenario ) );
+}
+
+/**
+ * Reports the active scenario and the number of calls it has served.
+ *
+ * @return WP_REST_Response
+ */
+function ai_e2e_report_scenario() {
+	$calls = get_option( 'ai_e2e_mock_calls', array() );
+
+	return new WP_REST_Response(
+		array(
+			'scenario' => ai_e2e_active_scenario(),
+			'calls'    => is_array( $calls ) ? $calls : array(),
+		)
+	);
+}
+
+/**
+ * Deactivates the active scenario.
+ *
+ * @return WP_REST_Response
+ */
+function ai_e2e_deactivate_scenario() {
+	delete_option( 'ai_e2e_mock_scenario' );
+	delete_option( 'ai_e2e_mock_calls' );
+
+	return new WP_REST_Response( array( 'scenario' => '' ) );
+}
+
+/**
+ * Normalizes a scenario identifier to the characters a fixture filename may use.
+ *
+ * @param mixed $scenario The requested scenario.
+ * @return string The sanitized scenario, or an empty string.
+ */
+function ai_e2e_sanitize_scenario( $scenario ) {
+	if ( ! is_string( $scenario ) ) {
+		return '';
+	}
+
+	return (string) preg_replace( '/[^a-z0-9-]/', '', strtolower( $scenario ) );
+}
+
+/**
+ * Returns the active scenario identifier.
+ *
+ * @return string The scenario, or an empty string when none is active.
+ */
+function ai_e2e_active_scenario() {
+	return ai_e2e_sanitize_scenario( get_option( 'ai_e2e_mock_scenario', '' ) );
+}
+
+/**
+ * Returns the next response body from the active scenario, if it has one.
+ *
+ * Reads `responses/{Provider}/scenarios/{scenario}.json`; the last entry repeats once the sequence runs out.
+ *
+ * @param string $provider The provider directory name, e.g. 'Anthropic'.
+ * @return string|null The response body as JSON, or null when no scenario applies.
+ */
+function ai_e2e_scenario_response( $provider ) {
+	$scenario = ai_e2e_active_scenario();
+
+	if ( '' === $scenario ) {
+		return null;
+	}
+
+	$path = __DIR__ . '/responses/' . $provider . '/scenarios/' . $scenario . '.json';
+
+	if ( ! file_exists( $path ) ) {
+		return null;
+	}
+
+	$decoded = json_decode( (string) file_get_contents( $path ), true );
+
+	if ( ! is_array( $decoded ) || ! isset( $decoded['sequence'] ) || ! is_array( $decoded['sequence'] ) || array() === $decoded['sequence'] ) {
+		return null;
+	}
+
+	$sequence = array_values( $decoded['sequence'] );
+	$key      = $provider . '/' . $scenario;
+	$counts   = get_option( 'ai_e2e_mock_calls', array() );
+
+	if ( ! is_array( $counts ) ) {
+		$counts = array();
+	}
+
+	$index = isset( $counts[ $key ] ) ? (int) $counts[ $key ] : 0;
+
+	$counts[ $key ] = $index + 1;
+	update_option( 'ai_e2e_mock_calls', $counts, false );
+
+	$entry = $sequence[ min( $index, count( $sequence ) - 1 ) ];
+
+	return (string) wp_json_encode( $entry );
 }
 
 /**
@@ -174,6 +390,107 @@ function ai_e2e_filter_min_content_length( $content_length, $feature_id ) {
 	$overrides = (array) get_option( 'ai_e2e_min_content_length', array() );
 
 	return $overrides[ $feature_id ] ?? $content_length;
+}
+
+/**
+ * Registers a REST endpoint for slowing post writes.
+ *
+ * POST /ai-e2e/v1/write-delay — each post write sleeps `seconds` first; 0 turns it off.
+ */
+function ai_e2e_register_write_delay_endpoint() {
+	register_rest_route(
+		'ai-e2e/v1',
+		'/write-delay',
+		array(
+			'methods'             => 'POST',
+			'callback'            => static function ( WP_REST_Request $request ) {
+				$seconds = (int) $request->get_param( 'seconds' );
+
+				if ( $seconds > 0 ) {
+					update_option( 'ai_e2e_write_delay', $seconds, false );
+				} else {
+					delete_option( 'ai_e2e_write_delay' );
+				}
+
+				return new WP_REST_Response( array( 'seconds' => max( 0, $seconds ) ) );
+			},
+			'permission_callback' => static function () {
+				return current_user_can( 'manage_options' );
+			},
+			'args'                => array(
+				'seconds' => array(
+					'type'     => 'integer',
+					'minimum'  => 0,
+					'maximum'  => 10,
+					'required' => true,
+				),
+			),
+		)
+	);
+}
+
+/**
+ * Registers a REST endpoint for putting back the post a fresh install seeds.
+ *
+ * POST /ai-e2e/v1/first-post/reset — other specs delete every post, but the update-proposal fixtures name post 1.
+ */
+function ai_e2e_register_first_post_endpoint() {
+	register_rest_route(
+		'ai-e2e/v1',
+		'/first-post/reset',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'ai_e2e_reset_first_post',
+			'permission_callback' => static function () {
+				return current_user_can( 'manage_options' );
+			},
+		)
+	);
+}
+
+/**
+ * Recreates or restores post 1 as a fresh install seeds it.
+ *
+ * @return WP_REST_Response|WP_Error The post ID, or an error.
+ */
+function ai_e2e_reset_first_post() {
+	$fields = array(
+		'post_title'   => 'Hello world!',
+		'post_content' => "<!-- wp:paragraph -->\n<p>Welcome to WordPress. This is your first post. Edit or delete it, then start writing!</p>\n<!-- /wp:paragraph -->",
+		'post_excerpt' => '',
+		'post_status'  => 'publish',
+		'post_type'    => 'post',
+		'post_author'  => get_current_user_id(),
+	);
+
+	delete_post_meta( 1, '_edit_lock' );
+
+	$post_id = get_post( 1 ) instanceof WP_Post
+		? wp_update_post( wp_slash( array_merge( array( 'ID' => 1 ), $fields ) ), true )
+		: wp_insert_post( wp_slash( array_merge( array( 'import_id' => 1 ), $fields ) ), true );
+
+	if ( is_wp_error( $post_id ) ) {
+		return $post_id;
+	}
+
+	return new WP_REST_Response( array( 'id' => (int) $post_id ) );
+}
+
+/**
+ * Sleeps before a post is saved, when a spec asked for a write delay.
+ *
+ * @param array $data The post data about to be saved.
+ * @return array The post data, unchanged.
+ */
+function ai_e2e_delay_post_write( $data ) {
+	$seconds = (int) get_option( 'ai_e2e_write_delay', 0 );
+
+	// Only the post itself sleeps, not the revision saved after it.
+	if ( $seconds > 0 && isset( $data['post_type'] ) && 'revision' !== $data['post_type'] ) {
+		sleep( $seconds );
+	}
+
+	return $data;
 }
 
 /**
@@ -439,6 +756,134 @@ function ai_e2e_register_explorer_abilities() {
 }
 
 /**
+ * The option that switches the Abilities Explorer fixtures on.
+ */
+const AI_E2E_EXPLORER_FIXTURES_OPTION = 'ai_e2e_explorer_fixtures';
+
+/**
+ * Registers the REST endpoint that switches the Abilities Explorer fixtures.
+ *
+ * POST /ai-e2e/v1/explorer-fixtures { enabled: bool } — also clears the assistant's surface options.
+ */
+function ai_e2e_register_explorer_fixtures_endpoint() {
+	register_rest_route(
+		'ai-e2e/v1',
+		'/explorer-fixtures',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'ai_e2e_switch_explorer_fixtures',
+			'permission_callback' => function () {
+				return current_user_can( 'manage_options' );
+			},
+		)
+	);
+}
+
+/**
+ * Switches the Abilities Explorer fixtures and resets the surface options.
+ *
+ * @param WP_REST_Request $request The request.
+ * @return array The new state.
+ */
+function ai_e2e_switch_explorer_fixtures( $request ) {
+	$enabled = (bool) $request->get_param( 'enabled' );
+
+	if ( $enabled ) {
+		update_option( AI_E2E_EXPLORER_FIXTURES_OPTION, '1' );
+	} else {
+		delete_option( AI_E2E_EXPLORER_FIXTURES_OPTION );
+	}
+
+	delete_option( 'wpai_workspace_tool_exclusions' );
+	delete_option( 'wpai_workspace_tool_policy_disabled' );
+
+	return array( 'enabled' => $enabled );
+}
+
+/**
+ * Whether the Abilities Explorer fixtures are switched on.
+ *
+ * @return bool
+ */
+function ai_e2e_explorer_fixtures_enabled() {
+	return (bool) get_option( AI_E2E_EXPLORER_FIXTURES_OPTION );
+}
+
+/**
+ * Admits declared abilities to the assistant while the fixtures are on.
+ *
+ * @param bool $enabled Whether declared abilities may be admitted.
+ * @return bool
+ */
+function ai_e2e_explorer_admission( $enabled ) {
+	return ai_e2e_explorer_fixtures_enabled() ? true : $enabled;
+}
+
+/**
+ * Withholds the withheld fixture from the assistant.
+ *
+ * @param array $withheld The withheld ability names.
+ * @return array
+ */
+function ai_e2e_explorer_withheld( $withheld ) {
+	if ( ai_e2e_explorer_fixtures_enabled() && is_array( $withheld ) ) {
+		$withheld[] = 'ai-e2e/withheld-reader';
+	}
+
+	return $withheld;
+}
+
+/**
+ * Registers the Abilities Explorer fixtures (one admitted, one withheld) while they are switched on.
+ */
+function ai_e2e_register_explorer_fixtures() {
+	if ( ! function_exists( 'wp_register_ability' ) || ! ai_e2e_explorer_fixtures_enabled() ) {
+		return;
+	}
+
+	$declared = array(
+		'annotations'  => array(
+			'readonly'    => true,
+			'destructive' => false,
+			'open_world'  => false,
+		),
+		'ai-workspace' => array( 'public' => true ),
+	);
+
+	$permission = static function () {
+		return current_user_can( 'manage_options' );
+	};
+
+	wp_register_ability(
+		'ai-e2e/assistant-reader',
+		array(
+			'label'               => 'Assistant Reader Fixture',
+			'description'         => 'An E2E fixture ability the assistant may call.',
+			'category'            => 'ai-e2e-fixtures',
+			'execute_callback'    => static function () {
+				return array( 'read' => true );
+			},
+			'permission_callback' => $permission,
+			'meta'                => $declared,
+		)
+	);
+
+	wp_register_ability(
+		'ai-e2e/withheld-reader',
+		array(
+			'label'               => 'Withheld Reader Fixture',
+			'description'         => 'An E2E fixture ability that is withheld from the assistant.',
+			'category'            => 'ai-e2e-fixtures',
+			'execute_callback'    => static function () {
+				return array( 'read' => true );
+			},
+			'permission_callback' => $permission,
+			'meta'                => $declared,
+		)
+	);
+}
+
+/**
  * Adds the "Slug length" extension column when the Explorer is opened with `e2e_fields` set.
  *
  * @param string $hook_suffix The current admin page.
@@ -456,6 +901,32 @@ function ai_e2e_enqueue_explorer_field( $hook_suffix ) {
 		'0.1.0',
 		true
 	);
+}
+
+/**
+ * Builds the command palette search mock response.
+ *
+ * Command IDs depend on palette order, so the expected command's ID is looked up in the request.
+ *
+ * @param string $fixture The fixture file name.
+ * @param string $body    The request body.
+ * @return string The response.
+ */
+function ai_e2e_command_palette_search_response( string $fixture, string $body ): string {
+	$response = (string) file_get_contents( __DIR__ . '/responses/OpenAI/' . $fixture );
+	$answers  = array(
+		'hide my site from google' => '/c(\d+): Go to: Settings (?:>|\\\\u003e) Reading/',
+		'stop spam comments'       => '/c(\d+): Go to: Comments\b/',
+	);
+
+	foreach ( $answers as $search => $pattern ) {
+		if ( str_contains( $body, $search ) && preg_match( $pattern, $body, $match ) ) {
+			$response = str_replace( '\"commands\":[]', '\"commands\":[\"c' . $match[1] . '\"]', $response );
+			break;
+		}
+	}
+
+	return $response;
 }
 
 /**
@@ -534,9 +1005,36 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		$response = file_get_contents( __DIR__ . '/responses/Google/gemini-image.json' );
 	}
 
+	// Mock the Anthropic models API response.
+	if ( str_contains( $url, 'https://api.anthropic.com/v1/models' ) ) {
+		// Handle invalid API key.
+		if (
+			isset( $parsed_args['headers']['x-api-key'] ) &&
+			str_contains( $parsed_args['headers']['x-api-key'], 'invalid-api-key' )
+		) {
+			return $preempt;
+		}
+
+		$response = file_get_contents( __DIR__ . '/responses/Anthropic/models.json' );
+	}
+
+	// Mock the Anthropic messages API response.
+	if ( str_contains( $url, 'https://api.anthropic.com/v1/messages' ) ) {
+		$sequenced = ai_e2e_scenario_response( 'Anthropic' );
+
+		$response = null === $sequenced
+			? file_get_contents( __DIR__ . '/responses/Anthropic/messages.json' )
+			: $sequenced;
+	}
+
 	// Mock the OpenAI responses API response.
 	if ( str_contains( $url, 'https://api.openai.com/v1/responses' ) ) {
-		$body = $parsed_args['body'] ?? '';
+		$body      = $parsed_args['body'] ?? '';
+		$sequenced = ai_e2e_scenario_response( 'OpenAI' );
+
+		if ( null !== $sequenced ) {
+			return ai_e2e_mocked_response( $sequenced );
+		}
 
 		// Route editorial-notes and editorial-updates requests to their own fixture.
 		if ( is_string( $body ) && str_contains( $body, 'Category guidance by block type' ) ) {
@@ -567,6 +1065,8 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		} elseif ( is_string( $body ) && str_contains( $body, 'explains what changed between two revisions' ) ) {
 			// Route revision-change-summary requests to their own fixture.
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/revision-change-summary-responses.json' );
+		} elseif ( is_string( $body ) && str_contains( $body, 'find their way around the WordPress admin' ) ) {
+			$response = ai_e2e_command_palette_search_response( 'command-palette-search-responses.json', $body );
 		} elseif ( is_string( $body ) && str_contains( $body, 'comment moderation assistant' ) ) {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/comment-moderation-responses.json' );
 
@@ -634,6 +1134,8 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 					$response
 				);
 			}
+		} elseif ( is_string( $body ) && str_contains( $body, 'find their way around the WordPress admin' ) ) {
+			$response = ai_e2e_command_palette_search_response( 'command-palette-search-completions.json', $body );
 		} else {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/completions.json' );
 		}
@@ -645,22 +1147,32 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 	}
 
 	if ( ! empty( $response ) ) {
-		return array(
-			'headers'     => array(),
-			'cookies'     => array(),
-			'filename'    => null,
-			'response'    => array(
-				'code'    => 200,
-				'message' => 'OK',
-			),
-			'status_code' => 200,
-			'success'     => 1,
-			'body'        => $response,
-		);
+		return ai_e2e_mocked_response( $response );
 	}
 
 	// Return the original response if the URL is not a known request.
 	return $preempt;
+}
+
+/**
+ * Wraps a response body in the array shape `pre_http_request` expects.
+ *
+ * @param string $body The response body.
+ * @return array The mocked HTTP response.
+ */
+function ai_e2e_mocked_response( $body ) {
+	return array(
+		'headers'     => array(),
+		'cookies'     => array(),
+		'filename'    => null,
+		'response'    => array(
+			'code'    => 200,
+			'message' => 'OK',
+		),
+		'status_code' => 200,
+		'success'     => 1,
+		'body'        => $body,
+	);
 }
 
 /**

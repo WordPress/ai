@@ -1,0 +1,71 @@
+{
+	"description": "A Site Context turn that proposes a three-part series of drafts through ai/propose-drafts, which ends the turn. Entry 1 answers the follow-up after the proposal is settled.",
+	"sequence": [
+		{
+			"id": "msg_e2e_series_round_1",
+			"type": "message",
+			"role": "assistant",
+			"model": "claude-sonnet-5",
+			"content": [
+				{
+					"type": "text",
+					"text": "I will propose a three-part series for you to review."
+				},
+				{
+					"type": "tool_use",
+					"id": "toolu_e2e_series_1",
+					"name": "wpab__ai__propose-drafts",
+					"input": {
+						"items": [
+							{
+								"post_type": "post",
+								"status": "draft",
+								"title": "Getting Started with Blocks",
+								"excerpt": "What a block is, and how to add your first one.",
+								"content": "Blocks are the pieces a page is built from. This first part shows how to add, move and remove them."
+							},
+							{
+								"post_type": "post",
+								"status": "draft",
+								"title": "Building a Page Layout",
+								"excerpt": "Columns, groups and spacing.",
+								"content": "Once you know blocks, you can arrange them. This part covers columns, groups and the spacing controls."
+							},
+							{
+								"post_type": "post",
+								"status": "draft",
+								"title": "Reusing Your Best Blocks",
+								"excerpt": "Patterns and synced patterns.",
+								"content": "Patterns save a set of blocks to use again. This part shows how to make one and when to sync it."
+							}
+						]
+					}
+				}
+			],
+			"stop_reason": "tool_use",
+			"stop_sequence": null,
+			"usage": {
+				"input_tokens": 455,
+				"output_tokens": 240
+			}
+		},
+		{
+			"id": "msg_e2e_series_round_2",
+			"type": "message",
+			"role": "assistant",
+			"model": "claude-sonnet-5",
+			"content": [
+				{
+					"type": "text",
+					"text": "Noted what you decided about the series. Want me to outline part four?"
+				}
+			],
+			"stop_reason": "end_turn",
+			"stop_sequence": null,
+			"usage": {
+				"input_tokens": 1024,
+				"output_tokens": 18
+			}
+		}
+	]
+}

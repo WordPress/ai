@@ -1,0 +1,54 @@
+{
+	"description": "A Site Context turn for \"Make my tagline fit what I write about\" that proposes a new tagline through ai/propose-site-identity, which ends the turn. Entry 1 answers the one follow-up turn the workspace runs after the person approves or discards the change.",
+	"sequence": [
+		{
+			"id": "msg_e2e_tagline_round_1",
+			"type": "message",
+			"role": "assistant",
+			"model": "claude-sonnet-5",
+			"content": [
+				{
+					"type": "text",
+					"text": "Your posts are mostly about getting started with WordPress, so I will propose a tagline that says so."
+				},
+				{
+					"type": "tool_use",
+					"id": "toolu_e2e_tagline_1",
+					"name": "wpab__ai__propose-site-identity",
+					"input": {
+						"items": [
+							{
+								"option": "blogdescription",
+								"value": "Notes on getting started with WordPress"
+							}
+						]
+					}
+				}
+			],
+			"stop_reason": "tool_use",
+			"stop_sequence": null,
+			"usage": {
+				"input_tokens": 512,
+				"output_tokens": 60
+			}
+		},
+		{
+			"id": "msg_e2e_tagline_round_2",
+			"type": "message",
+			"role": "assistant",
+			"model": "claude-sonnet-5",
+			"content": [
+				{
+					"type": "text",
+					"text": "Your tagline is now \"Notes on getting started with WordPress\". Want me to suggest a site title to match?"
+				}
+			],
+			"stop_reason": "end_turn",
+			"stop_sequence": null,
+			"usage": {
+				"input_tokens": 1100,
+				"output_tokens": 20
+			}
+		}
+	]
+}

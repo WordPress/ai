@@ -52,7 +52,7 @@
 	"scripts": {
 		"format": "phpcbf --standard=phpcs.xml.dist",
 		"lint": "phpcs --standard=phpcs.xml.dist",
-		"phpstan": "phpstan analyse --memory-limit=1G",
+		"phpstan": "phpstan analyse --memory-limit=2G",
 		"test": "phpunit --strict-coverage"
 	},
 	"scripts-descriptions": {

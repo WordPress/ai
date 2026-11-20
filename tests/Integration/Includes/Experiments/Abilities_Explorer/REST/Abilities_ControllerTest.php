@@ -10,6 +10,8 @@ namespace WordPress\AI\Tests\Integration\Experiments\Abilities_Explorer\REST;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_UnitTestCase;
+use WordPress\AI\Experiments\AI_Workspace\Tool_Policy;
+use WordPress\AI\Experiments\AI_Workspace\Tool_Selector;
 use WordPress\AI\Experiments\Abilities_Explorer\REST\Abilities_Controller;
 
 /**
@@ -74,6 +76,8 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
+		add_filter( 'wpai_workspace_tool_admission_enabled', '__return_true' );
+
 		$this->admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
 
 		$controller = new Abilities_Controller();
@@ -89,6 +93,8 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	 * @since 1.5.0
 	 */
 	public function tearDown(): void {
+		remove_filter( 'wpai_workspace_tool_admission_enabled', '__return_true' );
+
 		foreach ( $this->registered as $name ) {
 			if ( ! wp_has_ability( $name ) ) {
 				continue;
@@ -111,6 +117,9 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 		$this->nonce      = null;
 
 		unset( $GLOBALS['wp_rest_auth_cookie'], $GLOBALS['wp_rest_application_password_uuid'] );
+
+		delete_option( Tool_Policy::OWNER_EXCLUSIONS_OPTION );
+		delete_option( Tool_Policy::POLICY_DISABLED_OPTION );
 
 		wp_set_current_user( 0 );
 		parent::tearDown();
@@ -139,10 +148,11 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 
 		$this->assertContains( $slug, $slugs, 'An ability that did not opt into REST must still be listed.' );
 		$this->assertCount( count( wp_get_abilities() ), $data['items'], 'Every registered ability must be listed.' );
+		$this->assertIsInt( $data['sequence'] );
 
 		$row = $this->row( $data['items'], $slug );
 
-		$this->assertFalse( $row['meta']['show_in_rest'] );
+		$this->assertFalse( $row['show_in_rest'] );
 		$this->assertArrayNotHasKey( 'input_schema', $row, 'Schemas come only from the item route.' );
 		$this->assertArrayNotHasKey( 'raw_data', $row, 'Raw data comes only from the item route.' );
 		$this->assertArrayHasKey( 'meta', $row );
@@ -514,7 +524,113 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 
 	/*
 	 * ---------------------------------------------------------------------
-	 * Rows, ported from the retired list table's tests.
+	 * Surface route.
+	 * ---------------------------------------------------------------------
+	 */
+
+	/**
+	 * Removes and restores an ability through the route; a repeated remove is "no change".
+	 *
+	 * @since x.x.x
+	 */
+	public function test_surface_remove_and_restore_round_trip(): void {
+		$slug = $this->register_declared_fixture( 'wpai-test/surface-remove' );
+
+		$response = $this->surface( 'remove', $slug );
+
+		$this->assertSame( 200, $response->get_status() );
+
+		$data = $response->get_data();
+
+		$this->assertTrue( $data['changed'] );
+		$this->assertSame( 'remove', $data['change'] );
+		$this->assertSame( $slug, $data['item']['slug'] );
+		$this->assertTrue( $data['item']['owner_excluded'] );
+		$this->assertIsInt( $data['sequence'] );
+		$this->assertArrayNotHasKey( 'policy', $data );
+		$this->assertContains( $slug, get_option( Tool_Policy::OWNER_EXCLUSIONS_OPTION ) );
+
+		$repeat = $this->surface( 'remove', $slug );
+
+		$this->assertSame( 200, $repeat->get_status(), 'Already removed (another tab) counts as success.' );
+		$this->assertFalse( $repeat->get_data()['changed'] );
+		$this->assertTrue( $repeat->get_data()['item']['owner_excluded'] );
+		$this->assertGreaterThanOrEqual( $data['sequence'], $repeat->get_data()['sequence'] );
+
+		$restore = $this->surface( 'restore', $slug );
+
+		$this->assertSame( 200, $restore->get_status() );
+		$this->assertTrue( $restore->get_data()['changed'] );
+		$this->assertFalse( $restore->get_data()['item']['owner_excluded'] );
+		$this->assertNotContains( $slug, get_option( Tool_Policy::OWNER_EXCLUSIONS_OPTION, array() ) );
+	}
+
+	/**
+	 * Restoring a never-admitted ability clears the exclusion but keeps it off the assistant.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_surface_restore_of_a_withheld_ability_keeps_it_off_the_assistant(): void {
+		$this->require_filtered_discovery();
+
+		$slug = $this->register_declared_fixture( 'wpai-test/surface-withheld' );
+
+		add_filter(
+			'wpai_workspace_withheld_abilities',
+			static function ( $withheld ) use ( $slug ) {
+				$withheld[] = $slug;
+				return $withheld;
+			}
+		);
+
+		( new Tool_Policy() )->exclude_from_surface( $slug );
+
+		$data = $this->surface( 'restore', $slug )->get_data();
+
+		$this->assertFalse( ( new Tool_Policy() )->is_owner_excluded( $slug ) );
+		$this->assertFalse( $data['item']['conversational_surface'] );
+		$this->assertFalse( $data['item']['owner_excluded'] );
+	}
+
+	/**
+	 * The route no longer accepts the admission policy switch.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_surface_refuses_the_policy_switch(): void {
+		$this->assertSame( 400, $this->surface( 'disable_policy' )->get_status() );
+		$this->assertSame( 400, $this->surface( 'enable_policy' )->get_status() );
+		$this->assertOptionsUntouched();
+	}
+
+	/**
+	 * An unknown change is refused and changes nothing.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_surface_refuses_an_unknown_change(): void {
+		$slug = $this->register_declared_fixture( 'wpai-test/surface-unknown' );
+
+		$response = $this->surface( 'obliterate', $slug );
+
+		$this->assertSame( 400, $response->get_status() );
+		$this->assertOptionsUntouched();
+	}
+
+	/**
+	 * Remove refuses an unregistered or missing name.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_surface_remove_refuses_an_unregistered_or_missing_name(): void {
+		$this->assertSame( 404, $this->surface( 'remove', 'wpai-test/never-registered' )->get_status() );
+		$this->assertSame( 400, $this->surface( 'remove' )->get_status() );
+		$this->assertOptionsUntouched();
+	}
+
+	/*
+	 * ---------------------------------------------------------------------
+	 * Rows and surface changes, ported from the retired list table's tests.
 	 * ---------------------------------------------------------------------
 	 */
 
@@ -556,6 +672,150 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 		$this->assertContains( 'My Custom Plugin', array_column( $items, 'provider' ), 'The custom label must reach the screen so it can be offered as a filter option.' );
 		$this->assertNotContains( 'My Custom Plugin', array_column( $items, 'origin' ), 'A custom label must never become an origin.' );
 		$this->assertSame( 'My Custom Plugin', $this->row( $items, $slug )['provider_label'] );
+	}
+
+	/**
+	 * A declared, admitted ability is reported on the assistant with no reason.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_list_marks_a_declared_admitted_ability_as_on_the_assistant(): void {
+		$this->require_filtered_discovery();
+
+		$slug = $this->register_declared_fixture( 'wpai-test/table-admitted' );
+
+		$row = $this->row( $this->dispatch( 'GET', Abilities_Controller::ABILITIES_ROUTE )->get_data()['items'], $slug );
+
+		$this->assertTrue( $row['conversational_surface'], 'A declared, read-only, closed-world ability the workspace admits must be marked as on the assistant.' );
+		$this->assertFalse( $row['owner_excluded'] );
+	}
+
+	/**
+	 * With admission on, an ability excluded for any reason but the owner's removal shows nothing.
+	 *
+	 * The list carries no reason or reason label, only the two flags the screen shows.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_list_shows_nothing_for_an_ability_the_workspace_does_not_use(): void {
+		$this->require_filtered_discovery();
+
+		$undeclared = $this->register_fixture(
+			'wpai-test/table-undeclared',
+			array(
+				'meta' => array(
+					'annotations' => array(
+						'readonly'    => true,
+						'destructive' => false,
+						'open_world'  => false,
+					),
+				),
+			)
+		);
+		$withheld   = $this->register_declared_fixture( 'wpai-test/table-withheld' );
+
+		add_filter(
+			'wpai_workspace_withheld_abilities',
+			static function ( $names ) use ( $withheld ) {
+				$names[] = $withheld;
+				return $names;
+			}
+		);
+
+		$this->assertTrue( ( new Tool_Policy() )->admission_is_enabled(), 'Admission must be on for the policy reasons to arise.' );
+
+		$data = $this->dispatch( 'GET', Abilities_Controller::ABILITIES_ROUTE )->get_data();
+
+		$this->assertArrayNotHasKey( 'policy', $data, 'The list must not carry the admission policy state.' );
+
+		$policy = new Tool_Policy();
+
+		foreach ( array( $undeclared, $withheld ) as $slug ) {
+			$this->assertNotNull( $policy->get_exclusion_reason( wp_get_ability( $slug ) ), 'The server must still know why the ability is excluded.' );
+
+			$row = $this->row( $data['items'], $slug );
+
+			$this->assertFalse( $row['conversational_surface'], "{$slug} must not be shown as used by the AI Workspace." );
+			$this->assertFalse( $row['owner_excluded'], "{$slug} must not be shown as removed from the AI Workspace." );
+			$this->assertArrayNotHasKey( 'surface_reason', $row, 'The screen no longer shows exclusion reasons.' );
+			$this->assertArrayNotHasKey( 'surface_reason_label', $row, 'The screen no longer shows exclusion reasons.' );
+		}
+	}
+
+	/**
+	 * A removed ability is not reported as held, with no workspace bootstrap.
+	 *
+	 * The Explorer can load without the AI Workspace, so removal must not depend on its bootstrap.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_list_does_not_report_a_removed_ability_as_held_without_the_workspace_bootstrap(): void {
+		$this->require_filtered_discovery();
+
+		$slug = $this->register_declared_fixture( 'wpai-test/table-explorer-only' );
+
+		( new Tool_Policy() )->exclude_from_surface( $slug );
+
+		$row = $this->row( $this->dispatch( 'GET', Abilities_Controller::ABILITIES_ROUTE )->get_data()['items'], $slug );
+
+		$this->assertFalse( $row['conversational_surface'], 'An ability the owner removed must not be reported as one the assistant holds.' );
+		$this->assertTrue( $row['owner_excluded'], 'The row must carry the flag that offers "Restore to AI Workspace".' );
+	}
+
+	/**
+	 * An ability exposed by the general public flag is reported on both channels.
+	 *
+	 * Core resolves `show_in_rest` from `meta.public` (WP 7.1+); nothing does that for `mcp.public`.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_list_reports_the_general_public_flag_on_both_channels(): void {
+		$this->require_general_public_flag();
+
+		$slug = $this->register_fixture( 'wpai-test/table-public-only', array( 'meta' => array( 'public' => true ) ) );
+
+		$row = $this->row( $this->dispatch( 'GET', Abilities_Controller::ABILITIES_ROUTE )->get_data()['items'], $slug );
+
+		$this->assertTrue( $row['show_in_rest'], 'Core resolves show_in_rest from the general flag at registration.' );
+		$this->assertTrue( $row['show_in_mcp'], 'Nothing resolves mcp.public, so the row has to inherit it from the general flag or it under-reports MCP exposure.' );
+	}
+
+	/**
+	 * Removing an ability takes it out of the model's declarations.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_surface_remove_takes_the_ability_off_the_model_declarations(): void {
+		$this->require_filtered_discovery();
+
+		$slug = $this->register_declared_fixture( 'wpai-test/table-removed' );
+
+		$this->assertContains( $slug, ( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ), 'The fixture must reach the assistant before its removal can prove anything.' );
+
+		$this->assertSame( 200, $this->surface( 'remove', $slug )->get_status() );
+
+		$this->assertTrue( ( new Tool_Policy() )->is_owner_excluded( $slug ), 'The removal must persist.' );
+		$this->assertNotContains( $slug, ( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ), 'An ability the owner removed must not be declared to the model on the next turn.' );
+	}
+
+	/**
+	 * Returning an ability puts it back in the model's declarations.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_surface_restore_returns_the_ability_to_the_model_declarations(): void {
+		$this->require_filtered_discovery();
+
+		$slug = $this->register_declared_fixture( 'wpai-test/table-restored' );
+
+		( new Tool_Policy() )->exclude_from_surface( $slug );
+
+		$this->assertNotContains( $slug, ( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ), 'The fixture must be off the assistant before returning it can prove anything.' );
+
+		$this->assertSame( 200, $this->surface( 'restore', $slug )->get_status() );
+
+		$this->assertFalse( ( new Tool_Policy() )->is_owner_excluded( $slug ), 'Returning must clear the stored removal.' );
+		$this->assertContains( $slug, ( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ), 'An ability the owner returned must be declared to the model again.' );
 	}
 
 	/*
@@ -689,6 +949,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 		$this->assertSame( 200, $this->dispatch( 'GET', Abilities_Controller::ABILITIES_ROUTE )->get_status() );
 		$this->assertSame( 200, $this->dispatch( 'GET', Abilities_Controller::ITEM_ROUTE, array( 'name' => $slug ) )->get_status() );
 		$this->assertSame( 200, $this->invoke( $slug, '' )->get_status() );
+		$this->assertSame( 200, $this->surface( 'remove', $slug )->get_status() );
 	}
 
 	/*
@@ -737,6 +998,14 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 					'input' => '',
 				),
 			),
+			array(
+				'POST',
+				Abilities_Controller::SURFACE_ROUTE,
+				array(
+					'change' => 'remove',
+					'name'   => $slug,
+				),
+			),
 		);
 
 		foreach ( $requests as $request ) {
@@ -750,6 +1019,17 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 		}
 
 		$this->assertSame( array(), $this->executions, sprintf( '%s must not run an ability.', $who ) );
+		$this->assertOptionsUntouched();
+	}
+
+	/**
+	 * Asserts neither policy option was written.
+	 *
+	 * @since x.x.x
+	 */
+	private function assertOptionsUntouched(): void {
+		$this->assertFalse( get_option( Tool_Policy::OWNER_EXCLUSIONS_OPTION ), 'The exclusion list must be unchanged.' );
+		$this->assertFalse( get_option( Tool_Policy::POLICY_DISABLED_OPTION ), 'The policy switch must be unchanged.' );
 	}
 
 	/**
@@ -797,6 +1077,25 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 				'input' => $input,
 			)
 		);
+	}
+
+	/**
+	 * Requests a surface change through the route.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $change The change.
+	 * @param string $name   Optional. Ability name. Default none.
+	 * @return \WP_REST_Response The response.
+	 */
+	private function surface( string $change, string $name = '' ): WP_REST_Response {
+		$params = array( 'change' => $change );
+
+		if ( '' !== $name ) {
+			$params['name'] = $name;
+		}
+
+		return $this->dispatch( 'POST', Abilities_Controller::SURFACE_ROUTE, $params );
 	}
 
 	/**
@@ -855,6 +1154,30 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 		}
 
 		return $this->register_fixture( $slug, $args );
+	}
+
+	/**
+	 * Registers a fixture that declares itself fit for the assistant.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $slug The ability name.
+	 * @return string The ability name.
+	 */
+	private function register_declared_fixture( string $slug ): string {
+		return $this->register_fixture(
+			$slug,
+			array(
+				'meta' => array(
+					'annotations'  => array(
+						'readonly'    => true,
+						'destructive' => false,
+						'open_world'  => false,
+					),
+					'ai-workspace' => array( 'public' => true ),
+				),
+			)
+		);
 	}
 
 	/**
@@ -921,5 +1244,31 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 		$this->categories[] = $slug;
 
 		return $slug;
+	}
+
+	/**
+	 * Skips a test on a WordPress whose abilities carry no general `public` flag (before 7.1).
+	 *
+	 * @since x.x.x
+	 */
+	private function require_general_public_flag(): void {
+		if ( ! version_compare( get_bloginfo( 'version' ), '7.1', '<' ) ) {
+			return;
+		}
+
+		$this->markTestSkipped( 'This WordPress does not seed the general `public` flag on abilities (added in 7.1).' );
+	}
+
+	/**
+	 * Skips a test on a WordPress that cannot filter ability discovery.
+	 *
+	 * @since x.x.x
+	 */
+	private function require_filtered_discovery(): void {
+		if ( ( new Tool_Policy() )->supports_filtered_discovery() ) {
+			return;
+		}
+
+		$this->markTestSkipped( 'This WordPress does not support filtered ability discovery.' );
 	}
 }

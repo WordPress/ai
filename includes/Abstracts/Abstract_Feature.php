@@ -454,9 +454,51 @@ abstract class Abstract_Feature implements Feature {
 
 			$meta[ Feature_Access::ABILITY_META_KEY ] = static::get_id();
 			$args['meta']                             = $meta;
+			$args                                     = self::with_permission_result_filter( $name, $args );
 		}
 
 		return wp_register_ability( $name, $args );
+	}
+
+	/**
+	 * Back-fills the core `wp_ability_permission_result` filter for an ability registered from args.
+	 *
+	 * Abstract_Ability does this for its own subclasses; an ability registered from a plain
+	 * permission callback would otherwise skip feature access on WordPress before 7.1.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string               $name The ability name.
+	 * @param array<string, mixed> $args The ability registration args.
+	 * @return array<string, mixed> The args, with the callback wrapped when needed.
+	 */
+	private static function with_permission_result_filter( string $name, array $args ): array {
+		if ( version_compare( get_bloginfo( 'version' ), '7.1-alpha', '>=' ) ) {
+			return $args;
+		}
+
+		$class = $args['ability_class'] ?? null;
+
+		if ( is_string( $class ) && is_a( $class, Abstract_Ability::class, true ) ) {
+			return $args;
+		}
+
+		$callback = $args['permission_callback'] ?? null;
+
+		if ( ! is_callable( $callback ) ) {
+			return $args;
+		}
+
+		$args['permission_callback'] = static function ( ...$params ) use ( $name, $callback ) {
+			$result = call_user_func_array( $callback, array_values( $params ) );
+
+			/** This filter is documented in wp-includes/abilities-api/class-wp-ability.php */
+			$filtered = apply_filters( 'wp_ability_permission_result', $result, $name, $params[0] ?? null, wp_get_ability( $name ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Back-fills the core hook on WordPress < 7.1.
+
+			return is_bool( $filtered ) || is_wp_error( $filtered ) ? $filtered : false;
+		};
+
+		return $args;
 	}
 
 	/**

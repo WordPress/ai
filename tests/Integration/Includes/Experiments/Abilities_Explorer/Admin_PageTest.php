@@ -118,7 +118,7 @@ class Admin_PageTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The localized route map carries exactly the controller's three route constants.
+	 * The localized route map carries exactly the controller's four route constants.
 	 *
 	 * @since 1.5.0
 	 */
@@ -134,6 +134,7 @@ class Admin_PageTest extends WP_UnitTestCase {
 				'abilities' => Abilities_Controller::ABILITIES_ROUTE,
 				'item'      => Abilities_Controller::ITEM_ROUTE,
 				'invoke'    => Abilities_Controller::INVOKE_ROUTE,
+				'surface'   => Abilities_Controller::SURFACE_ROUTE,
 			),
 			$settings['rest']['routes']
 		);

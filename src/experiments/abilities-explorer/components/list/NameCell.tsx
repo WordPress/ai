@@ -1,6 +1,7 @@
 /**
  * WordPress dependencies
  */
+import { Button, Notice } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 
 /**
@@ -8,6 +9,7 @@ import { __ } from '@wordpress/i18n';
  */
 import type { AbilityListItem } from '../../types';
 import RouterLink from '../RouterLink';
+import { useRowSurfaceAction } from '../SurfaceActions';
 
 /**
  * The separator between two row actions.
@@ -30,6 +32,8 @@ function Separator() {
  * @return The cell content.
  */
 export default function NameCell( { item }: { item: AbilityListItem } ) {
+	const surfaceAction = useRowSurfaceAction( item );
+
 	// One block, so the actions sit under the name in DataViews' flex row.
 	return (
 		<div className="ai-abilities-explorer__name-cell">
@@ -47,7 +51,32 @@ export default function NameCell( { item }: { item: AbilityListItem } ) {
 				<RouterLink route={ { view: 'runner', ability: item.slug } }>
 					{ __( 'Test', 'ai' ) }
 				</RouterLink>
+				{ surfaceAction && (
+					<>
+						<Separator />
+						{ /* One button for both labels, so focus survives the flip. */ }
+						<Button
+							variant="link"
+							isBusy={ surfaceAction.isBusy }
+							disabled={ surfaceAction.isBusy }
+							accessibleWhenDisabled
+							onClick={ surfaceAction.onActivate }
+						>
+							{ surfaceAction.label }
+						</Button>
+					</>
+				) }
 			</div>
+			{ surfaceAction?.error && (
+				<Notice
+					className="ai-abilities-explorer__row-error"
+					status="error"
+					politeness="assertive"
+					onRemove={ surfaceAction.onDismissError }
+				>
+					{ surfaceAction.error }
+				</Notice>
+			) }
 		</div>
 	);
 }

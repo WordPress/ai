@@ -31,6 +31,7 @@ final class Experiments {
 		\WordPress\AI\Experiments\C2pa_Monitor\C2pa_Monitor::class,
 		\WordPress\AI\Experiments\Custom_Abilities\Custom_Abilities::class,
 		\WordPress\AI\Experiments\AI_Request_Logging\AI_Request_Logging::class,
+		\WordPress\AI\Experiments\AI_Workspace\AI_Workspace::class,
 		\WordPress\AI\Experiments\Connector_Approval\Connector_Approval::class,
 		\WordPress\AI\Experiments\Key_Encryption\Key_Encryption::class,
 		\WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation::class,

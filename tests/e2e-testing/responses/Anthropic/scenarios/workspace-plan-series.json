@@ -1,0 +1,85 @@
+{
+	"description": "The \"Plan a series\" demo: one round proposes five drafts through ai/propose-drafts, which ends the turn. Entry 1 answers the follow-up after the proposal is settled.",
+	"sequence": [
+		{
+			"id": "msg_e2e_plan_round_1",
+			"type": "message",
+			"role": "assistant",
+			"model": "claude-sonnet-5",
+			"content": [
+				{
+					"type": "text",
+					"text": "I will propose a five-part series on remote work for you to review."
+				},
+				{
+					"type": "tool_use",
+					"id": "toolu_e2e_plan_propose",
+					"name": "wpab__ai__propose-drafts",
+					"input": {
+						"items": [
+							{
+								"post_type": "post",
+								"status": "draft",
+								"title": "Remote Work, Week One",
+								"excerpt": "What changes on the first day you work from home, and what does not.",
+								"content": "<!-- wp:paragraph --><p>What changes on the first day you work from home, and what does not.</p><!-- /wp:paragraph -->"
+							},
+							{
+								"post_type": "post",
+								"status": "draft",
+								"title": "A Desk You Want to Sit At",
+								"excerpt": "Small changes to light, sound and posture that pay off every day.",
+								"content": "<!-- wp:paragraph --><p>Small changes to light, sound and posture that pay off every day.</p><!-- /wp:paragraph -->"
+							},
+							{
+								"post_type": "post",
+								"status": "draft",
+								"title": "Meetings That Respect the Clock",
+								"excerpt": "How to run fewer, shorter calls without losing the thread.",
+								"content": "<!-- wp:paragraph --><p>How to run fewer, shorter calls without losing the thread.</p><!-- /wp:paragraph -->"
+							},
+							{
+								"post_type": "post",
+								"status": "draft",
+								"title": "Writing Things Down",
+								"excerpt": "Why async notes beat a quick call, and how to keep them short.",
+								"content": "<!-- wp:paragraph --><p>Why async notes beat a quick call, and how to keep them short.</p><!-- /wp:paragraph -->"
+							},
+							{
+								"post_type": "post",
+								"status": "draft",
+								"title": "Knowing When to Stop",
+								"excerpt": "Ending the workday when the office is also the kitchen.",
+								"content": "<!-- wp:paragraph --><p>Ending the workday when the office is also the kitchen.</p><!-- /wp:paragraph -->"
+							}
+						]
+					}
+				}
+			],
+			"stop_reason": "tool_use",
+			"stop_sequence": null,
+			"usage": {
+				"input_tokens": 500,
+				"output_tokens": 420
+			}
+		},
+		{
+			"id": "msg_e2e_plan_round_2",
+			"type": "message",
+			"role": "assistant",
+			"model": "claude-sonnet-5",
+			"content": [
+				{
+					"type": "text",
+					"text": "Noted what you decided about the series. Want an outline for the first part?"
+				}
+			],
+			"stop_reason": "end_turn",
+			"stop_sequence": null,
+			"usage": {
+				"input_tokens": 1100,
+				"output_tokens": 18
+			}
+		}
+	]
+}

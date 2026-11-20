@@ -25,7 +25,7 @@ import {
 	TITLE_FIELD_ID,
 	useFields,
 } from '../fields';
-import type { AbilityListItem } from '../types';
+import type { AbilityListItem, SurfaceResponse } from '../types';
 import {
 	appendNewFields,
 	loadSavedView,
@@ -35,16 +35,26 @@ import {
 } from '../view-storage';
 import { applyProviderFilter } from './list/provider-filter';
 import Statistics from './Statistics';
+import { RowSurfaceActionContext, useSurfaceActions } from './SurfaceActions';
 
 export interface ListViewProps {
 	/** Every registered ability. */
 	items: AbilityListItem[];
 	/** True while the list is loading. */
 	isLoading: boolean;
+	/** Applies a surface response; false when it was stale. */
+	onSurfaceResponse: ( response: SurfaceResponse ) => boolean;
 }
 
 const PER_PAGE = 20;
 const SUPPORTED_LAYOUTS = [ 'table' ];
+
+const TABLE_LAYOUT = {
+	styles: {
+		description: { width: '50%' },
+		surface: { minWidth: '16em' },
+	},
+};
 
 const DEFAULT_VIEW: View = {
 	type: 'table',
@@ -55,14 +65,10 @@ const DEFAULT_VIEW: View = {
 	sort: { field: TITLE_FIELD_ID, direction: 'asc' },
 	titleField: TITLE_FIELD_ID,
 	fields: [ ...DEFAULT_VISIBLE_FIELDS ],
-	layout: {
-		styles: {
-			description: { width: '50%' },
-		},
-	},
+	layout: TABLE_LAYOUT,
 };
 
-const DEFAULT_LAYOUTS: SupportedLayouts = { table: {} };
+const DEFAULT_LAYOUTS: SupportedLayouts = { table: { layout: TABLE_LAYOUT } };
 
 const getItemId = ( item: AbilityListItem ): string => item.slug;
 
@@ -82,12 +88,19 @@ const getCandidateIds = ( fieldIds: string[] ): string[] =>
 /**
  * The ability list: statistics, then a DataViews table.
  *
- * @param props           Component props.
- * @param props.items     The abilities.
- * @param props.isLoading Whether a load is in flight.
+ * @param props                   Component props.
+ * @param props.items             The abilities.
+ * @param props.isLoading         Whether a load is in flight.
+ * @param props.onSurfaceResponse Applies a surface route response.
  * @return The view.
  */
-export default function ListView( { items, isLoading }: ListViewProps ) {
+export default function ListView( {
+	items,
+	isLoading,
+	onSurfaceResponse,
+}: ListViewProps ) {
+	const tableRef = useRef< HTMLDivElement >( null );
+
 	const fields = useFields( items );
 	const fieldIds = useMemo(
 		() => fields.map( ( field ) => field.id ),
@@ -172,27 +185,64 @@ export default function ListView( { items, isLoading }: ListViewProps ) {
 		);
 	}, [ items, view, fields ] );
 
+	/*
+	 * When a surface change removes the focused row button (filtered out or no action left),
+	 * move focus to the list region; the table itself is gone when the list ends up empty.
+	 */
+	const [ settledCount, setSettledCount ] = useState( 0 );
+
+	const onSurfaceSettled = useCallback( () => {
+		setSettledCount( ( count ) => count + 1 );
+	}, [] );
+
+	useEffect( () => {
+		if ( 0 === settledCount ) {
+			return;
+		}
+
+		const { activeElement } = document;
+
+		if (
+			activeElement &&
+			activeElement !== document.body &&
+			activeElement.isConnected
+		) {
+			return;
+		}
+
+		tableRef.current?.focus();
+	}, [ settledCount ] );
+
+	const getRowSurfaceAction = useSurfaceActions( {
+		onSurfaceResponse,
+		onSettled: onSurfaceSettled,
+	} );
+
 	const isFirstLoad = isLoading && 0 === items.length;
 
 	return (
 		<div className="ai-abilities-explorer__list">
 			{ ! isFirstLoad && <Statistics items={ items } /> }
 			<div
+				ref={ tableRef }
 				className="ai-abilities-explorer__table"
 				role="region"
 				aria-label={ __( 'Abilities list', 'ai' ) }
+				tabIndex={ -1 }
 			>
-				<DataViews< AbilityListItem >
-					data={ data }
-					fields={ fields }
-					view={ view }
-					onChangeView={ onChangeView }
-					paginationInfo={ paginationInfo }
-					getItemId={ getItemId }
-					isLoading={ isFirstLoad }
-					defaultLayouts={ DEFAULT_LAYOUTS }
-					searchLabel={ __( 'Search Abilities', 'ai' ) }
-				/>
+				<RowSurfaceActionContext.Provider value={ getRowSurfaceAction }>
+					<DataViews< AbilityListItem >
+						data={ data }
+						fields={ fields }
+						view={ view }
+						onChangeView={ onChangeView }
+						paginationInfo={ paginationInfo }
+						getItemId={ getItemId }
+						isLoading={ isFirstLoad }
+						defaultLayouts={ DEFAULT_LAYOUTS }
+						searchLabel={ __( 'Search Abilities', 'ai' ) }
+					/>
+				</RowSurfaceActionContext.Provider>
 			</div>
 		</div>
 	);

@@ -112,5 +112,7 @@ consistent snapshot, a class is never needed in two incompatible versions at onc
 version the target environments bundle to avoid drift with the environment's unchanged classes.
 
 These files are exempt from PHPCS/PHPStan (`phpcs.xml.dist` excludes `includes/Vendor/`;
-`phpstan.neon.dist` excludes `includes/Vendor/AiClient/src/` from scanning). The loader itself,
+`phpstan.neon.dist` excludes `includes/Vendor/AiClient/src/` from scanning). They are also excluded
+from coverage reporting, for the same reason: upstream code carries paths this plugin never calls,
+so scoring it misreports how well *this* plugin is tested. The loader itself,
 `includes/SDK_Overlay.php`, is first-party code and is fully linted and analysed.

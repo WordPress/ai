@@ -1,0 +1,54 @@
+{
+	"description": "A Site Context turn that sketches a series, then asks how to go on through ai/ask-user, which ends the turn. Entry 1 answers the person's reply, whether they chose a button or typed.",
+	"sequence": [
+		{
+			"id": "msg_e2e_ask_round_1",
+			"type": "message",
+			"role": "assistant",
+			"model": "claude-sonnet-5",
+			"content": [
+				{
+					"type": "text",
+					"text": "Here is a five-part series on getting started with the block editor."
+				},
+				{
+					"type": "tool_use",
+					"id": "toolu_e2e_ask_1",
+					"name": "wpab__ai__ask-user",
+					"input": {
+						"question": "How would you like to go on?",
+						"choices": [
+							"Create these 5 drafts",
+							"Change the angle",
+							"Fewer parts"
+						]
+					}
+				}
+			],
+			"stop_reason": "tool_use",
+			"stop_sequence": null,
+			"usage": {
+				"input_tokens": 455,
+				"output_tokens": 64
+			}
+		},
+		{
+			"id": "msg_e2e_ask_round_2",
+			"type": "message",
+			"role": "assistant",
+			"model": "claude-sonnet-5",
+			"content": [
+				{
+					"type": "text",
+					"text": "Got it. I will rework the series to match."
+				}
+			],
+			"stop_reason": "end_turn",
+			"stop_sequence": null,
+			"usage": {
+				"input_tokens": 720,
+				"output_tokens": 14
+			}
+		}
+	]
+}

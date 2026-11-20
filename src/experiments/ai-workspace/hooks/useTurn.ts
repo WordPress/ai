@@ -1,0 +1,1084 @@
+/**
+ * Conversation state for the AI Workspace transcript.
+ */
+
+/**
+ * WordPress dependencies
+ */
+import { useCallback, useEffect, useRef, useState } from '@wordpress/element';
+import { __, _n, sprintf } from '@wordpress/i18n';
+
+/**
+ * Internal dependencies
+ */
+import {
+	findSavedTurn,
+	newUuid,
+	toEntries,
+	toEntry,
+	toOutcomes,
+	toStoredChat,
+} from '../utils/chat';
+import type {
+	ContextScope,
+	LocalizedData,
+	ProposalExecution,
+	StoredChat,
+	TranscriptEntry,
+	TurnResponse,
+} from '../types';
+
+/**
+ * What came of opening a stored chat.
+ */
+export type OpenResult = 'opened' | 'not-found' | 'failed' | 'superseded';
+
+/**
+ * What came of dismissing a question; `conflict` means the stored chat was reloaded.
+ */
+export type DismissResult = 'dismissed' | 'conflict' | 'failed';
+
+/**
+ * The turn transport's outcome for one request.
+ */
+interface TurnOutcome {
+	response: TurnResponse | null;
+	streamed: boolean;
+	error: { code: string; message: string } | null;
+	// True when Stop aborted the request; its resulting failure is not the turn's.
+	aborted: boolean;
+}
+
+const SENTENCE_BOUNDARY = /[.!?…](\s|$)|\n\n/;
+
+/**
+ * Poll interval, in milliseconds, for a dropped turn's saved reply.
+ */
+const RECOVERY_INTERVAL = 3000;
+
+/**
+ * How long, in milliseconds, to poll for a dropped turn; each round may wait minutes for the model.
+ */
+const RECOVERY_WINDOW = 10 * 60 * 1000;
+
+/**
+ * Proxy timeout statuses; WordPress itself keeps running the turn.
+ */
+const GATEWAY_TIMEOUTS = [ 502, 503, 504, 524 ];
+
+/**
+ * Waits, ending early when the signal aborts.
+ *
+ * @param ms     The time to wait, in milliseconds.
+ * @param signal The abort signal.
+ * @return Resolves when the time is up or the signal aborts.
+ */
+function pause( ms: number, signal: AbortSignal ): Promise< void > {
+	return new Promise( ( resolve ) => {
+		const timer = setTimeout( resolve, ms );
+		signal.addEventListener(
+			'abort',
+			() => {
+				clearTimeout( timer );
+				resolve();
+			},
+			{ once: true }
+		);
+	} );
+}
+
+/**
+ * Monotonic counter used to key transcript entries.
+ */
+let nextEntryId = 0;
+
+/**
+ * Builds the message announced for a terminal status.
+ *
+ * @param status The entry status.
+ * @return The announcement.
+ */
+function terminalAnnouncement( status: TranscriptEntry[ 'status' ] ): string {
+	switch ( status ) {
+		case 'cancelled':
+			return __( 'Response stopped.', 'ai' );
+		case 'max_rounds':
+			return __(
+				'The assistant reached its step limit and ended the turn.',
+				'ai'
+			);
+		case 'awaiting_user':
+			return __( 'The assistant is waiting for your decision.', 'ai' );
+		case 'error':
+			return __( 'The response failed.', 'ai' );
+		case 'tools_unavailable':
+		case 'model_unavailable':
+			return __( 'The assistant could not answer.', 'ai' );
+		default:
+			return __( 'Response complete.', 'ai' );
+	}
+}
+
+/**
+ * Reads a value from a record without trusting its shape.
+ *
+ * @param value The candidate record.
+ * @param key   The key to read.
+ * @return The string value, or an empty string.
+ */
+function readString( value: unknown, key: string ): string {
+	if ( ! value || typeof value !== 'object' ) {
+		return '';
+	}
+
+	const found = ( value as Record< string, unknown > )[ key ];
+
+	return typeof found === 'string' ? found : '';
+}
+
+/**
+ * Drives one conversation: sending turns, streaming them, and stopping them.
+ *
+ * Uses `fetch` rather than `EventSource`, which is GET-only, can't send the nonce header, and auto-reconnects (re-billing the turn).
+ *
+ * @param data Localized data provided by the server.
+ * @return The conversation state and its controls.
+ */
+export function useTurn( data: LocalizedData ) {
+	const [ entries, setEntries ] = useState< TranscriptEntry[] >( [] );
+	const [ scope, setScope ] = useState< ContextScope >( 'site' );
+	const [ isRunning, setIsRunning ] = useState( false );
+	const [ isStopping, setIsStopping ] = useState( false );
+	const [ announcement, setAnnouncement ] = useState( '' );
+	// State mirror of `conversationId` so cards re-render when the server assigns it.
+	const [ conversation, setConversation ] = useState( '' );
+	const [ outcomes, setOutcomes ] = useState<
+		Record< string, ProposalExecution >
+	>( {} );
+	// Bumped when a turn settles so the history list refreshes.
+	const [ settled, setSettled ] = useState( 0 );
+	// Sending is blocked while a stored chat loads.
+	const [ isOpening, setIsOpening ] = useState( false );
+	const opening = useRef( false );
+
+	const conversationId = useRef( '' );
+	// Bumped on chat switch; work started under an older value is discarded.
+	const generation = useRef( 0 );
+
+	// Mirrors `isRunning` for callbacks that read it after an await.
+	const running = useRef( false );
+	// True while a dismissal is in flight; a message sent meanwhile would race it.
+	const dismissing = useRef( false );
+	const [ isDismissing, setIsDismissing ] = useState( false );
+	const controller = useRef< AbortController | null >( null );
+	const announcedTo = useRef( 0 );
+
+	useEffect(
+		() => () => {
+			controller.current?.abort();
+		},
+		[]
+	);
+
+	const endpoint = useCallback(
+		( route: string ): string => {
+			const path = data.rest.routes[ route ] ?? '';
+
+			return data.rest.root + path;
+		},
+		[ data.rest ]
+	);
+
+	/**
+	 * Announces completed sentences only, never individual chunks.
+	 *
+	 * @param text The assistant text received so far.
+	 */
+	const announceProgress = useCallback( ( text: string ): void => {
+		const pending = text.slice( announcedTo.current );
+		const boundary = pending.search( SENTENCE_BOUNDARY );
+
+		if ( boundary === -1 ) {
+			return;
+		}
+
+		const upTo = pending.lastIndexOf( '\n\n' ) + 2;
+		const end = Math.max( boundary + 1, upTo );
+
+		announcedTo.current += end;
+		setAnnouncement( pending.slice( 0, end ).trim() );
+	}, [] );
+
+	/**
+	 * Waits for a turn whose connection dropped, then reads it from the saved chat.
+	 *
+	 * Playground drops requests after 25 seconds and proxies may time out before PHP does.
+	 *
+	 * @param chatId  The chat the turn runs in.
+	 * @param turnId  The turn's ID.
+	 * @param signal  Aborts the wait, as Stop does.
+	 * @param failure The failure to report if the turn's reply cannot be found.
+	 * @return The outcome.
+	 */
+	const recoverTurn = useCallback(
+		async (
+			chatId: string,
+			turnId: string,
+			signal: AbortSignal,
+			failure: { code: string; message: string }
+		): Promise< TurnOutcome > => {
+			const lost: TurnOutcome = {
+				response: null,
+				streamed: false,
+				aborted: false,
+				error: failure,
+			};
+			const deadline = Date.now() + RECOVERY_WINDOW;
+			const headers = { 'X-WP-Nonce': data.rest.nonce };
+			let seen = false;
+			let unseen = 0;
+
+			while ( ! signal.aborted && Date.now() < deadline ) {
+				let state = '';
+
+				try {
+					const response = await window.fetch(
+						endpoint( 'messages' ) +
+							'/' +
+							encodeURIComponent( turnId ),
+						{ credentials: 'same-origin', signal, headers }
+					);
+
+					state = readString( await response.json(), 'state' );
+				} catch {
+					state = '';
+				}
+
+				if ( 'running' === state || 'done' === state ) {
+					seen = true;
+				} else if ( ! seen ) {
+					// No sign the server ever received this turn.
+					unseen += 1;
+
+					if ( unseen >= 2 ) {
+						return lost;
+					}
+				}
+
+				let chat = null;
+				let read = false;
+
+				if ( 'done' === state ) {
+					try {
+						const response = await window.fetch(
+							endpoint( 'conversations' ) +
+								'/' +
+								encodeURIComponent( chatId ),
+							{ credentials: 'same-origin', signal, headers }
+						);
+
+						read = true;
+						chat = response.ok
+							? toStoredChat( await response.json() )
+							: null;
+					} catch {
+						// Read again on the next check.
+						read = false;
+					}
+				}
+
+				if ( read ) {
+					const saved = chat ? findSavedTurn( chat, turnId ) : null;
+
+					if ( saved?.response ) {
+						return {
+							response: saved.response,
+							streamed: false,
+							aborted: false,
+							error: null,
+						};
+					}
+
+					if ( saved ) {
+						return {
+							...lost,
+							error: {
+								code: saved.errorCode,
+								message: __(
+									'The assistant could not complete this turn.',
+									'ai'
+								),
+							},
+						};
+					}
+
+					// Done, but nothing was saved under this turn.
+					return lost;
+				}
+
+				await pause( RECOVERY_INTERVAL, signal );
+			}
+
+			return { ...lost, aborted: signal.aborted };
+		},
+		[ data.rest.nonce, endpoint ]
+	);
+
+	/**
+	 * Runs one turn against the transport, streaming when the host allows it.
+	 *
+	 * @param entryId   The transcript entry to update.
+	 * @param turnId    The turn's ID; client-chosen so a lost response can be found in the saved chat.
+	 * @param message   The person's message, empty for a follow-up.
+	 * @param turnScope The scope for this turn.
+	 * @param followUp  Whether this turn follows up a proposal outcome.
+	 * @return The outcome.
+	 */
+	const runTurn = useCallback(
+		async (
+			entryId: string,
+			turnId: string,
+			message: string,
+			turnScope: ContextScope,
+			followUp: boolean
+		): Promise< TurnOutcome > => {
+			const abort = new AbortController();
+			controller.current = abort;
+
+			const newChatId = '' === conversationId.current ? newUuid() : '';
+			const chatId = conversationId.current || newChatId;
+
+			let response: Response;
+
+			try {
+				response = await window.fetch( endpoint( 'messages' ), {
+					method: 'POST',
+					credentials: 'same-origin',
+					signal: abort.signal,
+					headers: {
+						'Content-Type': 'application/json',
+						Accept: 'text/event-stream, application/json',
+						'X-WP-Nonce': data.rest.nonce,
+						// A host that cannot stream answers with plain JSON.
+						'X-WP-AI-Stream': '1',
+					},
+					body: JSON.stringify( {
+						message,
+						conversation_id: conversationId.current,
+						...( newChatId
+							? { new_conversation_id: newChatId }
+							: {} ),
+						turn_id: turnId,
+						scope: turnScope,
+						follow_up: followUp,
+					} ),
+				} );
+			} catch ( error ) {
+				const failure = {
+					code: 'transport_failed',
+					message:
+						error instanceof Error
+							? error.message
+							: __( 'The request could not be sent.', 'ai' ),
+				};
+
+				if ( abort.signal.aborted ) {
+					return {
+						response: null,
+						streamed: false,
+						aborted: true,
+						error: failure,
+					};
+				}
+
+				return recoverTurn( chatId, turnId, abort.signal, failure );
+			}
+
+			const contentType = response.headers.get( 'content-type' ) ?? '';
+
+			if (
+				! contentType.includes( 'text/event-stream' ) ||
+				! response.body
+			) {
+				// Buffered fallback: the whole turn arrives at once as JSON.
+				let payload: unknown = null;
+
+				try {
+					payload = await response.json();
+				} catch {
+					payload = null;
+				}
+
+				if ( ! response.ok ) {
+					const failure = {
+						code: readString( payload, 'code' ) || 'turn_failed',
+						message:
+							readString( payload, 'message' ) ||
+							__(
+								'The assistant could not complete this turn.',
+								'ai'
+							),
+					};
+
+					// A proxy stopped waiting; WordPress may still finish.
+					if (
+						GATEWAY_TIMEOUTS.includes( response.status ) &&
+						'' === readString( payload, 'code' ) &&
+						! abort.signal.aborted
+					) {
+						return recoverTurn(
+							chatId,
+							turnId,
+							abort.signal,
+							failure
+						);
+					}
+
+					return {
+						response: null,
+						streamed: false,
+						aborted: abort.signal.aborted,
+						error: failure,
+					};
+				}
+
+				return {
+					response: payload as TurnResponse,
+					streamed: false,
+					aborted: abort.signal.aborted,
+					error: null,
+				};
+			}
+
+			const reader = response.body.getReader();
+			// Streaming mode keeps multi-byte characters intact across chunks.
+			const decoder = new TextDecoder( 'utf-8' );
+			let buffer = '';
+			let text = '';
+			let result: TurnResponse | null = null;
+			let failure: { code: string; message: string } | null = null;
+
+			const handleFrame = ( frame: string ): void => {
+				let event = 'message';
+				const dataLines: string[] = [];
+
+				frame.split( '\n' ).forEach( ( line ) => {
+					if ( line.startsWith( ':' ) ) {
+						return;
+					}
+
+					if ( line.startsWith( 'event:' ) ) {
+						event = line.slice( 6 ).trim();
+						return;
+					}
+
+					if ( line.startsWith( 'data:' ) ) {
+						dataLines.push( line.slice( 5 ).replace( /^ /, '' ) );
+					}
+				} );
+
+				if ( dataLines.length === 0 ) {
+					return;
+				}
+
+				let payload: unknown;
+
+				try {
+					payload = JSON.parse( dataLines.join( '\n' ) );
+				} catch {
+					return;
+				}
+
+				if ( 'delta' === event ) {
+					text += readString( payload, 'text' );
+					setEntries( ( current ) =>
+						current.map( ( entry ) =>
+							entry.id === entryId
+								? { ...entry, text, streamed: true }
+								: entry
+						)
+					);
+					announceProgress( text );
+					return;
+				}
+
+				if ( 'result' === event ) {
+					result = payload as TurnResponse;
+					return;
+				}
+
+				if ( 'error' === event ) {
+					failure = {
+						code: readString( payload, 'code' ) || 'turn_failed',
+						message:
+							readString( payload, 'message' ) ||
+							__(
+								'The assistant could not complete this turn.',
+								'ai'
+							),
+					};
+				}
+			};
+
+			try {
+				for (;;) {
+					const { done, value } = await reader.read();
+
+					if ( value ) {
+						buffer += decoder.decode( value, { stream: true } );
+
+						let split = buffer.indexOf( '\n\n' );
+
+						while ( split !== -1 ) {
+							handleFrame( buffer.slice( 0, split ) );
+							buffer = buffer.slice( split + 2 );
+							split = buffer.indexOf( '\n\n' );
+						}
+					}
+
+					if ( done ) {
+						buffer += decoder.decode();
+
+						if ( '' !== buffer.trim() ) {
+							handleFrame( buffer );
+						}
+
+						break;
+					}
+				}
+			} catch ( error ) {
+				if ( ! abort.signal.aborted ) {
+					failure = {
+						code: 'stream_failed',
+						message:
+							error instanceof Error
+								? error.message
+								: __( 'The stream ended early.', 'ai' ),
+					};
+				}
+			}
+
+			// The stream broke before the turn's result arrived.
+			if ( ! result && failure && ! abort.signal.aborted ) {
+				return recoverTurn( chatId, turnId, abort.signal, failure );
+			}
+
+			return {
+				response: result,
+				streamed: true,
+				aborted: abort.signal.aborted,
+				error: failure,
+			};
+		},
+		[ announceProgress, data.rest.nonce, endpoint, recoverTurn ]
+	);
+
+	/**
+	 * Runs one turn into a new transcript entry.
+	 *
+	 * @param trimmed   The person's message, or empty for a follow-up.
+	 * @param turnScope The scope for this turn.
+	 * @param followUp  Whether this turn follows up a proposal outcome.
+	 */
+	const startTurn = useCallback(
+		async (
+			trimmed: string,
+			turnScope: ContextScope,
+			followUp: boolean
+		): Promise< void > => {
+			running.current = true;
+			const started = generation.current;
+
+			nextEntryId += 1;
+			const entryId = 'turn-' + nextEntryId;
+			const turnId = newUuid();
+
+			announcedTo.current = 0;
+			setAnnouncement( __( 'The assistant is responding.', 'ai' ) );
+			setIsRunning( true );
+			setIsStopping( false );
+			setEntries( ( current ) => [
+				...current,
+				{
+					id: entryId,
+					turnId,
+					prompt: trimmed,
+					text: '',
+					status: 'streaming',
+					detail: '',
+					scope: turnScope,
+					toolCalls: [],
+					rounds: 0,
+					maxRounds: 0,
+					streamed: false,
+					followUp,
+				},
+			] );
+
+			const outcome = await runTurn(
+				entryId,
+				turnId,
+				trimmed,
+				turnScope,
+				followUp
+			);
+
+			// Switched chats mid-turn: show nothing, but refresh the list for a new chat.
+			if ( started !== generation.current ) {
+				setSettled( ( count ) => count + 1 );
+				return;
+			}
+
+			controller.current = null;
+
+			setEntries( ( current ) =>
+				current.map( ( entry ) => {
+					if ( entry.id !== entryId ) {
+						return entry;
+					}
+
+					// A deliberate stop wins over the error the aborted request reports.
+					if ( outcome.aborted ) {
+						return { ...entry, status: 'cancelled' };
+					}
+
+					if ( outcome.error || ! outcome.response ) {
+						let detail =
+							outcome.error?.message ??
+							__(
+								'The assistant could not complete this turn.',
+								'ai'
+							);
+
+						// The card above already reports the outcome.
+						if ( followUp ) {
+							detail = __(
+								'The assistant couldn’t follow up on this.',
+								'ai'
+							);
+						}
+
+						return {
+							...entry,
+							status: 'error',
+							detail,
+						};
+					}
+
+					const turn = outcome.response;
+
+					return {
+						...entry,
+						text: '' !== turn.text ? turn.text : entry.text,
+						status: turn.status,
+						detail: turn.reason ?? '',
+						toolCalls: Array.isArray( turn.tool_calls )
+							? turn.tool_calls
+							: [],
+						rounds: turn.rounds ?? 0,
+						maxRounds: turn.max_rounds ?? 0,
+						streamed: outcome.streamed,
+					};
+				} )
+			);
+
+			if ( outcome.response?.conversation_id ) {
+				conversationId.current = outcome.response.conversation_id;
+				setConversation( outcome.response.conversation_id );
+			}
+
+			let announced: TranscriptEntry[ 'status' ] = 'error';
+
+			if ( outcome.aborted ) {
+				announced = 'cancelled';
+			} else if ( outcome.response && ! outcome.error ) {
+				announced = outcome.response.status;
+			}
+
+			setAnnouncement( terminalAnnouncement( announced ) );
+			running.current = false;
+			setIsRunning( false );
+			setIsStopping( false );
+			setSettled( ( count ) => count + 1 );
+		},
+		[ runTurn ]
+	);
+
+	const send = useCallback(
+		async ( message: string, turnScope: ContextScope ): Promise< void > => {
+			const trimmed = message.trim();
+
+			if (
+				'' === trimmed ||
+				running.current ||
+				opening.current ||
+				dismissing.current
+			) {
+				return;
+			}
+
+			await startTurn( trimmed, turnScope, false );
+		},
+		[ startTurn ]
+	);
+
+	/**
+	 * Asks the assistant to follow up once a proposal was approved or discarded.
+	 *
+	 * Never retried (the server allows one), and skipped while another turn runs or the chat changed.
+	 *
+	 * @param turnScope       The scope of the turn that proposed.
+	 * @param forConversation The conversation the settled proposal belongs to.
+	 */
+	const followUp = useCallback(
+		async (
+			turnScope: ContextScope,
+			forConversation: string
+		): Promise< void > => {
+			if (
+				running.current ||
+				opening.current ||
+				'' === conversationId.current ||
+				forConversation !== conversationId.current
+			) {
+				return;
+			}
+
+			await startTurn( '', turnScope, true );
+		},
+		[ startTurn ]
+	);
+
+	/**
+	 * Stops the in-flight turn via the cancel route, so server-side work stops too.
+	 *
+	 * A first turn has no conversation ID yet, so it is only aborted locally.
+	 */
+	const stop = useCallback( async (): Promise< void > => {
+		if ( ! isRunning ) {
+			return;
+		}
+
+		setIsStopping( true );
+
+		if ( '' === conversationId.current ) {
+			controller.current?.abort();
+			controller.current = null;
+			setEntries( ( current ) =>
+				current.map( ( entry, index ) =>
+					index === current.length - 1 && entry.status === 'streaming'
+						? { ...entry, status: 'cancelled' }
+						: entry
+				)
+			);
+			setAnnouncement( terminalAnnouncement( 'cancelled' ) );
+			running.current = false;
+			setIsRunning( false );
+			setIsStopping( false );
+			return;
+		}
+
+		try {
+			await window.fetch( endpoint( 'cancel' ), {
+				method: 'POST',
+				credentials: 'same-origin',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-WP-Nonce': data.rest.nonce,
+				},
+				body: JSON.stringify( {
+					conversation_id: conversationId.current,
+				} ),
+			} );
+		} catch {
+			// A failed cancel call must not leave the transcript stuck.
+			controller.current?.abort();
+		}
+	}, [ data.rest.nonce, endpoint, isRunning ] );
+
+	/**
+	 * Leaves the conversation on screen, stopping any turn still running in it.
+	 */
+	const leave = useCallback( (): void => {
+		generation.current += 1;
+
+		if ( isRunning && '' !== conversationId.current ) {
+			void window
+				.fetch( endpoint( 'cancel' ), {
+					method: 'POST',
+					credentials: 'same-origin',
+					headers: {
+						'Content-Type': 'application/json',
+						'X-WP-Nonce': data.rest.nonce,
+					},
+					body: JSON.stringify( {
+						conversation_id: conversationId.current,
+					} ),
+				} )
+				.catch( () => undefined );
+		}
+
+		controller.current?.abort();
+		controller.current = null;
+		announcedTo.current = 0;
+		running.current = false;
+		setIsRunning( false );
+		setIsStopping( false );
+	}, [ data.rest.nonce, endpoint, isRunning ] );
+
+	/**
+	 * Starts a new chat.
+	 */
+	const clear = useCallback( (): void => {
+		leave();
+		opening.current = false;
+		setIsOpening( false );
+		conversationId.current = '';
+		setConversation( '' );
+		setEntries( [] );
+		setOutcomes( {} );
+		setAnnouncement( __( 'New space started.', 'ai' ) );
+	}, [ leave ] );
+
+	/**
+	 * Reads a stored chat.
+	 *
+	 * @param id The chat's ID.
+	 * @return The response status and the chat, or null when it could not be read.
+	 */
+	const readChat = useCallback(
+		async (
+			id: string
+		): Promise< { status: number; chat: StoredChat | null } > => {
+			const response = await window.fetch(
+				endpoint( 'conversations' ) + '/' + encodeURIComponent( id ),
+				{
+					credentials: 'same-origin',
+					headers: { 'X-WP-Nonce': data.rest.nonce },
+				}
+			);
+
+			return {
+				status: response.status,
+				chat: response.ok
+					? toStoredChat( await response.json() )
+					: null,
+			};
+		},
+		[ data.rest.nonce, endpoint ]
+	);
+
+	/**
+	 * Opens a stored chat, rebuilding its transcript from the turn records.
+	 *
+	 * @param id The chat ID.
+	 * @return What came of it.
+	 */
+	const open = useCallback(
+		async ( id: string ): Promise< OpenResult > => {
+			leave();
+
+			const started = generation.current;
+			opening.current = true;
+			setIsOpening( true );
+
+			let status = 0;
+			let chat: StoredChat | null = null;
+
+			try {
+				( { status, chat } = await readChat( id ) );
+			} catch {
+				chat = null;
+			}
+
+			// A later open or a new chat owns the loading state now.
+			if ( started !== generation.current ) {
+				return 'superseded';
+			}
+
+			opening.current = false;
+			setIsOpening( false );
+
+			if ( ! chat ) {
+				return 404 === status ? 'not-found' : 'failed';
+			}
+
+			conversationId.current = chat.id;
+			setConversation( chat.id );
+			setEntries( toEntries( chat ) );
+			setOutcomes( toOutcomes( chat ) );
+			setScope( 'general' === chat.scope ? 'general' : 'site' );
+			setAnnouncement(
+				sprintf(
+					/* translators: %s: the chat's name. */
+					__( 'Opened “%s”.', 'ai' ),
+					chat.name
+				)
+			);
+
+			return 'opened';
+		},
+		[ leave, readChat ]
+	);
+
+	/**
+	 * Closes a question without a model call; on a conflict the stored chat is shown instead.
+	 *
+	 * @param turnId The ID of the turn that asked.
+	 * @return What came of it.
+	 */
+	const dismiss = useCallback(
+		async ( turnId: string ): Promise< DismissResult > => {
+			const chatId = conversationId.current;
+
+			if (
+				'' === chatId ||
+				'' === turnId ||
+				running.current ||
+				opening.current ||
+				dismissing.current
+			) {
+				return 'failed';
+			}
+
+			const started = generation.current;
+			let status = 0;
+			let payload: unknown = null;
+
+			dismissing.current = true;
+			setIsDismissing( true );
+
+			try {
+				const response = await window.fetch(
+					endpoint( 'conversations' ) +
+						'/' +
+						encodeURIComponent( chatId ) +
+						'/dismiss',
+					{
+						method: 'POST',
+						credentials: 'same-origin',
+						headers: {
+							'X-WP-Nonce': data.rest.nonce,
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify( { turn_id: turnId } ),
+					}
+				);
+
+				status = response.status;
+				payload = await response.json();
+			} catch {
+				status = 0;
+			} finally {
+				dismissing.current = false;
+				setIsDismissing( false );
+			}
+
+			if ( started !== generation.current ) {
+				return 'failed';
+			}
+
+			// A follow-up started meanwhile, so reload rather than append out of order.
+			if ( 200 === status && running.current ) {
+				try {
+					const { chat } = await readChat( chatId );
+
+					if ( chat && started === generation.current ) {
+						setEntries( toEntries( chat ) );
+						setOutcomes( toOutcomes( chat ) );
+					}
+				} catch {
+					// The next turn's save carries the stored state.
+				}
+
+				setAnnouncement( __( 'Question dismissed', 'ai' ) );
+				return 'dismissed';
+			}
+
+			if ( 200 === status ) {
+				nextEntryId += 1;
+				const entry = toEntry( payload, 'turn-' + nextEntryId, scope );
+
+				if ( entry ) {
+					setEntries( ( current ) => [ ...current, entry ] );
+					setAnnouncement( __( 'Question dismissed', 'ai' ) );
+					return 'dismissed';
+				}
+			}
+
+			if ( 409 !== status ) {
+				return 'failed';
+			}
+
+			// Answered or closed elsewhere: show what the chat now holds.
+			try {
+				const { chat } = await readChat( chatId );
+
+				if ( chat && started === generation.current ) {
+					setEntries( toEntries( chat ) );
+					setOutcomes( toOutcomes( chat ) );
+				}
+			} catch {
+				// The card stays closed either way; the server refused it.
+			}
+
+			return 'conflict';
+		},
+		[ data.rest.nonce, endpoint, readChat, scope ]
+	);
+
+	/**
+	 * Retries a failed turn by sending its prompt again as a new turn.
+	 *
+	 * @param entryId The failed entry.
+	 */
+	const retry = useCallback(
+		( entryId: string ): void => {
+			const entry = entries.find( ( item ) => item.id === entryId );
+
+			if ( ! entry ) {
+				return;
+			}
+
+			void send( entry.prompt, entry.scope );
+		},
+		[ entries, send ]
+	);
+
+	// A dismissal is not a turn.
+	const turns = entries.filter(
+		( entry ) => 'dismissed' !== entry.status
+	).length;
+	const summary = sprintf(
+		/* translators: %d: number of turns in the conversation. */
+		_n(
+			'%d turn in this conversation.',
+			'%d turns in this conversation.',
+			turns,
+			'ai'
+		),
+		turns
+	);
+
+	return {
+		announcement,
+		clear,
+		conversationId: conversation,
+		dismiss,
+		entries,
+		isOpening,
+		followUp,
+		isDismissing,
+		isRunning,
+		isStopping,
+		open,
+		outcomes,
+		retry,
+		scope,
+		send,
+		setScope,
+		settled,
+		stop,
+		summary,
+	};
+}

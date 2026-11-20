@@ -1,0 +1,82 @@
+/**
+ * End-to-end coverage for finding an admin screen from the AI Workspace.
+ */
+/**
+ * WordPress dependencies
+ */
+import { test, expect } from '@wordpress/e2e-test-utils-playwright';
+
+/**
+ * Internal dependencies
+ */
+import {
+	activateMockScenario,
+	deactivateMockScenario,
+	getMockScenarioReport,
+	seedCredentials,
+	setExperimentEnabled,
+} from '../../utils/helpers';
+
+const EXPERIMENT_ID = 'ai-workspace';
+const WORKSPACE_PAGE = 'admin.php?page=ai-workspace';
+
+test.describe( 'AI Workspace navigation', () => {
+	test.beforeEach( async ( { requestUtils } ) => {
+		await seedCredentials( requestUtils, [ 'anthropic' ] );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, true );
+	} );
+
+	test.afterEach( async ( { requestUtils } ) => {
+		await deactivateMockScenario( requestUtils );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, false );
+		await seedCredentials( requestUtils, [ 'openai' ] );
+	} );
+
+	test( 'asking where to change the timezone links Settings → General, and the link opens it', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		await activateMockScenario( requestUtils, 'workspace-navigate' );
+		await admin.visitAdminPage( WORKSPACE_PAGE );
+
+		await page
+			.getByLabel( 'Message', { exact: true } )
+			.fill( 'Where do I change the timezone?' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+
+		const turn = page.locator( '.ai-workspace__turn' ).first();
+		const link = turn.getByRole( 'link', { name: 'Settings → General' } );
+
+		await expect( link ).toBeVisible( { timeout: 30000 } );
+		await expect( link ).toHaveAttribute(
+			'href',
+			/\/wp-admin\/options-general\.php$/
+		);
+
+		const tools = turn.locator( '.ai-workspace__tools' );
+		await expect( tools.locator( 'summary' ) ).toHaveText(
+			'Checked the site (1 step)'
+		);
+		await tools.locator( 'summary' ).click();
+		await expect( tools.locator( 'code' ) ).toHaveText(
+			'ai/find-admin-screens'
+		);
+		await expect( tools ).toContainText( 'success' );
+
+		// Two fixture entries served means the tool round trip happened.
+		expect(
+			( await getMockScenarioReport( requestUtils ) ).calls[
+				'Anthropic/workspace-navigate'
+			]
+		).toBe( 2 );
+
+		await link.click();
+
+		await expect( page ).toHaveURL( /\/wp-admin\/options-general\.php$/ );
+		await expect(
+			page.getByRole( 'heading', { name: 'General Settings', level: 1 } )
+		).toBeVisible();
+		await expect( page.getByLabel( 'Timezone' ) ).toBeVisible();
+	} );
+} );

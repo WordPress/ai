@@ -316,6 +316,9 @@ jobs:
       - name: Run TypeScript typechecking
         run: npm run typecheck
 
+      - name: Run JavaScript unit tests
+        run: npm run test:unit
+
   # Runs E2E tests.
   #
   # Performs the following steps:

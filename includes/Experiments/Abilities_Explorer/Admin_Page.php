@@ -134,6 +134,7 @@ class Admin_Page {
 						'abilities' => Abilities_Controller::ABILITIES_ROUTE,
 						'item'      => Abilities_Controller::ITEM_ROUTE,
 						'invoke'    => Abilities_Controller::INVOKE_ROUTE,
+						'surface'   => Abilities_Controller::SURFACE_ROUTE,
 					),
 				),
 				'pageSlug'       => self::PAGE_SLUG,

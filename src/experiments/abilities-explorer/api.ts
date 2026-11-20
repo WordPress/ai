@@ -20,8 +20,11 @@ import { getSettings } from './settings';
 import type {
 	AbilitiesListResponse,
 	AbilityDetailItem,
+	AbilityListItem,
 	InvokeResponse,
 	RestErrorPayload,
+	SurfaceChange,
+	SurfaceResponse,
 } from './types';
 
 interface RequestOptions {
@@ -80,6 +83,105 @@ export function invokeAbility(
 		data: { name, input: rawInput },
 		...options,
 	} );
+}
+
+/**
+ * Removes an ability from the AI Workspace, or restores it.
+ *
+ * @param change The change.
+ * @param name   The ability name.
+ * @return The updated row and a sequence.
+ */
+export function changeSurface(
+	change: SurfaceChange,
+	name: string
+): Promise< SurfaceResponse > {
+	return apiFetch< SurfaceResponse >( {
+		path: getSettings().rest.routes.surface,
+		method: 'POST',
+		data: { change, name },
+	} );
+}
+
+/**
+ * Drops late list and surface responses, tracking the list and each row separately.
+ */
+export interface ResponseSequencer {
+	/**
+	 * Claims a full-list response.
+	 *
+	 * @param sequence The response's `sequence`.
+	 * @return True when no newer full list has been applied.
+	 */
+	claimList: ( sequence: number ) => boolean;
+	/**
+	 * Keeps each row that a newer single-row response already replaced.
+	 *
+	 * @param sequence The full list's `sequence`.
+	 * @param next     The rows from the full list.
+	 * @param previous The rows currently shown.
+	 * @return The rows to show.
+	 */
+	mergeRows: (
+		sequence: number,
+		next: AbilityListItem[],
+		previous: AbilityListItem[]
+	) => AbilityListItem[];
+	/**
+	 * Claims a single-row response.
+	 *
+	 * @param slug     The row's ability name.
+	 * @param sequence The response's `sequence`.
+	 * @return True when neither that row nor a newer full list has been applied.
+	 */
+	claimRow: ( slug: string, sequence: number ) => boolean;
+}
+
+/**
+ * Creates a response sequencer for one screen.
+ *
+ * @return The sequencer.
+ */
+export function createResponseSequencer(): ResponseSequencer {
+	let listSequence = 0;
+	const rowSequences = new Map< string, number >();
+
+	return {
+		claimList( sequence ) {
+			if ( sequence < listSequence ) {
+				return false;
+			}
+
+			listSequence = sequence;
+
+			return true;
+		},
+		mergeRows( sequence, next, previous ) {
+			const shown = new Map(
+				previous.map( ( row ) => [ row.slug, row ] )
+			);
+
+			return next.map( ( row ) => {
+				const kept = shown.get( row.slug );
+
+				return kept && ( rowSequences.get( row.slug ) ?? 0 ) > sequence
+					? kept
+					: row;
+			} );
+		},
+		claimRow( slug, sequence ) {
+			if (
+				sequence < listSequence ||
+				sequence < ( rowSequences.get( slug ) ?? 0 )
+			) {
+				return false;
+			}
+
+			rowSequences.set( slug, sequence );
+
+			return true;
+		},
+	};
 }
 
 /**

@@ -20,3 +20,4 @@ The following software libraries are utilized in this repository.
 
 * [c2pa-node](https://github.com/contentauth/c2pa-node) test fixtures (`XCA.jpg`, `A.jpg`) by Adobe, licensed MIT. Used as real-world signed JPEG assets in `tests/fixtures/c2pa/` to verify the JPEG APP11 manifest reader.
 * [HTML to MD](https://github.com/dmsnell/html-to-md) by Dennis Snell. Used to convert HTML to Markdown.
+* Wapuu working sprites (`src/experiments/ai-workspace/assets/wapuu/`), from the set [Jeffrey Paul (@jeffpaul)](https://github.com/jeffpaul) shared on [#1287](https://github.com/WordPress/ai/issues/1287). The sprites are derived from the [original Wapuu](https://wapu.us/wapuu-history-origin/) by Kazuko Kaneuchi, licensed under GPL-2.0-or-later. Used for the AI Workspace's busy, done and error states.
