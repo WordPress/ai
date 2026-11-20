@@ -1,0 +1,57 @@
+/** Small read-only previews inside the native category form. */
+.ai-topic-review {
+	max-width: 760px;
+
+	.components-notice {
+		margin: 12px 0;
+	}
+
+	&__section {
+		margin-block-start: 24px;
+		border-block-start: 1px solid #dcdcde;
+		padding-block-start: 16px;
+	}
+
+	&__heading,
+	&__actions {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 12px;
+		margin-block: 12px;
+	}
+
+	&__heading h3 {
+		margin: 0;
+	}
+
+	&__heading span {
+		color: #646970;
+	}
+
+	&__preview {
+		margin-block: 12px;
+		border: 1px solid #dcdcde;
+		padding: 16px;
+		background: #fff;
+		font-size: 14px;
+		line-height: 1.7;
+		overflow-wrap: anywhere;
+
+		> :first-child {
+			margin-block-start: 0;
+		}
+
+		> :last-child {
+			margin-block-end: 0;
+		}
+	}
+
+	details {
+		margin-block-start: 16px;
+	}
+
+	summary {
+		cursor: pointer;
+	}
+}
