@@ -33,6 +33,7 @@ import ChatHistory from './components/ChatHistory';
 import ContextScope from './components/ContextScope';
 import PromptInput from './components/PromptInput';
 import Transcript from './components/Transcript';
+import { useStickToBottom } from './hooks/useStickToBottom';
 import { useTurn, type OpenResult } from './hooks/useTurn';
 import { chatFromUrl, urlForChat } from './utils/chat';
 import { getSeedNotice, getSeedPrompt, urlWithoutPrompt } from './utils/seed';
@@ -205,6 +206,8 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 		stop,
 		summary,
 	} = useTurn( data );
+	const { ref: transcriptRef, stick: stickToBottom } =
+		useStickToBottom< HTMLElement >( entries );
 
 	// The panel starts open as a sidebar, and closed as a drawer.
 	const [ narrow, setNarrow ] = useState( isNarrow );
@@ -274,6 +277,9 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 				closeDrawer();
 			}
 
+			// An opened chat starts at its newest turn.
+			stickToBottom();
+
 			const result = await open( id );
 
 			if ( 'not-found' === result || 'failed' === result ) {
@@ -287,17 +293,18 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 
 			return result;
 		},
-		[ clear, closeDrawer, narrow, open ]
+		[ clear, closeDrawer, narrow, open, stickToBottom ]
 	);
 
 	const newChat = useCallback( (): void => {
 		setMissing( '' );
+		stickToBottom();
 		clear();
 
 		if ( narrow ) {
 			closeDrawer();
 		}
-	}, [ clear, closeDrawer, narrow ] );
+	}, [ clear, closeDrawer, narrow, stickToBottom ] );
 
 	// Reopen the chat named in the URL; drop it from the URL only if the chat is gone.
 	const loading = useRef( false );
@@ -413,7 +420,12 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 					/>
 				</aside>
 
-				<div className="ai-workspace__app">
+				<div
+					className={
+						'ai-workspace__app' +
+						( entries.length > 0 ? ' is-active' : '' )
+					}
+				>
 					{ /* The screen's only live region; updated at sentence boundaries. */ }
 					<div
 						className="screen-reader-text"
@@ -443,6 +455,7 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 					) }
 
 					<section
+						ref={ transcriptRef }
 						className="ai-workspace__transcript"
 						aria-label={ __( 'Conversation transcript', 'ai' ) }
 						tabIndex={ 0 }
@@ -458,6 +471,7 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 								void followUp( turnScope, forConversation );
 							} }
 							onAnswer={ ( choice, turnScope ) => {
+								stickToBottom();
 								void send( choice, turnScope );
 							} }
 							onDismiss={ async ( turnId ) => {
@@ -494,6 +508,8 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 							value={ prompt }
 							onChange={ changePrompt }
 							onSubmit={ () => {
+								// Sending is a request to see the reply, so follow it even when scrolled up.
+								stickToBottom();
 								void send( prompt, scope );
 								changePrompt( '' );
 							} }

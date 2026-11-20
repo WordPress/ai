@@ -190,6 +190,22 @@ body.ai-workspace-frame {
 	}
 }
 
+/*
+ * Once the chat has turns, the composer reserves the same scrollbar gutter as
+ * the transcript, so both centered columns share one left edge.
+ */
+.ai-workspace__app.is-active {
+
+	.ai-workspace__transcript {
+		scrollbar-gutter: stable;
+	}
+
+	.ai-workspace__composer {
+		overflow: hidden;
+		scrollbar-gutter: stable;
+	}
+}
+
 .ai-workspace__turns {
 	margin: 0;
 	padding: 0;
@@ -298,6 +314,7 @@ body.ai-workspace-frame {
 }
 
 .ai-workspace__composer-fields {
+	box-sizing: border-box;
 	width: 100%;
 	max-width: 820px;
 	margin-inline: auto;
@@ -312,7 +329,7 @@ body.ai-workspace-frame {
 	.components-textarea-control__input {
 		border: none;
 		box-shadow: none;
-		padding: 0;
+		padding: var(--wpds-dimension-padding-sm);
 		background: transparent;
 
 		&:focus {

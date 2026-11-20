@@ -6,7 +6,12 @@ import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 /**
  * Internal dependencies
  */
-import { setExperimentEnabled } from '../../utils/helpers';
+import {
+	activateMockScenario,
+	deactivateMockScenario,
+	seedCredentials,
+	setExperimentEnabled,
+} from '../../utils/helpers';
 
 const EXPERIMENT_ID = 'ai-workspace';
 const WORKSPACE_PAGE = 'admin.php?page=ai-workspace';
@@ -349,6 +354,128 @@ test.describe( 'AI Workspace Wapuu', () => {
 	} );
 } );
 
+// The last line of the `workspace-long-reply` scenario, served only by the Anthropic mock.
+const LONG_REPLY_END = 'That is the last idea on the list.';
+
+/**
+ * Waits until the browser has dispatched any pending scroll events.
+ *
+ * @param {import('@playwright/test').Page} page The page.
+ */
+async function settleScroll( page ) {
+	await page.evaluate(
+		() =>
+			new Promise( ( resolve ) =>
+				window.requestAnimationFrame( () =>
+					window.requestAnimationFrame( resolve )
+				)
+			)
+	);
+}
+
+/**
+ * Reports how far the transcript is from its bottom, in pixels.
+ *
+ * @param {import('@playwright/test').Locator} transcript The transcript.
+ * @return {Promise<number>} The distance.
+ */
+function distanceFromBottom( transcript ) {
+	return transcript.evaluate(
+		( node ) => node.scrollHeight - node.scrollTop - node.clientHeight
+	);
+}
+
+test.describe( 'AI Workspace transcript scrolling', () => {
+	test.beforeEach( async ( { admin, page, requestUtils } ) => {
+		await seedCredentials( requestUtils, [ 'anthropic' ] );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, true );
+		await activateMockScenario( requestUtils, 'workspace-long-reply' );
+		await admin.visitAdminPage( WORKSPACE_PAGE );
+
+		await page
+			.getByLabel( 'Message', { exact: true } )
+			.fill( 'Give me forty post ideas' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+
+		await expect(
+			page.locator( '.ai-workspace__turn' ).first()
+		).toContainText( LONG_REPLY_END, { timeout: 30000 } );
+		await expect( page.locator( '.ai-workspace__progress' ) ).toHaveCount(
+			0
+		);
+	} );
+
+	test.afterEach( async ( { requestUtils } ) => {
+		await deactivateMockScenario( requestUtils );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, false );
+		await seedCredentials( requestUtils, [ 'openai' ] );
+	} );
+
+	test( 'a reply taller than the transcript keeps its last line in view', async ( {
+		page,
+	} ) => {
+		const transcript = page.locator( '.ai-workspace__transcript' );
+
+		expect(
+			await transcript.evaluate(
+				( node ) => node.scrollHeight > node.clientHeight * 1.5
+			)
+		).toBe( true );
+
+		await expect(
+			page
+				.locator( '.ai-workspace__turn' )
+				.first()
+				.getByText( LONG_REPLY_END )
+		).toBeInViewport( { ratio: 1 } );
+
+		// Following the reply never takes focus from the composer.
+		await expect(
+			page.getByLabel( 'Message', { exact: true } )
+		).toBeFocused();
+	} );
+
+	test( 'scrolling up mid-turn holds the position as the reply arrives', async ( {
+		page,
+	} ) => {
+		const transcript = page.locator( '.ai-workspace__transcript' );
+		const turns = await holdTurns( page );
+
+		await page
+			.getByLabel( 'Message', { exact: true } )
+			.fill( 'And forty more' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+
+		const second = page.locator( '.ai-workspace__turn' ).nth( 1 );
+		await expect( second ).toContainText( 'And forty more' );
+		await settleScroll( page );
+
+		// At the bottom, the new turn is followed.
+		expect( await distanceFromBottom( transcript ) ).toBeLessThanOrEqual(
+			48
+		);
+
+		await transcript.evaluate( ( node ) => {
+			node.scrollTop = 0;
+		} );
+		await settleScroll( page );
+
+		await turns.release();
+
+		await expect( second ).toContainText( LONG_REPLY_END, {
+			timeout: 30000,
+		} );
+		await expect( page.locator( '.ai-workspace__progress' ) ).toHaveCount(
+			0
+		);
+		await settleScroll( page );
+
+		expect(
+			await transcript.evaluate( ( node ) => node.scrollTop )
+		).toBeLessThanOrEqual( 1 );
+	} );
+} );
+
 test.describe( 'AI Workspace frame', () => {
 	test.beforeEach( async ( { requestUtils } ) => {
 		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, true );
@@ -393,6 +520,57 @@ test.describe( 'AI Workspace frame', () => {
 						window.innerHeight + 1
 				)
 			).toBe( true );
+		} );
+
+		test( `with a turn at ${ viewport.width }x${ viewport.height }, the composer shares the transcript's left edge`, async ( {
+			admin,
+			page,
+		} ) => {
+			await page.setViewportSize( viewport );
+			await admin.visitAdminPage( WORKSPACE_PAGE );
+
+			const input = page.getByLabel( 'Message', { exact: true } );
+
+			await input.fill( 'What should I write about next?' );
+			await page.getByRole( 'button', { name: 'Send' } ).click();
+			await expect(
+				page.locator( '.ai-workspace__turn' ).first()
+			).toContainText( MOCKED_RESPONSE, { timeout: 30000 } );
+
+			await expect( page.locator( '.ai-workspace__app' ) ).toHaveClass(
+				/\bis-active\b/
+			);
+
+			const column = await page
+				.locator( '.ai-workspace__turns' )
+				.boundingBox();
+			const fields = await page
+				.locator( '.ai-workspace__composer-fields' )
+				.boundingBox();
+
+			expect( column ).not.toBeNull();
+			expect( fields ).not.toBeNull();
+			expect( Math.abs( column.x - fields.x ) ).toBeLessThanOrEqual( 1 );
+			expect(
+				Math.abs(
+					column.x + column.width - ( fields.x + fields.width )
+				)
+			).toBeLessThanOrEqual( 1 );
+
+			const padding = await input.evaluate( ( node ) => {
+				const style = window.getComputedStyle( node );
+
+				return [
+					style.paddingTop,
+					style.paddingRight,
+					style.paddingBottom,
+					style.paddingLeft,
+				].map( parseFloat );
+			} );
+
+			for ( const side of padding ) {
+				expect( side ).toBeGreaterThan( 0 );
+			}
 		} );
 	}
 } );
