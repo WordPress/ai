@@ -17,7 +17,7 @@ const {
 
 // The palette search is part of the AI Workspace experiment.
 const EXPERIMENT_LABEL = 'AI Workspace';
-const AI_RESULT = '[cmdk-item][data-value^="ai-command-palette-ai-search-"]';
+const AI_RESULT = '[cmdk-item][data-value^="ai-command-palette-search-"]';
 
 /**
  * Matches requests to the command palette AI search ability, URL-encoded or not.
@@ -26,9 +26,7 @@ const AI_RESULT = '[cmdk-item][data-value^="ai-command-palette-ai-search-"]';
  * @return {boolean} Whether the request runs the ability.
  */
 const isAbilityRequest = ( url ) =>
-	decodeURIComponent( url.href ).includes(
-		'ai/command-palette-ai-search/run'
-	);
+	decodeURIComponent( url.href ).includes( 'ai/command-palette-search/run' );
 
 /**
  * Reads the search an ability request was sent for.
@@ -105,7 +103,7 @@ async function openPageAs( browser, requestUtils, role ) {
 	return context.newPage();
 }
 
-test.describe( 'Command Palette AI Search', () => {
+test.describe( 'Command Palette Search', () => {
 	test.afterEach( async ( { admin, page, requestUtils } ) => {
 		await requestUtils.deleteAllUsers();
 		await disableExperiment( admin, page, EXPERIMENT_LABEL );
@@ -509,7 +507,7 @@ test.describe( 'Command Palette AI Search', () => {
 		await subscriberPage.goto( '/wp-admin/profile.php' );
 
 		expect( await getLoaderNames( subscriberPage ) ).not.toContain(
-			'ai/command-palette-ai-search'
+			'ai/command-palette-search'
 		);
 
 		await subscriberPage.context().close();
@@ -530,7 +528,7 @@ test.describe( 'Command Palette AI Search', () => {
 		await searchPalette( page, 'how do I hide my site from google' );
 
 		expect( await getLoaderNames( page ) ).not.toContain(
-			'ai/command-palette-ai-search'
+			'ai/command-palette-search'
 		);
 
 		// Longer than the loader's debounce.

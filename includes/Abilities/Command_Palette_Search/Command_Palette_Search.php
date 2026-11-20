@@ -7,7 +7,7 @@
 
 declare( strict_types=1 );
 
-namespace WordPress\AI\Abilities\Command_Palette_AI_Search;
+namespace WordPress\AI\Abilities\Command_Palette_Search;
 
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
@@ -18,7 +18,7 @@ use WordPress\AI\Experiments\AI_Workspace\AI_Workspace;
  *
  * @since x.x.x
  */
-class Command_Palette_AI_Search extends Abstract_Ability {
+class Command_Palette_Search extends Abstract_Ability {
 
 	/**
 	 * Ability name.
@@ -27,7 +27,7 @@ class Command_Palette_AI_Search extends Abstract_Ability {
 	 *
 	 * @var string
 	 */
-	public const ABILITY = 'ai/command-palette-ai-search';
+	public const ABILITY = 'ai/command-palette-search';
 
 	/**
 	 * Most commands returned.

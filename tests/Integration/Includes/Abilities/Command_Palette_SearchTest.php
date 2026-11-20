@@ -1,6 +1,6 @@
 <?php
 /**
- * Integration tests for the Command_Palette_AI_Search Ability class.
+ * Integration tests for the Command_Palette_Search Ability class.
  *
  * @package WordPress\AI\Tests\Integration\Includes\Abilities
  */
@@ -9,16 +9,16 @@ namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 
 use WP_Error;
 use WP_UnitTestCase;
-use WordPress\AI\Abilities\Command_Palette_AI_Search\Command_Palette_AI_Search;
+use WordPress\AI\Abilities\Command_Palette_Search\Command_Palette_Search;
 use WordPress\AI\Experiments\AI_Workspace\AI_Workspace;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Policy;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Selector;
 use WordPress\AI\Experiments\MCP_Adapter\Exposure_Overrides;
 
 /**
- * Testable subclass of Command_Palette_AI_Search to mock AI prompt generation.
+ * Testable subclass of Command_Palette_Search to mock AI prompt generation.
  */
-class Testable_Command_Palette_AI_Search extends Command_Palette_AI_Search {
+class Testable_Command_Palette_Search extends Command_Palette_Search {
 	/**
 	 * Mock response to return from choose_commands().
 	 *
@@ -44,14 +44,14 @@ class Testable_Command_Palette_AI_Search extends Command_Palette_AI_Search {
 }
 
 /**
- * Command_Palette_AI_Search Ability test case.
+ * Command_Palette_Search Ability test case.
  */
-class Command_Palette_AI_SearchTest extends WP_UnitTestCase {
+class Command_Palette_SearchTest extends WP_UnitTestCase {
 
 	/**
-	 * Testable Command_Palette_AI_Search ability instance.
+	 * Testable Command_Palette_Search ability instance.
 	 *
-	 * @var \WordPress\AI\Tests\Integration\Includes\Abilities\Testable_Command_Palette_AI_Search
+	 * @var \WordPress\AI\Tests\Integration\Includes\Abilities\Testable_Command_Palette_Search
 	 */
 	private $ability;
 
@@ -86,10 +86,10 @@ class Command_Palette_AI_SearchTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
-		$this->ability = new Testable_Command_Palette_AI_Search(
-			'ai/command-palette-ai-search',
+		$this->ability = new Testable_Command_Palette_Search(
+			'ai/command-palette-search',
 			array(
-				'label'       => 'Command Palette AI Search',
+				'label'       => 'Command Palette Search',
 				'description' => 'Finds the right admin screen for a search.',
 			)
 		);
@@ -100,12 +100,12 @@ class Command_Palette_AI_SearchTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
-		remove_all_filters( 'wpai_command_palette_ai_search_prompt_builder' );
+		remove_all_filters( 'wpai_command_palette_search_prompt_builder' );
 		remove_filter( 'wp_register_ability_args', array( Exposure_Overrides::class, 'filter_ability_args' ), 100 );
 		remove_filter( 'wpai_workspace_tool_admission_enabled', '__return_true' );
 
-		if ( wp_has_ability( Command_Palette_AI_Search::ABILITY ) ) {
-			wp_unregister_ability( Command_Palette_AI_Search::ABILITY );
+		if ( wp_has_ability( Command_Palette_Search::ABILITY ) ) {
+			wp_unregister_ability( Command_Palette_Search::ABILITY );
 		}
 
 		parent::tearDown();
@@ -114,13 +114,13 @@ class Command_Palette_AI_SearchTest extends WP_UnitTestCase {
 	/**
 	 * Returns the ability without the mocked choose_commands().
 	 *
-	 * @return \WordPress\AI\Abilities\Command_Palette_AI_Search\Command_Palette_AI_Search The ability.
+	 * @return \WordPress\AI\Abilities\Command_Palette_Search\Command_Palette_Search The ability.
 	 */
-	private function real_ability(): Command_Palette_AI_Search {
-		return new Command_Palette_AI_Search(
-			'ai/command-palette-ai-search',
+	private function real_ability(): Command_Palette_Search {
+		return new Command_Palette_Search(
+			'ai/command-palette-search',
 			array(
-				'label'       => 'Command Palette AI Search',
+				'label'       => 'Command Palette Search',
 				'description' => 'Finds the right admin screen for a search.',
 			)
 		);
@@ -149,7 +149,7 @@ class Command_Palette_AI_SearchTest extends WP_UnitTestCase {
 			->willReturn( $response );
 
 		add_filter(
-			'wpai_command_palette_ai_search_prompt_builder',
+			'wpai_command_palette_search_prompt_builder',
 			static function () use ( $mock_builder ) {
 				return $mock_builder;
 			}
@@ -209,7 +209,7 @@ class Command_Palette_AI_SearchTest extends WP_UnitTestCase {
 
 		$this->register_through_the_workspace();
 
-		$ability = wp_get_ability( Command_Palette_AI_Search::ABILITY );
+		$ability = wp_get_ability( Command_Palette_Search::ABILITY );
 
 		$this->assertInstanceOf( \WP_Ability::class, $ability );
 		$this->assertFalse( $ability->get_meta()['mcp']['public'], 'The ability must not be offered over MCP.' );
@@ -221,7 +221,7 @@ class Command_Palette_AI_SearchTest extends WP_UnitTestCase {
 		$this->assertFalse( $policy->has_admissible_effect_class( $ability ), 'An ability that calls the AI provider is open-world.' );
 		$this->assertNotNull( $policy->get_exclusion_reason( $ability ) );
 		$this->assertNotContains(
-			Command_Palette_AI_Search::ABILITY,
+			Command_Palette_Search::ABILITY,
 			( new Tool_Selector( $policy ) )->get_tool_names( Tool_Selector::SCOPE_SITE ),
 			'The agent must never be handed the palette search as a tool.'
 		);

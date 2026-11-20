@@ -55,9 +55,9 @@ module.exports = {
 			'src/experiments/abilities-explorer',
 			'index.tsx'
 		),
-		'experiments/command-palette-ai-search': path.resolve(
+		'experiments/command-palette-search': path.resolve(
 			process.cwd(),
-			'src/experiments/command-palette-ai-search',
+			'src/experiments/command-palette-search',
 			'index.tsx'
 		),
 		'experiments/ai-workspace': path.resolve(

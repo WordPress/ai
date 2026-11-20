@@ -366,11 +366,11 @@ Tool results rendered as a table are rebuilt field by field from the ability's d
 
 ## The command palette
 
-With the experiment on, the command palette gets an AI fallback on every admin screen that has the palette, for users who can `edit_posts`. When a search of at least three characters has no results, the loader waits 450 ms after the last keystroke, then sends the search and the palette's own commands (name, label and keywords) to `ai/command-palette-ai-search`. The model returns up to three command IDs from that list, and the loader shows those commands as ordinary palette results, the first one selected, so Enter runs it. While it waits the palette shows a "Searching with AI…" row.
+With the experiment on, the command palette gets an AI fallback on every admin screen that has the palette, for users who can `edit_posts`. When a search of at least three characters has no results, the loader waits 450 ms after the last keystroke, then sends the search and the palette's own commands (name, label and keywords) to `ai/command-palette-search`. The model returns up to three command IDs from that list, and the loader shows those commands as ordinary palette results, the first one selected, so Enter runs it. While it waits the palette shows a "Searching with AI…" row.
 
 - **Only commands the palette already has.** Each command is sent as an ID (`c0`, `c1`, …), and the model is asked to return IDs only. An ID that was not sent is dropped, so the model cannot invent a destination.
 - **Silent failure.** A failed or unparseable request shows nothing extra: the palette shows its own empty state.
-- **Not an agent tool.** `ai/command-palette-ai-search` makes its own model call over a list only the browser can send, so it is registered with `meta.mcp.public = false` and annotated open-world, and the tool policy never offers it to the assistant. It is not marked read-only although it writes nothing, because the REST run route accepts only GET for a read-only ability and the command list does not fit in a URL.
+- **Not an agent tool.** `ai/command-palette-search` makes its own model call over a list only the browser can send, so it is registered with `meta.mcp.public = false` and annotated open-world, and the tool policy never offers it to the assistant. It is not marked read-only although it writes nothing, because the REST run route accepts only GET for a read-only ability and the command list does not fit in a URL.
 - **What leaves the site.** The search and the labels and keywords of the commands the user can run are sent to the configured provider. No site content is.
 
 ### Ask in AI Workspace
@@ -391,7 +391,7 @@ Choosing it opens the workspace with the search in the `wpai-prompt` query argum
 - Registers `REST\Turn_Controller`, `REST\Stream_Responder` and `REST\Proposal_Controller`.
 - Registers the `wpai_chat` post type and `wpai_archived` status (`Conversation_Store::register_post_type()`) and `REST\Conversation_Controller`. The chat ownership filter and user-removal cleanup (`Conversation_Store::register_lifecycle_hooks()`), and the personal-data exporter and eraser (`Conversation_Privacy::register()`), are hooked by the plugin's `Main` class instead, so they hold while the experiment is off.
 - Hooks `admin_enqueue_scripts` to add the block editor handoff action on `post.php` and `post-new.php`, for users who can open the workspace. The handoff carries the post's identity and a flattened, clamped title, and nothing else — the workspace reads any body through the same permission-checked tool path.
-- Registers `ai/command-palette-ai-search` and hooks `admin_enqueue_scripts` (priority 20, after the palette) to add the command palette loader for users who can `edit_posts`, on screens where `wp-commands` is enqueued. The loader is told the workspace URL only for users who can `manage_options`, who get the "Ask in AI Workspace" row.
+- Registers `ai/command-palette-search` and hooks `admin_enqueue_scripts` (priority 20, after the palette) to add the command palette loader for users who can `edit_posts`, on screens where `wp-commands` is enqueued. The loader is told the workspace URL only for users who can `manage_options`, who get the "Ask in AI Workspace" row.
 
 ### The turn loop
 

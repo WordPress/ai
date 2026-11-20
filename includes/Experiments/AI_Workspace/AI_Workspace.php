@@ -14,7 +14,7 @@ use WordPress\AI\Abilities\AI_Workspace\Propose_Drafts;
 use WordPress\AI\Abilities\AI_Workspace\Propose_Post_Changes;
 use WordPress\AI\Abilities\AI_Workspace\Propose_Site_Identity;
 use WordPress\AI\Abilities\AI_Workspace\Propose_Template;
-use WordPress\AI\Abilities\Command_Palette_AI_Search\Command_Palette_AI_Search;
+use WordPress\AI\Abilities\Command_Palette_Search\Command_Palette_Search;
 use WordPress\AI\Abilities\Content\Read_Content_Bodies;
 use WordPress\AI\Abilities\Content\Search_Content;
 use WordPress\AI\Abilities\Show_In_Abilities;
@@ -63,7 +63,7 @@ class AI_Workspace extends Abstract_Feature {
 	 *
 	 * @var string
 	 */
-	private const PALETTE_ASSET_HANDLE = 'command_palette_ai_search';
+	private const PALETTE_ASSET_HANDLE = 'command_palette_search';
 
 	/**
 	 * Built command palette loader path, relative to the build directory and without extension.
@@ -72,7 +72,7 @@ class AI_Workspace extends Abstract_Feature {
 	 *
 	 * @var string
 	 */
-	private const PALETTE_ASSET_PATH = 'experiments/command-palette-ai-search';
+	private const PALETTE_ASSET_PATH = 'experiments/command-palette-search';
 
 	/**
 	 * Admin page instance, created during register().
@@ -193,12 +193,12 @@ class AI_Workspace extends Abstract_Feature {
 	 */
 	public function register_command_palette_ability(): void {
 		$this->register_feature_ability(
-			Command_Palette_AI_Search::ABILITY,
+			Command_Palette_Search::ABILITY,
 			array(
-				'label'         => __( 'Command Palette AI Search', 'ai' ),
+				'label'         => __( 'Command Palette Search', 'ai' ),
 				'description'   => __( 'Suggests admin screens when the Command Palette (Cmd/Ctrl+K) has no results for a search, by choosing from the commands the palette sent.', 'ai' ),
 				'category'      => WPAI_DEFAULT_ABILITY_CATEGORY,
-				'ability_class' => Command_Palette_AI_Search::class,
+				'ability_class' => Command_Palette_Search::class,
 				// Set here, not in the class's meta: the MCP Adapter reads only registration args.
 				'meta'          => array(
 					'mcp' => array( 'public' => false ),
@@ -231,7 +231,7 @@ class AI_Workspace extends Abstract_Feature {
 			);
 		}
 
-		Asset_Loader::localize_script( self::PALETTE_ASSET_HANDLE, 'CommandPaletteAISearch', array( 'askAi' => $ask_ai ) );
+		Asset_Loader::localize_script( self::PALETTE_ASSET_HANDLE, 'CommandPaletteSearch', array( 'askAi' => $ask_ai ) );
 	}
 
 	/**

@@ -1,8 +1,8 @@
 <?php
 /**
- * System instruction for the Command Palette AI Search ability.
+ * System instruction for the Command Palette Search ability.
  *
- * @package WordPress\AI\Abilities\Command_Palette_AI_Search
+ * @package WordPress\AI\Abilities\Command_Palette_Search
  */
 
 // Exit if accessed directly.

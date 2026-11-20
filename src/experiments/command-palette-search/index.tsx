@@ -37,15 +37,15 @@ type AskAISettings = {
 
 declare global {
 	interface Window {
-		aiCommandPaletteAISearch?: {
+		aiCommandPaletteSearch?: {
 			askAi?: AskAISettings | null;
 		};
 	}
 }
 
-const LOADER_NAME = 'ai/command-palette-ai-search';
-const ITEM_PREFIX = 'ai-command-palette-ai-search-';
-const THINKING_CLASS = 'ai-command-palette-ai-search-thinking';
+const LOADER_NAME = 'ai/command-palette-search';
+const ITEM_PREFIX = 'ai-command-palette-search-';
+const THINKING_CLASS = 'ai-command-palette-search-thinking';
 const DEBOUNCE_MS = 450;
 const RECHECK_MS = 150;
 const SETTLE_TIMEOUT_MS = 2000;
@@ -61,9 +61,9 @@ const MAX_KEYWORD_LENGTH = 100;
 
 const answers = new Map< string, WPCommand[] >();
 
-const icon = <AIIcon className="ai-command-palette-ai-search-icon" />;
+const icon = <AIIcon className="ai-command-palette-search-icon" />;
 
-const askAI = window.aiCommandPaletteAISearch?.askAi ?? null;
+const askAI = window.aiCommandPaletteSearch?.askAi ?? null;
 
 /**
  * Builds the row that opens the AI Workspace with the search in its composer.
@@ -169,7 +169,7 @@ function getRegisteredCommands(): WPCommand[] {
  * @param props.search The text typed into the command palette.
  * @return The commands to show and whether they are still loading.
  */
-function useCommandPaletteAISearchLoader( {
+function useCommandPaletteSearchLoader( {
 	search,
 }: Parameters< WPCommandLoader[ 'hook' ] >[ 0 ] ): ReturnType<
 	WPCommandLoader[ 'hook' ]
@@ -375,5 +375,5 @@ function useCommandPaletteAISearchLoader( {
 
 dispatch( commandsStore ).registerCommandLoader( {
 	name: LOADER_NAME,
-	hook: useCommandPaletteAISearchLoader,
+	hook: useCommandPaletteSearchLoader,
 } );

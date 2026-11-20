@@ -21,9 +21,9 @@ import {
 import { setExperimentEnabled } from '../../utils/helpers';
 
 const EXPERIMENT_ID = 'ai-workspace';
-const AI_RESULT = '[cmdk-item][data-value^="ai-command-palette-ai-search-"]';
+const AI_RESULT = '[cmdk-item][data-value^="ai-command-palette-search-"]';
 const ASK_AI_ROW =
-	'[cmdk-item][data-value^="ai-command-palette-ai-search-ask-ai "]';
+	'[cmdk-item][data-value^="ai-command-palette-search-ask-ai "]';
 
 /**
  * Matches requests to the command palette AI search ability.
@@ -32,9 +32,7 @@ const ASK_AI_ROW =
  * @return Whether the request runs the ability.
  */
 const isAbilityRequest = ( url: URL ) =>
-	decodeURIComponent( url.href ).includes(
-		'ai/command-palette-ai-search/run'
-	);
+	decodeURIComponent( url.href ).includes( 'ai/command-palette-search/run' );
 
 /**
  * Opens the command palette on the Dashboard and types a search.

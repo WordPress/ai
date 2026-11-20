@@ -25,7 +25,7 @@ class Command_PaletteTest extends WP_UnitTestCase {
 	 *
 	 * @var string
 	 */
-	private const HANDLE = 'ai_command_palette_ai_search';
+	private const HANDLE = 'ai_command_palette_search';
 
 	/**
 	 * Scripts registry from before the test.
