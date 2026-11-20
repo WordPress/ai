@@ -12,6 +12,7 @@ use WP_Connector_Registry;
 use WP_UnitTestCase;
 use WordPress\AI\Logging\AI_Request_Log_Manager;
 use WordPress\AI\Logging\AI_Request_Log_Page;
+use WordPress\AI\Logging\Usage_Limit_Monitor;
 
 /**
  * AI_Request_Log_Page test case.
@@ -205,6 +206,37 @@ class AI_Request_Log_PageTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'options-connectors.php', $data );
 		$this->assertStringContainsString( 'rest', $data );
 		$this->assertStringContainsString( 'initialState', $data );
+	}
+
+	/**
+	 * Tests that the usage limit is null when no limit is set.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_usage_limit_data_is_null_without_limit(): void {
+		$method = new ReflectionMethod( AI_Request_Log_Page::class, 'get_usage_limit_data' );
+		$method->setAccessible( true );
+
+		$this->assertNull( $method->invoke( $this->page ) );
+		$this->assertNull( $method->invoke( new AI_Request_Log_Page( $this->manager, new Usage_Limit_Monitor( $this->manager, 0, 80 ) ) ) );
+	}
+
+	/**
+	 * Tests that the usage limit status and settings link are passed to the script.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_usage_limit_data_returns_status_when_limit_set(): void {
+		$method = new ReflectionMethod( AI_Request_Log_Page::class, 'get_usage_limit_data' );
+		$method->setAccessible( true );
+
+		$data = $method->invoke( new AI_Request_Log_Page( $this->manager, new Usage_Limit_Monitor( $this->manager, 5000, 75 ) ) );
+
+		$this->assertIsArray( $data );
+		$this->assertSame( 5000, $data['limit'] );
+		$this->assertSame( 75, $data['threshold'] );
+		$this->assertSame( Usage_Limit_Monitor::STATE_OK, $data['state'] );
+		$this->assertStringContainsString( 'options-general.php?page=ai-wp-admin', $data['settings_url'] );
 	}
 
 	/**

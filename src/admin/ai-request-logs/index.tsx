@@ -35,6 +35,7 @@ import {
 } from './query';
 import SettingsPanel from './components/SettingsPanel';
 import SummaryCards from './components/SummaryCards';
+import UsageLimitCard from './components/UsageLimitCard';
 import type {
 	FilterOptions,
 	LocalizedSettings,
@@ -362,6 +363,10 @@ const App: React.FC = () => {
 					<Notice status="error" onRemove={ () => setError( null ) }>
 						{ error }
 					</Notice>
+				) }
+
+				{ settings.usageLimit && (
+					<UsageLimitCard usageLimit={ settings.usageLimit } />
 				) }
 
 				<SummaryCards summary={ summary } loading={ summaryLoading } />

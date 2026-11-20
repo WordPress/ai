@@ -32,12 +32,19 @@ class AI_Request_Log_Page {
 	private AI_Request_Log_Manager $manager;
 
 	/**
+	 * Monthly token limit monitor.
+	 */
+	private ?Usage_Limit_Monitor $usage_limit_monitor;
+
+	/**
 	 * Constructor.
 	 *
-	 * @param \WordPress\AI\Logging\AI_Request_Log_Manager $manager Manager dependency.
+	 * @param \WordPress\AI\Logging\AI_Request_Log_Manager   $manager             Manager dependency.
+	 * @param \WordPress\AI\Logging\Usage_Limit_Monitor|null $usage_limit_monitor Optional monthly token limit monitor.
 	 */
-	public function __construct( AI_Request_Log_Manager $manager ) {
-		$this->manager = $manager;
+	public function __construct( AI_Request_Log_Manager $manager, ?Usage_Limit_Monitor $usage_limit_monitor = null ) {
+		$this->manager             = $manager;
+		$this->usage_limit_monitor = $usage_limit_monitor;
 	}
 
 	/**
@@ -98,6 +105,7 @@ class AI_Request_Log_Page {
 					'summary' => $this->manager->get_summary( 'day' ),
 					'filters' => $this->manager->get_filter_options(),
 				),
+				'usageLimit'       => $this->get_usage_limit_data(),
 				'connectorsUrl'    => admin_url( 'options-connectors.php' ),
 				'providerMetadata' => $this->get_provider_metadata(),
 			)
@@ -116,6 +124,25 @@ class AI_Request_Log_Page {
 			<div id="ai-request-logs-root"></div>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Builds the monthly token limit payload sent to the React app.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed>|null Usage status, or null when no limit is set.
+	 */
+	private function get_usage_limit_data(): ?array {
+		if ( null === $this->usage_limit_monitor || ! $this->usage_limit_monitor->is_enabled() ) {
+			return null;
+		}
+
+		$status = $this->usage_limit_monitor->get_status( true );
+
+		$status['settings_url'] = admin_url( 'options-general.php?page=ai-wp-admin' );
+
+		return $status;
 	}
 
 	/**
