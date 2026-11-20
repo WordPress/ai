@@ -470,6 +470,39 @@ class AI_WorkspaceTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * On WordPress before 7.1, which lacks the core permission filter, a read ability's own
+	 * permission check still refuses an administrator left out of the feature.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_read_ability_permission_applies_feature_access_before_wordpress_7_1(): void {
+		global $wp_version;
+
+		$real_version = $wp_version;
+		$wp_version   = '7.0.4'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Pinning the version the back-fill keys on.
+
+		try {
+			$this->register_read_abilities();
+		} finally {
+			$wp_version = $real_version; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restoring the real version.
+		}
+
+		update_option( Feature_Access::enabled_option( AI_Workspace::get_id() ), true );
+		update_option( Feature_Access::roles_option( AI_Workspace::get_id() ), array( 'editor' ) );
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+
+		// The callback alone, as WordPress before 7.1 runs it with no filter of its own.
+		$property = new \ReflectionProperty( \WP_Ability::class, 'permission_callback' );
+		$property->setAccessible( true );
+		$callback = $property->getValue( wp_get_ability( 'ai/search-content' ) );
+
+		$result = call_user_func( $callback, array( 'search' => 'hello' ) );
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'wpai_feature_access_denied', $result->get_error_code() );
+	}
+
+	/**
 	 * Registers the feature's abilities the way `wp_abilities_api_init` would.
 	 *
 	 * @since x.x.x
