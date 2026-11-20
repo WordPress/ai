@@ -376,6 +376,39 @@ final class Conversation_Store {
 	}
 
 	/**
+	 * Appends one entry to a chat, leaving its messages and state as they are now.
+	 *
+	 * Unlike save(), this rereads the stored entries and writes only them, so it cannot undo a turn or
+	 * proposal outcome saved after the caller read the chat.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string               $conversation_id The conversation ID.
+	 * @param int                  $user_id         The owning user ID.
+	 * @param array<string, mixed> $entry           The entry to append.
+	 * @return bool True when the entry was written.
+	 */
+	public function append_entry( string $conversation_id, int $user_id, array $entry ): bool {
+		$post = $this->find_post( $conversation_id, $user_id );
+
+		if ( null === $post ) {
+			return false;
+		}
+
+		$entries   = array_values( self::read_json( $post->ID, self::ENTRIES_META ) );
+		$entries[] = $entry;
+		$json      = wp_json_encode( $entries );
+
+		if ( false === $json ) {
+			return false;
+		}
+
+		update_post_meta( $post->ID, self::ENTRIES_META, wp_slash( $json ) );
+
+		return true;
+	}
+
+	/**
 	 * Deletes a conversation for good, with any cancellation marker it carries.
 	 *
 	 * @since x.x.x

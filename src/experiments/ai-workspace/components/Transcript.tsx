@@ -466,8 +466,14 @@ export default function Transcript( {
 										onAnswer={ ( choice ) =>
 											onAnswer( choice, entry.scope )
 										}
-										onDismiss={ () =>
-											onDismiss( entry.turnId )
+										// A question saved without its turn ID cannot be dismissed.
+										onDismiss={
+											'' === entry.turnId
+												? undefined
+												: () =>
+														onDismiss(
+															entry.turnId
+														)
 										}
 									/>
 								)

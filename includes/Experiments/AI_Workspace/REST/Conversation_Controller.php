@@ -370,10 +370,10 @@ final class Conversation_Controller {
 			);
 		}
 
-		$entry                   = Turn_Runner::dismissal_entry( $turn_id );
-		$conversation['entries'] = array_merge( $conversation['entries'], array( $entry ) );
+		$entry = Turn_Runner::dismissal_entry( $turn_id );
 
-		if ( ! $this->store->save( $conversation ) ) {
+		// Writes the entry alone, so a turn or outcome saved since the read above is kept.
+		if ( ! $this->store->append_entry( (string) $conversation['id'], get_current_user_id(), $entry ) ) {
 			return $this->not_saved();
 		}
 

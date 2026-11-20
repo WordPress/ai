@@ -531,7 +531,8 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 								void stop();
 							} }
 							// The composer is inert while a chat loads, as while a turn runs.
-							isRunning={ isRunning || isOpening || isDismissing }
+							isRunning={ isRunning || isOpening }
+							isBusy={ isDismissing }
 							isStopping={ isStopping || isOpening }
 							inputRef={ inputRef }
 							scopeControl={

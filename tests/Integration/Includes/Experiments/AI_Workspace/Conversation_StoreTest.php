@@ -174,6 +174,45 @@ class Conversation_StoreTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Appending an entry keeps messages and state another writer saved after it was read.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_append_entry_keeps_what_another_writer_saved(): void {
+		$owner        = self::$user_ids['owner'];
+		$store        = new Conversation_Store();
+		$conversation = $this->save_chat( $owner );
+
+		// Another writer saves a turn after the dismissal read the chat.
+		$newer                                        = $store->get( $conversation['id'], $owner );
+		$newer['messages']                            = array( array( 'role' => 'user' ) );
+		$newer['entries'][]                           = array( 'prompt' => 'A newer turn' );
+		$newer[ Conversation_Store::FOLLOW_UP_OWED ] = true;
+		$this->assertTrue( $store->save( $newer ) );
+
+		$this->assertTrue( $store->append_entry( $conversation['id'], $owner, array( 'status' => 'dismissed' ) ) );
+
+		$stored = $store->get( $conversation['id'], $owner );
+
+		$this->assertSame( array( array( 'role' => 'user' ) ), $stored['messages'] );
+		$this->assertTrue( $stored[ Conversation_Store::FOLLOW_UP_OWED ] );
+		$this->assertSame( array( 'Hello there', 'A newer turn', null ), array_map( static fn( $entry ) => $entry['prompt'] ?? null, $stored['entries'] ) );
+	}
+
+	/**
+	 * Appending to another user's chat writes nothing.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_append_entry_refuses_another_users_chat(): void {
+		$store        = new Conversation_Store();
+		$conversation = $this->save_chat( self::$user_ids['owner'] );
+
+		$this->assertFalse( $store->append_entry( $conversation['id'], self::$user_ids['peer'], array( 'status' => 'dismissed' ) ) );
+		$this->assertCount( 1, $store->get( $conversation['id'], self::$user_ids['owner'] )['entries'] );
+	}
+
+	/**
 	 * Another user's save cannot take over a chat by reusing its ID.
 	 *
 	 * @since x.x.x

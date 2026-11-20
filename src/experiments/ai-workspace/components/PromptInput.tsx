@@ -23,6 +23,7 @@ import type { KeyboardEvent, MutableRefObject, ReactNode } from 'react';
  * @param props.onStop       Stop handler.
  * @param props.isRunning    Whether a turn is in flight.
  * @param props.isStopping   Whether a stop has been requested.
+ * @param props.isBusy       Whether the input is held for a short request that cannot be stopped.
  * @param props.inputRef     Ref for the textarea, used to restore focus.
  * @param props.scopeControl The context-scope control, rendered in the footer.
  * @return The rendered composer.
@@ -34,6 +35,7 @@ export default function PromptInput( {
 	onStop,
 	isRunning,
 	isStopping,
+	isBusy = false,
 	inputRef,
 	scopeControl,
 }: {
@@ -43,6 +45,7 @@ export default function PromptInput( {
 	onStop: () => void;
 	isRunning: boolean;
 	isStopping: boolean;
+	isBusy?: boolean;
 	inputRef: MutableRefObject< HTMLTextAreaElement | null >;
 	scopeControl: ReactNode;
 } ) {
@@ -74,7 +77,7 @@ export default function PromptInput( {
 				aria-keyshortcuts="Meta+Enter Control+Enter"
 				rows={ 3 }
 				value={ value }
-				disabled={ isRunning }
+				disabled={ isRunning || isBusy }
 				onChange={ onChange }
 				onKeyDown={ onKeyDown }
 			/>
@@ -101,7 +104,7 @@ export default function PromptInput( {
 					<Button
 						__next40pxDefaultSize
 						variant="primary"
-						disabled={ isRunning || '' === value.trim() }
+						disabled={ isRunning || isBusy || '' === value.trim() }
 						accessibleWhenDisabled
 						onClick={ onSubmit }
 					>

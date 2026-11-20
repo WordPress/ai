@@ -25,7 +25,7 @@ import type { Question } from '../types';
  * @param props.isDismissed Whether the person closed it without answering.
  * @param props.chosen      The choice that answered it, or null.
  * @param props.onAnswer    Sends a choice as the next message.
- * @param props.onDismiss   Closes the question without sending anything to the model.
+ * @param props.onDismiss   Closes the question without sending anything to the model; absent when it cannot.
  * @return The rendered question.
  */
 export default function AskUser( {
@@ -41,7 +41,7 @@ export default function AskUser( {
 	isDismissed: boolean;
 	chosen: string | null;
 	onAnswer: ( choice: string ) => void;
-	onDismiss: () => Promise< DismissResult >;
+	onDismiss?: ( () => Promise< DismissResult > ) | undefined;
 } ) {
 	const instanceId = useInstanceId( AskUser, 'ai-workspace-question' );
 	const labelId = `${ instanceId }-label`;
@@ -50,6 +50,10 @@ export default function AskUser( {
 	const canAct = isLive && ! isDismissing;
 
 	const dismiss = async (): Promise< void > => {
+		if ( ! onDismiss ) {
+			return;
+		}
+
 		setIsDismissing( true );
 		setFailed( false );
 
@@ -85,7 +89,7 @@ export default function AskUser( {
 						{ choice }
 					</Button>
 				) ) }
-				{ isLive && (
+				{ isLive && onDismiss && (
 					<Button
 						__next40pxDefaultSize
 						variant="tertiary"
