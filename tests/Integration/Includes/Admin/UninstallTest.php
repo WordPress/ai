@@ -15,6 +15,7 @@ use WordPress\AI\Experiments\C2pa_Monitor\C2pa_Monitor;
 use WordPress\AI\Experiments\C2pa_Monitor\Sidecar_Writer;
 use WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation;
 use WordPress\AI\Experiments\Key_Encryption\Secrets_Bridge;
+use WordPress\AI\Experiments\Text_To_Speech\Job_Manager;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
 use WordPress\AI\Tests\Integration\Includes\Experiments\Key_Encryption\Legacy_Secrets_Helpers;
 
@@ -90,6 +91,13 @@ class UninstallTest extends WP_UnitTestCase {
 	 * @var int
 	 */
 	private int $user_id;
+
+	/**
+	 * Post seeded with Text to Speech post meta.
+	 *
+	 * @var int
+	 */
+	private int $post_id;
 
 	/**
 	 * Attachment seeded with C2PA Monitor post meta.
@@ -190,6 +198,12 @@ class UninstallTest extends WP_UnitTestCase {
 		$this->attachment_id = self::factory()->post->create( array( 'post_type' => 'attachment' ) );
 		update_post_meta( $this->attachment_id, C2pa_Monitor::POSTMETA_KEY, (string) wp_json_encode( array( 'c2pa' => array( 'present' => true ) ) ) );
 		update_post_meta( $this->attachment_id, C2pa_Monitor::SORT_META_KEY, '1' );
+
+		// Text to Speech: the job state and audio link stored on a post.
+		$this->post_id = self::factory()->post->create();
+		foreach ( Job_Manager::META_KEYS as $meta_key ) {
+			update_post_meta( $this->post_id, $meta_key, '1' );
+		}
 
 		// Comment Moderation: the analysis results stored on a comment.
 		$this->comment_id = self::factory()->comment->create();
@@ -427,6 +441,10 @@ class UninstallTest extends WP_UnitTestCase {
 		$this->assertSame( '', get_post_meta( $this->attachment_id, C2pa_Monitor::POSTMETA_KEY, true ), 'C2PA scan record post meta should be deleted.' );
 		$this->assertSame( '', get_post_meta( $this->attachment_id, C2pa_Monitor::SORT_META_KEY, true ), 'C2PA sort helper post meta should be deleted.' );
 
+		foreach ( Job_Manager::META_KEYS as $meta_key ) {
+			$this->assertFalse( metadata_exists( 'post', $this->post_id, $meta_key ), "Text to Speech meta {$meta_key} should be deleted." );
+		}
+
 		foreach ( self::COMMENT_MODERATION_META as $meta_key ) {
 			$this->assertFalse( metadata_exists( 'comment', $this->comment_id, $meta_key ), "Comment Moderation meta {$meta_key} should be deleted." );
 		}
@@ -517,6 +535,9 @@ class UninstallTest extends WP_UnitTestCase {
 		$this->assertNotFalse( wp_next_scheduled( self::CLEANUP_HOOK ), 'Scheduled cleanup should be preserved when filtered out.' );
 		$this->assertSame( 'signature', get_user_meta( $this->user_id, 'wpai_connector_approval_notice_dismissed', true ), 'User meta should be preserved when filtered out.' );
 		$this->assertNotSame( '', get_post_meta( $this->attachment_id, C2pa_Monitor::POSTMETA_KEY, true ), 'C2PA post meta should be preserved when filtered out.' );
+		foreach ( Job_Manager::META_KEYS as $meta_key ) {
+			$this->assertSame( '1', get_post_meta( $this->post_id, $meta_key, true ), "Text to Speech meta {$meta_key} should be preserved when filtered out." );
+		}
 		$this->assertSame( '1', get_comment_meta( $this->comment_id, Comment_Moderation::META_TOXICITY_SCORE, true ), 'Comment Moderation meta should be preserved when filtered out.' );
 		$this->assertFileExists( $this->sidecar_path( $this->attachment_id . '.jpeg.c2pa' ), 'C2PA sidecars should be preserved when filtered out.' );
 	}

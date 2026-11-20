@@ -22,10 +22,10 @@ type AltTextGenerationProps = {
  * Shows a notice when the image is marked as decorative and coordinates
  * focus as the available controls change.
  *
- * @param {AltTextGenerationProps} props               The component props.
- * @param {string}                 props.clientId      The client ID of the selected image block.
- * @param {ImageBlockAttributes}   props.attributes    The attributes of the selected image block.
- * @param {Function}               props.setAttributes The function to set the attributes of the selected image block.
+ * @param {AltTextGenerationProps}                  props               The component props.
+ * @param {string}                                  props.clientId      The client ID of the selected image block.
+ * @param {ImageBlockAttributes}                    props.attributes    The attributes of the selected image block.
+ * @param {AltTextGenerationProps['setAttributes']} props.setAttributes The function to set the attributes of the selected image block.
  * @return {React.JSX.Element} The rendered component.
  */
 export function AltTextGeneration( {

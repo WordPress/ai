@@ -121,6 +121,53 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		);
 	} );
 
+	test( 'Sends one request per click when the media modal is reused', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		await enableExperiment( admin, page, 'Alt Text Generation' );
+		const media = await requestUtils.uploadMedia( TEST_IMAGE_PATH );
+
+		let requests = 0;
+		await page.route(
+			/\/wp-abilities\/v1\/abilities\/ai\/alt-text-generation\/run/,
+			async ( route ) => {
+				requests++;
+				await route.fulfill( {
+					json: {
+						alt_text: 'Generated alt text',
+						is_decorative: false,
+					},
+				} );
+			}
+		);
+
+		await admin.createNewPost();
+
+		// Open one modal three times, as the classic editor does for "Set featured image".
+		await page.evaluate( () => {
+			const frame = window.wp.media();
+			frame.open();
+			frame.close();
+			frame.open();
+			frame.close();
+			frame.open();
+			frame.content.mode( 'browse' );
+		} );
+
+		const modal = page.locator( '.media-modal' );
+		await modal.locator( `li[data-id="${ media.id }"]` ).click();
+		await modal
+			.getByRole( 'button', { name: 'Generate', exact: true } )
+			.click();
+
+		await expect(
+			modal.locator( '#attachment-details-alt-text' )
+		).toHaveValue( 'Generated alt text' );
+		expect( requests ).toBe( 1 );
+	} );
+
 	test( 'Can use the Alt Text Generation Experiment in the editor', async ( {
 		admin,
 		editor,
@@ -496,6 +543,55 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		// Verify query args have been stripped from the URL.
 		expect( page.url() ).not.toContain( 'wpai_bulk_alt_text' );
 		expect( page.url() ).not.toContain( 'wpai_attachment_ids' );
+	} );
+
+	test( 'Bulk action keeps existing alt text for decorative images', async ( {
+		admin,
+		requestUtils,
+		page,
+	} ) => {
+		await enableExperiment( admin, page, 'Alt Text Generation' );
+
+		const media = await requestUtils.uploadMedia( TEST_IMAGE_PATH );
+		const altText = 'Hand-written alt text';
+
+		try {
+			await requestUtils.rest( {
+				method: 'POST',
+				path: `/wp/v2/media/${ media.id }`,
+				data: { alt_text: altText },
+			} );
+
+			// Mock the AI response to return the decorative result.
+			await page.route(
+				/\/wp-abilities\/v1\/abilities\/ai\/alt-text-generation\/run/,
+				( route ) =>
+					route.fulfill( {
+						json: { alt_text: '', is_decorative: true },
+					} )
+			);
+
+			await admin.visitAdminPage( 'upload.php', 'mode=list' );
+			await page.locator( `#cb-select-${ media.id }` ).check();
+			await page
+				.getByLabel( 'Select bulk action' )
+				.first()
+				.selectOption( 'wpai_generate_alt_text' );
+			await page.getByRole( 'button', { name: 'Apply' } ).first().click();
+
+			const notice = page.locator( '.notice p', {
+				hasText: /Alt text generated/,
+			} );
+			await expect( notice ).toBeVisible( { timeout: 60000 } );
+
+			const updated = await requestUtils.rest( {
+				path: `/wp/v2/media/${ media.id }`,
+			} );
+			expect( updated.alt_text ).toBe( altText );
+			await expect( notice ).toContainText( 'identified as decorative' );
+		} finally {
+			await requestUtils.deleteMedia( media.id );
+		}
 	} );
 
 	test( 'Bulk action shows an error notice when no provider is configured', async ( {

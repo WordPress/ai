@@ -353,6 +353,8 @@ class UsersTest extends WP_UnitTestCase {
 		}
 
 		$this->assertSame( 1, $where['properties']['ids']['items']['minimum'], 'The ids option should contain positive user IDs.' );
+		$this->assertSame( 1, $where['properties']['slugs']['items']['minLength'], 'The slugs option should not contain an empty slug.' );
+		$this->assertSame( 1, $where['properties']['usernames']['items']['minLength'], 'The usernames option should not contain an empty username.' );
 
 		$roles = $where['properties']['roles'];
 
@@ -1678,6 +1680,41 @@ class UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A slug or username list that holds an empty string fails schema validation, even next
+	 * to a value that names a user.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_identifier_lists_with_an_empty_string
+	 *
+	 * @param string   $filter The `where` filter.
+	 * @param string[] $values The values given for the filter.
+	 */
+	public function test_identifier_list_with_an_empty_string_fails_schema_validation( string $filter, array $values ): void {
+		wp_set_current_user( self::$fixture_ids['administrator'] );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/users-query' )->execute( array( 'where' => array( $filter => $values ) ) );
+
+		$this->assertWPError( $result, sprintf( 'An empty string in the %s filter should fail the request.', $filter ) );
+		$this->assertSame( 'ability_invalid_input', $result->get_error_code(), sprintf( 'An empty string in the %s filter should fail schema validation.', $filter ) );
+	}
+
+	/**
+	 * Data provider for slug and username lists that hold an empty string.
+	 *
+	 * @return array<string, array{0: string, 1: string[]}>
+	 */
+	public static function data_identifier_lists_with_an_empty_string(): array {
+		return array(
+			'empty slug'               => array( 'slugs', array( '' ) ),
+			'empty and valid slug'     => array( 'slugs', array( '', 'core-users-ability-admin' ) ),
+			'empty username'           => array( 'usernames', array( '' ) ),
+			'empty and valid username' => array( 'usernames', array( '', 'core_users_ability_admin' ) ),
+		);
+	}
+
+	/**
 	 * Filters and pagination values at the root fail schema validation.
 	 *
 	 * The root only accepts `where`, `fields` and `pagination`. A filter or a page given
@@ -2195,9 +2232,9 @@ class UsersTest extends WP_UnitTestCase {
 
 		/*
 		 * IDs that are distinct as strings but equal as integers ('7' vs '07')
-		 * pass schema validation. Since WordPress 7.2, WP_Ability::coerce_input()
-		 * casts them before execution and rejects the collision; before that, they
-		 * must still collapse to one filtered ID.
+		 * pass schema validation. Since WordPress 7.2, WP_Ability::prepare_input()
+		 * (named coerce_input() in early 7.2 builds) casts them before execution and
+		 * rejects the collision; before that, they must still collapse to one filtered ID.
 		 */
 		$result = $ability->execute(
 			array(
@@ -2206,7 +2243,7 @@ class UsersTest extends WP_UnitTestCase {
 			)
 		);
 
-		if ( method_exists( $ability, 'coerce_input' ) ) {
+		if ( method_exists( $ability, 'prepare_input' ) || method_exists( $ability, 'coerce_input' ) ) {
 			$this->assertWPError( $result, 'String-duplicate IDs should be rejected once coerced to integers.' );
 			$this->assertSame( 'ability_invalid_input', $result->get_error_code(), 'String-duplicate IDs should fail as invalid input.' );
 		} else {
@@ -3167,6 +3204,68 @@ class UsersTest extends WP_UnitTestCase {
 				sprintf( 'The error data should map the list of %s to the error message.', $filter )
 			);
 		}
+	}
+
+	/**
+	 * The execute callback rejects a slug or username list that holds only an empty string,
+	 * instead of querying it, and drops an empty string next to a value that names a user.
+	 *
+	 * Schema validation rejects empty strings, so this only matters for callers that skip it.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_slug_and_username_filters
+	 *
+	 * @param string $filter The `where` filter.
+	 * @param string $value  A value of the filter that names the administrator.
+	 */
+	public function test_execute_callback_drops_empty_strings_from_slug_and_username_lists( string $filter, string $value ): void {
+		wp_set_current_user( self::$fixture_ids['administrator'] );
+
+		$execute = $this->get_ability_callbacks()['execute_callback'];
+
+		$result = $execute( array( 'where' => array( $filter => array( '' ) ) ) );
+
+		$this->assertWPError( $result, sprintf( 'A list of %s holding only an empty string should fail the request.', $filter ) );
+		$this->assertSame( 'users_invalid_filter', $result->get_error_code(), sprintf( 'A list of %s holding only an empty string should fail closed as an invalid filter.', $filter ) );
+		$this->assertSame(
+			array( 'where[' . $filter . ']' => $result->get_error_message() ),
+			$result->get_error_data()['params'],
+			sprintf( 'The error data should map the list of %s holding only an empty string to the error message.', $filter )
+		);
+
+		$result = $execute(
+			array(
+				'where'  => array( $filter => array( '', $value ) ),
+				'fields' => array( 'id' ),
+			)
+		);
+
+		$this->assertSame(
+			array(
+				'items'      => array(
+					array( 'id' => self::$fixture_ids['administrator'] ),
+				),
+				'pagination' => array(
+					'total'       => 1,
+					'total_pages' => 1,
+				),
+			),
+			$result,
+			sprintf( 'An empty string next to a value in the list of %s should be dropped, leaving the named user.', $filter )
+		);
+	}
+
+	/**
+	 * Data provider for the slug and username filters, each with a value that names the administrator.
+	 *
+	 * @return array<string, array{0: string, 1: string}>
+	 */
+	public static function data_slug_and_username_filters(): array {
+		return array(
+			'slugs'     => array( 'slugs', 'core-users-ability-admin' ),
+			'usernames' => array( 'usernames', 'core_users_ability_admin' ),
+		);
 	}
 
 	/**

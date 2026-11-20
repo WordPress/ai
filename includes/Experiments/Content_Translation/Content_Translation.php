@@ -43,10 +43,11 @@ class Content_Translation extends Abstract_Feature {
 	 */
 	protected function load_metadata(): array {
 		return array(
-			'label'       => __( 'Content Translation', 'ai' ),
-			'description' => __( 'Translate the text of your blocks into a different language. Requires an AI connector that includes support for text generation models.', 'ai' ),
-			'category'    => Experiment_Category::EDITOR,
-			'usage'       => array(
+			'label'          => __( 'Content Translation', 'ai' ),
+			'description'    => __( 'Translate the text of your blocks into a different language. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'category'       => Experiment_Category::EDITOR,
+			'access_control' => true,
+			'usage'          => array(
 				'trigger'  => 'on_demand',
 				'runs'     => __( 'When you click Translate', 'ai' ),
 				'sends'    => __( 'Each paragraph and heading block, and optionally the title', 'ai' ),
@@ -62,8 +63,16 @@ class Content_Translation extends Abstract_Feature {
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
-		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'enqueue_block_assets', array( $this, 'enqueue_block_assets' ) );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function register_ui(): void {
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 	}
 
 	/**
@@ -72,7 +81,7 @@ class Content_Translation extends Abstract_Feature {
 	 * @since 1.3.0
 	 */
 	public function register_abilities(): void {
-		wp_register_ability(
+		$this->register_feature_ability(
 			sprintf( 'ai/%s', $this->get_id() ),
 			array(
 				'label'         => $this->get_label(),

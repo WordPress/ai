@@ -818,4 +818,36 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( esc_url( get_feed_link( Markdown_Feeds::FEED_NAME ) ), $output );
 		$this->assertStringNotContainsString( 'output_format=markdown', $output );
 	}
+
+	/**
+	 * Returns the description defined in the experiment metadata.
+	 */
+	private function get_metadata_description(): string {
+		$method = new \ReflectionMethod( Markdown_Feeds::class, 'load_metadata' );
+		$method->setAccessible( true );
+
+		return $method->invoke( $this->experiment )['description'];
+	}
+
+	/**
+	 * Tests that the description is unchanged when no Markdown-serving plugin is active.
+	 */
+	public function test_description_unchanged_without_conflicting_plugin(): void {
+		$this->assertSame( $this->get_metadata_description(), $this->experiment->get_description() );
+	}
+
+	/**
+	 * Tests that the description names an active Markdown-serving plugin.
+	 */
+	public function test_description_names_active_conflicting_plugin(): void {
+		$active = get_option( 'active_plugins', array() );
+		update_option( 'active_plugins', array_merge( $active, array( 'markdown-for-ai-agents/markdown-for-ai-agents.php' ) ) );
+
+		$description = $this->experiment->get_description();
+
+		update_option( 'active_plugins', $active );
+
+		$this->assertStringStartsWith( $this->get_metadata_description(), $description );
+		$this->assertStringContainsString( 'Markdown for AI Agents', $description );
+	}
 }

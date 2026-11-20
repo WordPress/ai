@@ -100,7 +100,7 @@ export default function EditorialNotesPlugin() {
 	return (
 		<>
 			<PluginPostStatusInfo>
-				<Flex direction="column" gap={ 2 }>
+				<Flex direction="column" gap={ 2 } style={ { width: '100%' } }>
 					<FlexItem>
 						<Button
 							accessibleWhenDisabled

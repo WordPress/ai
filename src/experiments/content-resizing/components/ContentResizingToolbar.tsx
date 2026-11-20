@@ -32,7 +32,11 @@ import { store as editorStore } from '@wordpress/editor';
  */
 import { runAbility } from '../../../utils/run-ability';
 import { getBlockHTML } from '../../../utils/blocks';
-import type { ContentResizingAction, ContentResizingData } from '../types';
+import type {
+	ContentResizingAbilityInput,
+	ContentResizingAction,
+	ContentResizingData,
+} from '../types';
 import { ICON_SHORTEN, ICON_EXPAND, ICON_REPHRASE } from '../icons';
 import { ensureProvider } from '../../../utils/provider-status';
 import { getContentCount } from '../../../utils/character-count';
@@ -141,9 +145,14 @@ export default function ContentResizingToolbar( {
 			noticesDispatch.removeNotice( NOTICE_ID );
 
 			try {
+				const params: ContentResizingAbilityInput = {
+					post_id: postId,
+					content: blockContent,
+					action,
+				};
 				const result = await runAbility< string >(
 					'ai/content-resizing',
-					{ content: blockContent, action, post_id: postId }
+					params
 				);
 				setSuggestedContent( result );
 			} catch ( error: unknown ) {

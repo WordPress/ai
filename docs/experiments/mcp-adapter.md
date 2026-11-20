@@ -11,7 +11,7 @@ The MCP Access experiment wires a site up to the [MCP Adapter](https://wordpress
 - **When it runs:** When an authorized MCP client lists or runs an exposed ability
 - **Sent to your AI provider:** Nothing itself, but MCP clients can run exposed abilities that call your AI provider, such as Title Generation
 - **Requests and data:** Exposes this plugin's enabled abilities over MCP by default, and installs and activates the MCP Adapter plugin from WordPress.org
-- **Good to know:** The MCP Adapter plugin is installed and activated on the first admin page load by a user who can install plugins. Hide abilities you don't want AI agents to use under `Tools > MCP Access`.
+- **Good to know:** The MCP Adapter plugin is installed and activated on the first admin page load by a user who can install plugins. On Multisite it is never installed automatically; a network administrator installs it. Hide abilities you don't want AI agents to use under `Tools > MCP Access`.
 
 ## Overview
 
@@ -25,7 +25,7 @@ When enabled, a new admin page appears under `Tools > MCP Access`. The page prov
 
 This plugin's own abilities (`ai/*`) are exposed by default, since they only register while the feature or experiment providing them is enabled. Other abilities keep their developer-declared visibility unless the site owner changes them. Two groups are not listed: the adapter's own default-server abilities (`mcp-adapter/*`), which are the server's machinery and are active whenever the server runs, and deprecated aliases, which stay hidden because their replacement is listed instead.
 
-While the experiment is enabled, the MCP Adapter plugin is installed and activated automatically on the first admin page load by a user who can install plugins. The attempt runs once per experiment activation: deactivating the adapter afterwards is respected, and toggling the experiment off and on runs the install again. Exposure overrides are only enforced while the experiment is enabled.
+While the experiment is enabled, the MCP Adapter plugin is installed and activated automatically on the first admin page load by a user who can install plugins. The attempt runs once per experiment activation: deactivating the adapter afterwards is respected, and toggling the experiment off and on runs the install again. On Multisite, where site administrators cannot install or activate plugins, nothing is installed automatically: the MCP Access screen says so, and a network administrator can use its install/activate button or Network Admin. Exposure overrides are only enforced while the experiment is enabled.
 
 ### For Developers
 
@@ -58,7 +58,7 @@ The experiment consists of:
 
 ### Install Flow
 
-1. On `admin_init`, if the current enable cycle has not been handled and the visitor can activate plugins, the installer resolves the adapter's install state.
+1. On `admin_init`, if the current enable cycle has not been handled, the site is not Multisite (Multisite records a "not available" marker instead) and the visitor can activate plugins, the installer resolves the adapter's install state.
 2. An active copy (including one installed under a non-standard directory, detected via the adapter's classes) marks the cycle handled with no action.
 3. Otherwise the installer claims the cycle atomically, downloads the plugin from WordPress.org if missing, and activates it. Success or failure is recorded; a failure is surfaced on the MCP Access screen with the manual button as the retry path.
 4. Disabling the experiment clears the marker, so re-enabling runs a fresh attempt.

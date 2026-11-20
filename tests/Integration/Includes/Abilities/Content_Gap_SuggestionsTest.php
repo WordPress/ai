@@ -465,6 +465,75 @@ class Content_Gap_SuggestionsTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that parse_suggestions() keeps percentages such as "%100" in the outline.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_parse_suggestions_keeps_percent_signs_in_outline(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		$response = wp_json_encode(
+			array(
+				'suggestions' => array(
+					array(
+						'title'   => 'Pamuk tişört rehberi',
+						'outline' => "- Kumaş %100 pamuk\n- %50 indirim",
+					),
+				),
+			)
+		);
+
+		$result = $method->invoke( $this->ability, $response, 5 );
+
+		$this->assertCount( 1, $result );
+		$this->assertSame( "- Kumaş %100 pamuk\n- %50 indirim", $result[0]['outline'] );
+	}
+
+	/**
+	 * Test that parse_suggestions() skips entries whose title or outline is not a string.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_parse_suggestions_skips_non_string_fields(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		$response = wp_json_encode(
+			array(
+				'suggestions' => array(
+					array(
+						'title'   => array( 'Nested title' ),
+						'outline' => '- a',
+					),
+					array(
+						'title'   => 'Nested outline',
+						'outline' => array( '- b' ),
+					),
+					array(
+						'title'   => 'Complete',
+						'outline' => '- c',
+					),
+				),
+			)
+		);
+
+		$result = $method->invoke( $this->ability, $response, 5 );
+
+		$this->assertSame(
+			array(
+				array(
+					'title'   => 'Complete',
+					'outline' => '- c',
+				),
+			),
+			$result
+		);
+	}
+
+	/**
 	 * Test that generate_suggestions() returns a WP_Error without a configured AI provider.
 	 *
 	 * @since x.x.x

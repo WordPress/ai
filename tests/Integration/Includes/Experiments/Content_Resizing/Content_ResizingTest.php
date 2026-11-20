@@ -107,6 +107,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	public function test_register_hooks_actions() {
 		$experiment = new Content_Resizing();
 		$experiment->register();
+		$experiment->register_ui();
 
 		$this->assertNotFalse(
 			has_action( 'wp_abilities_api_init', array( $experiment, 'register_abilities' ) ),

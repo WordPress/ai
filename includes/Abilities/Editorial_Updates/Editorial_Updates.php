@@ -13,6 +13,7 @@ use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Experiments\Editorial_Updates\Editorial_Updates as Editorial_Updates_Experiment;
 
+use function WordPress\AI\kses_post_keep_rgb_colors;
 use function WordPress\AI\normalize_content;
 use function WordPress\AI\sanitize_plain_text;
 
@@ -131,7 +132,7 @@ class Editorial_Updates extends Abstract_Ability {
 			return $result;
 		}
 
-		return wp_kses_post( $result );
+		return kses_post_keep_rgb_colors( $result );
 	}
 
 	/**
@@ -205,10 +206,10 @@ class Editorial_Updates extends Abstract_Ability {
 	 * @since 0.8.0
 	 *
 	 * @param string $block_type The block type identifier.
-	 * @param string $block_content The plain-text block content.
+	 * @param string $block_content The block content, which may contain inline HTML.
 	 * @param list<string> $notes Editorial feedback notes to apply.
 	 * @param string $context Optional context to improve refinement relevance.
-	 * @return string|\WP_Error Refined text or WP_Error.
+	 * @return string|\WP_Error Refined content (may contain inline HTML) or WP_Error.
 	 */
 	protected function generate_refinement(
 		string $block_type,
@@ -264,7 +265,7 @@ class Editorial_Updates extends Abstract_Ability {
 	 * @since 0.8.0
 	 *
 	 * @param string $block_type The block type identifier.
-	 * @param string $block_content The plain-text block content.
+	 * @param string $block_content The block content, which may contain inline HTML.
 	 * @param list<string> $notes Feedback notes.
 	 * @param string $context Optional context.
 	 * @return string The generated prompt.
@@ -273,7 +274,7 @@ class Editorial_Updates extends Abstract_Ability {
 		$prompt_parts = array();
 
 		$prompt_parts[] = '<block-type>' . sanitize_text_field( $block_type ) . '</block-type>';
-		$prompt_parts[] = '<block-content>' . wp_kses_post( $block_content ) . '</block-content>';
+		$prompt_parts[] = '<block-content>' . kses_post_keep_rgb_colors( $block_content ) . '</block-content>';
 
 		if ( ! empty( $notes ) ) {
 			$prompt_parts[] = '<notes>' . implode( "\n\n", array_map( static fn( string $note ): string => sanitize_plain_text( $note ), $notes ) ) . '</notes>';
