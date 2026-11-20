@@ -45,44 +45,48 @@ test.describe( 'Comment Moderation Experiment', () => {
 		// Go to the comments admin page.
 		await admin.visitAdminPage( 'edit-comments.php' );
 
-		// Select the first comment in the list.
-		await page
-			.locator( '#the-comment-list tr:first-child .check-column' )
-			.click();
+		// Select the created comment in the list.
+		const commentRow = page.getByRole( 'row' ).filter( {
+			hasText: 'This is a test comment.',
+		} );
+		await commentRow
+			.getByRole( 'checkbox', { name: 'Select comment', exact: true } )
+			.check();
 
 		// Trigger comment analysis.
 		await page
-			.locator( '#bulk-action-selector-top' )
-			.selectOption( 'wpai_analyze' );
+			.getByRole( 'combobox', {
+				name: 'Select bulk action',
+				exact: true,
+			} )
+			.first()
+			.selectOption( {
+				label: 'Analyze Sentiment, Toxicity, and Value',
+			} );
 
 		// Click the apply button.
-		await page.locator( '#doaction' ).click();
+		await page
+			.getByRole( 'button', { name: 'Apply', exact: true } )
+			.first()
+			.click();
 
 		// Ensure the admin notice shows and has the right text.
 		await expect(
-			page.locator( '.notice-success', {
-				hasText: /1 comment queued for analysis/,
-			} )
+			page
+				.getByRole( 'main' )
+				.getByText( /1 comment queued for analysis/ )
 		).toBeVisible();
 
 		// Ensure the comment sentiment, toxicity and value badges are visible and have the right text.
 		await expect(
-			page.locator( '.wpai_sentiment', {
-				hasText: /Negative/,
-			} )
+			commentRow.getByTitle( 'Negative', { exact: true } )
 		).toBeVisible();
 
 		await expect(
-			page.locator( '.wpai_toxicity', {
-				hasText: /High/,
-			} )
+			commentRow.getByTitle( /^High \(\d+%\)$/ )
 		).toBeVisible();
 
-		await expect(
-			page.locator( '.wpai_value_score', {
-				hasText: /Low/,
-			} )
-		).toBeVisible();
+		await expect( commentRow.getByTitle( /^Low \(\d+%\)$/ ) ).toBeVisible();
 
 		// Go to the post on the front-end.
 		expect( post.link ).toBeTruthy();
@@ -90,13 +94,15 @@ test.describe( 'Comment Moderation Experiment', () => {
 
 		// Leave a comment.
 		await page
-			.locator( '#comment' )
+			.getByRole( 'textbox', { name: 'Comment' } )
 			.fill( 'This is a mean and toxic comment.' );
-		await page.locator( '#submit' ).click();
+		await page
+			.getByRole( 'button', { name: 'Post Comment', exact: true } )
+			.click();
 
 		// Ensure we see the comment moderation message.
 		await expect(
-			page.locator( '.comment-awaiting-moderation' )
+			page.getByText( /^Your comment is awaiting moderation\./ )
 		).toBeVisible();
 	} );
 
@@ -110,16 +116,27 @@ test.describe( 'Comment Moderation Experiment', () => {
 		// Go to the comments admin page.
 		await admin.visitAdminPage( 'edit-comments.php' );
 
-		// Ensure the comment sentiment, toxicity and value badges are not visible.
-		await expect( page.locator( '.wpai_sentiment' ) ).not.toBeVisible();
+		// Ensure the analysis columns are not visible.
+		await expect(
+			page.getByRole( 'columnheader', { name: /^Sentiment\b/ } )
+		).not.toBeVisible();
 
-		await expect( page.locator( '.wpai_toxicity' ) ).not.toBeVisible();
+		await expect(
+			page.getByRole( 'columnheader', { name: /^Toxicity\b/ } )
+		).not.toBeVisible();
 
-		await expect( page.locator( '.wpai_value_score' ) ).not.toBeVisible();
+		await expect(
+			page.getByRole( 'columnheader', { name: /^Value\b/ } )
+		).not.toBeVisible();
 
 		// Ensure our bulk option doesn't exist.
 		await expect(
-			page.locator( '#bulk-action-selector-top' )
+			page
+				.getByRole( 'combobox', {
+					name: 'Select bulk action',
+					exact: true,
+				} )
+				.first()
 		).not.toContainText( 'Analyze Sentiment, Toxicity, and Value' );
 	} );
 
@@ -154,159 +171,162 @@ test.describe( 'Comment Moderation Experiment', () => {
 		// Go to the comments admin page.
 		await admin.visitAdminPage( 'edit-comments.php' );
 
-		// Verify all labels.
+		const negativeComment = page.getByRole( 'row' ).filter( {
+			hasText: 'This is a negative comment.',
+		} );
+		const positiveComment = page.getByRole( 'row' ).filter( {
+			hasText: 'This is a positive comment.',
+		} );
+		const neutralComment = page.getByRole( 'row' ).filter( {
+			hasText: 'This is a neutral comment.',
+		} );
+		const commentRows = page.getByRole( 'row' ).filter( {
+			has: page.getByRole( 'checkbox', {
+				name: 'Select comment',
+				exact: true,
+			} ),
+		} );
+
+		// Verify the sentiment badges by their tooltip text.
 		await expect(
-			page.locator( '.wpai_sentiment', { hasText: /Negative/ } ).first()
+			negativeComment.getByTitle( 'Negative', { exact: true } )
 		).toBeVisible();
 		await expect(
-			page.locator( '.wpai_sentiment', { hasText: /Positive/ } ).first()
+			positiveComment.getByTitle( 'Positive', { exact: true } )
 		).toBeVisible();
 		await expect(
-			page.locator( '.wpai_sentiment', { hasText: /Neutral/ } ).first()
+			neutralComment.getByTitle( 'Neutral', { exact: true } )
 		).toBeVisible();
 
-		// Test Filtering: Filter by Negative sentiment.
+		// Filter by Negative sentiment.
 		await page
-			.locator( '#wpai-filter-sentiment' )
+			.getByLabel( 'Filter by Sentiment', { exact: true } )
 			.selectOption( 'negative' );
-		await page.locator( '#post-query-submit' ).click();
-
-		// Verify only Negative is visible.
-		await expect(
-			page.locator( '.wpai_sentiment', { hasText: /Negative/ } ).first()
-		).toBeVisible();
-		await expect(
-			page.locator( '.wpai_sentiment', { hasText: /Positive/ } )
-		).not.toBeVisible();
-		await expect(
-			page.locator( '.wpai_sentiment', { hasText: /Neutral/ } )
-		).not.toBeVisible();
-
-		// Test Filtering: Filter by Neutral sentiment.
 		await page
-			.locator( '#wpai-filter-sentiment' )
+			.getByRole( 'button', { name: 'Filter', exact: true } )
+			.click();
+		await expect( negativeComment ).toBeVisible();
+		await expect( positiveComment ).not.toBeVisible();
+		await expect( neutralComment ).not.toBeVisible();
+
+		// Filter by Neutral sentiment.
+		await page
+			.getByLabel( 'Filter by Sentiment', { exact: true } )
 			.selectOption( 'neutral' );
-		await page.locator( '#post-query-submit' ).click();
+		await page
+			.getByRole( 'button', { name: 'Filter', exact: true } )
+			.click();
+		await expect( neutralComment ).toBeVisible();
+		await expect( negativeComment ).not.toBeVisible();
+		await expect( positiveComment ).not.toBeVisible();
 
-		// Verify only Neutral is visible.
+		// Reset sentiment, then filter by High toxicity.
+		await page
+			.getByLabel( 'Filter by Sentiment', { exact: true } )
+			.selectOption( '' );
+		await page
+			.getByLabel( 'Filter by Toxicity', { exact: true } )
+			.selectOption( 'high' );
+		await page
+			.getByRole( 'button', { name: 'Filter', exact: true } )
+			.click();
 		await expect(
-			page.locator( '.wpai_sentiment', { hasText: /Neutral/ } ).first()
+			negativeComment.getByTitle( /^High \(\d+%\)$/ )
 		).toBeVisible();
-		await expect(
-			page.locator( '.wpai_sentiment', { hasText: /Negative/ } )
-		).not.toBeVisible();
-		await expect(
-			page.locator( '.wpai_sentiment', { hasText: /Positive/ } )
-		).not.toBeVisible();
+		await expect( positiveComment ).not.toBeVisible();
+		await expect( neutralComment ).not.toBeVisible();
 
-		// Reset filter.
-		await page.locator( '#wpai-filter-sentiment' ).selectOption( '' );
-		await page.locator( '#post-query-submit' ).click();
-
-		// Test Filtering: Filter by High toxicity.
-		await page.locator( '#wpai-filter-toxicity' ).selectOption( 'high' );
-		await page.locator( '#post-query-submit' ).click();
-
-		// Verify only High toxicity is visible.
-		await expect(
-			page.locator( '.wpai_toxicity', { hasText: /High/ } ).first()
-		).toBeVisible();
-		await expect(
-			page.locator( '.wpai_toxicity', { hasText: /Low/ } )
-		).not.toBeVisible();
-
-		// Reset filter.
-		await page.locator( '#wpai-filter-toxicity' ).selectOption( '' );
-		await page.locator( '#post-query-submit' ).click();
-
-		// Test Sorting: Click the Toxicity column header to sort (ASC).
-		await page.locator( 'th#wpai_toxicity a' ).click();
+		// Reset toxicity and sort from Low to High.
+		await page
+			.getByLabel( 'Filter by Toxicity', { exact: true } )
+			.selectOption( '' );
+		await page
+			.getByRole( 'button', { name: 'Filter', exact: true } )
+			.click();
+		const toxicitySortLink = page
+			.getByRole( 'columnheader', { name: /^Toxicity\b/ } )
+			.first()
+			.getByRole( 'link' );
+		await toxicitySortLink.click();
 		await expect( page ).toHaveURL( /orderby=wpai_toxicity/ );
 		await expect( page ).toHaveURL( /order=asc/ );
+		await expect( commentRows ).toHaveText( [
+			/This is a positive comment\./,
+			/This is a neutral comment\./,
+			/This is a negative comment\./,
+		] );
 
-		// Verify order: Low toxicity should be first.
-		let toxicityLabels = await page
-			.locator( '.wpai_toxicity' )
-			.allTextContents();
-		expect( toxicityLabels[ 0 ] ).toContain( 'Low' );
-		expect( toxicityLabels[ 1 ] ).toContain( 'Medium' );
-		expect( toxicityLabels[ 2 ] ).toContain( 'High' );
-
-		// Click again to sort (DESC).
-		await page.locator( 'th#wpai_toxicity a' ).click();
+		// Sort toxicity from High to Low.
+		await toxicitySortLink.click();
 		await expect( page ).toHaveURL( /order=desc/ );
+		await expect( commentRows ).toHaveText( [
+			/This is a negative comment\./,
+			/This is a neutral comment\./,
+			/This is a positive comment\./,
+		] );
 
-		toxicityLabels = await page
-			.locator( '.wpai_toxicity' )
-			.allTextContents();
-		expect( toxicityLabels[ 0 ] ).toContain( 'High' );
-		expect( toxicityLabels[ 1 ] ).toContain( 'Medium' );
-		expect( toxicityLabels[ 2 ] ).toContain( 'Low' );
-
-		// Test Sorting: Click the Sentiment column header to sort.
-		await page.locator( 'th#wpai_sentiment a' ).click();
+		// Sort sentiment from Negative to Positive, then reverse it.
+		const sentimentSortLink = page
+			.getByRole( 'columnheader', { name: /^Sentiment\b/ } )
+			.first()
+			.getByRole( 'link' );
+		await sentimentSortLink.click();
 		await expect( page ).toHaveURL( /orderby=wpai_sentiment/ );
 		await expect( page ).toHaveURL( /order=asc/ );
+		await expect( commentRows ).toHaveText( [
+			/This is a negative comment\./,
+			/This is a neutral comment\./,
+			/This is a positive comment\./,
+		] );
 
-		// Verify order: Negative (N) should be before Neutral (N) before Positive (P) in ASC.
-		let sentimentLabels = await page
-			.locator( '.wpai_sentiment' )
-			.allTextContents();
-		expect( sentimentLabels[ 0 ] ).toContain( 'Negative' );
-		expect( sentimentLabels[ 1 ] ).toContain( 'Neutral' );
-		expect( sentimentLabels[ 2 ] ).toContain( 'Positive' );
-
-		// Click again to sort (DESC).
-		await page.locator( 'th#wpai_sentiment a' ).click();
+		await sentimentSortLink.click();
 		await expect( page ).toHaveURL( /order=desc/ );
+		await expect( commentRows ).toHaveText( [
+			/This is a positive comment\./,
+			/This is a neutral comment\./,
+			/This is a negative comment\./,
+		] );
 
-		// Verify order: Positive (P) should be before Neutral (N) before Negative (N) in DESC.
-		sentimentLabels = await page
-			.locator( '.wpai_sentiment' )
-			.allTextContents();
-		expect( sentimentLabels[ 0 ] ).toContain( 'Positive' );
-		expect( sentimentLabels[ 1 ] ).toContain( 'Neutral' );
-		expect( sentimentLabels[ 2 ] ).toContain( 'Negative' );
-
-		// Test Filtering: Filter by High value score.
-		await page.locator( '#wpai-filter-value-score' ).selectOption( 'high' );
-		await page.locator( '#post-query-submit' ).click();
-
-		// Verify only High value score is visible.
+		// Filter by High value score.
+		await page
+			.getByLabel( 'Filter by Value Score', { exact: true } )
+			.selectOption( 'high' );
+		await page
+			.getByRole( 'button', { name: 'Filter', exact: true } )
+			.click();
 		await expect(
-			page.locator( '.wpai_value_score', { hasText: /High/ } ).first()
+			positiveComment.getByTitle( /^High \(\d+%\)$/ )
 		).toBeVisible();
-		await expect(
-			page.locator( '.wpai_value_score', { hasText: /Low/ } )
-		).not.toBeVisible();
+		await expect( negativeComment ).not.toBeVisible();
+		await expect( neutralComment ).not.toBeVisible();
 
-		// Reset filter.
-		await page.locator( '#wpai-filter-value-score' ).selectOption( '' );
-		await page.locator( '#post-query-submit' ).click();
-
-		// Test Sorting: Click the Value column header to sort (ASC).
-		await page.locator( 'th#wpai_value_score a' ).click();
+		// Reset value score and sort from Low to High, then reverse it.
+		await page
+			.getByLabel( 'Filter by Value Score', { exact: true } )
+			.selectOption( '' );
+		await page
+			.getByRole( 'button', { name: 'Filter', exact: true } )
+			.click();
+		const valueSortLink = page
+			.getByRole( 'columnheader', { name: /^Value\b/ } )
+			.first()
+			.getByRole( 'link' );
+		await valueSortLink.click();
 		await expect( page ).toHaveURL( /orderby=wpai_value_score/ );
 		await expect( page ).toHaveURL( /order=asc/ );
+		await expect( commentRows ).toHaveText( [
+			/This is a negative comment\./,
+			/This is a neutral comment\./,
+			/This is a positive comment\./,
+		] );
 
-		// Verify order: Low value score should be first.
-		let valueScoreLabels = await page
-			.locator( '.wpai_value_score' )
-			.allTextContents();
-		expect( valueScoreLabels[ 0 ] ).toContain( 'Low' );
-		expect( valueScoreLabels[ 1 ] ).toContain( 'Medium' );
-		expect( valueScoreLabels[ 2 ] ).toContain( 'High' );
-
-		// Click again to sort (DESC).
-		await page.locator( 'th#wpai_value_score a' ).click();
+		await valueSortLink.click();
 		await expect( page ).toHaveURL( /order=desc/ );
-
-		valueScoreLabels = await page
-			.locator( '.wpai_value_score' )
-			.allTextContents();
-		expect( valueScoreLabels[ 0 ] ).toContain( 'High' );
-		expect( valueScoreLabels[ 1 ] ).toContain( 'Medium' );
-		expect( valueScoreLabels[ 2 ] ).toContain( 'Low' );
+		await expect( commentRows ).toHaveText( [
+			/This is a positive comment\./,
+			/This is a neutral comment\./,
+			/This is a negative comment\./,
+		] );
 	} );
 
 	test( 'Sorting after a bulk analyze does not re-show the notice', async ( {
@@ -333,22 +353,35 @@ test.describe( 'Comment Moderation Experiment', () => {
 
 		// Go to the comments admin page and run the bulk action on all comments.
 		await admin.visitAdminPage( 'edit-comments.php' );
-		await page.locator( '#cb-select-all-1' ).check();
 		await page
-			.locator( '#bulk-action-selector-top' )
-			.selectOption( 'wpai_analyze' );
-		await page.locator( '#doaction' ).click();
+			.getByRole( 'checkbox', { name: 'Select All', exact: true } )
+			.first()
+			.check();
+		await page
+			.getByRole( 'combobox', {
+				name: 'Select bulk action',
+				exact: true,
+			} )
+			.first()
+			.selectOption( {
+				label: 'Analyze Sentiment, Toxicity, and Value',
+			} );
+		await page
+			.getByRole( 'button', { name: 'Apply', exact: true } )
+			.first()
+			.click();
 
 		// The notice shows once after the bulk action.
 		await expect(
-			page.locator( '.notice-success', {
-				hasText: /queued for analysis/,
-			} )
+			page.getByRole( 'main' ).getByText( /queued for analysis/ )
 		).toBeVisible();
 
 		// The links the list table rendered must not carry the notice trigger
 		// params, otherwise every sort and pagination click re-shows the notice.
-		const sortLink = page.locator( 'th#author a' ).first();
+		const sortLink = page
+			.getByRole( 'columnheader', { name: /^Author\b/ } )
+			.first()
+			.getByRole( 'link' );
 		await expect( sortLink ).not.toHaveAttribute(
 			'href',
 			/wpai_analysis_queued/
@@ -361,9 +394,7 @@ test.describe( 'Comment Moderation Experiment', () => {
 
 		expect( page.url() ).not.toContain( 'wpai_analysis_queued' );
 		await expect(
-			page.locator( '.notice-success', {
-				hasText: /queued for analysis/,
-			} )
+			page.getByRole( 'main' ).getByText( /queued for analysis/ )
 		).toHaveCount( 0 );
 	} );
 } );
