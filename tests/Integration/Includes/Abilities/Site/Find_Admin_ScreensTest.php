@@ -9,6 +9,7 @@ namespace WordPress\AI\Tests\Integration\Includes\Abilities\Site;
 
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Site\Find_Admin_Screens;
+use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Workspace_Tools;
 
 /**
  * Find_Admin_Screens ability test case.
@@ -137,7 +138,7 @@ class Find_Admin_ScreensTest extends WP_UnitTestCase {
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
-			( new Find_Admin_Screens() )->register();
+			Workspace_Tools::register( new Find_Admin_Screens() );
 		} finally {
 			array_pop( $wp_current_filter );
 		}

@@ -235,8 +235,8 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
-			( new Search_Content() )->register();
-			( new Read_Content_Bodies() )->register();
+			Workspace_Tools::register( new Search_Content() );
+			Workspace_Tools::register( new Read_Content_Bodies() );
 
 			if ( ! wp_has_ability( self::ALLOWED_ABILITY ) ) {
 				wp_register_ability(

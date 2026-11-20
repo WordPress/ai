@@ -9,6 +9,7 @@ namespace WordPress\AI\Tests\Integration\Includes\Abilities\Site;
 
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Site\Get_Site_Info;
+use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Workspace_Tools;
 
 /**
  * Get_Site_Info ability test case.
@@ -132,7 +133,7 @@ class Get_Site_InfoTest extends WP_UnitTestCase {
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
-			( new Get_Site_Info() )->register();
+			Workspace_Tools::register( new Get_Site_Info() );
 		} finally {
 			array_pop( $wp_current_filter );
 		}

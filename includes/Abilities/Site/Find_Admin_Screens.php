@@ -126,54 +126,42 @@ final class Find_Admin_Screens {
 	);
 
 	/**
-	 * Hooks the ability into the Abilities API.
+	 * Returns the ability's registration args.
 	 *
 	 * @since x.x.x
-	 */
-	public function init(): void {
-		add_action( 'wp_abilities_api_init', array( $this, 'register' ), 11 );
-	}
-
-	/**
-	 * Registers the read-only `ai/find-admin-screens` ability.
 	 *
-	 * Must run on the `wp_abilities_api_init` hook.
-	 *
-	 * @since x.x.x
+	 * @return array<string, mixed> The registration args.
 	 */
-	public function register(): void {
-		wp_register_ability(
-			self::ABILITY,
-			array(
-				'label'               => __( 'Find Admin Screens', 'ai' ),
-				'description'         => __( 'Finds the WordPress admin screens that handle a task, from a short description in the person\'s words, such as "hide my site from google" or "change the timezone". Returns up to five screens the current user can open, best match first, each with its title, its menu section and its admin URL. Link the person to a screen with the returned URL; never build an admin URL yourself. An empty list means no screen matched. Requires an authenticated user.', 'ai' ),
-				'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
-				'input_schema'        => array(
-					'type'                 => 'object',
-					'additionalProperties' => false,
-					'required'             => array( 'query' ),
-					'properties'           => array(
-						'query' => array(
-							'type'        => 'string',
-							'minLength'   => 1,
-							'maxLength'   => self::MAX_QUERY_LENGTH,
-							'description' => __( 'What the person wants to do or change, in a few words, such as "discourage search engines" or "approve comments".', 'ai' ),
-						),
+	public function get_ability_args(): array {
+		return array(
+			'label'               => __( 'Find Admin Screens', 'ai' ),
+			'description'         => __( 'Finds the WordPress admin screens that handle a task, from a short description in the person\'s words, such as "hide my site from google" or "change the timezone". Returns up to five screens the current user can open, best match first, each with its title, its menu section and its admin URL. Link the person to a screen with the returned URL; never build an admin URL yourself. An empty list means no screen matched. Requires an authenticated user.', 'ai' ),
+			'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
+			'input_schema'        => array(
+				'type'                 => 'object',
+				'additionalProperties' => false,
+				'required'             => array( 'query' ),
+				'properties'           => array(
+					'query' => array(
+						'type'        => 'string',
+						'minLength'   => 1,
+						'maxLength'   => self::MAX_QUERY_LENGTH,
+						'description' => __( 'What the person wants to do or change, in a few words, such as "discourage search engines" or "approve comments".', 'ai' ),
 					),
 				),
-				'output_schema'       => $this->get_output_schema(),
-				'execute_callback'    => array( $this, 'execute_find_admin_screens' ),
-				'permission_callback' => array( $this, 'check_permission' ),
-				'meta'                => array(
-					'annotations'  => array(
-						'readonly'    => true,
-						'destructive' => false,
-						'idempotent'  => true,
-						'open_world'  => false,
-					),
-					'show_in_rest' => true,
+			),
+			'output_schema'       => $this->get_output_schema(),
+			'execute_callback'    => array( $this, 'execute_find_admin_screens' ),
+			'permission_callback' => array( $this, 'check_permission' ),
+			'meta'                => array(
+				'annotations'  => array(
+					'readonly'    => true,
+					'destructive' => false,
+					'idempotent'  => true,
+					'open_world'  => false,
 				),
-			)
+				'show_in_rest' => true,
+			),
 		);
 	}
 

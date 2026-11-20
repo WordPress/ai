@@ -11,6 +11,7 @@ use WP_Error;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Content\Search_Content;
 use WordPress\AI\Abilities\Show_In_Abilities;
+use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Workspace_Tools;
 
 /**
  * Search_Content ability test case.
@@ -142,14 +143,9 @@ class Search_ContentTest extends WP_UnitTestCase {
 	private function register_ability(): void {
 		global $wp_current_filter;
 
-		// Re-registering after a fixture change needs the old registration gone.
-		if ( wp_has_ability( self::ABILITY ) ) {
-			wp_unregister_ability( self::ABILITY );
-		}
-
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
-			( new Search_Content() )->register();
+			Workspace_Tools::register( new Search_Content() );
 		} finally {
 			array_pop( $wp_current_filter );
 		}

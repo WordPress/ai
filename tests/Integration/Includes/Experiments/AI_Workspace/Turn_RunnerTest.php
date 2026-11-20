@@ -194,8 +194,8 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
-			( new Search_Content() )->register();
-			( new Read_Content_Bodies() )->register();
+			Workspace_Tools::register( new Search_Content() );
+			Workspace_Tools::register( new Read_Content_Bodies() );
 			Workspace_Tools::register( new Propose_Drafts() );
 			Workspace_Tools::register( new Ask_User() );
 		} finally {

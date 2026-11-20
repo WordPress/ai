@@ -8,7 +8,7 @@ The AI Workspace experiment adds a conversation surface on a dedicated admin scr
 
 ### For End Users
 
-Enable the experiment at `Settings → AI` and open **Workspace** in the admin menu. The screen requires `manage_options`, and the menu entry is not shown to users who lack it. The workspace supports [access controls](../admin/access-controls.md): when they are on, an administrator who is not allowed gets no menu entry, no editor or Command Palette entry points, and a `wpai_feature_access_denied` error from every workspace route.
+Enable the experiment at `Settings → AI` and open **Workspace** in the admin menu. The screen requires `manage_options`, and the menu entry is not shown to users who lack it. The workspace supports [access controls](../admin/access-controls.md): when they are on, an administrator who is not allowed gets no menu entry, no editor or Command Palette entry points, and a `wpai_feature_access_denied` error from every workspace route and from the workspace's abilities, including the read abilities run over the Abilities REST API.
 
 **Key features:**
 
@@ -43,10 +43,10 @@ The empty state offers four prompts. Choosing one fills the composer, to edit or
 
 | Prompt | Tools it leads to | Where it ends |
 | --- | --- | --- |
-| **Find a gap** | `ai/search-content` (newest posts), `ai/list-terms` | Three topics, then a question offering to draft one |
+| **Find a gap** | `ai/search-content` (newest posts) | Three topics, then a question offering to draft one |
 | **Audit content** | `ai/search-content` with tag, date and featured-image filters | The matching posts, then a question offering a narrower or wider list |
 | **Plan a series** | `ai/propose-drafts` | Five drafts to review and approve |
-| **Write a template** | `ai/list-terms`, `ai/propose-template` | A 404 template to review and approve, on a block theme |
+| **Write a template** | `ai/search-content` (newest posts), `ai/propose-template` | A 404 template listing the newest posts above a search box, to review and approve, on a block theme |
 
 Fixing what the audit finds, such as adding featured images, needs an ability to edit posts, which the workspace does not have, so the assistant does not offer it.
 
@@ -61,13 +61,12 @@ Site Context reports its own unavailability instead of quietly behaving like Gen
 
 ## The tool surface
 
-The abilities offered to the model are not everything registered on the site. Three ship as a **floor**, held in `Tool_Selector::DEFAULT_CANDIDATES`, and an ability can earn a place beside them by declaring itself fit for a conversational surface:
+The abilities offered to the model are not everything registered on the site. Four read abilities ship as a **floor**, held in `Tool_Selector::DEFAULT_CANDIDATES` alongside the proposal and question tools, and an ability can earn a place beside them by declaring itself fit for a conversational surface:
 
 | Ability | What it does | Coarse capability to be declared |
 | --- | --- | --- |
 | `ai/search-content` | Full-text search over the post types exposed to abilities, or the newest posts when there is no search term, filterable by term, date range and featured image; returns titles, excerpts and terms | any authenticated user |
 | `ai/read-content-bodies` | Returns the full body text of up to five posts named by ID | any authenticated user |
-| `ai/list-terms` | Lists the site's categories, tags and other public terms with how many published posts each holds | any authenticated user |
 | `ai/get-site-info` | Returns the site's name, tagline, home URL, language, timezone, date and time formats and active theme, with the WordPress and PHP versions only for users who can `view_site_health_checks` | any authenticated user |
 | `ai/find-admin-screens` | Finds up to five admin screens for a short description of a task, such as "hide my site from google", from a curated map; returns only screens the user can open, each with its title, menu section and `admin_url()` link | any authenticated user |
 | `ai/propose-drafts` | Records a proposed set of drafts for a person to approve; writes nothing | `edit_posts` |
@@ -195,10 +194,6 @@ Two properties are worth stating plainly:
 - **No body content is ever returned.** Rows carry a title and a plain-text excerpt, generated from the content when the post has none. Reading a body is `ai/read-content-bodies`'s job, and is capped at five posts a call.
 - **A filter never widens the list.** A taxonomy the ability does not list, a `tax` filter that is not an object, and a date that is not a real day (such as `2026-02-31`) are errors, and a term the taxonomy does not have matches no posts, rather than any of them being ignored. Only publicly viewable taxonomies can be filtered by or appear in a row's `terms`. A post has a featured image when its `_thumbnail_id` is a positive number, the same test the row's `has_featured_image` uses.
 - **Every row is filtered at execute time** by the current user's read permission, using the same inherited-parent walk `core/content-query` performs. `total` comes from the underlying query and may therefore exceed the number of rows returned. The 20-item page cap is a context limit for the model, not an access control. `edit_link` is present only when the user can edit that post.
-
-### `ai/list-terms`
-
-Registered alongside `ai/search-content`. It lists the terms of publicly viewable taxonomies attached to a post type exposed to abilities, with each term's `name`, `slug` and published-post `count`. With no `taxonomy` it lists categories and tags. `orderby` is `name` (the default) or `count` (most posts first), `hide_empty` defaults to true, and `per_page` is capped at 100; `total` says how many terms match in all. Term names and counts are already public, so it needs only an authenticated user. It stays until `core/terms-query` ([#1099](https://github.com/WordPress/ai/pull/1099), [#1084](https://github.com/WordPress/ai/pull/1084)) lands in this plugin.
 
 ### `ai/get-site-info`
 
@@ -390,9 +385,9 @@ Choosing it opens the workspace with the search in the `wpai-prompt` query argum
 
 `WordPress\AI\Experiments\AI_Workspace\AI_Workspace::register()` runs when the experiment is enabled. It:
 
-- Registers `Admin_Page`, which adds the `Tools` submenu, enqueues the React bundle, and re-checks `manage_options` in the render callback so a direct call can never emit the app shell or its localized data.
+- Registers `Admin_Page`, which adds the top-level **Workspace** menu, enqueues the React bundle, and re-checks `manage_options` in the render callback so a direct call can never emit the app shell or its localized data.
 - Registers `Show_In_Abilities`, so the curated core post types are exposed before the abilities build their input schemas.
-- Registers `Search_Content` (`ai/search-content`), `Read_Content_Bodies` (`ai/read-content-bodies`), `List_Terms` (`ai/list-terms`), `Get_Site_Info` (`ai/get-site-info`), `Find_Admin_Screens` (`ai/find-admin-screens`), `Propose_Drafts` (`ai/propose-drafts`), `Propose_Template` (`ai/propose-template`), `Propose_Post_Changes` (`ai/propose-post-changes`), `Propose_Site_Identity` (`ai/propose-site-identity`) and `Ask_User` (`ai/ask-user`).
+- Registers `Search_Content` (`ai/search-content`), `Read_Content_Bodies` (`ai/read-content-bodies`), `Get_Site_Info` (`ai/get-site-info`), `Find_Admin_Screens` (`ai/find-admin-screens`), `Propose_Drafts` (`ai/propose-drafts`), `Propose_Template` (`ai/propose-template`), `Propose_Post_Changes` (`ai/propose-post-changes`), `Propose_Site_Identity` (`ai/propose-site-identity`) and `Ask_User` (`ai/ask-user`). Each class supplies its registration args and the feature registers them through `register_feature_ability()`, which tags them with the feature so its access controls apply.
 - Registers `REST\Turn_Controller`, `REST\Stream_Responder` and `REST\Proposal_Controller`.
 - Registers the `wpai_chat` post type and `wpai_archived` status (`Conversation_Store::register_post_type()`) and `REST\Conversation_Controller`. The chat ownership filter and user-removal cleanup (`Conversation_Store::register_lifecycle_hooks()`), and the personal-data exporter and eraser (`Conversation_Privacy::register()`), are hooked by the plugin's `Main` class instead, so they hold while the experiment is off.
 - Hooks `admin_enqueue_scripts` to add the block editor handoff action on `post.php` and `post-new.php`, for users who can open the workspace. The handoff carries the post's identity and a flattened, clamped title, and nothing else — the workspace reads any body through the same permission-checked tool path.

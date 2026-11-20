@@ -1,5 +1,5 @@
 {
-	"description": "The \"Write a template\" demo: one round reads the most used categories, the next proposes a 404 template through ai/propose-template that lists categories by post count, which ends the turn. Entry 2 answers the follow-up after the template is settled.",
+	"description": "The \"Write a template\" demo: one round reads the five newest posts, the next proposes a 404 template through ai/propose-template that lists the latest posts above a search box, which ends the turn. Entry 2 answers the follow-up after the template is settled.",
 	"sequence": [
 		{
 			"id": "msg_e2e_demo_tpl_round_1",
@@ -9,17 +9,14 @@
 			"content": [
 				{
 					"type": "text",
-					"text": "I will check which categories your readers find most."
+					"text": "I will check what your newest posts are."
 				},
 				{
 					"type": "tool_use",
-					"id": "toolu_e2e_demo_tpl_terms",
-					"name": "wpab__ai__list-terms",
+					"id": "toolu_e2e_demo_tpl_search",
+					"name": "wpab__ai__search-content",
 					"input": {
-						"taxonomy": [
-							"category"
-						],
-						"orderby": "count",
+						"orderby": "date",
 						"per_page": 5
 					}
 				}
@@ -39,7 +36,7 @@
 			"content": [
 				{
 					"type": "text",
-					"text": "I will propose a 404 template that lists your categories by how many posts each has, with a search box."
+					"text": "I will propose a 404 template that lists your newest posts, with a search box."
 				},
 				{
 					"type": "tool_use",
@@ -48,7 +45,7 @@
 					"input": {
 						"slug": "404",
 						"title": "Page not found",
-						"content": "<!-- wp:group {\"tagName\":\"main\",\"layout\":{\"type\":\"constrained\"}} --><main class=\"wp-block-group\"><!-- wp:heading {\"level\":1} --><h1 class=\"wp-block-heading\">That page is not here</h1><!-- /wp:heading --><!-- wp:paragraph --><p>Try one of the topics readers visit most.</p><!-- /wp:paragraph --><!-- wp:categories {\"showPostCounts\":true} /--><!-- wp:search {\"label\":\"Search\",\"buttonText\":\"Search\"} /--></main><!-- /wp:group -->"
+						"content": "<!-- wp:group {\"tagName\":\"main\",\"layout\":{\"type\":\"constrained\"}} --><main class=\"wp-block-group\"><!-- wp:heading {\"level\":1} --><h1 class=\"wp-block-heading\">That page is not here</h1><!-- /wp:heading --><!-- wp:paragraph --><p>Try one of the newest posts instead.</p><!-- /wp:paragraph --><!-- wp:latest-posts {\"postsToShow\":5} /--><!-- wp:search {\"label\":\"Search\",\"buttonText\":\"Search\"} /--></main><!-- /wp:group -->"
 					}
 				}
 			],
@@ -67,7 +64,7 @@
 			"content": [
 				{
 					"type": "text",
-					"text": "Your 404 template now points visitors to your categories. Want a matching search results template?"
+					"text": "Your 404 template now points visitors to your newest posts. Want a matching search results template?"
 				}
 			],
 			"stop_reason": "end_turn",

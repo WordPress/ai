@@ -110,7 +110,7 @@ class Post_Field_ProposalTest extends WP_UnitTestCase {
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
 			Workspace_Tools::register( new Propose_Post_Changes() );
-			( new Read_Content_Bodies() )->register();
+			Workspace_Tools::register( new Read_Content_Bodies() );
 		} finally {
 			array_pop( $wp_current_filter );
 		}

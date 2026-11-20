@@ -36,7 +36,7 @@ final class Read_Content_Bodies {
 	 * @since x.x.x
 	 * @var string
 	 */
-	private const ABILITY = 'ai/read-content-bodies';
+	public const ABILITY = 'ai/read-content-bodies';
 
 	/**
 	 * The ability category used for content abilities.
@@ -55,13 +55,12 @@ final class Read_Content_Bodies {
 	private const MAX_POSTS = 5;
 
 	/**
-	 * Hooks the ability into the Abilities API.
+	 * Hooks the ability category into the Abilities API.
 	 *
 	 * @since x.x.x
 	 */
 	public function init(): void {
 		add_action( 'wp_abilities_api_categories_init', array( $this, 'register_category' ), 11 );
-		add_action( 'wp_abilities_api_init', array( $this, 'register' ), 11 );
 	}
 
 	/**
@@ -84,42 +83,39 @@ final class Read_Content_Bodies {
 	}
 
 	/**
-	 * Registers the read-only `ai/read-content-bodies` ability.
-	 *
-	 * Must run on the `wp_abilities_api_init` hook.
+	 * Returns the ability's registration args.
 	 *
 	 * @since x.x.x
+	 *
+	 * @return array<string, mixed>|null The registration args, or null when no post type is exposed.
 	 */
-	public function register(): void {
+	public function get_ability_args(): ?array {
 		if ( array() === $this->get_exposed_post_types() ) {
-			return;
+			return null;
 		}
 
-		wp_register_ability(
-			self::ABILITY,
-			array(
-				'label'               => __( 'Read Content Bodies', 'ai' ),
-				'description'         => sprintf(
-					/* translators: %d: the maximum number of posts whose bodies are returned per call. */
-					__( 'Returns the full body text of posts named by ID, for at most %d posts per call. Bodies are filtered by the current user\'s capabilities at the moment of the call, so a post the user cannot read is never returned; an ID that was not returned is listed under "unavailable", which means either that no such post exists or that the user may not read it. The body of a password-protected post is empty unless the user can edit that post. Bodies are plain text by default; pass "raw": true to also receive, as "content_raw", the stored block markup of each returned post the user can edit, which is what a proposed content change must be built from. Requires an authenticated user.', 'ai' ),
-					self::MAX_POSTS
+		return array(
+			'label'               => __( 'Read Content Bodies', 'ai' ),
+			'description'         => sprintf(
+				/* translators: %d: the maximum number of posts whose bodies are returned per call. */
+				__( 'Returns the full body text of posts named by ID, for at most %d posts per call. Bodies are filtered by the current user\'s capabilities at the moment of the call, so a post the user cannot read is never returned; an ID that was not returned is listed under "unavailable", which means either that no such post exists or that the user may not read it. The body of a password-protected post is empty unless the user can edit that post. Bodies are plain text by default; pass "raw": true to also receive, as "content_raw", the stored block markup of each returned post the user can edit, which is what a proposed content change must be built from. Requires an authenticated user.', 'ai' ),
+				self::MAX_POSTS
+			),
+			'category'            => self::CATEGORY,
+			'input_schema'        => $this->get_input_schema(),
+			'output_schema'       => $this->get_output_schema(),
+			'execute_callback'    => array( $this, 'execute_read_content_bodies' ),
+			'permission_callback' => array( $this, 'check_permission' ),
+			'meta'                => array(
+				'annotations'  => array(
+					'readonly'    => true,
+					'destructive' => false,
+					'idempotent'  => true,
+					// MCP clients assume open-world when the hint is absent.
+					'open_world'  => false,
 				),
-				'category'            => self::CATEGORY,
-				'input_schema'        => $this->get_input_schema(),
-				'output_schema'       => $this->get_output_schema(),
-				'execute_callback'    => array( $this, 'execute_read_content_bodies' ),
-				'permission_callback' => array( $this, 'check_permission' ),
-				'meta'                => array(
-					'annotations'  => array(
-						'readonly'    => true,
-						'destructive' => false,
-						'idempotent'  => true,
-						// MCP clients assume open-world when the hint is absent.
-						'open_world'  => false,
-					),
-					'show_in_rest' => true,
-				),
-			)
+				'show_in_rest' => true,
+			),
 		);
 	}
 

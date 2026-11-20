@@ -147,8 +147,6 @@ final class Tool_Selector {
 		self::SEARCH_ABILITY    => '',
 		// Rows are filtered per user at execute time; a tighter gate would only withhold legitimate reads.
 		self::READ_ABILITY      => '',
-		// Term names and post counts are already public, like search results.
-		'ai/list-terms'         => '',
 		// Versions are added only for `manage_options`; the rest is public.
 		'ai/get-site-info'      => '',
 		// Each screen is checked against the user's capabilities before it is returned.

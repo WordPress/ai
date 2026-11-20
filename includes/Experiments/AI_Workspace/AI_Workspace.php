@@ -10,7 +10,6 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\AI_Workspace;
 
 use WordPress\AI\Abilities\Command_Palette_AI_Search\Command_Palette_AI_Search;
-use WordPress\AI\Abilities\Content\List_Terms;
 use WordPress\AI\Abilities\Content\Read_Content_Bodies;
 use WordPress\AI\Abilities\Content\Search_Content;
 use WordPress\AI\Abilities\Show_In_Abilities;
@@ -80,11 +79,11 @@ class AI_Workspace extends Abstract_Feature {
 	private ?Admin_Page $admin_page = null;
 
 	/**
-	 * The workspace's own tools: the proposal kinds and the question tool.
+	 * The workspace's tools: the reads, the proposal kinds and the question tool.
 	 *
 	 * @since x.x.x
 	 *
-	 * @var list<\WordPress\AI\Experiments\AI_Workspace\Propose_Drafts|\WordPress\AI\Experiments\AI_Workspace\Propose_Template|\WordPress\AI\Experiments\AI_Workspace\Propose_Post_Changes|\WordPress\AI\Experiments\AI_Workspace\Propose_Site_Identity|\WordPress\AI\Experiments\AI_Workspace\Ask_User>
+	 * @var list<\WordPress\AI\Abilities\Content\Search_Content|\WordPress\AI\Abilities\Content\Read_Content_Bodies|\WordPress\AI\Abilities\Site\Get_Site_Info|\WordPress\AI\Abilities\Site\Find_Admin_Screens|\WordPress\AI\Experiments\AI_Workspace\Propose_Drafts|\WordPress\AI\Experiments\AI_Workspace\Propose_Template|\WordPress\AI\Experiments\AI_Workspace\Propose_Post_Changes|\WordPress\AI\Experiments\AI_Workspace\Propose_Site_Identity|\WordPress\AI\Experiments\AI_Workspace\Ask_User>
 	 */
 	private array $tools = array();
 
@@ -116,12 +115,11 @@ class AI_Workspace extends Abstract_Feature {
 		( new Show_In_Abilities() )->register();
 
 		// Registered here, not behind Custom Abilities, so the workspace's tools don't depend on another experiment.
-		( new Search_Content() )->init();
+		$search = new Search_Content();
+		$search->init();
 
-		( new Read_Content_Bodies() )->init();
-		( new List_Terms() )->init();
-		( new Get_Site_Info() )->init();
-		( new Find_Admin_Screens() )->init();
+		$read = new Read_Content_Bodies();
+		$read->init();
 
 		$drafts = new Propose_Drafts();
 		$drafts->init();
@@ -135,7 +133,7 @@ class AI_Workspace extends Abstract_Feature {
 		$site_identity = new Propose_Site_Identity();
 		$ask_user      = new Ask_User();
 
-		$this->tools = array( $drafts, $template, $post_changes, $site_identity, $ask_user );
+		$this->tools = array( $search, $read, new Get_Site_Info(), new Find_Admin_Screens(), $drafts, $template, $post_changes, $site_identity, $ask_user );
 		add_action( 'wp_abilities_api_init', array( $this, 'register_tool_abilities' ), 11 );
 
 		( new Turn_Controller() )->init();

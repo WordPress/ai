@@ -8,6 +8,7 @@
 namespace WordPress\AI\Tests\Integration\Experiments\AI_Workspace;
 
 use WP_REST_Request;
+use WP_REST_Server;
 use WP_UnitTestCase;
 use WordPress\AI\Access_Control\Feature_Access;
 use WordPress\AI\Experiments\AI_Workspace\AI_Workspace;
@@ -24,6 +25,35 @@ use WordPress\AI\Features\Registry;
  * @since x.x.x
  */
 class AI_WorkspaceTest extends WP_UnitTestCase {
+
+	/**
+	 * The read abilities the feature registers.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var list<string>
+	 */
+	private const READ_ABILITIES = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
+		'ai/search-content',
+		'ai/read-content-bodies',
+		'ai/get-site-info',
+		'ai/find-admin-screens',
+	);
+
+	/**
+	 * The workspace-only tool abilities the feature registers alongside them.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var list<string>
+	 */
+	private const TOOL_ABILITIES = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
+		'ai/propose-drafts',
+		'ai/propose-template',
+		'ai/propose-post-changes',
+		'ai/propose-site-identity',
+		'ai/ask-user',
+	);
 
 	/**
 	 * Set up test case.
@@ -44,6 +74,22 @@ class AI_WorkspaceTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function tearDown(): void {
+		$this->unregister_workspace_abilities();
+
+		foreach ( array( 'post', 'page' ) as $post_type ) {
+			$object = get_post_type_object( $post_type );
+			if ( ! $object ) {
+				continue;
+			}
+
+			// Unsetting a property WP 7.2 declares leaves it uninitialized, so restore the default.
+			if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
+				$object->show_in_abilities = true;
+			} else {
+				unset( $object->show_in_abilities );
+			}
+		}
+
 		wp_set_current_user( 0 );
 		unset( $GLOBALS['current_screen'] );
 		delete_option( 'wpai_feature_ai-workspace_enabled' );
@@ -378,6 +424,99 @@ class AI_WorkspaceTest extends WP_UnitTestCase {
 
 		$this->assertSame( 403, $response->get_status() );
 		$this->assertSame( 'wpai_feature_access_denied', $response->get_data()['code'] );
+	}
+
+	/**
+	 * Each read ability is tagged with the feature, so its access control applies.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_read_abilities_carry_the_feature_meta(): void {
+		$this->register_read_abilities();
+
+		foreach ( self::READ_ABILITIES as $name ) {
+			$ability = wp_get_ability( $name );
+
+			$this->assertNotNull( $ability, $name . ' is registered by the feature.' );
+			$this->assertSame( AI_Workspace::get_id(), $ability->get_meta_item( Feature_Access::ABILITY_META_KEY ), $name . ' carries the feature tag.' );
+		}
+	}
+
+	/**
+	 * An administrator left out of the feature's access list cannot search over the abilities REST route.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_search_content_over_rest_refuses_an_administrator_without_feature_access(): void {
+		$this->register_read_abilities();
+
+		update_option( Feature_Access::enabled_option( AI_Workspace::get_id() ), true );
+		update_option( Feature_Access::roles_option( AI_Workspace::get_id() ), array( 'editor' ) );
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+
+		global $wp_rest_server;
+		$wp_rest_server = new WP_REST_Server(); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited, WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Rebuilding the REST server for this test.
+		do_action( 'rest_api_init', $wp_rest_server ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Fires core's own hook.
+
+		$request = new WP_REST_Request( 'GET', '/wp-abilities/v1/abilities/ai/search-content/run' );
+		$request->set_query_params( array( 'input' => array( 'search' => 'hello' ) ) );
+		$response = rest_do_request( $request );
+
+		$wp_rest_server = null; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited, WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Resetting the REST server after the test.
+
+		$this->assertSame( 403, $response->get_status() );
+		$this->assertSame( 'wpai_feature_access_denied', $response->get_data()['code'] );
+	}
+
+	/**
+	 * Registers the feature's abilities the way `wp_abilities_api_init` would.
+	 *
+	 * @since x.x.x
+	 */
+	private function register_read_abilities(): void {
+		global $wp_current_filter;
+
+		$feature = new AI_Workspace();
+		$feature->register();
+
+		if ( ! wp_has_ability_category( 'content' ) ) {
+			$wp_current_filter[] = 'wp_abilities_api_categories_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+			try {
+				wp_register_ability_category(
+					'content',
+					array(
+						'label'       => 'Content',
+						'description' => 'Content.',
+					)
+				);
+			} finally {
+				array_pop( $wp_current_filter );
+			}
+		}
+
+		$this->unregister_workspace_abilities();
+
+		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+		try {
+			$feature->register_tool_abilities();
+		} finally {
+			array_pop( $wp_current_filter );
+		}
+	}
+
+	/**
+	 * Unregisters any workspace abilities left by an earlier registration.
+	 *
+	 * @since x.x.x
+	 */
+	private function unregister_workspace_abilities(): void {
+		foreach ( array_merge( self::READ_ABILITIES, self::TOOL_ABILITIES ) as $name ) {
+			if ( ! wp_has_ability( $name ) ) {
+				continue;
+			}
+
+			wp_unregister_ability( $name );
+		}
 	}
 
 	/**

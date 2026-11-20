@@ -9,7 +9,6 @@ namespace WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace;
 
 use WP_Ability;
 use WP_UnitTestCase;
-use WordPress\AI\Abilities\Content\List_Terms;
 use WordPress\AI\Abilities\Content\Read_Content_Bodies;
 use WordPress\AI\Abilities\Content\Search_Content;
 use WordPress\AI\Abilities\Show_In_Abilities;
@@ -66,7 +65,6 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 	private const CURATED_SURFACE = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
 		'ai/search-content',
 		'ai/read-content-bodies',
-		'ai/list-terms',
 		'ai/get-site-info',
 		'ai/find-admin-screens',
 		'ai/propose-drafts',
@@ -149,7 +147,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		Test_Update_Kind::unregister_ability();
 
 		$ability_names = array_merge(
-			array( 'ai/search-content', 'ai/read-content-bodies', 'ai/list-terms', 'ai/get-site-info', 'ai/find-admin-screens', 'ai/propose-drafts', 'ai/propose-template', 'ai/propose-post-changes', 'ai/propose-site-identity', 'ai/ask-user', self::EDITOR_ABILITY ),
+			array( 'ai/search-content', 'ai/read-content-bodies', 'ai/get-site-info', 'ai/find-admin-screens', 'ai/propose-drafts', 'ai/propose-template', 'ai/propose-post-changes', 'ai/propose-site-identity', 'ai/ask-user', self::EDITOR_ABILITY ),
 			$this->registered
 		);
 
@@ -235,7 +233,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
-			( new Search_Content() )->register();
+			Workspace_Tools::register( new Search_Content() );
 
 			if ( ! wp_has_ability( self::EDITOR_ABILITY ) ) {
 				wp_register_ability(
@@ -845,10 +843,9 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
-			( new Read_Content_Bodies() )->register();
-			( new List_Terms() )->register();
-			( new Get_Site_Info() )->register();
-			( new Find_Admin_Screens() )->register();
+			Workspace_Tools::register( new Read_Content_Bodies() );
+			Workspace_Tools::register( new Get_Site_Info() );
+			Workspace_Tools::register( new Find_Admin_Screens() );
 			Workspace_Tools::register( new Propose_Drafts() );
 			Workspace_Tools::register( new Propose_Template() );
 			Workspace_Tools::register( new Propose_Post_Changes() );
@@ -971,8 +968,8 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		$this->assertSame( 'edit_posts', $candidates['ai/propose-post-changes'] );
 		$this->assertSame( 'manage_options', $candidates['ai/propose-site-identity'] );
 		$this->assertSame(
-			array( 'ai/search-content', 'ai/read-content-bodies', 'ai/list-terms', 'ai/get-site-info', 'ai/find-admin-screens', 'ai/propose-drafts', 'ai/propose-template', 'ai/propose-post-changes', 'ai/propose-site-identity', 'ai/ask-user' ),
-			array_slice( array_keys( $candidates ), 0, 10 )
+			array( 'ai/search-content', 'ai/read-content-bodies', 'ai/get-site-info', 'ai/find-admin-screens', 'ai/propose-drafts', 'ai/propose-template', 'ai/propose-post-changes', 'ai/propose-site-identity', 'ai/ask-user' ),
+			array_slice( array_keys( $candidates ), 0, 9 )
 		);
 	}
 

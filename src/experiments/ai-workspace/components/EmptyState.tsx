@@ -26,7 +26,7 @@ export default function EmptyState( {
 		{
 			label: __( 'Find a gap', 'ai' ),
 			prompt: __(
-				'Look at my 10 most recent posts and the topics I write about most. Suggest three related topics I have not covered yet.',
+				'Look at my 10 most recent posts and what they cover. Suggest three related topics I have not covered yet.',
 				'ai'
 			),
 		},
@@ -47,7 +47,7 @@ export default function EmptyState( {
 		{
 			label: __( 'Write a template', 'ai' ),
 			prompt: __(
-				'Create a 404 page template that helps visitors find my most popular categories.',
+				'Create a 404 page template that points visitors to my newest posts and offers a search box.',
 				'ai'
 			),
 		},

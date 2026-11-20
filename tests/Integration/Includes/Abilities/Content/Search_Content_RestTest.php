@@ -1,6 +1,6 @@
 <?php
 /**
- * REST tests for the content listing abilities run over GET.
+ * REST tests for the content search ability run over GET.
  *
  * @package WordPress\AI\Tests\Integration\Includes\Abilities\Content
  */
@@ -11,12 +11,12 @@ use WP_REST_Request;
 use WP_REST_Server;
 use WP_UnitTestCase;
 use WP_UnitTest_Factory;
-use WordPress\AI\Abilities\Content\List_Terms;
 use WordPress\AI\Abilities\Content\Search_Content;
 use WordPress\AI\Abilities\Show_In_Abilities;
+use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Workspace_Tools;
 
 /**
- * Search_Content and List_Terms REST test case.
+ * Search_Content REST test case.
  *
  * Runs the filters over GET, where every input arrives as a string.
  *
@@ -62,9 +62,9 @@ class Search_Content_RestTest extends WP_UnitTestCase {
 		parent::setUp();
 
 		global $wp_rest_server, $wp_current_filter;
-		$wp_rest_server = new WP_REST_Server(); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Resetting the REST server for the test.
+		$wp_rest_server = new WP_REST_Server(); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited, WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Resetting the REST server for the test.
 		$this->server   = $wp_rest_server;
-		do_action( 'rest_api_init' );
+		do_action( 'rest_api_init' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Fires core's own hook.
 
 		( new Show_In_Abilities() )->register();
 
@@ -85,8 +85,7 @@ class Search_Content_RestTest extends WP_UnitTestCase {
 
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
-			( new Search_Content() )->register();
-			( new List_Terms() )->register();
+			Workspace_Tools::register( new Search_Content() );
 		} finally {
 			array_pop( $wp_current_filter );
 		}
@@ -100,12 +99,8 @@ class Search_Content_RestTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function tearDown(): void {
-		foreach ( array( 'ai/search-content', 'ai/list-terms' ) as $ability_name ) {
-			if ( ! wp_has_ability( $ability_name ) ) {
-				continue;
-			}
-
-			wp_unregister_ability( $ability_name );
+		if ( wp_has_ability( 'ai/search-content' ) ) {
+			wp_unregister_ability( 'ai/search-content' );
 		}
 
 		foreach ( array( 'post', 'page' ) as $post_type ) {
@@ -123,7 +118,7 @@ class Search_Content_RestTest extends WP_UnitTestCase {
 		}
 
 		global $wp_rest_server;
-		$wp_rest_server = null; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Resetting the REST server after the test.
+		$wp_rest_server = null; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited, WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Resetting the REST server after the test.
 
 		parent::tearDown();
 	}
@@ -211,30 +206,5 @@ class Search_Content_RestTest extends WP_UnitTestCase {
 			array_column( $response->get_data()['results'], 'id' ),
 			'Only the 2023 posts tagged "updates" or "news" without a featured image match.'
 		);
-	}
-
-	/**
-	 * The terms listing reads its taxonomy list and empty-terms flag from a query string.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_list_terms_reads_its_inputs_from_a_query_string(): void {
-		self::factory()->category->create( array( 'name' => 'Unused category' ) );
-		$this->create_post( '2024-01-01 10:00:00', array( 'roadmap' ), false );
-
-		$response = $this->run_ability(
-			'ai/list-terms',
-			array(
-				'taxonomy'   => 'category,post_tag',
-				'hide_empty' => 'false',
-			)
-		);
-
-		$this->assertSame( 200, $response->get_status() );
-
-		$names = array_column( $response->get_data()['terms'], 'name' );
-
-		$this->assertContains( 'Unused category', $names, 'hide_empty=false keeps empty terms.' );
-		$this->assertContains( 'roadmap', $names, 'Tags are listed alongside categories.' );
 	}
 }

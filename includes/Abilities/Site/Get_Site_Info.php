@@ -34,47 +34,35 @@ final class Get_Site_Info {
 	public const ABILITY = 'ai/get-site-info';
 
 	/**
-	 * Hooks the ability into the Abilities API.
+	 * Returns the ability's registration args.
 	 *
 	 * @since x.x.x
-	 */
-	public function init(): void {
-		add_action( 'wp_abilities_api_init', array( $this, 'register' ), 11 );
-	}
-
-	/**
-	 * Registers the read-only `ai/get-site-info` ability.
 	 *
-	 * Must run on the `wp_abilities_api_init` hook.
-	 *
-	 * @since x.x.x
+	 * @return array<string, mixed> The registration args.
 	 */
-	public function register(): void {
-		wp_register_ability(
-			self::ABILITY,
-			array(
-				'label'               => __( 'Get Site Info', 'ai' ),
-				'description'         => __( 'Returns facts about this site: its name, tagline, home URL, language, timezone, date and time formats, active theme and whether it is a block theme. The WordPress and PHP versions are included only for users who can view Site Health. Takes no input. Requires an authenticated user.', 'ai' ),
-				'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
-				'input_schema'        => array(
-					'type'                 => 'object',
-					// No empty `properties`: it encodes as `[]`, which OpenAI rejects.
-					'additionalProperties' => false,
-					'default'              => array(),
+	public function get_ability_args(): array {
+		return array(
+			'label'               => __( 'Get Site Info', 'ai' ),
+			'description'         => __( 'Returns facts about this site: its name, tagline, home URL, language, timezone, date and time formats, active theme and whether it is a block theme. The WordPress and PHP versions are included only for users who can view Site Health. Takes no input. Requires an authenticated user.', 'ai' ),
+			'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
+			'input_schema'        => array(
+				'type'                 => 'object',
+				// No empty `properties`: it encodes as `[]`, which OpenAI rejects.
+				'additionalProperties' => false,
+				'default'              => array(),
+			),
+			'output_schema'       => $this->get_output_schema(),
+			'execute_callback'    => array( $this, 'execute_get_site_info' ),
+			'permission_callback' => array( $this, 'check_permission' ),
+			'meta'                => array(
+				'annotations'  => array(
+					'readonly'    => true,
+					'destructive' => false,
+					'idempotent'  => true,
+					'open_world'  => false,
 				),
-				'output_schema'       => $this->get_output_schema(),
-				'execute_callback'    => array( $this, 'execute_get_site_info' ),
-				'permission_callback' => array( $this, 'check_permission' ),
-				'meta'                => array(
-					'annotations'  => array(
-						'readonly'    => true,
-						'destructive' => false,
-						'idempotent'  => true,
-						'open_world'  => false,
-					),
-					'show_in_rest' => true,
-				),
-			)
+				'show_in_rest' => true,
+			),
 		);
 	}
 

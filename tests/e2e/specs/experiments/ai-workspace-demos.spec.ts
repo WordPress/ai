@@ -53,13 +53,13 @@ const CHOICE_TOOLS: Record< string, string > = {
  */
 const PROMPTS: Record< string, string > = {
 	'Find a gap':
-		'Look at my 10 most recent posts and the topics I write about most. Suggest three related topics I have not covered yet.',
+		'Look at my 10 most recent posts and what they cover. Suggest three related topics I have not covered yet.',
 	'Audit content':
 		'List the posts tagged Updates from 2023 that have no featured image.',
 	'Plan a series':
 		'Plan a 5-part series on remote work, with a title and short excerpt for each, as drafts I can review.',
 	'Write a template':
-		'Create a 404 page template that helps visitors find my most popular categories.',
+		'Create a 404 page template that points visitors to my newest posts and offers a search box.',
 };
 
 const DEMO_SCENARIOS = [
@@ -141,7 +141,7 @@ test.describe( 'AI Workspace starter prompts', () => {
 		);
 	} );
 
-	test( 'Find a gap reads recent posts and topics, then offers to draft one', async ( {
+	test( 'Find a gap reads recent posts, then offers to draft one', async ( {
 		admin,
 		page,
 		requestUtils,
@@ -165,10 +165,7 @@ test.describe( 'AI Workspace starter prompts', () => {
 		await expect(
 			page.locator( '.ai-workspace__turn' ).first()
 		).toContainText( 'Three related topics you have not covered yet' );
-		expect( await toolOrder( page ) ).toEqual( [
-			'ai/search-content',
-			'ai/list-terms',
-		] );
+		expect( await toolOrder( page ) ).toEqual( [ 'ai/search-content' ] );
 		expect(
 			( await getMockScenarioReport( requestUtils ) ).calls[
 				'Anthropic/workspace-find-gap'
@@ -266,7 +263,7 @@ test.describe( 'AI Workspace starter prompts', () => {
 		).toBe( 1 );
 	} );
 
-	test( 'Write a template reads the categories, then proposes the template', async ( {
+	test( 'Write a template reads the newest posts, then proposes the template', async ( {
 		admin,
 		page,
 		requestUtils,
@@ -288,11 +285,11 @@ test.describe( 'AI Workspace starter prompts', () => {
 			} );
 			await expect( card ).toBeVisible( { timeout: 30000 } );
 			await expect( card.locator( 'code' ) ).toContainText(
-				'wp:categories'
+				'wp:latest-posts'
 			);
 
 			expect( await toolOrder( page ) ).toEqual( [
-				'ai/list-terms',
+				'ai/search-content',
 				'ai/propose-template',
 			] );
 		} finally {

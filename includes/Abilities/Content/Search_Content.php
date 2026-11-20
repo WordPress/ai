@@ -37,7 +37,7 @@ final class Search_Content {
 	 * @since x.x.x
 	 * @var string
 	 */
-	private const ABILITY = 'ai/search-content';
+	public const ABILITY = 'ai/search-content';
 
 	/**
 	 * The ability category used for content abilities.
@@ -72,13 +72,12 @@ final class Search_Content {
 	private array $taxonomies = array();
 
 	/**
-	 * Hooks the ability into the Abilities API.
+	 * Hooks the ability category into the Abilities API.
 	 *
 	 * @since x.x.x
 	 */
 	public function init(): void {
 		add_action( 'wp_abilities_api_categories_init', array( $this, 'register_category' ), 11 );
-		add_action( 'wp_abilities_api_init', array( $this, 'register' ), 11 );
 	}
 
 	/**
@@ -101,45 +100,42 @@ final class Search_Content {
 	}
 
 	/**
-	 * Registers the read-only `ai/search-content` ability.
-	 *
-	 * Must run on the `wp_abilities_api_init` hook.
+	 * Returns the ability's registration args.
 	 *
 	 * @since x.x.x
+	 *
+	 * @return array<string, mixed>|null The registration args, or null when no post type is exposed.
 	 */
-	public function register(): void {
+	public function get_ability_args(): ?array {
 		$post_types = array_keys( $this->get_exposed_post_types() );
 		if ( empty( $post_types ) ) {
-			return;
+			return null;
 		}
 
 		$statuses = array_values( get_post_stati( array( 'internal' => false ) ) );
 
-		wp_register_ability(
-			self::ABILITY,
-			array(
-				'label'               => __( 'Search Content', 'ai' ),
-				'description'         => sprintf(
-					/* translators: %d: the maximum number of search results returned per page. */
-					__( 'Searches the post types exposed to abilities for a term appearing in a post title, excerpt, or body, or, without a search term, lists the newest posts. Either way the list can be narrowed to posts with a taxonomy term (a category or tag, by slug or name), published in a date range, or with or without a featured image. Each post comes back with its title, excerpt, terms and whether it has a featured image, never full body content. Results are limited to %d posts per page and are filtered by the current user\'s capabilities, so a post the user cannot read is never returned; "withheld" says how many matches on the returned page that removed, and is 0 when the only reason more posts were not returned is that they are on later pages. It is null rather than a number when one or more post types could not be searched at all under this user\'s role, because a page-level count is then not the whole permission story. Requires an authenticated user.', 'ai' ),
-					self::MAX_PER_PAGE
+		return array(
+			'label'               => __( 'Search Content', 'ai' ),
+			'description'         => sprintf(
+				/* translators: %d: the maximum number of search results returned per page. */
+				__( 'Searches the post types exposed to abilities for a term appearing in a post title, excerpt, or body, or, without a search term, lists the newest posts. Either way the list can be narrowed to posts with a taxonomy term (a category or tag, by slug or name), published in a date range, or with or without a featured image. Each post comes back with its title, excerpt, terms and whether it has a featured image, never full body content. Results are limited to %d posts per page and are filtered by the current user\'s capabilities, so a post the user cannot read is never returned; "withheld" says how many matches on the returned page that removed, and is 0 when the only reason more posts were not returned is that they are on later pages. It is null rather than a number when one or more post types could not be searched at all under this user\'s role, because a page-level count is then not the whole permission story. Requires an authenticated user.', 'ai' ),
+				self::MAX_PER_PAGE
+			),
+			'category'            => self::CATEGORY,
+			'input_schema'        => $this->get_input_schema( $post_types, $statuses, Search_Filters::viewable_taxonomies() ),
+			'output_schema'       => $this->get_output_schema(),
+			'execute_callback'    => array( $this, 'execute_search_content' ),
+			'permission_callback' => array( $this, 'check_permission' ),
+			'meta'                => array(
+				'annotations'  => array(
+					'readonly'    => true,
+					'destructive' => false,
+					'idempotent'  => true,
+					// MCP clients assume open-world when the hint is absent.
+					'open_world'  => false,
 				),
-				'category'            => self::CATEGORY,
-				'input_schema'        => $this->get_input_schema( $post_types, $statuses, Search_Filters::viewable_taxonomies() ),
-				'output_schema'       => $this->get_output_schema(),
-				'execute_callback'    => array( $this, 'execute_search_content' ),
-				'permission_callback' => array( $this, 'check_permission' ),
-				'meta'                => array(
-					'annotations'  => array(
-						'readonly'    => true,
-						'destructive' => false,
-						'idempotent'  => true,
-						// MCP clients assume open-world when the hint is absent.
-						'open_world'  => false,
-					),
-					'show_in_rest' => true,
-				),
-			)
+				'show_in_rest' => true,
+			),
 		);
 	}
 
