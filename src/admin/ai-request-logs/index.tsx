@@ -34,6 +34,7 @@ import {
 	serializeOperationSelection,
 } from './query';
 import SettingsPanel from './components/SettingsPanel';
+import SourceUsage from './components/SourceUsage';
 import SummaryCards from './components/SummaryCards';
 import type {
 	FilterOptions,
@@ -365,6 +366,8 @@ const App: React.FC = () => {
 				) }
 
 				<SummaryCards summary={ summary } loading={ summaryLoading } />
+
+				<SourceUsage sources={ summary.by_source ?? [] } />
 
 				<div className="ai-request-logs__main">
 					<LogsTable

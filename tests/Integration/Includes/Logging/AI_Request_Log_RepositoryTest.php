@@ -499,6 +499,274 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that insert stores the request source key from the context.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_insert_stores_source_key_from_context(): void {
+		global $wpdb;
+
+		$attributed   = $this->insert_log(
+			array(
+				'context' => array(
+					'source' => array(
+						'type' => 'plugin',
+						'slug' => 'example-seo',
+						'name' => 'example-seo',
+						'file' => 'example-seo/example-seo.php',
+					),
+				),
+			)
+		);
+		$unattributed = $this->insert_log( array( 'context' => array() ) );
+
+		$table = $this->schema->get_table_name();
+
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$source_for = static function ( string $log_id ) use ( $wpdb, $table ) {
+			return $wpdb->get_var( $wpdb->prepare( "SELECT source FROM {$table} WHERE log_id = %s", $log_id ) );
+		};
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		$this->assertSame( 'plugin:example-seo', $source_for( $attributed ) );
+		$this->assertNull( $source_for( $unattributed ) );
+	}
+
+	/**
+	 * Tests that get_summary groups requests, tokens, and failures by source.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_summary_breaks_down_usage_by_source(): void {
+		$plugin_context = array(
+			'source' => array(
+				'type' => 'plugin',
+				'slug' => 'example-seo',
+			),
+		);
+
+		$this->insert_log(
+			array(
+				'context'       => $plugin_context,
+				'tokens_input'  => 400,
+				'tokens_output' => 100,
+			)
+		);
+		$this->insert_log(
+			array(
+				'context'       => $plugin_context,
+				'tokens_input'  => 0,
+				'tokens_output' => 0,
+				'status'        => 'error',
+				'error_message' => 'The "openai" AI connector has not been approved for use by "example-seo/example-seo.php".',
+			)
+		);
+		$this->insert_log(
+			array(
+				'context'       => array(),
+				'tokens_input'  => 10,
+				'tokens_output' => 5,
+			)
+		);
+
+		$summary = $this->repository->get_summary( 'all', true );
+
+		$this->assertCount( 2, $summary['by_source'] );
+
+		$plugin = $summary['by_source'][0];
+		$this->assertSame( 'plugin:example-seo', $plugin['source'] );
+		$this->assertSame( 'plugin', $plugin['type'] );
+		$this->assertSame( 'example-seo', $plugin['name'] );
+		$this->assertSame( 2, $plugin['requests'] );
+		$this->assertSame( 500, $plugin['tokens'] );
+		$this->assertSame( 1, $plugin['errors'] );
+
+		$unknown = $summary['by_source'][1];
+		$this->assertNull( $unknown['source'] );
+		$this->assertSame( '', $unknown['name'] );
+		$this->assertSame( 1, $unknown['requests'] );
+		$this->assertSame( 15, $unknown['tokens'] );
+	}
+
+	/**
+	 * Tests that get_summary resolves installed plugin names for sources.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_summary_resolves_installed_plugin_name(): void {
+		$this->insert_log(
+			array(
+				'context' => array(
+					'source' => array(
+						'type' => 'plugin',
+						'slug' => 'ai',
+					),
+				),
+			)
+		);
+
+		$summary = $this->repository->get_summary( 'all', true );
+
+		$this->assertSame( 'AI', $summary['by_source'][0]['name'] );
+	}
+
+	/**
+	 * Returns log overrides attributing the entry to a plugin.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $slug Plugin slug.
+	 * @return array<string, mixed> Log field overrides.
+	 */
+	private function plugin_source( string $slug ): array {
+		return array(
+			'context' => array(
+				'source' => array(
+					'type' => 'plugin',
+					'slug' => $slug,
+				),
+			),
+		);
+	}
+
+	/**
+	 * Tests that the source breakdown respects the period and counts timeouts as failures.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_summary_source_breakdown_respects_period_and_counts_timeouts(): void {
+		global $wpdb;
+
+		$context = array(
+			'source' => array(
+				'type' => 'plugin',
+				'slug' => 'example-seo',
+			),
+		);
+
+		$this->insert_log( array( 'context' => $context ) );
+		$this->insert_log(
+			array(
+				'context' => $context,
+				'status'  => 'timeout',
+			)
+		);
+		$old_log = $this->insert_log( array( 'context' => $context ) );
+
+		$table = $this->schema->get_table_name();
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query( $wpdb->prepare( "UPDATE {$table} SET timestamp = %s WHERE log_id = %s", gmdate( 'Y-m-d H:i:s', time() - 3 * DAY_IN_SECONDS ), $old_log ) );
+
+		$day = $this->repository->get_summary( 'day', true )['by_source'];
+		$all = $this->repository->get_summary( 'all', true )['by_source'];
+
+		$this->assertSame( 2, $day[0]['requests'] );
+		$this->assertSame( 1, $day[0]['errors'] );
+		$this->assertSame( 3, $all[0]['requests'] );
+	}
+
+	/**
+	 * Tests that cached summaries store source counts without translated names.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_summary_caches_source_counts_without_names(): void {
+		$this->insert_log(
+			array(
+				'context' => array(
+					'source' => array(
+						'type' => 'core',
+						'slug' => 'wordpress',
+					),
+				),
+			)
+		);
+
+		$summary = $this->repository->get_summary( 'day', true );
+		$cached  = get_transient( 'wpai_request_logs_summary_day' );
+
+		$this->assertSame( 'WordPress Core', $summary['by_source'][0]['name'] );
+		$this->assertIsArray( $cached );
+		$this->assertArrayNotHasKey( 'name', $cached['by_source'][0] );
+		$this->assertSame( 'WordPress Core', $this->repository->get_summary( 'day' )['by_source'][0]['name'] );
+	}
+
+	/**
+	 * Tests that a summary cached before the source breakdown existed is rebuilt.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_summary_ignores_cache_without_source_breakdown(): void {
+		$this->insert_log();
+
+		set_transient(
+			'wpai_request_logs_summary_day',
+			array(
+				'total_requests' => 99,
+				'total_tokens'   => 0,
+			),
+			300
+		);
+
+		$summary = $this->repository->get_summary( 'day' );
+
+		$this->assertSame( 1, $summary['total_requests'] );
+		$this->assertArrayHasKey( 'by_source', $summary );
+	}
+
+	/**
+	 * Tests that overlong source keys are shortened without breaking UTF-8 or merging callers.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_insert_shortens_overlong_source_keys_safely(): void {
+		global $wpdb;
+
+		$first  = $this->insert_log( $this->plugin_source( str_repeat( '界', 62 ) . 'a' ) );
+		$second = $this->insert_log( $this->plugin_source( str_repeat( '界', 62 ) . 'b' ) );
+
+		$table = $this->schema->get_table_name();
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$first_key  = $wpdb->get_var( $wpdb->prepare( "SELECT source FROM {$table} WHERE log_id = %s", $first ) );
+		$second_key = $wpdb->get_var( $wpdb->prepare( "SELECT source FROM {$table} WHERE log_id = %s", $second ) );
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		$this->assertIsString( $first_key );
+		$this->assertLessThanOrEqual( 191, strlen( $first_key ) );
+		$this->assertTrue( wp_check_invalid_utf8( $first_key ) === $first_key );
+		$this->assertNotSame( $first_key, $second_key );
+	}
+
+	/**
+	 * Tests that logging keeps working while the source column is missing.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_insert_works_without_source_column(): void {
+		global $wpdb;
+
+		$table = $this->schema->get_table_name();
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query( "ALTER TABLE {$table} DROP INDEX idx_timestamp_source" );
+		$wpdb->query( "ALTER TABLE {$table} DROP COLUMN source" );
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$this->assertFalse( $this->schema->has_source_column( true ) );
+
+		$this->insert_log( $this->plugin_source( 'example-seo' ) );
+
+		$summary = $this->repository->get_summary( 'day', true );
+
+		$this->assertSame( 1, $summary['total_requests'] );
+		$this->assertSame( array(), $summary['by_source'] );
+		$this->assertFalse( get_transient( 'wpai_request_logs_summary_day' ), 'A summary without the source breakdown should not be cached.' );
+
+		// Restore the column for later tests.
+		update_option( 'wpai_request_logs_schema_version', '1', false );
+		$this->schema->maybe_upgrade_table();
+		$this->assertTrue( $this->schema->has_source_column() );
+	}
+
+	/**
 	 * Tests that get_summary caches results in transients.
 	 *
 	 * @since 1.0.0
@@ -530,6 +798,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 
 		$this->assertSame( 0, $summary['total_requests'] );
 		$this->assertSame( 0, $summary['total_tokens'] );
+		$this->assertSame( array(), $summary['by_source'] );
 	}
 
 	/**
@@ -757,5 +1026,134 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 		$this->repository->invalidate_filter_cache();
 
 		$this->assertFalse( get_transient( 'wpai_request_logs_filter_options' ) );
+	}
+
+	/**
+	 * Invokes a private repository method via reflection.
+	 *
+	 * @param string $method_name Method name.
+	 * @param mixed  ...$args     Method arguments.
+	 * @return mixed
+	 */
+	private function invoke_private( string $method_name, ...$args ) {
+		$method = new \ReflectionMethod( AI_Request_Log_Repository::class, $method_name );
+		$method->setAccessible( true );
+
+		return $method->isStatic() ? $method->invoke( null, ...$args ) : $method->invoke( $this->repository, ...$args );
+	}
+
+	/**
+	 * Tests that a failed source breakdown query leaves the breakdown empty and uncached.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_summary_handles_source_query_error(): void {
+		global $wpdb;
+
+		$this->insert_log( $this->plugin_source( 'example-seo' ) );
+
+		$break_query = static function ( string $query ): string {
+			return false !== strpos( $query, 'GROUP BY source' ) ? str_replace( 'GROUP BY source', 'GROUP BY wpai_missing_column', $query ) : $query;
+		};
+		add_filter( 'query', $break_query );
+		$suppressed = $wpdb->suppress_errors( true );
+
+		$summary = $this->repository->get_summary( 'day', true );
+
+		$wpdb->suppress_errors( $suppressed );
+		remove_filter( 'query', $break_query );
+
+		$this->assertSame( 1, $summary['total_requests'] );
+		$this->assertSame( array(), $summary['by_source'] );
+		$this->assertFalse( get_transient( 'wpai_request_logs_summary_day' ), 'A summary without the source breakdown should not be cached.' );
+	}
+
+	/**
+	 * Tests that malformed cached source rows are skipped.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_describe_sources_skips_non_array_rows(): void {
+		$described = $this->invoke_private(
+			'describe_sources',
+			array(
+				'not-a-row',
+				array(
+					'source'   => 'core:wordpress',
+					'requests' => 2,
+				),
+			)
+		);
+
+		$this->assertCount( 1, $described );
+		$this->assertSame( 'core', $described[0]['type'] );
+		$this->assertSame( 2, $described[0]['requests'] );
+		$this->assertSame( 0, $described[0]['tokens'] );
+	}
+
+	/**
+	 * Tests that a source without a type or slug has no key.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_build_source_key_requires_type_and_slug(): void {
+		$this->assertNull( $this->invoke_private( 'build_source_key', array() ) );
+		$this->assertNull( $this->invoke_private( 'build_source_key', array( 'source' => array( 'type' => 'plugin' ) ) ) );
+		$this->assertNull( $this->invoke_private( 'build_source_key', array( 'source' => array( 'slug' => 'example-seo' ) ) ) );
+		$this->assertSame(
+			'plugin:example-seo',
+			$this->invoke_private(
+				'build_source_key',
+				array(
+					'source' => array(
+						'type' => 'plugin',
+						'slug' => 'example-seo',
+					),
+				)
+			)
+		);
+	}
+
+	/**
+	 * Tests that theme sources use the installed theme's name and fall back to the slug.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_describe_source_resolves_theme_names(): void {
+		$theme = wp_get_theme();
+
+		if ( $theme->exists() ) {
+			$installed = $this->invoke_private( 'describe_source', 'theme:' . $theme->get_stylesheet() );
+			$this->assertSame( 'theme', $installed['type'] );
+			$this->assertSame( (string) $theme->get( 'Name' ), $installed['name'] );
+		}
+
+		$missing = $this->invoke_private( 'describe_source', 'theme:wpai-missing-theme' );
+		$this->assertSame( 'theme', $missing['type'] );
+		$this->assertSame( 'wpai-missing-theme', $missing['name'] );
+	}
+
+	/**
+	 * Tests that other source types use the slug as their name.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_describe_source_uses_slug_for_other_types(): void {
+		$this->assertSame(
+			array(
+				'type' => 'mu-plugin',
+				'slug' => 'site-tweaks',
+				'name' => 'site-tweaks',
+			),
+			$this->invoke_private( 'describe_source', 'mu-plugin:site-tweaks' )
+		);
+		$this->assertSame(
+			array(
+				'type' => '',
+				'slug' => '',
+				'name' => '',
+			),
+			$this->invoke_private( 'describe_source', 'no-separator' )
+		);
 	}
 }

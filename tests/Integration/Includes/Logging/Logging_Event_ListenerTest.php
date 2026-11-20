@@ -217,6 +217,25 @@ class Logging_Event_ListenerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A generation logged from the after-event must be attributed to its caller.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_generation_event_row_records_calling_source(): void {
+		$model = $this->make_model( 'codex', 'codex-mini' );
+
+		$this->start_generation( $model );
+		$this->finish_generation( $model );
+
+		$source = $this->rows()[0]['context']['source'] ?? null;
+
+		// The caller is this test file, which lives inside the AI plugin.
+		$this->assertIsArray( $source );
+		$this->assertSame( 'plugin', $source['type'] );
+		$this->assertSame( 'ai', $source['slug'] );
+	}
+
+	/**
 	 * Generations sent through the logging transporter must be logged once, keeping
 	 * the transporter's endpoint-based operation.
 	 *

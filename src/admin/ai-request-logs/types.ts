@@ -53,6 +53,17 @@ export interface LogSummary {
 	by_type: Record< string, number >;
 	by_provider: Record< string, number >;
 	by_status: Record< string, number >;
+	by_source?: SourceUsage[];
+}
+
+export interface SourceUsage {
+	source: string | null;
+	type: string;
+	slug: string;
+	name: string;
+	requests: number;
+	tokens: number;
+	errors: number;
 }
 
 export interface UserFilterOption {
