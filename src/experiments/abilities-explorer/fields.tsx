@@ -13,11 +13,7 @@ import { __ } from '@wordpress/i18n';
 /**
  * Internal dependencies
  */
-import ExposedIn, {
-	getAssistantState,
-	getAssistantStateLabels,
-	type AssistantState,
-} from './components/list/ExposedIn';
+import ExposedIn from './components/list/ExposedIn';
 import NameCell from './components/list/NameCell';
 import {
 	KNOWN_ORIGINS,
@@ -26,6 +22,11 @@ import {
 import ProviderBadge, { getProviderLabel } from './components/ProviderBadge';
 import type { AbilityListItem } from './types';
 import { isJsonRecord } from './validate';
+import {
+	getWorkspaceState,
+	getWorkspaceStateLabels,
+	type WorkspaceState,
+} from './workspace';
 
 export type AbilityField = Field< AbilityListItem >;
 
@@ -108,8 +109,8 @@ function getCategoryElements(
  * @return The fields.
  */
 export function getBuiltInFields( items: AbilityListItem[] ): AbilityField[] {
-	const stateLabels = getAssistantStateLabels();
-	const states: AssistantState[] = [ 'on', 'pending', 'off' ];
+	const stateLabels = getWorkspaceStateLabels();
+	const states: WorkspaceState[] = [ 'used', 'removed' ];
 
 	return [
 		{
@@ -195,7 +196,7 @@ export function getBuiltInFields( items: AbilityListItem[] ): AbilityField[] {
 				label: stateLabels[ state ],
 			} ) ),
 			filterBy: { operators: [ 'isAny', 'isNone' ], isPrimary: true },
-			getValue: ( { item } ) => getAssistantState( item ),
+			getValue: ( { item } ) => getWorkspaceState( item ) ?? '',
 			render: ( { item } ) => <ExposedIn item={ item } />,
 		},
 	];

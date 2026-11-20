@@ -25,7 +25,7 @@ import {
 	TITLE_FIELD_ID,
 	useFields,
 } from '../fields';
-import type { AbilityListItem, PolicyState, SurfaceResponse } from '../types';
+import type { AbilityListItem, SurfaceResponse } from '../types';
 import {
 	appendNewFields,
 	loadSavedView,
@@ -34,15 +34,12 @@ import {
 	saveView,
 } from '../view-storage';
 import { applyProviderFilter } from './list/provider-filter';
-import PolicyToggle from './PolicyToggle';
 import Statistics from './Statistics';
 import { RowSurfaceActionContext, useSurfaceActions } from './SurfaceActions';
 
 export interface ListViewProps {
 	/** Every registered ability. */
 	items: AbilityListItem[];
-	/** The assistant admission policy, or null before the first load. */
-	policy: PolicyState | null;
 	/** True while the list is loading. */
 	isLoading: boolean;
 	/** Applies a surface response; false when it was stale. */
@@ -93,14 +90,12 @@ const getCandidateIds = ( fieldIds: string[] ): string[] =>
  *
  * @param props                   Component props.
  * @param props.items             The abilities.
- * @param props.policy            The assistant admission policy.
  * @param props.isLoading         Whether a load is in flight.
  * @param props.onSurfaceResponse Applies a surface route response.
  * @return The view.
  */
 export default function ListView( {
 	items,
-	policy,
 	isLoading,
 	onSurfaceResponse,
 }: ListViewProps ) {
@@ -228,12 +223,6 @@ export default function ListView( {
 	return (
 		<div className="ai-abilities-explorer__list">
 			{ ! isFirstLoad && <Statistics items={ items } /> }
-			{ null !== policy && (
-				<PolicyToggle
-					policy={ policy }
-					onSurfaceResponse={ onSurfaceResponse }
-				/>
-			) }
 			<div
 				ref={ tableRef }
 				className="ai-abilities-explorer__table"

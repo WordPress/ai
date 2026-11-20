@@ -11,15 +11,10 @@ const PAGE_QUERY = 'page=ai-abilities-explorer';
 const VIEW_STORAGE_KEY = 'ai.abilitiesExplorer.view';
 const FIXTURE_CATEGORY = 'E2E Fixtures & Friends';
 
-const REMOVED = 'Ability removed from the assistant.';
-const RETURNED = 'Ability returned to the assistant.';
-const POLICY_OFF =
-	'Assistant admission policy switched off. Only the built-in abilities are offered.';
-const POLICY_ON = 'Assistant admission policy switched on.';
-const WITHHELD_REASON =
-	'Held back by this plugin: it reads personal data, settings or environment detail.';
-const POLICY_OFF_REASON =
-	'The assistant admission policy is off, so only the built-in abilities are offered.';
+const REMOVED = 'Removed from AI Workspace.';
+const RESTORED = 'Restored to AI Workspace.';
+const USED_LABEL = 'Used by AI Workspace';
+const REMOVED_LABEL = 'Removed from AI Workspace';
 
 /**
  * Sets the plugin's feature switches through the settings REST route.
@@ -271,13 +266,11 @@ const enableExplorer = async ( requestUtils ) => {
 
 module.exports = {
 	FIXTURE_CATEGORY,
-	POLICY_OFF,
-	POLICY_OFF_REASON,
-	POLICY_ON,
 	REMOVED,
-	RETURNED,
+	REMOVED_LABEL,
+	RESTORED,
+	USED_LABEL,
 	VIEW_STORAGE_KEY,
-	WITHHELD_REASON,
 	columnMenu,
 	dataRows,
 	enableExplorer,

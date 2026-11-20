@@ -110,15 +110,11 @@
 	width: 16px;
 }
 
-.ability-explorer-wrap .ability-surface-on {
+.ability-explorer-wrap .ability-surface-used {
 	color: #007017;
 }
 
-.ability-explorer-wrap .ability-surface-pending {
-	color: #8a6116;
-}
-
-.ability-explorer-wrap .ability-surface-off {
+.ability-explorer-wrap .ability-surface-removed {
 	color: #646970;
 	font-weight: 400;
 }
@@ -136,10 +132,6 @@
 .ability-explorer-wrap .ability-surface-details .ability-surface-description {
 	margin: 4px 0 0;
 	max-width: 40em;
-}
-
-.ability-explorer-wrap .ability-surface-reason {
-	margin: 4px 0 0;
 }
 
 .ability-explorer-wrap .ability-surface-badges {
@@ -160,20 +152,18 @@
 	white-space: nowrap;
 }
 
-.ability-explorer-wrap .ability-surface-badge.ability-surface-on {
+.ability-explorer-wrap .ability-surface-badge.ability-surface {
+	text-transform: none;
+}
+
+.ability-explorer-wrap .ability-surface-badge.ability-surface-used {
 	background: #edfaef;
 	color: #007017;
 }
 
-.ability-explorer-wrap .ability-surface-badge.ability-surface-pending {
-	background: #fcf9e8;
-	color: #8a6116;
-}
-
-.ability-explorer-wrap .ability-surface-badge.ability-surface-off {
-	background: transparent;
-	color: #8c8f94;
-	font-weight: 400;
+.ability-explorer-wrap .ability-surface-badge.ability-surface-removed {
+	background: #f0f0f1;
+	color: #50575e;
 }
 
 // React app shell.
@@ -324,14 +314,9 @@
 	}
 }
 
-// Surface actions.
-.ai-abilities-explorer__policy {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	justify-content: flex-end;
-	gap: 8px 12px;
-	margin: 0 0 16px;
+// A failed Remove or Restore, shown under the row's name.
+.ai-abilities-explorer__row-error {
+	margin: 8px 0 0;
 }
 
 .ai-abilities-explorer__table:focus {

@@ -281,6 +281,28 @@ test.describe( 'Abilities Explorer', () => {
 			await expect( row( page, 'Acme Provider Fixture' ) ).toBeVisible();
 		} );
 
+		test( 'offers only the two AI Workspace states in the "Exposed in" filter', async ( {
+			admin,
+			page,
+		} ) => {
+			await openExplorer( admin, page );
+			await expect( dataRows( page ).first() ).toBeVisible();
+
+			await page
+				.getByRole( 'button', { name: /^Exposed in/ } )
+				.first()
+				.click();
+			await expect(
+				page
+					.getByRole( 'listbox', { name: 'List of: Exposed in' } )
+					.getByRole( 'option' )
+			).toHaveText( [
+				'Used by AI Workspace',
+				'Removed from AI Workspace',
+			] );
+			await page.keyboard.press( 'Escape' );
+		} );
+
 		test( 'matches "Plugin" by origin and "Acme" by its exact label', async ( {
 			admin,
 			page,

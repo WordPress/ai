@@ -82,7 +82,7 @@ final class Abilities_Controller {
 	 *
 	 * @var list<string>
 	 */
-	public const SURFACE_CHANGES = array( 'remove', 'restore', 'disable_policy', 'enable_policy' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
+	public const SURFACE_CHANGES = array( 'remove', 'restore' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
 
 	/**
 	 * Hooks route registration.
@@ -225,7 +225,7 @@ final class Abilities_Controller {
 	}
 
 	/**
-	 * Lists every registered ability with the assistant policy state.
+	 * Lists every registered ability.
 	 *
 	 * @since 1.5.0
 	 *
@@ -237,7 +237,6 @@ final class Abilities_Controller {
 		return new WP_REST_Response(
 			array(
 				'items'    => $this->list_items(),
-				'policy'   => $this->policy_state(),
 				'sequence' => $sequence,
 			),
 			200
@@ -351,7 +350,7 @@ final class Abilities_Controller {
 	}
 
 	/**
-	 * Changes the AI Workspace's tool surface.
+	 * Removes an ability from the AI Workspace's tools, or restores it.
 	 *
 	 * `changed` is false when the stored state already matched, such as a removal made in another tab.
 	 *
@@ -363,24 +362,7 @@ final class Abilities_Controller {
 	public function change_surface( WP_REST_Request $request ) {
 		$change = (string) $request->get_param( 'change' );
 		$policy = new Tool_Policy();
-
-		if ( 'disable_policy' === $change || 'enable_policy' === $change ) {
-			$changed  = $policy->set_policy_disabled( 'disable_policy' === $change );
-			$sequence = self::next_sequence();
-
-			return new WP_REST_Response(
-				array(
-					'change'   => $change,
-					'changed'  => $changed,
-					'items'    => $this->list_items(),
-					'policy'   => $this->policy_state(),
-					'sequence' => $sequence,
-				),
-				200
-			);
-		}
-
-		$name = (string) $request->get_param( 'name' );
+		$name   = (string) $request->get_param( 'name' );
 
 		if ( '' === $name ) {
 			return new WP_Error(
@@ -412,7 +394,6 @@ final class Abilities_Controller {
 				'change'   => $change,
 				'changed'  => $changed,
 				'item'     => self::encodable( Ability_Handler::to_rest_item( $ability ) ),
-				'policy'   => $this->policy_state(),
 				'sequence' => $sequence,
 			),
 			200
@@ -434,23 +415,6 @@ final class Abilities_Controller {
 		}
 
 		return $items;
-	}
-
-	/**
-	 * Returns the assistant admission policy state.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return array{disabled: bool, admission_enabled: bool, active: bool} The policy state.
-	 */
-	private function policy_state(): array {
-		$policy = new Tool_Policy();
-
-		return array(
-			'disabled'          => $policy->is_policy_disabled(),
-			'admission_enabled' => $policy->admission_is_enabled(),
-			'active'            => $policy->is_active(),
-		);
 	}
 
 	/**

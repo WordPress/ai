@@ -149,7 +149,6 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 		$this->assertContains( $slug, $slugs, 'An ability that did not opt into REST must still be listed.' );
 		$this->assertCount( count( wp_get_abilities() ), $data['items'], 'Every registered ability must be listed.' );
 		$this->assertIsInt( $data['sequence'] );
-		$this->assertArrayHasKey( 'disabled', $data['policy'] );
 
 		$row = $this->row( $data['items'], $slug );
 
@@ -548,6 +547,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 		$this->assertSame( $slug, $data['item']['slug'] );
 		$this->assertTrue( $data['item']['owner_excluded'] );
 		$this->assertIsInt( $data['sequence'] );
+		$this->assertArrayNotHasKey( 'policy', $data );
 		$this->assertContains( $slug, get_option( Tool_Policy::OWNER_EXCLUSIONS_OPTION ) );
 
 		$repeat = $this->surface( 'remove', $slug );
@@ -589,33 +589,18 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 
 		$this->assertFalse( ( new Tool_Policy() )->is_owner_excluded( $slug ) );
 		$this->assertFalse( $data['item']['conversational_surface'] );
-		$this->assertSame( Tool_Policy::REASON_WITHHELD, $data['item']['surface_reason'] );
+		$this->assertFalse( $data['item']['owner_excluded'] );
 	}
 
 	/**
-	 * The policy switch works both ways and answers with the full list.
+	 * The route no longer accepts the admission policy switch.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_surface_policy_switch_disables_and_enables_and_returns_the_list(): void {
-		$disable = $this->surface( 'disable_policy' );
-
-		$this->assertSame( 200, $disable->get_status() );
-		$this->assertTrue( ( new Tool_Policy() )->is_policy_disabled() );
-		$this->assertTrue( $disable->get_data()['policy']['disabled'] );
-		$this->assertCount( count( wp_get_abilities() ), $disable->get_data()['items'] );
-		$this->assertArrayNotHasKey( 'item', $disable->get_data() );
-
-		$enable = $this->surface( 'enable_policy' );
-
-		$this->assertSame( 200, $enable->get_status() );
-		$this->assertFalse( ( new Tool_Policy() )->is_policy_disabled() );
-		$this->assertFalse( $enable->get_data()['policy']['disabled'] );
-
-		$again = $this->surface( 'enable_policy' );
-
-		$this->assertSame( 200, $again->get_status(), 'Already on counts as success.' );
-		$this->assertFalse( $again->get_data()['changed'] );
+	public function test_surface_refuses_the_policy_switch(): void {
+		$this->assertSame( 400, $this->surface( 'disable_policy' )->get_status() );
+		$this->assertSame( 400, $this->surface( 'enable_policy' )->get_status() );
+		$this->assertOptionsUntouched();
 	}
 
 	/**
@@ -702,16 +687,17 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 		$row = $this->row( $this->dispatch( 'GET', Abilities_Controller::ABILITIES_ROUTE )->get_data()['items'], $slug );
 
 		$this->assertTrue( $row['conversational_surface'], 'A declared, read-only, closed-world ability the workspace admits must be marked as on the assistant.' );
-		$this->assertNull( $row['surface_reason'], 'An ability on the assistant must carry no exclusion reason.' );
-		$this->assertNull( $row['surface_reason_label'] );
+		$this->assertFalse( $row['owner_excluded'] );
 	}
 
 	/**
-	 * An ability off the assistant carries its reason and that reason's label.
+	 * With admission on, an ability excluded for any reason but the owner's removal shows nothing.
+	 *
+	 * The list carries no reason or reason label, only the two flags the screen shows.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_list_carries_the_reason_an_ability_is_off_the_assistant(): void {
+	public function test_list_shows_nothing_for_an_ability_the_workspace_does_not_use(): void {
 		$this->require_filtered_discovery();
 
 		$undeclared = $this->register_fixture(
@@ -736,19 +722,24 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 			}
 		);
 
-		$items = $this->dispatch( 'GET', Abilities_Controller::ABILITIES_ROUTE )->get_data()['items'];
+		$this->assertTrue( ( new Tool_Policy() )->admission_is_enabled(), 'Admission must be on for the policy reasons to arise.' );
 
-		$undeclared_row = $this->row( $items, $undeclared );
+		$data = $this->dispatch( 'GET', Abilities_Controller::ABILITIES_ROUTE )->get_data();
 
-		$this->assertFalse( $undeclared_row['conversational_surface'], 'An ability with no exposure opinion of its own must not be marked as on the assistant.' );
-		$this->assertSame( Tool_Policy::REASON_NOT_PUBLIC, $undeclared_row['surface_reason'] );
+		$this->assertArrayNotHasKey( 'policy', $data, 'The list must not carry the admission policy state.' );
 
-		$withheld_row = $this->row( $items, $withheld );
+		$policy = new Tool_Policy();
 
-		$this->assertFalse( $withheld_row['conversational_surface'] );
-		$this->assertSame( Tool_Policy::REASON_WITHHELD, $withheld_row['surface_reason'] );
-		$this->assertIsString( $withheld_row['surface_reason_label'] );
-		$this->assertStringContainsString( 'Held back', $withheld_row['surface_reason_label'], 'A withheld ability must carry a label the screen can show, or the owner cannot tell it from an undeclared one.' );
+		foreach ( array( $undeclared, $withheld ) as $slug ) {
+			$this->assertNotNull( $policy->get_exclusion_reason( wp_get_ability( $slug ) ), 'The server must still know why the ability is excluded.' );
+
+			$row = $this->row( $data['items'], $slug );
+
+			$this->assertFalse( $row['conversational_surface'], "{$slug} must not be shown as used by the AI Workspace." );
+			$this->assertFalse( $row['owner_excluded'], "{$slug} must not be shown as removed from the AI Workspace." );
+			$this->assertArrayNotHasKey( 'surface_reason', $row, 'The screen no longer shows exclusion reasons.' );
+			$this->assertArrayNotHasKey( 'surface_reason_label', $row, 'The screen no longer shows exclusion reasons.' );
+		}
 	}
 
 	/**
@@ -768,8 +759,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 		$row = $this->row( $this->dispatch( 'GET', Abilities_Controller::ABILITIES_ROUTE )->get_data()['items'], $slug );
 
 		$this->assertFalse( $row['conversational_surface'], 'An ability the owner removed must not be reported as one the assistant holds.' );
-		$this->assertSame( Tool_Policy::REASON_OWNER_EXCLUDED, $row['surface_reason'], 'An ability the owner removed must say so.' );
-		$this->assertTrue( $row['owner_excluded'], 'The row must carry the flag that offers "Return to assistant".' );
+		$this->assertTrue( $row['owner_excluded'], 'The row must carry the flag that offers "Restore to AI Workspace".' );
 	}
 
 	/**
@@ -828,28 +818,6 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 		$this->assertContains( $slug, ( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ), 'An ability the owner returned must be declared to the model again.' );
 	}
 
-	/**
-	 * The policy switch withdraws admitted abilities and brings them back.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_surface_policy_switch_withdraws_and_returns_admitted_abilities(): void {
-		$this->require_filtered_discovery();
-
-		$slug = $this->register_declared_fixture( 'wpai-test/table-switch' );
-
-		$this->assertContains( $slug, ( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ), 'The fixture must be admitted before the switch can be shown to withdraw it.' );
-
-		$this->surface( 'disable_policy' );
-
-		$this->assertTrue( ( new Tool_Policy() )->is_policy_disabled(), 'Asking to switch the policy off must switch it off, not on.' );
-		$this->assertNotContains( $slug, ( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ), 'With the policy off the admitted ability must leave the assistant.' );
-
-		$this->surface( 'enable_policy' );
-
-		$this->assertFalse( ( new Tool_Policy() )->is_policy_disabled(), 'Asking to switch the policy on must switch it on, not off.' );
-		$this->assertContains( $slug, ( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ), 'Switching the policy back on must return the admitted ability.' );
-	}
 	/*
 	 * ---------------------------------------------------------------------
 	 * Trust boundary.
@@ -981,7 +949,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 		$this->assertSame( 200, $this->dispatch( 'GET', Abilities_Controller::ABILITIES_ROUTE )->get_status() );
 		$this->assertSame( 200, $this->dispatch( 'GET', Abilities_Controller::ITEM_ROUTE, array( 'name' => $slug ) )->get_status() );
 		$this->assertSame( 200, $this->invoke( $slug, '' )->get_status() );
-		$this->assertSame( 200, $this->surface( 'disable_policy' )->get_status() );
+		$this->assertSame( 200, $this->surface( 'remove', $slug )->get_status() );
 	}
 
 	/*
@@ -1038,7 +1006,6 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 					'name'   => $slug,
 				),
 			),
-			array( 'POST', Abilities_Controller::SURFACE_ROUTE, array( 'change' => 'disable_policy' ) ),
 		);
 
 		foreach ( $requests as $request ) {

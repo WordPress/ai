@@ -40,7 +40,6 @@ import { routeToUrl, useRouter } from '../router';
 import type {
 	AbilityDetailItem,
 	AbilityListItem,
-	PolicyState,
 	SurfaceResponse,
 } from '../types';
 import DetailView from './DetailView';
@@ -55,7 +54,6 @@ export const ROOT_ID = 'ai-abilities-explorer-root';
 interface ListState {
 	status: 'idle' | 'loading' | 'ready' | 'error';
 	items: AbilityListItem[];
-	policy: PolicyState | null;
 	/** The first-load failure, shown inline with Retry. */
 	error: string | null;
 }
@@ -71,7 +69,6 @@ interface ItemState {
 const INITIAL_LIST: ListState = {
 	status: 'idle',
 	items: [],
-	policy: null,
 	error: null,
 };
 
@@ -167,9 +164,6 @@ export default function App() {
 						response.items,
 						previous.items
 					),
-					policy: sequencer.current.claimPolicy( response.sequence )
-						? response.policy
-						: previous.policy,
 					error: null,
 				} ) );
 			}
@@ -186,29 +180,12 @@ export default function App() {
 
 	const applySurfaceResponse = useCallback(
 		( response: SurfaceResponse ): boolean => {
-			const seq = sequencer.current;
-
-			if ( 'items' in response ) {
-				if ( ! seq.claimList( response.sequence ) ) {
-					return false;
-				}
-
-				setList( ( previous ) => ( {
-					...previous,
-					items: seq.mergeRows(
-						response.sequence,
-						response.items,
-						previous.items
-					),
-					policy: seq.claimPolicy( response.sequence )
-						? response.policy
-						: previous.policy,
-				} ) );
-
-				return true;
-			}
-
-			if ( ! seq.claimRow( response.item.slug, response.sequence ) ) {
+			if (
+				! sequencer.current.claimRow(
+					response.item.slug,
+					response.sequence
+				)
+			) {
 				return false;
 			}
 
@@ -217,9 +194,6 @@ export default function App() {
 				items: previous.items.map( ( row ) =>
 					row.slug === response.item.slug ? response.item : row
 				),
-				policy: seq.claimPolicy( response.sequence )
-					? response.policy
-					: previous.policy,
 			} ) );
 
 			return true;
@@ -324,7 +298,6 @@ export default function App() {
 			return (
 				<ListView
 					items={ list.items }
-					policy={ list.policy }
 					isLoading={ 'ready' !== list.status }
 					onSurfaceResponse={ applySurfaceResponse }
 				/>

@@ -8,7 +8,7 @@ import {
 	useRef,
 	useState,
 } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
@@ -16,47 +16,44 @@ import { __ } from '@wordpress/i18n';
 import { changeSurface } from '../api';
 import { useExplorer } from '../context';
 import type { AbilityListItem, SurfaceChange, SurfaceResponse } from '../types';
+import { getWorkspaceChange } from '../workspace';
 
 /**
- * The confirmation for each surface change.
+ * The confirmation for each change.
  *
  * @param change The change that was applied.
  * @return The message.
  */
 export function getSurfaceChangeMessage( change: SurfaceChange ): string {
-	switch ( change ) {
-		case 'remove':
-			return __( 'Ability removed from the assistant.', 'ai' );
-		case 'restore':
-			return __( 'Ability returned to the assistant.', 'ai' );
-		case 'disable_policy':
-			return __(
-				'Assistant admission policy switched off. Only the built-in abilities are offered.',
-				'ai'
-			);
-		case 'enable_policy':
-			return __( 'Assistant admission policy switched on.', 'ai' );
-	}
+	return 'remove' === change
+		? __( 'Removed from AI Workspace.', 'ai' )
+		: __( 'Restored to AI Workspace.', 'ai' );
 }
 
 /**
- * Returns the row change an ability offers, if any.
+ * The inline notice for a change that failed.
  *
- * @param item The ability.
- * @return The change, or null when the row offers none.
+ * @param change  The change that failed.
+ * @param message Why it failed.
+ * @return The notice text.
  */
-export function getRowSurfaceChange(
-	item: AbilityListItem
-): Extract< SurfaceChange, 'remove' | 'restore' > | null {
-	if ( item.owner_excluded ) {
-		return 'restore';
+function getSurfaceFailureMessage(
+	change: SurfaceChange,
+	message: string
+): string {
+	if ( 'remove' === change ) {
+		return sprintf(
+			/* translators: %s: Why the request failed. */
+			__( 'Could not remove this ability from AI Workspace. %s', 'ai' ),
+			message
+		);
 	}
 
-	if ( item.conversational_surface ) {
-		return 'remove';
-	}
-
-	return null;
+	return sprintf(
+		/* translators: %s: Why the request failed. */
+		__( 'Could not restore this ability to AI Workspace. %s', 'ai' ),
+		message
+	);
 }
 
 /**
@@ -65,8 +62,11 @@ export function getRowSurfaceChange(
 export interface RowSurfaceAction {
 	label: string;
 	/** True while this row's change is pending. */
-	disabled: boolean;
+	isBusy: boolean;
 	onActivate: () => void;
+	/** Why the last change failed, or null. */
+	error: string | null;
+	onDismissError: () => void;
 }
 
 /**
@@ -104,7 +104,7 @@ interface UseSurfaceActionsOptions {
 }
 
 /**
- * Returns a function that describes each row's remove/return control.
+ * Returns a function that describes each row's Remove or Restore control.
  *
  * @param options                   Hook options.
  * @param options.onSurfaceResponse Applies a surface response to the list.
@@ -122,6 +122,28 @@ export function useSurfaceActions( {
 	const [ pending, setPending ] = useState< ReadonlySet< string > >(
 		() => new Set()
 	);
+	const [ errors, setErrors ] = useState<
+		Readonly< Record< string, string > >
+	>( {} );
+
+	const setRowError = useCallback(
+		( slug: string, message: string | null ) => {
+			setErrors( ( current ) => {
+				if ( null === message ) {
+					if ( ! ( slug in current ) ) {
+						return current;
+					}
+
+					const { [ slug ]: _removed, ...rest } = current;
+
+					return rest;
+				}
+
+				return { ...current, [ slug ]: message };
+			} );
+		},
+		[]
+	);
 
 	const setRowPending = useCallback( ( slug: string, isPending: boolean ) => {
 		if ( isPending ) {
@@ -135,13 +157,14 @@ export function useSurfaceActions( {
 
 	const run = useCallback(
 		async ( item: AbilityListItem ) => {
-			const change = getRowSurfaceChange( item );
+			const change = getWorkspaceChange( item );
 
 			if ( null === change || pendingRef.current.has( item.slug ) ) {
 				return;
 			}
 
 			setRowPending( item.slug, true );
+			setRowError( item.slug, null );
 
 			try {
 				const response = await changeSurface( change, item.slug );
@@ -150,18 +173,36 @@ export function useSurfaceActions( {
 				onSurfaceResponse( response );
 				notify( 'success', getSurfaceChangeMessage( change ) );
 			} catch ( error ) {
-				reportError( error );
+				// The row keeps its state; the failure shows under it.
+				const classified = reportError( error, { notice: false } );
+
+				if (
+					'failure' === classified.kind ||
+					'not-found' === classified.kind
+				) {
+					setRowError(
+						item.slug,
+						getSurfaceFailureMessage( change, classified.message )
+					);
+				}
 			} finally {
 				setRowPending( item.slug, false );
 				onSettled?.( item.slug );
 			}
 		},
-		[ notify, reportError, onSurfaceResponse, onSettled, setRowPending ]
+		[
+			notify,
+			reportError,
+			onSurfaceResponse,
+			onSettled,
+			setRowPending,
+			setRowError,
+		]
 	);
 
 	return useCallback< GetRowSurfaceAction >(
 		( item ) => {
-			const change = getRowSurfaceChange( item );
+			const change = getWorkspaceChange( item );
 
 			if ( null === change ) {
 				return null;
@@ -170,14 +211,16 @@ export function useSurfaceActions( {
 			return {
 				label:
 					'restore' === change
-						? __( 'Return to assistant', 'ai' )
-						: __( 'Remove from assistant', 'ai' ),
-				disabled: pending.has( item.slug ),
+						? __( 'Restore to AI Workspace', 'ai' )
+						: __( 'Remove from AI Workspace', 'ai' ),
+				isBusy: pending.has( item.slug ),
 				onActivate: () => {
 					run( item );
 				},
+				error: errors[ item.slug ] ?? null,
+				onDismissError: () => setRowError( item.slug, null ),
 			};
 		},
-		[ pending, run ]
+		[ pending, errors, run, setRowError ]
 	);
 }

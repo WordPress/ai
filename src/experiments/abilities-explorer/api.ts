@@ -32,7 +32,7 @@ interface RequestOptions {
 }
 
 /**
- * Fetches every registered ability with the assistant policy state.
+ * Fetches every registered ability.
  *
  * @param options Optional request options.
  * @return The list payload.
@@ -86,15 +86,15 @@ export function invokeAbility(
 }
 
 /**
- * Changes the AI Workspace assistant's tool surface.
+ * Removes an ability from the AI Workspace, or restores it.
  *
  * @param change The change.
- * @param name   The ability name; required for `remove` and `restore`.
- * @return The updated row or list, with the policy state and a sequence.
+ * @param name   The ability name.
+ * @return The updated row and a sequence.
  */
 export function changeSurface(
 	change: SurfaceChange,
-	name = ''
+	name: string
 ): Promise< SurfaceResponse > {
 	return apiFetch< SurfaceResponse >( {
 		path: getSettings().rest.routes.surface,
@@ -104,7 +104,7 @@ export function changeSurface(
 }
 
 /**
- * Drops late list and surface responses, tracking the list, each row and the policy separately.
+ * Drops late list and surface responses, tracking the list and each row separately.
  */
 export interface ResponseSequencer {
 	/**
@@ -135,13 +135,6 @@ export interface ResponseSequencer {
 	 * @return True when neither that row nor a newer full list has been applied.
 	 */
 	claimRow: ( slug: string, sequence: number ) => boolean;
-	/**
-	 * Claims the policy state carried by any response.
-	 *
-	 * @param sequence The response's `sequence`.
-	 * @return True when no newer policy state has been applied.
-	 */
-	claimPolicy: ( sequence: number ) => boolean;
 }
 
 /**
@@ -151,7 +144,6 @@ export interface ResponseSequencer {
  */
 export function createResponseSequencer(): ResponseSequencer {
 	let listSequence = 0;
-	let policySequence = 0;
 	const rowSequences = new Map< string, number >();
 
 	return {
@@ -186,15 +178,6 @@ export function createResponseSequencer(): ResponseSequencer {
 			}
 
 			rowSequences.set( slug, sequence );
-
-			return true;
-		},
-		claimPolicy( sequence ) {
-			if ( sequence < policySequence ) {
-				return false;
-			}
-
-			policySequence = sequence;
 
 			return true;
 		},

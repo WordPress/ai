@@ -7,12 +7,10 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
  * Internal dependencies
  */
 const {
-	POLICY_OFF,
-	POLICY_OFF_REASON,
-	POLICY_ON,
 	REMOVED,
-	RETURNED,
-	WITHHELD_REASON,
+	REMOVED_LABEL,
+	RESTORED,
+	USED_LABEL,
 	enableExplorer,
 	openExplorer,
 	payloadRow,
@@ -25,6 +23,9 @@ const {
 	snackbar,
 } = require( '../../utils/abilities-explorer' );
 
+const REMOVE = 'Remove from AI Workspace';
+const RESTORE = 'Restore to AI Workspace';
+
 test.describe( 'Abilities Explorer', () => {
 	test.beforeEach( async ( { requestUtils } ) => {
 		await enableExplorer( requestUtils );
@@ -34,8 +35,8 @@ test.describe( 'Abilities Explorer', () => {
 		await setFixtures( requestUtils, false );
 	} );
 
-	test.describe( 'Assistant surface', () => {
-		test( 'removes an ability and returns it, with a notice for each', async ( {
+	test.describe( 'AI Workspace', () => {
+		test( 'removes an ability and restores it, with a notice for each', async ( {
 			admin,
 			page,
 			requestUtils,
@@ -44,18 +45,17 @@ test.describe( 'Abilities Explorer', () => {
 			await search( page, 'Reader Fixture' );
 
 			const reader = row( page, 'Assistant Reader Fixture' );
-			await expect( reader ).toContainText( 'Assistant' );
+			await expect( reader ).toContainText( USED_LABEL );
 
 			await reader.hover();
-			await reader
-				.getByRole( 'button', { name: 'Remove from assistant' } )
-				.click();
+			await reader.getByRole( 'button', { name: REMOVE } ).click();
 
 			await expect( snackbar( page, REMOVED ) ).toBeVisible();
-			await expect( reader ).toContainText( 'Not the assistant' );
+			await expect( reader ).toContainText( REMOVED_LABEL );
+			await expect( reader ).not.toContainText( USED_LABEL );
 			// The same control, relabelled, keeps focus.
 			await expect(
-				reader.getByRole( 'button', { name: 'Return to assistant' } )
+				reader.getByRole( 'button', { name: RESTORE } )
 			).toBeFocused();
 			expect(
 				payloadRow(
@@ -65,15 +65,14 @@ test.describe( 'Abilities Explorer', () => {
 			).toBe( true );
 
 			await reader.hover();
-			await reader
-				.getByRole( 'button', { name: 'Return to assistant' } )
-				.click();
+			await reader.getByRole( 'button', { name: RESTORE } ).click();
 
-			await expect( snackbar( page, RETURNED ) ).toBeVisible();
+			await expect( snackbar( page, RESTORED ) ).toBeVisible();
 			await expect(
-				reader.getByRole( 'button', { name: 'Remove from assistant' } )
+				reader.getByRole( 'button', { name: REMOVE } )
 			).toBeVisible();
-			await expect( reader ).not.toContainText( 'Not the assistant' );
+			await expect( reader ).toContainText( USED_LABEL );
+			await expect( reader ).not.toContainText( REMOVED_LABEL );
 			expect(
 				payloadRow(
 					await readList( requestUtils ),
@@ -82,7 +81,7 @@ test.describe( 'Abilities Explorer', () => {
 			).toBe( false );
 		} );
 
-		test( 'returning a withheld ability shows the withheld reason, not the assistant badge', async ( {
+		test( 'restoring an ability the AI Workspace does not use leaves the row with nothing to show', async ( {
 			admin,
 			page,
 			requestUtils,
@@ -97,15 +96,13 @@ test.describe( 'Abilities Explorer', () => {
 			await search( page, 'Reader Fixture' );
 
 			const withheld = row( page, 'Withheld Reader Fixture' );
+			await expect( withheld ).toContainText( REMOVED_LABEL );
 			await withheld.hover();
-			await withheld
-				.getByRole( 'button', { name: 'Return to assistant' } )
-				.click();
+			await withheld.getByRole( 'button', { name: RESTORE } ).click();
 
-			await expect( snackbar( page, RETURNED ) ).toBeVisible();
-			await expect( withheld ).toContainText( WITHHELD_REASON );
-			await expect( withheld ).toContainText( 'Not the assistant' );
-			// Only View and Test are left under the name: no surface action.
+			await expect( snackbar( page, RESTORED ) ).toBeVisible();
+			await expect( withheld ).not.toContainText( 'AI Workspace' );
+			// Only View and Test are left under the name: no Workspace control.
 			await expect( withheld.getByRole( 'button' ) ).toHaveCount( 0 );
 			await expect(
 				withheld.getByRole( 'link', { name: /^(View|Test)$/ } )
@@ -118,49 +115,17 @@ test.describe( 'Abilities Explorer', () => {
 			).toBe( false );
 		} );
 
-		test( 'turns the admission policy off and on, updating every row', async ( {
-			admin,
-			page,
-			requestUtils,
-		} ) => {
+		test( 'shows no policy switch', async ( { admin, page } ) => {
 			await openExplorer( admin, page );
 			await search( page, 'Reader Fixture' );
 
-			const reader = row( page, 'Assistant Reader Fixture' );
-			const withheld = row( page, 'Withheld Reader Fixture' );
-			await expect( withheld ).toContainText( WITHHELD_REASON );
-
-			await page
-				.getByRole( 'button', { name: 'Turn policy off' } )
-				.click();
-
-			await expect( snackbar( page, POLICY_OFF ) ).toBeVisible();
 			await expect(
-				page.getByText(
-					'Assistant admission policy: off (built-in abilities only).'
-				)
+				row( page, 'Assistant Reader Fixture' )
 			).toBeVisible();
-			await expect( reader ).toContainText( POLICY_OFF_REASON );
-			await expect( withheld ).toContainText( POLICY_OFF_REASON );
 			await expect(
-				page.getByRole( 'button', { name: 'Remove from assistant' } )
+				page.getByRole( 'button', { name: /policy/i } )
 			).toHaveCount( 0 );
-			expect( ( await readList( requestUtils ) ).policy.disabled ).toBe(
-				true
-			);
-
-			await page
-				.getByRole( 'button', { name: 'Turn policy on' } )
-				.click();
-
-			await expect( snackbar( page, POLICY_ON ) ).toBeVisible();
-			await expect( withheld ).toContainText( WITHHELD_REASON );
-			await expect(
-				reader.getByRole( 'button', { name: 'Remove from assistant' } )
-			).toBeVisible();
-			expect( ( await readList( requestUtils ) ).policy.disabled ).toBe(
-				false
-			);
+			await expect( page.getByText( /eligible/i ) ).toHaveCount( 0 );
 		} );
 
 		test( 'moves focus to the list when a change filters its row out', async ( {
@@ -168,14 +133,12 @@ test.describe( 'Abilities Explorer', () => {
 			page,
 		} ) => {
 			await openExplorer( admin, page );
-			await pickFilter( page, 'Exposed in', 'Assistant' );
+			await pickFilter( page, 'Exposed in', USED_LABEL );
 			await search( page, 'Reader Fixture' );
 
 			const reader = row( page, 'Assistant Reader Fixture' );
 			await reader.hover();
-			await reader
-				.getByRole( 'button', { name: 'Remove from assistant' } )
-				.click();
+			await reader.getByRole( 'button', { name: REMOVE } ).click();
 
 			await expect( snackbar( page, REMOVED ) ).toBeVisible();
 			await expect( reader ).toHaveCount( 0 );
@@ -208,9 +171,7 @@ test.describe( 'Abilities Explorer', () => {
 			await search( page, 'Reader Fixture' );
 
 			const reader = row( page, 'Assistant Reader Fixture' );
-			const control = reader.getByRole( 'button', {
-				name: 'Remove from assistant',
-			} );
+			const control = reader.getByRole( 'button', { name: REMOVE } );
 
 			await reader.hover();
 			await control.click();
@@ -221,9 +182,51 @@ test.describe( 'Abilities Explorer', () => {
 
 			await expect( snackbar( page, REMOVED ) ).toBeVisible();
 			await expect(
-				reader.getByRole( 'button', { name: 'Return to assistant' } )
+				reader.getByRole( 'button', { name: RESTORE } )
 			).toBeVisible();
 			expect( requests ).toBe( 1 );
+		} );
+
+		test( 'shows a failed change under the row and leaves the row as it was', async ( {
+			admin,
+			page,
+			requestUtils,
+		} ) => {
+			await page.route(
+				restRoute( '/ai/v1/abilities/surface' ),
+				( route ) =>
+					route.fulfill( {
+						status: 500,
+						contentType: 'application/json',
+						body: JSON.stringify( {
+							code: 'e2e_failure',
+							message: 'The server could not save the change.',
+							data: { status: 500 },
+						} ),
+					} )
+			);
+
+			await openExplorer( admin, page );
+			await search( page, 'Reader Fixture' );
+
+			const reader = row( page, 'Assistant Reader Fixture' );
+			const control = reader.getByRole( 'button', { name: REMOVE } );
+
+			await reader.hover();
+			await control.click();
+
+			await expect( reader ).toContainText(
+				'Could not remove this ability from AI Workspace. The server could not save the change.'
+			);
+			await expect( reader ).toContainText( USED_LABEL );
+			await expect( control ).toBeEnabled();
+			await expect( snackbar( page, REMOVED ) ).toHaveCount( 0 );
+			expect(
+				payloadRow(
+					await readList( requestUtils ),
+					'ai-e2e/assistant-reader'
+				).owner_excluded
+			).toBe( false );
 		} );
 	} );
 } );

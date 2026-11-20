@@ -2,7 +2,7 @@
 
 ## Summary
 
-The Abilities Explorer experiment adds an admin screen for finding, inspecting and testing every ability registered through the WordPress Abilities API, and for controlling which abilities the AI Workspace assistant may call. It lives at **Tools → Abilities Explorer** (`tools.php?page=ai-abilities-explorer`) and requires the `manage_options` capability.
+The Abilities Explorer experiment adds an admin screen for finding, inspecting and testing every ability registered through the WordPress Abilities API. When the AI Workspace uses an ability, the screen also lets you remove it from the AI Workspace and restore it later. It lives at **Tools → Abilities Explorer** (`tools.php?page=ai-abilities-explorer`) and requires the `manage_options` capability.
 
 The screen is a React application built on `@wordpress/dataviews`, backed by four `ai/v1` REST routes.
 
@@ -23,9 +23,23 @@ The screen is a React application built on `@wordpress/dataviews`, backed by fou
 - Filters:
   - **Provider** (single choice). Core, Plugin and Theme match the ability's origin; any other option is a custom `meta.provider` label and matches that exact label. An ability with a custom label from a plugin therefore appears under both "Plugin" and its own label.
   - **Category**. Each category label is listed once and rendered as text.
-  - **Exposed in**. Filters by assistant state: "Assistant", "Assistant (eligible)" or "Not the assistant".
-- The "Exposed in" column shows REST and MCP badges, the assistant state, the reason an ability is not on the assistant (except "not public", the common case), and, for abilities on the assistant, the "Text the model sees".
-- Row actions under each ability's name, shown on hover or keyboard focus as in `WP_List_Table` (always shown on small screens): **View**, **Test**, and **Remove from assistant** or **Return to assistant** where the row offers one. The list also has a site-wide **Turn policy off / Turn policy on** control for the assistant admission policy. Each change waits for the server, disables its control while pending, and confirms with a notice.
+  - **Exposed in**. Shows only abilities that are "Used by AI Workspace" or "Removed from AI Workspace".
+- The "Exposed in" column shows REST and MCP badges, and whether the AI Workspace uses the ability (see below).
+- Row actions under each ability's name, shown on hover or keyboard focus as in `WP_List_Table` (always shown on small screens): **View**, **Test**, and, where it applies, **Remove from AI Workspace** or **Restore to AI Workspace**.
+
+### What you can do about the AI Workspace
+
+The AI Workspace can call a small set of abilities while it answers questions. Each row of the list is in one of three states:
+
+| The "Exposed in" column shows | What it means | What you can do |
+|---|---|---|
+| **Used by AI Workspace** | The AI Workspace can call this ability. Open **Description AI Workspace sees** to read the exact description it is given. | **Remove from AI Workspace**. The AI Workspace stops using it from its next reply. |
+| **Removed from AI Workspace** | You removed it. The AI Workspace does not call it. | **Restore to AI Workspace**. The AI Workspace can use it again from its next reply. |
+| Nothing | The AI Workspace does not use this ability. | Nothing. You cannot add an ability to the AI Workspace from this screen. |
+
+While a change is being saved, its button shows a busy state and cannot be clicked again. When the change is saved, a notice confirms it. If it fails, an error appears under the ability's name and the row stays as it was.
+
+Removing an ability only affects the AI Workspace. The ability is still registered, and REST, MCP and the **Test** view can still use it.
 
 ### Detail view and test runner
 
@@ -53,12 +67,14 @@ Ability names are passed as a parameter, never in the path, because names contai
 
 | Method | Route | Parameters | Returns |
 |---|---|---|---|
-| `GET` | `ai/v1/abilities` | none | `items` (summary fields and `meta` for every ability), `policy`, `sequence` |
+| `GET` | `ai/v1/abilities` | none | `items` (summary fields and `meta` for every ability), `sequence` |
 | `GET` | `ai/v1/abilities/item` | `name` | One ability with `input_schema`, `output_schema`, `raw_data` and `example_input` |
 | `POST` | `ai/v1/abilities/invoke` | `name`, `input` (a JSON string; empty means no input) | `success` with `data`, or `success: false` with `error.code`, `error.message` and `error.data` |
-| `POST` | `ai/v1/abilities/surface` | `change` (`remove`, `restore`, `disable_policy`, `enable_policy`), `name` for `remove` and `restore` | The updated row (`item`) for `remove` and `restore`, or the full list (`items`) for a policy change, plus `changed`, `policy` and `sequence` |
+| `POST` | `ai/v1/abilities/surface` | `change` (`remove` or `restore`), `name` | The updated row (`item`), `changed` and `sequence` |
 
 The invoke route answers 404 for an unknown ability and 400 for malformed JSON or input that fails the Explorer's schema check. The ability's own outcome, including its permission check and core's input validation, is a 200 with `success: false`. Invoking writes no AI request log row.
+
+Each item carries two AI Workspace flags: `conversational_surface` is true when the AI Workspace uses the ability, and `owner_excluded` is true when a site owner removed it. Any other value of `change` is refused with a 400.
 
 A field of a list item that cannot be encoded as JSON is sent as `null` and named in that item's `unencodable_fields`, so one ability cannot stop the list from loading.
 
@@ -90,7 +106,7 @@ The screen used to be a PHP `WP_List_Table` with admin-ajax handlers. Compared w
 2. Open **Tools → Abilities Explorer**. Check the statistics, search, the Provider, Category and "Exposed in" filters, and sorting.
 3. Use **View** on a row. Check the schemas and the Copy buttons.
 4. Use **Test** on a row. Edit the input, then use **Validate Input**, **Invoke Ability** and **Clear Result**.
-5. On a row whose "Exposed in" column reads "Assistant", use **Remove from assistant**, then **Return to assistant**. Use **Turn policy off** and **Turn policy on**. Check that each change shows a notice.
+5. Turn on the **AI Workspace** experiment too. On a row whose "Exposed in" column reads "Used by AI Workspace", use **Remove from AI Workspace**. Check that a notice appears and the column reads "Removed from AI Workspace". Then use **Restore to AI Workspace** and check that the column reads "Used by AI Workspace" again.
 
 ## Adding fields to the table
 

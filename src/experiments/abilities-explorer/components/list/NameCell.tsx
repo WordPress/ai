@@ -1,7 +1,7 @@
 /**
  * WordPress dependencies
  */
-import { Button } from '@wordpress/components';
+import { Button, Notice } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 
 /**
@@ -57,7 +57,8 @@ export default function NameCell( { item }: { item: AbilityListItem } ) {
 						{ /* One button for both labels, so focus survives the flip. */ }
 						<Button
 							variant="link"
-							disabled={ surfaceAction.disabled }
+							isBusy={ surfaceAction.isBusy }
+							disabled={ surfaceAction.isBusy }
 							accessibleWhenDisabled
 							onClick={ surfaceAction.onActivate }
 						>
@@ -66,6 +67,16 @@ export default function NameCell( { item }: { item: AbilityListItem } ) {
 					</>
 				) }
 			</div>
+			{ surfaceAction?.error && (
+				<Notice
+					className="ai-abilities-explorer__row-error"
+					status="error"
+					politeness="assertive"
+					onRemove={ surfaceAction.onDismissError }
+				>
+					{ surfaceAction.error }
+				</Notice>
+			) }
 		</div>
 	);
 }

@@ -79,8 +79,7 @@ exposed to this surface, and it annotates itself `readonly: true`,
 present and explicit — WordPress defaults them to `null`, and an absent
 `open_world` hint means the ability may reach external systems, so silence is
 refused rather than assumed. An ability that is exposed but carries no
-annotations is not admitted, and the Abilities Explorer says which of the two
-refused it rather than blaming the wrong one.
+annotations is not admitted.
 
 Exposure follows the precedence [WordPress 7.1
 defines](https://make.wordpress.org/core/2026/08/04/a-unified-public-exposure-flag-for-abilities-in-wordpress-7-1/)
@@ -130,20 +129,16 @@ add_filter( 'wpai_workspace_tool_admission_enabled', '__return_true' );
 ```
 
 or define `WPAI_WORKSPACE_TOOL_ADMISSION` as true in `wp-config.php`. The filter
-wins over the constant. Both are temporary and go away with #354; neither is the
-site owner's off switch, which is described below and stays.
+wins over the constant. Both are temporary and go away with #354.
 
 On WordPress 7.0 there is no ability filtering in core, so the policy does not
-run at all and the surface is the floor. That is also what the owner's off
-switch does, deliberately through the same branch, so the fallback is exercised
-on every WordPress version rather than only on the oldest one. The owner's
-switch is a separate control from the #354 gate above: it is on by default, it
-is thrown from the Abilities Explorer, and it outlives the gate.
+run at all and the surface is the floor. The policy also has an off switch, the
+`wpai_workspace_tool_policy_disabled` option, which takes the same branch. It
+only matters once admission is on, so the Abilities Explorer does not show it.
 
-A site owner can see the whole picture under **Tools → Abilities Explorer**:
-which abilities the assistant holds, the exact description text the model
-receives, why any other ability is excluded, and controls to remove one or
-switch the policy off.
+A site owner can see under **Tools → Abilities Explorer** which abilities the
+AI Workspace uses, read the exact description it is given, and remove an
+ability or restore one they removed.
 
 The coarse capability decides only whether a tool is **declared** to the model. Object-level authorization stays inside `WP_Ability::execute()`, which runs the ability's own `permission_callback` on every call — the same path the MCP surface uses, so the two cannot disagree about what a user may do.
 
@@ -522,7 +517,7 @@ add_filter( 'wpai_workspace_tool_candidates', function ( array $candidates ): ar
 
 **Adding a candidate widens what the assistant can reach.** An ability added here is offered to a model that is reading content other people wrote, so it should be read-only, should enforce its own permissions inside `execute_callback` rather than only in its `permission_callback`, and should never be a destructive or credential-bearing operation. An ability that is not registered is skipped, so removing one is safe.
 
-The filter does not have the last word on removals: the site owner's own removals are applied after it, so a filter cannot re-add an ability the owner took off the surface. A name this filter removes is reported in the Abilities Explorer as removed by site code, rather than blamed on the reader's capabilities.
+The filter does not have the last word on removals: the site owner's own removals are applied after it, so a filter cannot re-add an ability the owner took off the surface. A name this filter removes shows nothing in the Abilities Explorer's "Exposed in" column.
 
 ### `wpai_workspace_withheld_abilities`
 
@@ -571,8 +566,6 @@ Temporary. Switches declaration-based admission on before [#354](https://github.
 ```php
 add_filter( 'wpai_workspace_tool_admission_enabled', '__return_true' );
 ```
-
-This is not the site owner's off switch. That one lives on the Abilities Explorer, is on by default, and is not going away.
 
 ### `wpai_admin_screens`
 
