@@ -23,6 +23,7 @@ import { useProviders } from '../hooks/use-providers';
 interface DeveloperSettingsProps {
 	featureId: string;
 	capability: string;
+	settingsField?: 'developer' | 'embedding';
 }
 
 interface DeveloperSelection {
@@ -33,24 +34,29 @@ interface DeveloperSelection {
 /**
  * DeveloperSettings component.
  *
- * Renders provider and model selectors for developer mode, allowing per-feature
- * AI provider and model overrides.
+ * Renders provider and model selectors for a feature's developer override or
+ * explicit embedding selection.
  *
- * @param {DeveloperSettingsProps} props            The component props.
- * @param {string}                 props.featureId  The feature ID.
- * @param {string}                 props.capability The AI capability type for filtering models.
+ * @param {DeveloperSettingsProps} props               The component props.
+ * @param {string}                 props.featureId     The feature ID.
+ * @param {string}                 props.capability    The AI capability type for filtering models.
+ * @param {string}                 props.settingsField The provider/model setting to save.
  * @return {React.JSX.Element} The component.
  */
 export function DeveloperSettings( {
 	featureId,
 	capability,
+	settingsField = 'developer',
 }: DeveloperSettingsProps ): React.JSX.Element {
+	const isEmbedding = settingsField === 'embedding';
 	const { providers, isLoading, fetchError } = useProviders( capability );
 
 	const formWrapperRef = useRef< HTMLDivElement >( null );
 
-	const { settings, update, clear, isSaving } =
-		useDeveloperFeatureSettings( featureId );
+	const { settings, update, clear, isSaving } = useDeveloperFeatureSettings(
+		featureId,
+		settingsField
+	);
 
 	const [ draftSettings, setDraftSettings ] =
 		useState< DeveloperSelection | null >( null );
@@ -90,22 +96,34 @@ export function DeveloperSettings( {
 			return Promise.resolve( [] );
 		}
 		return Promise.resolve( [
-			{ value: '', label: __( '— Default —', 'ai' ) },
+			{
+				value: '',
+				label: isEmbedding
+					? __( '— Select an embedding model —', 'ai' )
+					: __( '— Default —', 'ai' ),
+			},
 			...provider.models.map( ( m ) => ( {
 				value: m.id,
 				label: m.name,
 			} ) ),
 		] );
-	}, [ currentSettings.provider, providers ] );
+	}, [ currentSettings.provider, providers, isEmbedding ] );
 
 	const fields = useMemo< Field< DeveloperSelection >[] >(
 		() => [
 			{
 				id: 'provider',
 				type: 'text' as const,
-				label: __( 'Provider', 'ai' ),
+				label: isEmbedding
+					? __( 'Embedding provider', 'ai' )
+					: __( 'Provider', 'ai' ),
 				elements: [
-					{ value: '', label: __( '— Default —', 'ai' ) },
+					{
+						value: '',
+						label: isEmbedding
+							? __( '— Select an embedding provider —', 'ai' )
+							: __( '— Default —', 'ai' ),
+					},
 					...providers.map( ( p ) => ( {
 						value: p.id,
 						label: p.name,
@@ -116,7 +134,9 @@ export function DeveloperSettings( {
 			{
 				id: 'model',
 				type: 'text' as const,
-				label: __( 'Model', 'ai' ),
+				label: isEmbedding
+					? __( 'Embedding model', 'ai' )
+					: __( 'Model', 'ai' ),
 				isVisible: ( data: DeveloperSelection ) =>
 					!! data.provider &&
 					!! providers.find( ( p ) => p.id === data.provider ),
@@ -124,7 +144,7 @@ export function DeveloperSettings( {
 				Edit: 'select',
 			},
 		],
-		[ providers, getModelElements ]
+		[ providers, getModelElements, isEmbedding ]
 	);
 
 	const form = useMemo< Form >(
@@ -162,6 +182,18 @@ export function DeveloperSettings( {
 	const hasStaleProvider =
 		!! currentSettings.provider &&
 		! providers.find( ( p ) => p.id === currentSettings.provider );
+	const hasStaleModel =
+		isEmbedding &&
+		!! currentSettings.model &&
+		! providers
+			.find( ( p ) => p.id === currentSettings.provider )
+			?.models.some( ( model ) => model.id === currentSettings.model );
+	const hasValidSelection =
+		! isEmbedding ||
+		( !! currentSettings.provider &&
+			!! currentSettings.model &&
+			! hasStaleProvider &&
+			! hasStaleModel );
 
 	if ( capability === 'none' ) {
 		return (
@@ -186,6 +218,14 @@ export function DeveloperSettings( {
 			direction="column"
 			gap="md"
 		>
+			{ isEmbedding && (
+				<p>
+					{ __(
+						'Choose the embedding model used to find related content. This selection is independent of the text-generation model.',
+						'ai'
+					) }
+				</p>
+			) }
 			{ isLoading && (
 				<Stack direction="column" gap="xs">
 					<span className="ai-developer-mode-fields__loading-provider-label">
@@ -199,13 +239,34 @@ export function DeveloperSettings( {
 			) }
 			{ ! isLoading && ! fetchError && (
 				<Stack direction="column" gap="md">
+					{ isEmbedding && providers.length === 0 && (
+						<p>
+							{ __(
+								'No embedding models are available. Connect a provider that supports embeddings and ensure an embedding model is installed or available.',
+								'ai'
+							) }
+						</p>
+					) }
+					{ hasStaleModel && ! hasStaleProvider && (
+						<p>
+							{ __(
+								'The saved embedding model is no longer available. Select an available model and save the settings.',
+								'ai'
+							) }
+						</p>
+					) }
 					{ hasStaleProvider && (
 						<Notice.Root intent="warning">
 							<Notice.Description>
-								{ __(
-									'The previously selected provider is no longer available. This feature will not function as expected until a valid provider is selected or the selection is reset to default.',
-									'ai'
-								) }
+								{ isEmbedding
+									? __(
+											'The saved embedding provider is no longer available. Select an available provider and model, then save the settings.',
+											'ai'
+									  )
+									: __(
+											'The previously selected provider is no longer available. This feature will not function as expected until a valid provider is selected or the selection is reset to default.',
+											'ai'
+									  ) }
 							</Notice.Description>
 						</Notice.Root>
 					) }
@@ -230,7 +291,11 @@ export function DeveloperSettings( {
 									handleSave();
 									focusResetButtonRef.current = true;
 								} }
-								disabled={ isSavingThis || ! hasUnsavedChanges }
+								disabled={
+									isSavingThis ||
+									! hasUnsavedChanges ||
+									! hasValidSelection
+								}
 								isBusy={ isSavingThis }
 								accessibleWhenDisabled
 								__next40pxDefaultSize
@@ -255,7 +320,9 @@ export function DeveloperSettings( {
 								accessibleWhenDisabled
 								ref={ moveFocusToResetButton }
 							>
-								{ __( 'Reset to default', 'ai' ) }
+								{ isEmbedding
+									? __( 'Clear selection', 'ai' )
+									: __( 'Reset to default', 'ai' ) }
 							</Button>
 						) }
 					</Stack>
