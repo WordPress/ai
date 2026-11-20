@@ -448,6 +448,84 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A question a follow-up asked after the dismissal is the one being answered, so no note.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_answering_a_later_follow_up_question_has_no_note(): void {
+		$text = $this->message_after_question(
+			array(
+				array(
+					'prompt'    => '',
+					'text'      => '',
+					'status'    => 'dismissed',
+					'follow_up' => false,
+				),
+				array(
+					'prompt'    => '',
+					'text'      => 'Created the draft. Want an outline too?',
+					'status'    => Turn_Runner::STATUS_AWAITING_USER,
+					'follow_up' => true,
+				),
+			)
+		);
+
+		$this->assertStringNotContainsString( self::DISMISSAL_FRAGMENT, $text );
+	}
+
+	/**
+	 * A follow-up that asked nothing leaves the dismissal as the last word.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_follow_up_that_asks_nothing_keeps_the_note(): void {
+		$text = $this->message_after_question(
+			array(
+				array(
+					'prompt'    => '',
+					'text'      => '',
+					'status'    => 'dismissed',
+					'follow_up' => false,
+				),
+				array(
+					'prompt'    => '',
+					'text'      => 'Created the draft.',
+					'status'    => Turn_Runner::STATUS_COMPLETE,
+					'follow_up' => true,
+				),
+			)
+		);
+
+		$this->assertStringContainsString( self::DISMISSAL_FRAGMENT, $text );
+	}
+
+	/**
+	 * The note is sent once: a turn after the one that followed the dismissal has none.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_the_note_is_not_repeated_on_later_turns(): void {
+		$text = $this->message_after_question(
+			array(
+				array(
+					'prompt'    => '',
+					'text'      => '',
+					'status'    => 'dismissed',
+					'follow_up' => false,
+				),
+				array(
+					'prompt'    => 'Something else',
+					'text'      => 'Sure.',
+					'status'    => Turn_Runner::STATUS_COMPLETE,
+					'follow_up' => false,
+				),
+			)
+		);
+
+		$this->assertStringNotContainsString( self::DISMISSAL_FRAGMENT, $text );
+	}
+
+	/**
 	 * A question tool that is not admitted is not advertised.
 	 *
 	 * @since x.x.x

@@ -194,6 +194,7 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 		entries,
 		isOpening,
 		followUp,
+		isDismissing,
 		isRunning,
 		isStopping,
 		open,
@@ -363,6 +364,19 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 		}
 	}, [ isRunning ] );
 
+	// After a dismissal, focus the input once it is enabled again.
+	const [ dismissFocus, setDismissFocus ] = useState( 0 );
+	const focusedDismissal = useRef( 0 );
+
+	useEffect( () => {
+		if ( isDismissing || dismissFocus === focusedDismissal.current ) {
+			return;
+		}
+
+		focusedDismissal.current = dismissFocus;
+		inputRef.current?.focus();
+	}, [ dismissFocus, isDismissing ] );
+
 	if ( data.availability.status !== 'ready' ) {
 		return (
 			<WorkspaceFrame>
@@ -478,7 +492,7 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 								const result = await dismiss( turnId );
 
 								if ( 'dismissed' === result ) {
-									inputRef.current?.focus();
+									setDismissFocus( ( count ) => count + 1 );
 								}
 
 								return result;
@@ -517,7 +531,7 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 								void stop();
 							} }
 							// The composer is inert while a chat loads, as while a turn runs.
-							isRunning={ isRunning || isOpening }
+							isRunning={ isRunning || isOpening || isDismissing }
 							isStopping={ isStopping || isOpening }
 							inputRef={ inputRef }
 							scopeControl={

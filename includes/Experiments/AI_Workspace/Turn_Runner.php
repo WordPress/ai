@@ -922,11 +922,22 @@ final class Turn_Runner {
 		for ( $index = count( $entries ) - 1; $index >= 0; $index-- ) {
 			$entry = $entries[ $index ];
 
-			if ( ! is_array( $entry ) || ! empty( $entry['follow_up'] ) ) {
+			if ( ! is_array( $entry ) ) {
 				continue;
 			}
 
-			return isset( $entry['status'] ) && self::STATUS_DISMISSED === $entry['status'];
+			$status = $entry['status'] ?? '';
+
+			if ( ! empty( $entry['follow_up'] ) ) {
+				// A follow-up that asked a question since is the one being answered now.
+				if ( self::STATUS_AWAITING_USER === $status ) {
+					return false;
+				}
+
+				continue;
+			}
+
+			return self::STATUS_DISMISSED === $status;
 		}
 
 		return false;

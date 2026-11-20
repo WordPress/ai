@@ -167,6 +167,9 @@ export function useTurn( data: LocalizedData ) {
 
 	// Mirrors `isRunning` for callbacks that read it after an await.
 	const running = useRef( false );
+	// True while a dismissal is in flight; a message sent meanwhile would race it.
+	const dismissing = useRef( false );
+	const [ isDismissing, setIsDismissing ] = useState( false );
 	const controller = useRef< AbortController | null >( null );
 	const announcedTo = useRef( 0 );
 
@@ -705,7 +708,12 @@ export function useTurn( data: LocalizedData ) {
 		async ( message: string, turnScope: ContextScope ): Promise< void > => {
 			const trimmed = message.trim();
 
-			if ( '' === trimmed || running.current || opening.current ) {
+			if (
+				'' === trimmed ||
+				running.current ||
+				opening.current ||
+				dismissing.current
+			) {
 				return;
 			}
 
@@ -833,12 +841,6 @@ export function useTurn( data: LocalizedData ) {
 	}, [ leave ] );
 
 	/**
-	 * Opens a stored chat, rebuilding its transcript from the turn records.
-	 *
-	 * @param id The chat ID.
-	 * @return What came of it.
-	 */
-	/**
 	 * Reads a stored chat.
 	 *
 	 * @param id The chat's ID.
@@ -866,6 +868,12 @@ export function useTurn( data: LocalizedData ) {
 		[ data.rest.nonce, endpoint ]
 	);
 
+	/**
+	 * Opens a stored chat, rebuilding its transcript from the turn records.
+	 *
+	 * @param id The chat ID.
+	 * @return What came of it.
+	 */
 	const open = useCallback(
 		async ( id: string ): Promise< OpenResult > => {
 			leave();
@@ -927,7 +935,8 @@ export function useTurn( data: LocalizedData ) {
 				'' === chatId ||
 				'' === turnId ||
 				running.current ||
-				opening.current
+				opening.current ||
+				dismissing.current
 			) {
 				return 'failed';
 			}
@@ -935,6 +944,9 @@ export function useTurn( data: LocalizedData ) {
 			const started = generation.current;
 			let status = 0;
 			let payload: unknown = null;
+
+			dismissing.current = true;
+			setIsDismissing( true );
 
 			try {
 				const response = await window.fetch(
@@ -957,10 +969,30 @@ export function useTurn( data: LocalizedData ) {
 				payload = await response.json();
 			} catch {
 				status = 0;
+			} finally {
+				dismissing.current = false;
+				setIsDismissing( false );
 			}
 
 			if ( started !== generation.current ) {
 				return 'failed';
+			}
+
+			// A follow-up started meanwhile, so reload rather than append out of order.
+			if ( 200 === status && running.current ) {
+				try {
+					const { chat } = await readChat( chatId );
+
+					if ( chat && started === generation.current ) {
+						setEntries( toEntries( chat ) );
+						setOutcomes( toOutcomes( chat ) );
+					}
+				} catch {
+					// The next turn's save carries the stored state.
+				}
+
+				setAnnouncement( __( 'Question dismissed', 'ai' ) );
+				return 'dismissed';
 			}
 
 			if ( 200 === status ) {
@@ -1036,6 +1068,7 @@ export function useTurn( data: LocalizedData ) {
 		entries,
 		isOpening,
 		followUp,
+		isDismissing,
 		isRunning,
 		isStopping,
 		open,
