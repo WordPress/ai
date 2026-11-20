@@ -41,12 +41,14 @@
 		"start": "concurrently -k -n legacy,routes \"npm run start:legacy\" \"npm run start:routes\"",
 		"test:e2e:debug": "wp-scripts test-playwright --config tests/e2e/playwright.config.ts --wp-env-config=.wp-env.test.json --ui",
 		"test:e2e": "wp-scripts test-playwright --config tests/e2e/playwright.config.ts --wp-env-config=.wp-env.test.json",
+		"test:e2e:multisite": "wp-scripts test-playwright --config tests/e2e/playwright.multisite.config.ts --wp-env-config=.wp-env.test-multisite.json",
 		"test:php": "wp-env --config=.wp-env.test.json run cli --env-cwd=wp-content/plugins/ai vendor/bin/phpunit -c phpunit.xml.dist",
 		"test:php:multisite": "wp-env --config=.wp-env.test.json run cli --env-cwd=wp-content/plugins/ai env WP_MULTISITE=1 vendor/bin/phpunit -c phpunit.xml.dist",
 		"typecheck": "tsc --noEmit",
 		"wp-env": "wp-env",
 		"wp-env:cli": "wp-env run cli --env-cwd=wp-content/plugins/ai",
-		"wp-env:test": "wp-env --config=.wp-env.test.json"
+		"wp-env:test": "wp-env --config=.wp-env.test.json",
+		"wp-env:test-multisite": "wp-env --config=.wp-env.test-multisite.json"
 	},
 	"devDependencies": {
 		"@playwright/test": "1.65.0",

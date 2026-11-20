@@ -10,6 +10,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Admin;
 
+use WordPress\AI\Experiments\Agent_Users\Agent_Account;
+use WordPress\AI\Experiments\Agent_Users\Agent_Credentials;
 use WordPress\AI\Experiments\Key_Encryption\Key_Encryption;
 
 // Exit if accessed directly.
@@ -28,6 +30,7 @@ final class Activation {
 	 *
 	 * @since 0.6.0
 	 * @since 1.5.0 Added the `$network_wide` parameter.
+	 * @since x.x.x Tells parents which agents need new credentials.
 	 *
 	 * @param bool|null $network_wide Whether the plugin is being activated for the whole network.
 	 *                                WordPress can pass null here, which is treated as false.
@@ -38,5 +41,11 @@ final class Activation {
 
 		// Schedule the Key Encryption experiment to re-encrypt plaintext keys on the next request.
 		Key_Encryption::for_each_site( true === $network_wide, array( Key_Encryption::class, 'flag_resume_migration' ) );
+
+		// Agents written to the database while the plugin was inactive need their safeguards too.
+		Agent_Account::refresh_agents_exist_flag();
+
+		// Agent credentials revoked on deactivation have to be created again.
+		Agent_Credentials::on_activation( true === $network_wide );
 	}
 }
