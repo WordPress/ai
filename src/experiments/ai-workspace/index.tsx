@@ -189,6 +189,7 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 		announcement,
 		clear,
 		conversationId,
+		dismiss,
 		entries,
 		isOpening,
 		followUp,
@@ -458,6 +459,15 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 							} }
 							onAnswer={ ( choice, turnScope ) => {
 								void send( choice, turnScope );
+							} }
+							onDismiss={ async ( turnId ) => {
+								const result = await dismiss( turnId );
+
+								if ( 'dismissed' === result ) {
+									inputRef.current?.focus();
+								}
+
+								return result;
 							} }
 						/>
 					</section>

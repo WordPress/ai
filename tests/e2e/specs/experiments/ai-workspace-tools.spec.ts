@@ -193,7 +193,11 @@ test.describe( 'AI Workspace questions', () => {
 				'Anthropic/workspace-ask'
 			]
 		).toBe( 1 );
-		await expect( card.getByRole( 'button' ) ).toHaveCount( 3 );
+		// Three choices, then the card's own close control.
+		await expect( card.getByRole( 'button' ) ).toHaveCount( 4 );
+		await expect( card.getByRole( 'button' ).last() ).toHaveText(
+			'Dismiss question'
+		);
 		await expect(
 			card.getByRole( 'button', { name: 'Fewer parts' } )
 		).toBeEnabled();
@@ -227,6 +231,106 @@ test.describe( 'AI Workspace questions', () => {
 		await expect(
 			card.getByRole( 'button', { name: 'Change the angle' } )
 		).toHaveAttribute( 'aria-pressed', 'false' );
+	} );
+
+	test( 'dismissing closes the question without a model call', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const card = page.getByRole( 'group', { name: QUESTION } );
+		const turns = page.locator( '.ai-workspace__turn' );
+		const calls = async () =>
+			( await getMockScenarioReport( requestUtils ) ).calls[
+				'Anthropic/workspace-ask'
+			];
+
+		await card.getByRole( 'button', { name: 'Dismiss question' } ).click();
+
+		await expect( card ).toContainText( 'Dismissed' );
+		await expect(
+			card.getByRole( 'button', { name: 'Dismiss question' } )
+		).toHaveCount( 0 );
+		await expect( card.getByRole( 'button' ) ).toHaveCount( 3 );
+		for ( const button of await card.getByRole( 'button' ).all() ) {
+			await expect( button ).toBeDisabled();
+		}
+		await expect(
+			page.getByLabel( 'Message', { exact: true } )
+		).toBeFocused();
+		await expect(
+			page.locator( '.screen-reader-text[aria-live="polite"]' )
+		).toHaveText( 'Question dismissed' );
+		await expect( turns ).toHaveCount( 1 );
+		expect( await calls() ).toBe( 1 );
+
+		// A new message after closing is an ordinary turn, not an answer.
+		await page
+			.getByLabel( 'Message', { exact: true } )
+			.fill( 'Make it four parts' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+
+		await expect( turns ).toHaveCount( 2 );
+		await expect( turns.nth( 1 ) ).toContainText( ANSWER_REPLY, {
+			timeout: 30000,
+		} );
+		expect( await calls() ).toBe( 2 );
+		await expect( card ).toContainText( 'Dismissed' );
+		for ( const button of await card.getByRole( 'button' ).all() ) {
+			await expect( button ).toHaveAttribute( 'aria-pressed', 'false' );
+		}
+	} );
+
+	test( 'a question answered elsewhere cannot be dismissed, and shows its answer', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const card = page.getByRole( 'group', { name: QUESTION } );
+		const chat = new URL( page.url() ).searchParams.get( 'chat' ) ?? '';
+
+		expect( chat ).not.toBe( '' );
+
+		// Another window answers first.
+		await requestUtils.rest( {
+			path: '/ai/v1/workspace/messages',
+			method: 'POST',
+			data: { message: 'Fewer parts', conversation_id: chat },
+		} );
+
+		const refused = page.waitForResponse( ( response ) =>
+			decodeURIComponent( response.url() ).includes( '/dismiss' )
+		);
+		await card.getByRole( 'button', { name: 'Dismiss question' } ).click();
+		expect( ( await refused ).status() ).toBe( 409 );
+
+		await expect(
+			card.getByRole( 'button', { name: 'Fewer parts' } )
+		).toHaveAttribute( 'aria-pressed', 'true' );
+		await expect( card ).not.toContainText( 'Dismissed' );
+		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 2 );
+	} );
+
+	test( 'a failed dismissal leaves the question open and says so', async ( {
+		page,
+	} ) => {
+		const card = page.getByRole( 'group', { name: QUESTION } );
+
+		await page.route(
+			( url ) => decodeURIComponent( url.href ).includes( '/dismiss' ),
+			( route ) => route.abort()
+		);
+
+		await card.getByRole( 'button', { name: 'Dismiss question' } ).click();
+
+		await expect( card ).toContainText(
+			'The question could not be dismissed. Try again.'
+		);
+		await expect(
+			card.getByRole( 'button', { name: 'Fewer parts' } )
+		).toBeEnabled();
+		await expect(
+			card.getByRole( 'button', { name: 'Dismiss question' } )
+		).toBeEnabled();
+		await expect( card ).not.toContainText( 'Dismissed' );
 	} );
 
 	test( 'a typed reply also closes the question', async ( { page } ) => {

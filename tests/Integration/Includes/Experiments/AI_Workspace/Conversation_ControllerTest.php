@@ -489,6 +489,193 @@ class Conversation_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * The turn ID the open question in {@see self::save_question_chat()} was asked under.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const QUESTION_TURN = '3f2b8c1e-4d5a-4b6c-8d7e-9f0a1b2c3d4e';
+
+	/**
+	 * Saves a chat whose last turn asked a question, and returns its ID.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int                        $user_id The owner.
+	 * @param list<array<string, mixed>> $after   Optional. Entries stored after the question.
+	 * @return string The conversation ID.
+	 */
+	private function save_question_chat( int $user_id, array $after = array() ): string {
+		$store        = new Conversation_Store();
+		$conversation = $store->create( $user_id, 'site' );
+
+		$conversation['messages'] = array(
+			array(
+				'role'  => 'user',
+				'parts' => array( array( 'text' => 'Plan a series' ) ),
+			),
+		);
+		$conversation['entries']  = array_merge(
+			array(
+				array(
+					'prompt'    => 'Plan a series',
+					'text'      => 'Here is a plan.',
+					'status'    => 'awaiting_user',
+					'follow_up' => false,
+					'turn_id'   => self::QUESTION_TURN,
+				),
+			),
+			$after
+		);
+
+		$store->save( $conversation );
+
+		return $conversation['id'];
+	}
+
+	/**
+	 * Dismissing the open question stores a dismissed entry for it and leaves the model messages alone.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_dismiss_stores_a_dismissed_entry(): void {
+		$owner = self::$user_ids['owner'];
+		wp_set_current_user( $owner );
+
+		$id       = $this->save_question_chat( $owner );
+		$before   = ( new Conversation_Store() )->get( $id, $owner );
+		$response = $this->request( 'POST', '/' . $id . '/dismiss', array( 'turn_id' => self::QUESTION_TURN ) );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( 'dismissed', $response->get_data()['status'] );
+		$this->assertSame( self::QUESTION_TURN, $response->get_data()['turn_id'] );
+
+		$stored = ( new Conversation_Store() )->get( $id, $owner );
+
+		$this->assertCount( 2, $stored['entries'] );
+		$this->assertSame( 'dismissed', $stored['entries'][1]['status'] );
+		$this->assertSame( self::QUESTION_TURN, $stored['entries'][1]['turn_id'] );
+		$this->assertFalse( $stored['entries'][1]['follow_up'] );
+		$this->assertSame( '', $stored['entries'][1]['prompt'] );
+		$this->assertSame( $before['messages'], $stored['messages'], 'A dismissal is not sent to the model.' );
+		$this->assertEmpty( $stored[ Conversation_Store::FOLLOW_UP_OWED ] ?? false, 'A dismissal owes no follow-up turn.' );
+	}
+
+	/**
+	 * Follow-up turns after a question leave it open, so it can still be dismissed.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_dismiss_accepts_a_question_followed_only_by_follow_ups(): void {
+		$owner = self::$user_ids['owner'];
+		wp_set_current_user( $owner );
+
+		$id = $this->save_question_chat(
+			$owner,
+			array(
+				array(
+					'prompt'    => '',
+					'text'      => 'The question above still stands.',
+					'status'    => 'complete',
+					'follow_up' => true,
+				),
+			)
+		);
+
+		$this->assertSame( 200, $this->request( 'POST', '/' . $id . '/dismiss', array( 'turn_id' => self::QUESTION_TURN ) )->get_status() );
+	}
+
+	/**
+	 * Returns the ways a question can be no longer open.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: list<array<string, mixed>>, 1: string}> Entries after the question, and the turn ID dismissed.
+	 */
+	public function data_closed_questions(): array {
+		return array(
+			'already answered'  => array(
+				array(
+					array(
+						'prompt'    => 'Fewer parts',
+						'text'      => 'Got it.',
+						'status'    => 'complete',
+						'follow_up' => false,
+					),
+				),
+				self::QUESTION_TURN,
+			),
+			'already dismissed' => array(
+				array(
+					array(
+						'prompt'    => '',
+						'text'      => '',
+						'status'    => 'dismissed',
+						'follow_up' => false,
+						'turn_id'   => self::QUESTION_TURN,
+					),
+				),
+				self::QUESTION_TURN,
+			),
+			'another turn'      => array( array(), '9e8d7c6b-5a4f-4e3d-8c2b-1a0f9e8d7c6b' ),
+		);
+	}
+
+	/**
+	 * A question that is no longer open is refused with a conflict, and nothing is stored.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_closed_questions
+	 *
+	 * @param list<array<string, mixed>> $after   Entries stored after the question.
+	 * @param string                     $turn_id The turn ID dismissed.
+	 */
+	public function test_dismiss_refuses_a_question_that_is_not_open( array $after, string $turn_id ): void {
+		$owner = self::$user_ids['owner'];
+		wp_set_current_user( $owner );
+
+		$id       = $this->save_question_chat( $owner, $after );
+		$before   = ( new Conversation_Store() )->get( $id, $owner );
+		$response = $this->request( 'POST', '/' . $id . '/dismiss', array( 'turn_id' => $turn_id ) );
+
+		$this->assertSame( 409, $response->get_status() );
+		$this->assertSame( 'workspace_question_not_open', $response->get_data()['code'] );
+		$this->assertSame( $before['entries'], ( new Conversation_Store() )->get( $id, $owner )['entries'] );
+	}
+
+	/**
+	 * Dismissing a question in another user's chat is not found, and leaves the chat unchanged.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_dismiss_in_another_users_chat_is_not_found(): void {
+		$owner = self::$user_ids['owner'];
+		$id    = $this->save_question_chat( $owner );
+
+		wp_set_current_user( self::$user_ids['peer'] );
+
+		$response = $this->request( 'POST', '/' . $id . '/dismiss', array( 'turn_id' => self::QUESTION_TURN ) );
+
+		$this->assertSame( 404, $response->get_status() );
+		$this->assertCount( 1, ( new Conversation_Store() )->get( $id, $owner )['entries'] );
+	}
+
+	/**
+	 * A subscriber cannot dismiss a question.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_dismiss_refuses_insufficient_capability(): void {
+		$id = $this->save_question_chat( self::$user_ids['owner'] );
+
+		wp_set_current_user( self::$user_ids['subscriber'] );
+
+		$this->assertSame( 403, $this->request( 'POST', '/' . $id . '/dismiss', array( 'turn_id' => self::QUESTION_TURN ) )->get_status() );
+	}
+
+	/**
 	 * Subscribers and logged-out visitors cannot reach the routes.
 	 *
 	 * @since x.x.x

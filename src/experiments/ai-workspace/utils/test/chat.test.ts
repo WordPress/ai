@@ -15,6 +15,7 @@ import {
 	newUuid,
 	toChatList,
 	toEntries,
+	toEntry,
 	toOutcomes,
 	toStoredChat,
 	urlForChat,
@@ -108,6 +109,50 @@ describe( 'AI Workspace stored chats', () => {
 		expect( proposed?.followUp ).toBe( false );
 		expect( followedUp?.followUp ).toBe( true );
 		expect( typed?.followUp ).toBe( false );
+	} );
+
+	test( 'keeps a dismissed question, with the turn it closes', () => {
+		const [ asked, dismissed ] = toEntries(
+			stored( {
+				entries: [
+					{
+						prompt: 'Plan a series',
+						status: 'awaiting_user',
+						turn_id: 'turn-1',
+					},
+					{
+						prompt: '',
+						text: '',
+						status: 'dismissed',
+						turn_id: 'turn-1',
+						follow_up: false,
+					},
+				],
+			} )!
+		);
+
+		expect( asked?.turnId ).toBe( 'turn-1' );
+		expect( dismissed ).toMatchObject( {
+			status: 'dismissed',
+			turnId: 'turn-1',
+			followUp: false,
+		} );
+	} );
+
+	test( 'reads the entry the dismiss route returns', () => {
+		expect(
+			toEntry(
+				{ status: 'dismissed', turn_id: 'turn-1', follow_up: false },
+				'local-1',
+				'site'
+			)
+		).toMatchObject( {
+			id: 'local-1',
+			status: 'dismissed',
+			turnId: 'turn-1',
+			prompt: '',
+		} );
+		expect( toEntry( 'nope', 'local-1', 'site' ) ).toBeNull();
 	} );
 
 	test( 'keys reported outcomes by proposal, keeping the last', () => {
@@ -209,6 +254,14 @@ describe( 'AI Workspace stored chats', () => {
 			errorCode: 'turn_failed',
 		} );
 		expect( findSavedTurn( chat!, 'turn-3' ) ).toBeNull();
+	} );
+
+	test( 'never takes a dismissal for the turn that asked', () => {
+		const chat = stored( {
+			entries: [ { turn_id: 'turn-1', status: 'dismissed' } ],
+		} );
+
+		expect( findSavedTurn( chat!, 'turn-1' ) ).toBeNull();
 	} );
 
 	test( 'makes version 4 UUIDs, with or without randomUUID', () => {

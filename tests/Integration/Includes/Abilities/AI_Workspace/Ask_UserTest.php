@@ -128,7 +128,24 @@ class Ask_UserTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Returns inputs of only spaces, which the schema's `pattern` refuses.
+	 * One choice is enough, since the card always has its own close control.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_accepts_a_single_choice(): void {
+		$result = $this->ask(
+			array(
+				'question' => 'Create these drafts?',
+				'choices'  => array( 'Create them' ),
+			)
+		);
+
+		$this->assertIsArray( $result );
+		$this->assertSame( array( 'Create them' ), $result['choices'] );
+	}
+
+	/**
+	 * Returns inputs the schema refuses: blank text, or no choices at all.
 	 *
 	 * @since x.x.x
 	 *
@@ -146,6 +163,12 @@ class Ask_UserTest extends WP_UnitTestCase {
 				array(
 					'question' => '   ',
 					'choices'  => array( 'Yes', 'No' ),
+				),
+			),
+			'no choices'     => array(
+				array(
+					'question' => 'Pick one.',
+					'choices'  => array(),
 				),
 			),
 		);

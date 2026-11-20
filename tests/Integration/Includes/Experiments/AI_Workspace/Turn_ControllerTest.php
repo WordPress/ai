@@ -2080,7 +2080,7 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 
 		$args = array(
 			'question' => 'Go ahead?',
-			'choices'  => array( 'Yes' ),
+			'choices'  => array(),
 		);
 
 		$client = new Scripted_Model_Client(

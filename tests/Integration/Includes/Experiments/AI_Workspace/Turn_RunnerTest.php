@@ -51,6 +51,24 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 	private const QUESTION_FRAGMENT = 'ask with the question tool';
 
 	/**
+	 * Fragment that tells the model not to offer choices that only end the conversation.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const NO_EXIT_CHOICES_FRAGMENT = 'Do not offer choices that only end the conversation';
+
+	/**
+	 * Fragment of the note a turn after a dismissed question carries.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const DISMISSAL_FRAGMENT = 'closed your previous question without answering it';
+
+	/**
 	 * Fragment that denies the model a direct write.
 	 *
 	 * @since x.x.x
@@ -324,8 +342,9 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 		$instruction = $this->instruction_for_turn();
 
 		$this->assertStringContainsString( self::QUESTION_FRAGMENT, $instruction );
-		$this->assertStringContainsString( 'End every reply with a next step, even when you have answered in full: a proposal, or a question', $instruction );
-		$this->assertStringContainsString( 'Never end with only text', $instruction );
+		$this->assertStringContainsString( 'a proposal, or a question through the question tool', $instruction );
+		$this->assertStringContainsString( self::NO_EXIT_CHOICES_FRAGMENT, $instruction );
+		$this->assertStringNotContainsString( 'End every reply', $instruction, 'A reply need not end with a question.' );
 		$this->assertStringContainsString( 'Do not ask and propose in the same response', $instruction );
 	}
 
@@ -338,9 +357,94 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 		$instruction = $this->instruction_for_turn( Tool_Selector::SCOPE_SITE, true );
 
 		$this->assertStringContainsString( self::QUESTION_FRAGMENT, $instruction );
-		$this->assertStringContainsString( 'End every reply with a next step, even when you have answered in full: a question', $instruction );
+		$this->assertStringContainsString( self::NO_EXIT_CHOICES_FRAGMENT, $instruction );
+		$this->assertStringNotContainsString( 'End every reply', $instruction );
 		$this->assertStringNotContainsString( 'a proposal, or a question', $instruction );
 		$this->assertStringNotContainsString( self::PROPOSAL_FRAGMENT, $instruction );
+	}
+
+	/**
+	 * Runs a turn after a question and returns the text of the person's message the model received.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<array<string, mixed>> $after Entries stored after the question.
+	 * @return string The text of the last message sent to the model.
+	 */
+	private function message_after_question( array $after ): string {
+		$user_id = self::$user_ids['administrator'];
+		wp_set_current_user( $user_id );
+
+		$store        = new Conversation_Store();
+		$conversation = $store->create( $user_id, Tool_Selector::SCOPE_SITE );
+		$turn_id      = '3f2b8c1e-4d5a-4b6c-8d7e-9f0a1b2c3d4e';
+
+		$conversation['entries'] = array_merge(
+			array(
+				array(
+					'prompt'    => 'Plan a series',
+					'text'      => 'Here is a plan.',
+					'status'    => Turn_Runner::STATUS_AWAITING_USER,
+					'follow_up' => false,
+					'turn_id'   => $turn_id,
+				),
+			),
+			array_map(
+				static function ( array $entry ) use ( $turn_id ): array {
+					return array_merge( array( 'turn_id' => $turn_id ), $entry );
+				},
+				$after
+			)
+		);
+
+		$client = new Instruction_Recording_Model_Client();
+		$runner = new Turn_Runner( new Tool_Selector(), $store, $client );
+
+		$runner->run( $conversation, 'Make it four parts' );
+
+		$this->assertNotEmpty( $client->received );
+
+		$last  = $client->received[ count( $client->received ) - 1 ];
+		$texts = array();
+
+		foreach ( $last->getParts() as $part ) {
+			$texts[] = (string) $part->getText();
+		}
+
+		return implode( "\n", $texts );
+	}
+
+	/**
+	 * The turn after a dismissed question tells the model the person closed it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_turn_after_a_dismissal_carries_a_note(): void {
+		$text = $this->message_after_question(
+			array(
+				array(
+					'prompt'    => '',
+					'text'      => '',
+					'status'    => 'dismissed',
+					'follow_up' => false,
+				),
+			)
+		);
+
+		$this->assertStringContainsString( self::DISMISSAL_FRAGMENT, $text );
+		$this->assertStringContainsString( 'Make it four parts', $text );
+	}
+
+	/**
+	 * An answered question gets no dismissal note.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_turn_after_an_open_question_has_no_note(): void {
+		$text = $this->message_after_question( array() );
+
+		$this->assertStringNotContainsString( self::DISMISSAL_FRAGMENT, $text );
+		$this->assertStringContainsString( 'Make it four parts', $text );
 	}
 
 	/**
@@ -485,6 +589,15 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 class Instruction_Recording_Model_Client implements Model_Client_Interface {
 
 	/**
+	 * The messages the last call received.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var list<\WordPress\AiClient\Messages\DTO\Message>
+	 */
+	public $received = array();
+
+	/**
 	 * {@inheritDoc}
 	 */
 	public function supports_text_generation(): bool {
@@ -508,7 +621,9 @@ class Instruction_Recording_Model_Client implements Model_Client_Interface {
 	 * @return \WordPress\AiClient\Messages\DTO\Message The reply.
 	 */
 	public function generate( array $messages, array $ability_names, string $system_instruction, ?callable $on_text = null ) {
-		unset( $messages, $ability_names, $system_instruction, $on_text );
+		unset( $ability_names, $system_instruction, $on_text );
+
+		$this->received = $messages;
 
 		return new Message( MessageRoleEnum::model(), array( new MessagePart( 'Done.' ) ) );
 	}

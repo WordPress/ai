@@ -572,6 +572,17 @@ $code-line-height: 18px;
 	gap: var(--wpds-dimension-gap-sm);
 }
 
+.ai-workspace__question.is-dismissed .ai-workspace__question-text {
+	color: var(--wpds-color-foreground-content-neutral-weak);
+	font-weight: 400;
+}
+
+.ai-workspace__question-dismissed {
+	align-self: center;
+	font-size: var(--wpds-typography-font-size-xs);
+	color: var(--wpds-color-foreground-content-neutral-weak);
+}
+
 .ai-workspace__question-hint {
 	margin: 0;
 	font-size: var(--wpds-typography-font-size-xs);

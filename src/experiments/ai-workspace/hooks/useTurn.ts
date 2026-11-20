@@ -15,6 +15,7 @@ import {
 	findSavedTurn,
 	newUuid,
 	toEntries,
+	toEntry,
 	toOutcomes,
 	toStoredChat,
 } from '../utils/chat';
@@ -30,6 +31,11 @@ import type {
  * What came of opening a stored chat.
  */
 export type OpenResult = 'opened' | 'not-found' | 'failed' | 'superseded';
+
+/**
+ * What came of dismissing a question; `conflict` means the stored chat was reloaded.
+ */
+export type DismissResult = 'dismissed' | 'conflict' | 'failed';
 
 /**
  * The turn transport's outcome for one request.
@@ -318,6 +324,7 @@ export function useTurn( data: LocalizedData ) {
 	 * Runs one turn against the transport, streaming when the host allows it.
 	 *
 	 * @param entryId   The transcript entry to update.
+	 * @param turnId    The turn's ID; client-chosen so a lost response can be found in the saved chat.
 	 * @param message   The person's message, empty for a follow-up.
 	 * @param turnScope The scope for this turn.
 	 * @param followUp  Whether this turn follows up a proposal outcome.
@@ -326,6 +333,7 @@ export function useTurn( data: LocalizedData ) {
 	const runTurn = useCallback(
 		async (
 			entryId: string,
+			turnId: string,
 			message: string,
 			turnScope: ContextScope,
 			followUp: boolean
@@ -333,8 +341,6 @@ export function useTurn( data: LocalizedData ) {
 			const abort = new AbortController();
 			controller.current = abort;
 
-			// Client-chosen IDs let a lost response be found in the saved chat.
-			const turnId = newUuid();
 			const newChatId = '' === conversationId.current ? newUuid() : '';
 			const chatId = conversationId.current || newChatId;
 
@@ -581,6 +587,7 @@ export function useTurn( data: LocalizedData ) {
 
 			nextEntryId += 1;
 			const entryId = 'turn-' + nextEntryId;
+			const turnId = newUuid();
 
 			announcedTo.current = 0;
 			setAnnouncement( __( 'The assistant is responding.', 'ai' ) );
@@ -590,6 +597,7 @@ export function useTurn( data: LocalizedData ) {
 				...current,
 				{
 					id: entryId,
+					turnId,
 					prompt: trimmed,
 					text: '',
 					status: 'streaming',
@@ -605,6 +613,7 @@ export function useTurn( data: LocalizedData ) {
 
 			const outcome = await runTurn(
 				entryId,
+				turnId,
 				trimmed,
 				turnScope,
 				followUp
@@ -891,6 +900,90 @@ export function useTurn( data: LocalizedData ) {
 	);
 
 	/**
+	 * Closes a question without a model call; on a conflict the stored chat is shown instead.
+	 *
+	 * @param turnId The ID of the turn that asked.
+	 * @return What came of it.
+	 */
+	const dismiss = useCallback(
+		async ( turnId: string ): Promise< DismissResult > => {
+			const chatId = conversationId.current;
+
+			if (
+				'' === chatId ||
+				'' === turnId ||
+				running.current ||
+				opening.current
+			) {
+				return 'failed';
+			}
+
+			const started = generation.current;
+			const url =
+				endpoint( 'conversations' ) +
+				'/' +
+				encodeURIComponent( chatId );
+			const headers = { 'X-WP-Nonce': data.rest.nonce };
+			let status = 0;
+			let payload: unknown = null;
+
+			try {
+				const response = await window.fetch( url + '/dismiss', {
+					method: 'POST',
+					credentials: 'same-origin',
+					headers: { ...headers, 'Content-Type': 'application/json' },
+					body: JSON.stringify( { turn_id: turnId } ),
+				} );
+
+				status = response.status;
+				payload = await response.json();
+			} catch {
+				status = 0;
+			}
+
+			if ( started !== generation.current ) {
+				return 'failed';
+			}
+
+			if ( 200 === status ) {
+				nextEntryId += 1;
+				const entry = toEntry( payload, 'turn-' + nextEntryId, scope );
+
+				if ( entry ) {
+					setEntries( ( current ) => [ ...current, entry ] );
+					setAnnouncement( __( 'Question dismissed', 'ai' ) );
+					return 'dismissed';
+				}
+			}
+
+			if ( 409 !== status ) {
+				return 'failed';
+			}
+
+			// Answered or closed elsewhere: show what the chat now holds.
+			try {
+				const response = await window.fetch( url, {
+					credentials: 'same-origin',
+					headers,
+				} );
+				const chat = response.ok
+					? toStoredChat( await response.json() )
+					: null;
+
+				if ( chat && started === generation.current ) {
+					setEntries( toEntries( chat ) );
+					setOutcomes( toOutcomes( chat ) );
+				}
+			} catch {
+				// The card stays closed either way; the server refused it.
+			}
+
+			return 'conflict';
+		},
+		[ data.rest.nonce, endpoint, scope ]
+	);
+
+	/**
 	 * Retries a failed turn by sending its prompt again as a new turn.
 	 *
 	 * @param entryId The failed entry.
@@ -908,21 +1001,26 @@ export function useTurn( data: LocalizedData ) {
 		[ entries, send ]
 	);
 
+	// A dismissal is not a turn.
+	const turns = entries.filter(
+		( entry ) => 'dismissed' !== entry.status
+	).length;
 	const summary = sprintf(
 		/* translators: %d: number of turns in the conversation. */
 		_n(
 			'%d turn in this conversation.',
 			'%d turns in this conversation.',
-			entries.length,
+			turns,
 			'ai'
 		),
-		entries.length
+		turns
 	);
 
 	return {
 		announcement,
 		clear,
 		conversationId: conversation,
+		dismiss,
 		entries,
 		isOpening,
 		followUp,

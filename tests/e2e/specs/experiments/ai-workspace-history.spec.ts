@@ -465,3 +465,52 @@ test.describe( 'AI Workspace chat history with proposals', () => {
 		await expect( page.getByRole( 'checkbox' ) ).toHaveCount( 0 );
 	} );
 } );
+
+test.describe( 'AI Workspace chat history with a question', () => {
+	test.beforeEach( async ( { page, requestUtils } ) => {
+		await seedCredentials( requestUtils, [ 'anthropic' ] );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, true );
+		await deleteAllChats( requestUtils );
+		await activateMockScenario( requestUtils, 'workspace-ask' );
+		await page.setViewportSize( { width: 1280, height: 900 } );
+	} );
+
+	test.afterEach( async ( { requestUtils } ) => {
+		await deactivateMockScenario( requestUtils );
+		await deleteAllChats( requestUtils );
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, false );
+		await seedCredentials( requestUtils, [ 'openai' ] );
+	} );
+
+	test( 'a dismissed question stays dismissed when the chat is reopened', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.visitAdminPage( WORKSPACE_PAGE );
+
+		await page
+			.getByLabel( 'Message', { exact: true } )
+			.fill( 'Plan a series about the block editor.' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+
+		const card = page.getByRole( 'group', {
+			name: 'How would you like to go on?',
+		} );
+		await expect( card ).toBeVisible( { timeout: 30000 } );
+
+		await card.getByRole( 'button', { name: 'Dismiss question' } ).click();
+		await expect( card ).toContainText( 'Dismissed' );
+
+		await page.reload();
+
+		await expect( card ).toBeVisible( { timeout: 30000 } );
+		await expect( card ).toContainText( 'Dismissed' );
+		await expect(
+			card.getByRole( 'button', { name: 'Dismiss question' } )
+		).toHaveCount( 0 );
+		await expect(
+			card.getByRole( 'button', { name: 'Fewer parts' } )
+		).toBeDisabled();
+		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 1 );
+	} );
+} );

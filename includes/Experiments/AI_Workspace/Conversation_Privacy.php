@@ -191,12 +191,15 @@ final class Conversation_Privacy {
 			),
 		);
 
-		foreach ( Conversation_Store::entries_of( $post->ID ) as $index => $entry ) {
-			if ( ! is_array( $entry ) ) {
+		$turn = 0;
+
+		foreach ( Conversation_Store::entries_of( $post->ID ) as $entry ) {
+			// A closed question is not a turn and holds nothing of the person's.
+			if ( ! is_array( $entry ) || ( isset( $entry['status'] ) && Turn_Runner::STATUS_DISMISSED === $entry['status'] ) ) {
 				continue;
 			}
 
-			$turn = $index + 1;
+			++$turn;
 
 			// A follow-up after an approval has no message of the person's.
 			if ( isset( $entry['prompt'] ) && is_string( $entry['prompt'] ) && '' !== $entry['prompt'] ) {

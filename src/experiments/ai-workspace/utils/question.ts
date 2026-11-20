@@ -5,10 +5,10 @@
 /**
  * Internal dependencies
  */
-import type { Question } from '../types';
+import type { Question, TranscriptEntry } from '../types';
 
 /**
- * Narrows a tool result to a question with at least two unique, trimmed choices.
+ * Narrows a tool result to a question with at least one unique, trimmed choice.
  *
  * Choices are trimmed because the composer trims what it sends.
  *
@@ -44,9 +44,46 @@ export function toQuestion( value: unknown ): Question | null {
 		}
 	} );
 
-	if ( unique.length < 2 ) {
+	if ( 0 === unique.length ) {
 		return null;
 	}
 
 	return { question: question.trim(), choices: unique };
+}
+
+/**
+ * Where a turn's question stands.
+ */
+export interface QuestionState {
+	isLive: boolean;
+	isDismissed: boolean;
+	/** The message that answered it, or null. */
+	reply: string | null;
+}
+
+/**
+ * Works out whether a turn's question is open, answered or dismissed.
+ *
+ * The next entry that is not a follow-up closes it: a dismissal, or the person's message, which is then its answer.
+ *
+ * @param entries The transcript entries.
+ * @param index   The index of the entry that asked.
+ * @return The question's state.
+ */
+export function questionState(
+	entries: TranscriptEntry[],
+	index: number
+): QuestionState {
+	const later = entries.slice( index + 1 );
+	const next = later.find( ( item ) => ! item.followUp );
+	const isDismissed = 'dismissed' === next?.status;
+
+	return {
+		isLive:
+			'awaiting_user' === entries[ index ]?.status &&
+			undefined === next &&
+			later.every( ( item ) => 'streaming' !== item.status ),
+		isDismissed,
+		reply: next && ! isDismissed ? next.prompt : null,
+	};
 }

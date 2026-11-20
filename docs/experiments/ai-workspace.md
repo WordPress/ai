@@ -71,7 +71,7 @@ The abilities offered to the model are not everything registered on the site. Fo
 | `ai/find-admin-screens` | Finds up to five admin screens for a short description of a task, such as "hide my site from google", from a curated map; returns only screens the user can open, each with its title, menu section and `admin_url()` link | any authenticated user |
 | `ai/propose-drafts` | Records a proposed set of drafts for a person to approve; writes nothing | `edit_posts` |
 | `ai/propose-template` | Records one proposed block template for a person to approve; writes nothing | `edit_theme_options` |
-| `ai/ask-user` | Asks the person one question with two to five choices, which ends the turn until they answer; writes nothing | any authenticated user (the ability itself requires `manage_options`) |
+| `ai/ask-user` | Asks the person one question with one to five choices, which ends the turn until they answer or close it; writes nothing | any authenticated user (the ability itself requires `manage_options`) |
 
 An ability outside the floor is admitted only if it does two things: it is
 exposed to this surface, and it annotates itself `readonly: true`,
@@ -450,8 +450,11 @@ All routes require `manage_options`, checked on every request independently of n
 | `GET` | `/wp-json/ai/v1/workspace/conversations/<id>` | Open a chat: its name, scope, entry records and any reported proposal outcomes |
 | `POST` | `/wp-json/ai/v1/workspace/conversations/<id>` | Rename (`name`, up to 200 characters) or archive and restore (`archived`) a chat |
 | `DELETE` | `/wp-json/ai/v1/workspace/conversations/<id>` | Delete a chat for good |
+| `POST` | `/wp-json/ai/v1/workspace/conversations/<id>/dismiss` | Close the open question asked by `turn_id` without a model call; stores a `dismissed` entry, and answers 409 when that question is no longer open |
 
 A chat the caller does not own answers 404 on every conversations route, so an ID never confirms that someone else's chat exists.
+
+Every question card has a **Dismiss question** control, so the model is told not to offer choices that only end the conversation. A dismissal is stored only as an entry; the model hears of it on the next turn, as a short note before the person's next message.
 
 Cancellation is a second route rather than client-abort detection: PHP only observes a disconnected client after it writes output, so a buffered turn cannot detect one at all. The cancel route writes a marker the turn loop re-reads between rounds.
 

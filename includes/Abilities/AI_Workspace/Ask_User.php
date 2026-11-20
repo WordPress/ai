@@ -51,7 +51,7 @@ final class Ask_User {
 	 *
 	 * @var int
 	 */
-	public const MIN_CHOICES = 2;
+	public const MIN_CHOICES = 1;
 
 	/**
 	 * Most choices a question may offer.
@@ -83,7 +83,7 @@ final class Ask_User {
 			'label'               => __( 'Ask the Person', 'ai' ),
 			'description'         => sprintf(
 				/* translators: 1: the fewest choices, 2: the most choices. */
-				__( 'Asks the person a question and offers %1$d to %2$d short answers to choose from. Use it when you need a decision before you can go on, instead of ending with instructions for them to follow. Asking ends your turn: their answer arrives as their next message, and they may type a different answer instead of choosing one.', 'ai' ),
+				__( 'Asks the person a question and offers %1$d to %2$d short answers to choose from. Use it when you need a decision before you can go on, instead of ending with instructions for them to follow. One choice is fine: the question always has its own close control, so never offer a choice that only declines, such as "No thanks". Asking ends your turn: their answer arrives as their next message, and they may type a different answer instead of choosing one.', 'ai' ),
 				self::MIN_CHOICES,
 				self::MAX_CHOICES
 			),

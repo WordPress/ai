@@ -29,6 +29,7 @@ const STORED_STATUSES: EntryStatus[] = [
 	'tools_unavailable',
 	'model_unavailable',
 	'error',
+	'dismissed',
 ];
 
 /**
@@ -160,6 +161,43 @@ export function toStoredChat( value: unknown ): StoredChat | null {
 }
 
 /**
+ * Narrows one stored turn record to a transcript entry.
+ *
+ * @param value The raw record.
+ * @param id    The entry's key in the transcript.
+ * @param scope The chat's scope.
+ * @return The entry, or null when the record is not one.
+ */
+export function toEntry(
+	value: unknown,
+	id: string,
+	scope: ContextScope
+): TranscriptEntry | null {
+	const record = toRecord( value );
+
+	if ( ! record ) {
+		return null;
+	}
+
+	const stored = readString( record, 'status' ) as EntryStatus;
+
+	return {
+		id,
+		turnId: readString( record, 'turn_id' ),
+		prompt: readString( record, 'prompt' ),
+		text: readString( record, 'text' ),
+		status: STORED_STATUSES.includes( stored ) ? stored : 'error',
+		detail: '',
+		scope,
+		toolCalls: listOf( record, 'tool_calls' ) as ToolCallRecord[],
+		rounds: readNumber( record, 'rounds' ),
+		maxRounds: 0,
+		streamed: false,
+		followUp: true === field( record, 'follow_up' ),
+	};
+}
+
+/**
  * Rebuilds the transcript from a chat's stored turn records.
  *
  * @param chat The stored chat.
@@ -170,28 +208,11 @@ export function toEntries( chat: StoredChat ): TranscriptEntry[] {
 	const entries: TranscriptEntry[] = [];
 
 	chat.entries.forEach( ( value, index ) => {
-		const record = toRecord( value );
+		const entry = toEntry( value, chat.id + '-' + index, scope );
 
-		if ( ! record ) {
-			return;
+		if ( entry ) {
+			entries.push( entry );
 		}
-
-		const stored = readString( record, 'status' ) as EntryStatus;
-		const status = STORED_STATUSES.includes( stored ) ? stored : 'error';
-
-		entries.push( {
-			id: chat.id + '-' + index,
-			prompt: readString( record, 'prompt' ),
-			text: readString( record, 'text' ),
-			status,
-			detail: '',
-			scope,
-			toolCalls: listOf( record, 'tool_calls' ) as ToolCallRecord[],
-			rounds: readNumber( record, 'rounds' ),
-			maxRounds: 0,
-			streamed: false,
-			followUp: true === field( record, 'follow_up' ),
-		} );
 	} );
 
 	return entries;
@@ -300,11 +321,18 @@ export function findSavedTurn(
 	for ( const value of chat.entries ) {
 		const record = toRecord( value );
 
-		if ( ! record || readString( record, 'turn_id' ) !== turnId ) {
+		const stored = record
+			? ( readString( record, 'status' ) as EntryStatus )
+			: 'error';
+
+		// A dismissal carries the ID of the turn that asked, but is not that turn.
+		if (
+			! record ||
+			readString( record, 'turn_id' ) !== turnId ||
+			'dismissed' === stored
+		) {
 			continue;
 		}
-
-		const stored = readString( record, 'status' ) as EntryStatus;
 
 		if ( 'error' === stored || ! STORED_STATUSES.includes( stored ) ) {
 			return {

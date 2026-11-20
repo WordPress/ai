@@ -17,6 +17,7 @@ use WP_REST_Server;
 use WordPress\AI\Access_Control\Feature_Access;
 use WordPress\AI\Experiments\AI_Workspace\AI_Workspace;
 use WordPress\AI\Experiments\AI_Workspace\Conversation_Store;
+use WordPress\AI\Experiments\AI_Workspace\Turn_Runner;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
@@ -157,6 +158,26 @@ final class Conversation_Controller {
 					'methods'             => WP_REST_Server::DELETABLE,
 					'callback'            => array( $this, 'delete_conversation' ),
 					'permission_callback' => array( $this, 'check_permission' ),
+				),
+			)
+		);
+
+		// Closes a question without a model call.
+		register_rest_route(
+			self::API_NAMESPACE,
+			'/workspace/conversations/(?P<id>[A-Za-z0-9\-]+)/dismiss',
+			array(
+				array(
+					'methods'             => WP_REST_Server::CREATABLE,
+					'callback'            => array( $this, 'dismiss_question' ),
+					'permission_callback' => array( $this, 'check_permission' ),
+					'args'                => array(
+						'turn_id' => array(
+							'type'     => 'string',
+							'format'   => 'uuid',
+							'required' => true,
+						),
+					),
 				),
 			)
 		);
@@ -323,6 +344,75 @@ final class Conversation_Controller {
 			),
 			200
 		);
+	}
+
+	/**
+	 * Closes the open question a turn asked, storing a dismissed entry and nothing for the model.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_REST_Request $request The REST request.
+	 * @return \WP_REST_Response|\WP_Error The stored entry, or an error.
+	 */
+	public function dismiss_question( WP_REST_Request $request ) {
+		$turn_id      = (string) $request->get_param( 'turn_id' );
+		$conversation = $this->store->get( (string) $request->get_param( 'id' ), get_current_user_id() );
+
+		if ( null === $conversation ) {
+			return $this->not_found();
+		}
+
+		if ( ! $this->is_open_question( $conversation['entries'], $turn_id ) ) {
+			return new WP_Error(
+				'workspace_question_not_open',
+				__( 'That question has already been answered or closed.', 'ai' ),
+				array( 'status' => 409 )
+			);
+		}
+
+		$entry                   = Turn_Runner::dismissal_entry( $turn_id );
+		$conversation['entries'] = array_merge( $conversation['entries'], array( $entry ) );
+
+		if ( ! $this->store->save( $conversation ) ) {
+			return $this->not_saved();
+		}
+
+		return new WP_REST_Response( $entry, 200 );
+	}
+
+	/**
+	 * Reports whether a turn's question is still open: asked, then followed only by follow-ups.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<mixed> $entries The stored entry records.
+	 * @param string      $turn_id The ID of the turn that asked.
+	 * @return bool True when the question can still be answered.
+	 */
+	private function is_open_question( array $entries, string $turn_id ): bool {
+		$open = false;
+
+		foreach ( $entries as $entry ) {
+			if ( ! is_array( $entry ) ) {
+				continue;
+			}
+
+			$status = isset( $entry['status'] ) && is_string( $entry['status'] ) ? $entry['status'] : '';
+
+			if ( Turn_Runner::STATUS_AWAITING_USER === $status && isset( $entry['turn_id'] ) && $turn_id === $entry['turn_id'] ) {
+				$open = true;
+				continue;
+			}
+
+			// The person's next message, or a dismissal, closes it.
+			if ( ! empty( $entry['follow_up'] ) ) {
+				continue;
+			}
+
+			$open = false;
+		}
+
+		return $open;
 	}
 
 	/**

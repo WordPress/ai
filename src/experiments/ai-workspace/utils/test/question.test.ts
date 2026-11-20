@@ -9,7 +9,27 @@ import { describe, expect, test } from 'vitest';
 /**
  * Internal dependencies
  */
-import { toQuestion } from '../question';
+import { questionState, toQuestion } from '../question';
+import type { EntryStatus, TranscriptEntry } from '../../types';
+
+const entry = (
+	status: EntryStatus,
+	prompt = '',
+	followUp = false
+): TranscriptEntry => ( {
+	id: status + prompt,
+	turnId: '',
+	prompt,
+	text: '',
+	status,
+	detail: '',
+	scope: 'site',
+	toolCalls: [],
+	rounds: 1,
+	maxRounds: 0,
+	streamed: false,
+	followUp,
+} );
 
 describe( 'AI Workspace question narrowing', () => {
 	test( 'accepts a question with its choices', () => {
@@ -42,12 +62,21 @@ describe( 'AI Workspace question narrowing', () => {
 		).toEqual( { question: 'Pick one.', choices: [ 'Yes', 'No' ] } );
 	} );
 
-	test( 'refuses a question left with fewer than two choices', () => {
+	test( 'accepts a single choice, since the card can always be closed', () => {
 		expect(
-			toQuestion( { question: 'Pick one.', choices: [ 'Yes', 'Yes' ] } )
+			toQuestion( {
+				question: 'Create them?',
+				choices: [ 'Yes', 'Yes' ],
+			} )
+		).toEqual( { question: 'Create them?', choices: [ 'Yes' ] } );
+	} );
+
+	test( 'refuses a question left with no choices', () => {
+		expect(
+			toQuestion( { question: 'Pick one.', choices: [ ' ', '' ] } )
 		).toBeNull();
 		expect(
-			toQuestion( { question: 'Pick one.', choices: [ 'Yes', '' ] } )
+			toQuestion( { question: 'Pick one.', choices: [] } )
 		).toBeNull();
 	} );
 
@@ -60,5 +89,52 @@ describe( 'AI Workspace question narrowing', () => {
 		expect(
 			toQuestion( { question: 'Go?', choices: 'Yes, No' } )
 		).toBeNull();
+	} );
+} );
+
+describe( 'AI Workspace question state', () => {
+	test( 'a question with nothing after it is live', () => {
+		expect( questionState( [ entry( 'awaiting_user' ) ], 0 ) ).toEqual( {
+			isLive: true,
+			isDismissed: false,
+			reply: null,
+		} );
+	} );
+
+	test( 'the next message answers it; a follow-up does not', () => {
+		const entries = [
+			entry( 'awaiting_user' ),
+			entry( 'complete', '', true ),
+			entry( 'complete', 'Fewer parts' ),
+		];
+
+		expect( questionState( entries.slice( 0, 2 ), 0 ).isLive ).toBe( true );
+		expect( questionState( entries, 0 ) ).toEqual( {
+			isLive: false,
+			isDismissed: false,
+			reply: 'Fewer parts',
+		} );
+	} );
+
+	test( 'a dismissal closes it, and a later message is not its answer', () => {
+		expect(
+			questionState(
+				[
+					entry( 'awaiting_user' ),
+					entry( 'dismissed' ),
+					entry( 'complete', 'Fewer parts' ),
+				],
+				0
+			)
+		).toEqual( { isLive: false, isDismissed: true, reply: null } );
+	} );
+
+	test( 'a turn still streaming holds it closed', () => {
+		expect(
+			questionState(
+				[ entry( 'awaiting_user' ), entry( 'streaming', '', true ) ],
+				0
+			).isLive
+		).toBe( false );
 	} );
 } );

@@ -383,10 +383,11 @@ class AI_WorkspaceTest extends WP_UnitTestCase {
 	 */
 	public function data_workspace_routes(): array {
 		return array(
-			'send a message'    => array( 'POST', '/ai/v1/workspace/messages', array( 'message' => 'Hello' ) ),
-			'read a turn state' => array( 'GET', '/ai/v1/workspace/messages/3f2b8c1e-4d5a-4b6c-8d7e-9f0a1b2c3d4e', array() ),
-			'read a proposal'   => array( 'GET', '/ai/v1/workspace/proposals/abc', array() ),
-			'list spaces'       => array( 'GET', '/ai/v1/workspace/conversations', array() ),
+			'send a message'     => array( 'POST', '/ai/v1/workspace/messages', array( 'message' => 'Hello' ) ),
+			'read a turn state'  => array( 'GET', '/ai/v1/workspace/messages/3f2b8c1e-4d5a-4b6c-8d7e-9f0a1b2c3d4e', array() ),
+			'read a proposal'    => array( 'GET', '/ai/v1/workspace/proposals/abc', array() ),
+			'list spaces'        => array( 'GET', '/ai/v1/workspace/conversations', array() ),
+			'dismiss a question' => array( 'POST', '/ai/v1/workspace/conversations/abc/dismiss', array( 'turn_id' => '3f2b8c1e-4d5a-4b6c-8d7e-9f0a1b2c3d4e' ) ),
 		);
 	}
 

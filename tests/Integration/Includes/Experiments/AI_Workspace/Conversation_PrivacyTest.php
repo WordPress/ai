@@ -208,6 +208,47 @@ class Conversation_PrivacyTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A dismissed question is not a turn, so it is left out and the turns stay numbered in order.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_export_skips_dismissed_questions(): void {
+		$chat = $this->save_chat(
+			self::$user_ids['owner'],
+			array(
+				array(
+					'prompt' => 'Plan a series',
+					'text'   => 'How would you like to go on?',
+					'status' => 'awaiting_user',
+				),
+				array(
+					'prompt' => '',
+					'text'   => '',
+					'status' => 'dismissed',
+				),
+				array(
+					'prompt' => 'Make it four parts',
+					'text'   => 'Got it.',
+				),
+			)
+		);
+
+		$export = $this->privacy_callback( 'wp_privacy_personal_data_exporters' )( 'owner@example.org', 1 );
+		$fields = array();
+
+		foreach ( $export['data'] as $item ) {
+			if ( 'wpai-chat-' . $chat['id'] !== $item['item_id'] ) {
+				continue;
+			}
+
+			$fields = $this->fields( $item );
+		}
+
+		$this->assertSame( 'Make it four parts', $fields['Turn 2: your message'] ?? null );
+		$this->assertArrayNotHasKey( 'Turn 3: your message', $fields );
+	}
+
+	/**
 	 * With the experiment off, archived chats are exported too.
 	 *
 	 * @since x.x.x

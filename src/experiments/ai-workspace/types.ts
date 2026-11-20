@@ -138,14 +138,18 @@ export interface TurnResponse {
 
 /**
  * How an assistant entry ended; `streaming` is the only non-terminal value.
+ *
+ * `dismissed` records a question closed without an answer; it renders on the question's card.
  */
-export type EntryStatus = 'streaming' | TurnStatus | 'error';
+export type EntryStatus = 'streaming' | TurnStatus | 'error' | 'dismissed';
 
 /**
  * One rendered turn in the transcript.
  */
 export interface TranscriptEntry {
 	id: string;
+	/** The ID the client gave the turn; a dismissal carries the ID of the turn that asked. */
+	turnId: string;
 	prompt: string;
 	/** The assistant text received so far. */
 	text: string;

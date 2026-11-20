@@ -68,6 +68,15 @@ final class Turn_Runner {
 	public const STATUS_AWAITING_USER = 'awaiting_user';
 
 	/**
+	 * Entry status recorded when the person closed a question without answering it.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const STATUS_DISMISSED = 'dismissed';
+
+	/**
 	 * Default maximum number of model rounds in a single turn.
 	 *
 	 * @since x.x.x
@@ -288,7 +297,13 @@ final class Turn_Runner {
 			// Left off the resolver too, so a proposal call is refused as unknown.
 			$tools = array_values( array_diff( $tools, $this->proposal_abilities() ) );
 		} else {
-			$history[] = new UserMessage( array( new MessagePart( $message ) ) );
+			$parts = array( new MessagePart( $message ) );
+
+			if ( $this->follows_dismissal( $entries ) ) {
+				array_unshift( $parts, new MessagePart( __( '(The person closed your previous question without answering it.)', 'ai' ) ) );
+			}
+
+			$history[] = new UserMessage( $parts );
 		}
 
 		$resolver = new WP_AI_Client_Ability_Function_Resolver( ...$tools );
@@ -318,13 +333,13 @@ final class Turn_Runner {
 		$conversation['messages'] = array_merge( $stored, $new_messages );
 
 		if ( null !== $loop['error'] ) {
-			$conversation['entries'] = array_merge( $entries, array( $this->entry( $message, '', self::STATUS_ERROR, $rounds, $tool_calls, $follow_up, $loop['error']->get_error_code(), $turn_id ) ) );
+			$conversation['entries'] = array_merge( $entries, array( self::entry( $message, '', self::STATUS_ERROR, $rounds, $tool_calls, $follow_up, $loop['error']->get_error_code(), $turn_id ) ) );
 			$this->store->save( $this->keep_recorded_outcomes( $conversation, $stored_count ) );
 
 			return $loop['error'];
 		}
 
-		$conversation['entries'] = array_merge( $entries, array( $this->entry( $message, $this->last_assistant_text( $history ), $status, $rounds, $tool_calls, $follow_up, '', $turn_id ) ) );
+		$conversation['entries'] = array_merge( $entries, array( self::entry( $message, $this->last_assistant_text( $history ), $status, $rounds, $tool_calls, $follow_up, '', $turn_id ) ) );
 		$conversation['scope']   = $scope;
 		$this->store->save( $this->keep_recorded_outcomes( $conversation, $stored_count ) );
 		$this->store->clear_cancellation( $conversation_id, $user_id );
@@ -864,7 +879,7 @@ final class Turn_Runner {
 	 * @param string                     $turn_id    Optional. The client's ID for this turn. Default empty.
 	 * @return array<string, mixed> The entry record.
 	 */
-	private function entry( string $prompt, string $text, string $status, int $rounds, array $tool_calls, bool $follow_up, $error_code = '', string $turn_id = '' ): array {
+	private static function entry( string $prompt, string $text, string $status, int $rounds, array $tool_calls, bool $follow_up, $error_code = '', string $turn_id = '' ): array {
 		$entry = array(
 			'prompt'     => $prompt,
 			'text'       => $text,
@@ -881,6 +896,40 @@ final class Turn_Runner {
 		}
 
 		return $entry;
+	}
+
+	/**
+	 * Builds the entry that records a question closed without an answer.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $turn_id The ID of the turn that asked the question.
+	 * @return array<string, mixed> The entry record.
+	 */
+	public static function dismissal_entry( string $turn_id ): array {
+		return self::entry( '', '', self::STATUS_DISMISSED, 0, array(), false, '', $turn_id );
+	}
+
+	/**
+	 * Reports whether the person's last action was closing a question.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<mixed> $entries The stored entry records.
+	 * @return bool True when the last entry that is not a follow-up is a dismissal.
+	 */
+	private function follows_dismissal( array $entries ): bool {
+		for ( $index = count( $entries ) - 1; $index >= 0; $index-- ) {
+			$entry = $entries[ $index ];
+
+			if ( ! is_array( $entry ) || ! empty( $entry['follow_up'] ) ) {
+				continue;
+			}
+
+			return isset( $entry['status'] ) && self::STATUS_DISMISSED === $entry['status'];
+		}
+
+		return false;
 	}
 
 	/**
@@ -1198,8 +1247,9 @@ final class Turn_Runner {
 
 				// A follow-up has no proposal tool, so it may only ask.
 				$instruction .= ' ' . ( array() !== array_intersect( $proposal_abilities, $tools )
-					? __( 'Do not ask and propose in the same response. End every reply with a next step, even when you have answered in full: a proposal, or a question through the question tool offering what you can do next. Never end with only text, and never with steps for the person to carry out themselves.', 'ai' )
-					: __( 'End every reply with a next step, even when you have answered in full: a question through the question tool offering what you can do next. Never end with only text, and never with steps for the person to carry out themselves.', 'ai' ) );
+					? __( 'Do not ask and propose in the same response. When there is a real next step, end with it: a proposal, or a question through the question tool. Never end with steps for the person to carry out themselves.', 'ai' )
+					: __( 'When there is a real next step, end with it as a question through the question tool. Never end with steps for the person to carry out themselves.', 'ai' ) );
+				$instruction .= ' ' . __( 'Do not offer choices that only end the conversation, such as "No thanks": the person can always close a question.', 'ai' );
 			}
 		} else {
 			$instruction .= ' ' . __( 'You have no access to this site\'s content in this conversation. Answer from general knowledge, and say so when a question would need site data.', 'ai' );

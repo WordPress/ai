@@ -19,7 +19,8 @@ import ResultsTable from './ResultsTable';
 import WapuuStatus, { WapuuDone } from './WapuuStatus';
 import { toPostResultSet } from '../utils/post-results';
 import { PROPOSAL_ABILITIES, toProposalId } from '../utils/proposal';
-import { toQuestion } from '../utils/question';
+import { questionState, toQuestion } from '../utils/question';
+import type { DismissResult } from '../hooks/useTurn';
 import type {
 	ContextScope,
 	ProposalExecution,
@@ -352,6 +353,7 @@ function TurnState( {
  * @param props.conversationId The conversation being rendered.
  * @param props.onFollowUp     Asks the assistant to follow up a settled proposal.
  * @param props.onAnswer       Sends a question's choice as the next message.
+ * @param props.onDismiss      Closes the question a turn asked, by that turn's ID.
  * @param props.outcomes       Reported outcomes, keyed by proposal ID.
  * @return The rendered transcript.
  */
@@ -363,6 +365,7 @@ export default function Transcript( {
 	conversationId,
 	onFollowUp,
 	onAnswer,
+	onDismiss,
 	outcomes = {},
 }: {
 	entries: TranscriptEntry[];
@@ -372,6 +375,7 @@ export default function Transcript( {
 	conversationId: string;
 	onFollowUp: ( scope: ContextScope, conversationId: string ) => void;
 	onAnswer: ( choice: string, scope: ContextScope ) => void;
+	onDismiss: ( turnId: string ) => Promise< DismissResult >;
 	outcomes?: Record< string, ProposalExecution >;
 } ) {
 	if ( 0 === entries.length ) {
@@ -381,14 +385,15 @@ export default function Transcript( {
 	return (
 		<ol className="ai-workspace__turns">
 			{ entries.map( ( entry, index ) => {
-				// The next non-follow-up message answers a question; follow-ups leave it open.
-				const later = entries.slice( index + 1 );
-				const answer = later.find( ( item ) => ! item.followUp );
-				const isLive =
-					'awaiting_user' === entry.status &&
-					undefined === answer &&
-					later.every( ( item ) => 'streaming' !== item.status );
-				const reply = answer ? answer.prompt : null;
+				// A dismissal shows on the card it closed, not as a turn.
+				if ( 'dismissed' === entry.status ) {
+					return null;
+				}
+
+				const { isLive, isDismissed, reply } = questionState(
+					entries,
+					index
+				);
 
 				return (
 					<li key={ entry.id } className="ai-workspace__turn">
@@ -451,6 +456,7 @@ export default function Transcript( {
 										key={ questionIndex }
 										question={ question }
 										isLive={ isLive }
+										isDismissed={ isDismissed }
 										chosen={
 											reply &&
 											question.choices.includes( reply )
@@ -459,6 +465,9 @@ export default function Transcript( {
 										}
 										onAnswer={ ( choice ) =>
 											onAnswer( choice, entry.scope )
+										}
+										onDismiss={ () =>
+											onDismiss( entry.turnId )
 										}
 									/>
 								)
