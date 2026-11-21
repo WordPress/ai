@@ -21,7 +21,7 @@ import type { KeyboardEvent, MutableRefObject, ReactNode } from 'react';
  * @param props.onChange     Draft change handler.
  * @param props.onSubmit     Send handler.
  * @param props.onStop       Stop handler.
- * @param props.isRunning    Whether a turn is in flight.
+ * @param props.isRunning    Whether a turn is in flight; the draft stays editable but cannot be sent.
  * @param props.isStopping   Whether a stop has been requested.
  * @param props.isBusy       Whether the input is held for a short request that cannot be stopped.
  * @param props.inputRef     Ref for the textarea, used to restore focus.
@@ -54,10 +54,15 @@ export default function PromptInput( {
 		'ai-workspace-composer-shortcut'
 	) as string;
 
+	const canSend = ! isRunning && ! isBusy && '' !== value.trim();
+
 	const onKeyDown = ( event: KeyboardEvent< HTMLTextAreaElement > ): void => {
 		if ( 'Enter' === event.key && ( event.metaKey || event.ctrlKey ) ) {
 			event.preventDefault();
-			onSubmit();
+
+			if ( canSend ) {
+				onSubmit();
+			}
 		}
 	};
 
@@ -77,7 +82,7 @@ export default function PromptInput( {
 				aria-keyshortcuts="Meta+Enter Control+Enter"
 				rows={ 3 }
 				value={ value }
-				disabled={ isRunning || isBusy }
+				disabled={ isBusy }
 				onChange={ onChange }
 				onKeyDown={ onKeyDown }
 			/>
@@ -104,7 +109,7 @@ export default function PromptInput( {
 					<Button
 						__next40pxDefaultSize
 						variant="primary"
-						disabled={ isRunning || isBusy || '' === value.trim() }
+						disabled={ ! canSend }
 						accessibleWhenDisabled
 						onClick={ onSubmit }
 					>
