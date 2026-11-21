@@ -351,7 +351,7 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 		}
 	}, [ conversationId ] );
 
-	// Return focus to the input after a turn, since it was disabled while running.
+	// Return focus to the input after a turn, unless it moved out of the composer.
 	useEffect( () => {
 		if ( isRunning ) {
 			hasRun.current = true;
@@ -359,8 +359,18 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 		}
 
 		// Only after a turn: focus is not stolen when the screen first loads.
-		if ( hasRun.current ) {
-			inputRef.current?.focus();
+		if ( ! hasRun.current || ! inputRef.current ) {
+			return;
+		}
+
+		const active = inputRef.current.ownerDocument.activeElement;
+
+		if (
+			! active ||
+			active === inputRef.current.ownerDocument.body ||
+			inputRef.current.form?.contains( active )
+		) {
+			inputRef.current.focus();
 		}
 	}, [ isRunning ] );
 
@@ -530,9 +540,9 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 							onStop={ () => {
 								void stop();
 							} }
-							// The composer is inert while a chat loads, as while a turn runs.
+							// A draft can be written while a turn runs, but not while a chat loads.
 							isRunning={ isRunning || isOpening }
-							isBusy={ isDismissing }
+							isBusy={ isDismissing || isOpening }
 							isStopping={ isStopping || isOpening }
 							inputRef={ inputRef }
 							scopeControl={
