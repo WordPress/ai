@@ -37,6 +37,11 @@ export interface ApplyContext extends ReadContext {
  * Encapsulates how to write and read a meta description for a given SEO plugin.
  */
 export interface SeoEditorAdapter {
+	externalDescription?: {
+		subscribe: ( onChange: () => void ) => () => void;
+		getSnapshot: () => string | undefined;
+	};
+
 	/**
 	 * Writes the description so the SEO plugin UI updates and the value persists on save.
 	 *
@@ -154,12 +159,46 @@ export const rankMathAdapter: SeoEditorAdapter = {
 	},
 };
 
+function getTsfDescriptionField(): HTMLTextAreaElement | null {
+	return document.querySelector( '#autodescription_description' );
+}
+
+const theSeoFrameworkAdapter: SeoEditorAdapter = {
+	externalDescription: {
+		subscribe: ( onChange ) => {
+			const onInput = ( event: Event ) => {
+				if ( event.target === getTsfDescriptionField() ) {
+					onChange();
+				}
+			};
+
+			document.addEventListener( 'input', onInput, true );
+			return () => document.removeEventListener( 'input', onInput, true );
+		},
+		getSnapshot: () => getTsfDescriptionField()?.value,
+	},
+	apply: ( text, context ) => {
+		const field = getTsfDescriptionField();
+		if ( ! field ) {
+			return;
+		}
+
+		field.value = text;
+		field.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+
+		// Mark the post dirty so WordPress saves the metabox with the post.
+		defaultAdapter.apply( text, context );
+	},
+	read: defaultAdapter.read,
+};
+
 /**
  * Registry of SEO plugin adapters, keyed by the plugin slug from `SEO_Integration`.
  */
 const ADAPTERS: Record< string, SeoEditorAdapter > = {
 	'yoast-seo': yoastAdapter,
 	'rank-math': rankMathAdapter,
+	'the-seo-framework': theSeoFrameworkAdapter,
 };
 
 /**

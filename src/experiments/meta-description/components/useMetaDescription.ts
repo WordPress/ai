@@ -13,6 +13,7 @@ import {
 	useMemo,
 	useRef,
 	useEffect,
+	useSyncExternalStore,
 } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
@@ -33,6 +34,8 @@ import type {
 
 const NOTICE_ID = 'ai_meta_description_error';
 const MINIMUM_CONTENT_COUNT_DEFAULT = 250;
+const subscribeToNothing = () => () => {};
+const getNoExternalDescription = () => undefined;
 
 const getLocalized = (): MetaDescriptionData | undefined =>
 	( window as any ).aiMetaDescriptionData as MetaDescriptionData | undefined;
@@ -43,6 +46,7 @@ interface UseMetaDescriptionReturn {
 	currentDescription: string;
 	metaKey: string;
 	hasSeoPlugin: boolean;
+	canApply: boolean;
 	isContentTooShort: boolean;
 	tooShortLabel: string;
 	ensureProviderAvailable: () => boolean;
@@ -61,12 +65,18 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 	const localized = getLocalized();
 	const metaKey = localized?.metaKey ?? 'wpai_meta_description';
 	const seoPlugin = localized?.seoPlugin ?? null;
-	const hasSeoPlugin = Boolean( seoPlugin );
 
 	// The active SEO plugin decides how the description is written to and read from the
 	// editor. The default adapter uses core/editor post meta; Yoast and Rank Math target
 	// their own stores.
 	const adapter = useMemo( () => getAdapter( seoPlugin ), [ seoPlugin ] );
+
+	const externalDescription = useSyncExternalStore(
+		adapter.externalDescription?.subscribe ?? subscribeToNothing,
+		adapter.externalDescription?.getSnapshot ?? getNoExternalDescription
+	);
+	const canApply =
+		! adapter.externalDescription || externalDescription !== undefined;
 
 	const { editPost } = useDispatch( editorStore );
 	const { removeNotice, createErrorNotice } = dispatch( noticesStore );
@@ -222,9 +232,10 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 	return {
 		isGenerating,
 		suggestion,
-		currentDescription,
+		currentDescription: externalDescription ?? currentDescription,
 		metaKey,
-		hasSeoPlugin,
+		hasSeoPlugin: Boolean( seoPlugin ),
+		canApply,
 		isContentTooShort,
 		tooShortLabel,
 		ensureProviderAvailable,
