@@ -74,6 +74,134 @@ test.describe( 'Type-ahead Text Experiment', () => {
 		await editor.saveDraft();
 	} );
 
+	test( 'Can request a suggestion with the access + G shortcut', async ( {
+		admin,
+		editor,
+		page,
+		pageUtils,
+	} ) => {
+		await enableExperiment( admin, page, 'Type-ahead Text' );
+		await admin.createNewPost();
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: { content: 'This paragraph needs more text.' },
+		} );
+
+		// Put the caret at the start, where suggestions only come from the shortcut.
+		await editor.canvas
+			.getByRole( 'document', { name: 'Block: Paragraph' } )
+			.click( { position: { x: 5, y: 5 } } );
+
+		const status = editor.canvas.getByRole( 'status' );
+		await expect( status ).toHaveText( '' );
+
+		// Ctrl + Option + G on macOS, Shift + Alt + G elsewhere.
+		await pageUtils.pressKeys( 'access+g' );
+
+		await expect( status ).toHaveText( /This is a test suggestion\./ );
+
+		// The shortcut is listed in the Keyboard shortcuts modal.
+		await pageUtils.pressKeys( 'access+h' );
+		await expect(
+			page
+				.getByRole( 'dialog', { name: 'Keyboard shortcuts' } )
+				.getByText( 'Ask for a type-ahead suggestion.' )
+		).toBeVisible();
+	} );
+
+	test( 'Sends one request for a paragraph nested in other blocks', async ( {
+		admin,
+		editor,
+		page,
+		pageUtils,
+	} ) => {
+		await enableExperiment( admin, page, 'Type-ahead Text' );
+
+		let requests = 0;
+		await page.route(
+			/\/wp-abilities\/v1\/abilities\/ai\/type-ahead\/run/,
+			( route ) => {
+				requests++;
+				return route.fulfill( {
+					json: {
+						suggestion: 'This is a test suggestion.',
+						confidence: 1,
+					},
+				} );
+			}
+		);
+
+		await admin.createNewPost();
+		await editor.insertBlock( {
+			name: 'core/group',
+			innerBlocks: [
+				{
+					name: 'core/columns',
+					innerBlocks: [
+						{
+							name: 'core/column',
+							innerBlocks: [
+								{
+									name: 'core/paragraph',
+									attributes: {
+										content:
+											'This paragraph needs more text.',
+									},
+								},
+							],
+						},
+					],
+				},
+			],
+		} );
+
+		// Put the caret at the start, where suggestions only come from the shortcut.
+		await editor.canvas
+			.getByRole( 'document', { name: 'Block: Paragraph' } )
+			.click( { position: { x: 5, y: 5 } } );
+
+		await pageUtils.pressKeys( 'access+g' );
+
+		await expect( editor.canvas.getByRole( 'status' ) ).toHaveText(
+			/This is a test suggestion\./
+		);
+		expect( requests ).toBe( 1 );
+	} );
+
+	test( 'Adds no space before a suggestion in a language written without spaces', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await enableExperiment( admin, page, 'Type-ahead Text' );
+
+		await page.route(
+			/\/wp-abilities\/v1\/abilities\/ai\/type-ahead\/run/,
+			( route ) =>
+				route.fulfill( {
+					json: { suggestion: 'いいですね。', confidence: 1 },
+				} )
+		);
+
+		await admin.createNewPost();
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: { content: '今日は天気が' },
+		} );
+
+		const paragraph = editor.canvas.getByRole( 'document', {
+			name: 'Block: Paragraph',
+		} );
+		await paragraph.click();
+
+		await expect( editor.canvas.getByRole( 'status' ) ).toHaveText(
+			'いいですね。'
+		);
+		await page.keyboard.press( 'Tab' );
+
+		await expect( paragraph ).toHaveText( '今日は天気がいいですね。' );
+	} );
+
 	test( 'Ensure the Type-ahead Text Experiment UI is not visible when the experiment is disabled', async ( {
 		admin,
 		editor,

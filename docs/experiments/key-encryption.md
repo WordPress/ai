@@ -35,10 +35,10 @@ Encrypting keys at rest raises the cost of **database-level** exposure. It is no
 
 ## Secrets backend & Secrets API integration
 
-The Key Encryption experiment is built on the [WordPress Secrets API](https://github.com/ericmann/secrets-api) (the feature plugin proposed for WordPress 7.2 Core):
+The Key Encryption experiment is built on the [WordPress Secrets API](https://github.com/ericmann/secrets-api):
 
 - **Bundled feature plugin:** The experiment bundles the Secrets API runtime in `includes/Vendor/Secrets/`, providing `wp_get_secret()`, `wp_set_secret()`, and `wp_delete_secret()` out of the box with zero external dependencies.
-- **Native core & standalone compatibility:** If WordPress Core (7.2+) or a standalone Secrets API plugin is already present, the bundled loader gracefully stands down and Key Encryption delegates directly to the environment's implementation.
+- **Native core & standalone compatibility:** If a future WordPress core version or the standalone Secrets API plugin already provides the API, the bundled loader gracefully stands down and Key Encryption delegates directly to the environment's implementation.
 - **Automated migration:** Keys stored before 1.5.0 in `_secret_ai/*` rows are moved to the Secrets API on upgrade, or on first read. They are read with the bundled read-only `Secrets_API_Legacy_Reader`; the old Displace Secrets Manager code is no longer included.
 
 Secrets are stored under the `ai/` namespace (e.g. `ai/openai_api_key`).
@@ -55,8 +55,7 @@ Secrets are stored under the `ai/` namespace (e.g. `ai/openai_api_key`).
   leaves API keys in plaintext, as they would be without it, and shows administrators a notice.
   Once the key is added, the keys are encrypted on the next page load. Empty values, the
   `wp-config-sample.php` placeholder and copies of an authentication key or salt are rejected.
-  WordPress 7.2 adds the key to `wp-config.php` for new installs. Existing sites must add it by
-  hand, below the salts.
+  WordPress does not add this key for you, so add it by hand, below the salts.
 
   Generate the recommended form, a base64-encoded random 32-byte key:
 
@@ -90,8 +89,8 @@ No stored secret is rewritten. On multisite, one run covers the network.
 ### Keys stored without `WP_SECRETS_KEY`
 
 Before `WP_SECRETS_KEY` was required, the Secrets API encrypted its root key under
-`LOGGED_IN_KEY . LOGGED_IN_SALT` on sites that did not define it. Neither the bundled copy nor
-WordPress 7.2 can read those keys any more, so while the experiment is enabled it recovers them
+`LOGGED_IN_KEY . LOGGED_IN_SALT` on sites that did not define it. The current Secrets API
+cannot read those keys any more, so while the experiment is enabled it recovers them
 on the next request:
 
 - **`WP_SECRETS_KEY` is defined:** the root key is re-encrypted under it. Every stored secret is

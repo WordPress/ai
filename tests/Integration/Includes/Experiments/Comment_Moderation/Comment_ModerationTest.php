@@ -128,6 +128,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	public function test_register_adds_expected_hooks() {
 		$experiment = new Comment_Moderation();
 		$experiment->register();
+		$experiment->register_ui();
 
 		$this->assertIsInt( has_action( 'wp_abilities_api_init', array( $experiment, 'register_abilities' ) ) );
 		$this->assertIsInt( has_action( 'wp_insert_comment', array( $experiment, 'moderate_comment' ) ) );

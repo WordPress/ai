@@ -472,6 +472,27 @@ export const clearCredentials = async ( requestUtils: RequestUtils ) => {
 };
 
 /**
+ * Resets a feature's access control settings to their defaults.
+ *
+ * @param requestUtils The requestUtils fixture from the test context.
+ * @param featureId    The feature ID, e.g. 'title-generation'.
+ */
+export const resetFeatureAccessSettings = async (
+	requestUtils: RequestUtils,
+	featureId: string
+) => {
+	await requestUtils.rest( {
+		path: '/wp/v2/settings',
+		method: 'POST',
+		data: {
+			[ `wpai_feature_${ featureId }_access_control_enabled` ]: false,
+			[ `wpai_feature_${ featureId }_roles` ]: null,
+			[ `wpai_feature_${ featureId }_users` ]: [],
+		},
+	} );
+};
+
+/**
  * Enables the Model Selection feature via the Developer Tools menu.
  *
  * Opens the Developer Tools menu, checks whether Model Selection is already
@@ -607,6 +628,67 @@ export const disableAdvancedSettings = async ( page: Page ) => {
 			page.getByRole( 'menuitemcheckbox', {
 				name: /Advanced settings/,
 			} )
+		).toBeVisible();
+	}
+
+	// Close the menu.
+	await page.keyboard.press( 'Escape' );
+};
+
+/**
+ * Enables the Access Controls feature via the Developer Tools menu.
+ *
+ * Opens the Developer Tools menu, checks whether Access Controls is already
+ * enabled, and clicks it only when it is not. Closes the menu afterwards.
+ *
+ * @param page The page object.
+ */
+export const enableAccessControls = async ( page: Page ) => {
+	await page.getByRole( 'button', { name: 'Developer Tools' } ).click();
+
+	await expect( page.getByText( 'DEVELOPER TOOLS' ) ).toBeVisible();
+
+	const accessControls = page.getByRole( 'menuitemcheckbox', {
+		name: /Access controls/,
+	} );
+
+	await expect( accessControls ).toBeVisible();
+
+	if ( ( await accessControls.getAttribute( 'aria-checked' ) ) !== 'true' ) {
+		await accessControls.click();
+
+		// Verify the menu remains open after toggling the option.
+		await expect(
+			page.getByRole( 'menuitemcheckbox', { name: /Access controls/ } )
+		).toBeVisible();
+	}
+
+	// Close the menu.
+	await page.keyboard.press( 'Escape' );
+};
+
+/**
+ * Disables the Access Controls feature via the Developer Tools menu.
+ *
+ * Opens the Developer Tools menu and clicks the Access Controls item to
+ * toggle it off, then closes the menu.
+ *
+ * @param page The page object.
+ */
+export const disableAccessControls = async ( page: Page ) => {
+	await page.getByRole( 'button', { name: 'Developer Tools' } ).click();
+
+	const accessControls = page.getByRole( 'menuitemcheckbox', {
+		name: /Access controls/,
+	} );
+
+	// Only click if it is currently enabled.
+	if ( ( await accessControls.getAttribute( 'aria-checked' ) ) === 'true' ) {
+		await accessControls.click();
+
+		// Verify the menu remains open after toggling the option.
+		await expect(
+			page.getByRole( 'menuitemcheckbox', { name: /Access controls/ } )
 		).toBeVisible();
 	}
 

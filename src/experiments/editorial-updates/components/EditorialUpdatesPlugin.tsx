@@ -32,7 +32,7 @@ export default function EditorialUpdatesPlugin() {
 	const buttonLabel = isRefining
 		? sprintf(
 				/* translators: 1: Current block number, 2: Total number of blocks. */
-				__( 'Refining block (%1$s of %2$s)…', 'ai' ),
+				__( 'Refining block (%1$d of %2$d)…', 'ai' ),
 				progress,
 				total
 		  )

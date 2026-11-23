@@ -5,8 +5,8 @@
 /**
  * WordPress dependencies
  */
-import { Button, Notice, Spinner, ToggleControl } from '@wordpress/components';
-import { useState } from '@wordpress/element';
+import { Button, Notice, ToggleControl } from '@wordpress/components';
+import { useRef, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import { audio } from '@wordpress/icons';
 
@@ -28,6 +28,22 @@ const getSettings = (): TextToSpeechData => {
 		enabled: settings.enabled ?? false,
 		hasTtsSupport: settings.hasTtsSupport ?? false,
 	};
+};
+
+/**
+ * Focuses a button when it mounts, but only if focus was lost to the body.
+ *
+ * Defined outside the component so the ref is stable and only runs on mount.
+ *
+ * @param {HTMLButtonElement|null} node The button element.
+ */
+const focusIfLost = ( node: HTMLButtonElement | null ): void => {
+	if (
+		node &&
+		node.ownerDocument.activeElement === node.ownerDocument.body
+	) {
+		node.focus();
+	}
 };
 
 /**
@@ -54,28 +70,22 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 	} = useSpeechGeneration();
 	const [ confirmingDelete, setConfirmingDelete ] = useState( false );
 
-	if ( isGenerating ) {
-		return (
-			<div className="ai-text-to-speech-panel__content">
-				<div className="ai-text-to-speech-panel__loading">
-					<Spinner />
-					<span>
-						{ status && status.total > 0
-							? sprintf(
-									/* translators: 1: number of chunks processed, 2: total number of chunks */
-									__(
-										'Generating audio… (%1$d of %2$d)',
-										'ai'
-									),
-									status.done,
-									status.total
-							  )
-							: __( 'Generating audio…', 'ai' ) }
-					</span>
-				</div>
-			</div>
-		);
-	}
+	const shouldFocusGenerate = useRef( false );
+	const shouldFocusDelete = useRef( false );
+	const shouldFocusCancel = useRef( false );
+
+	const focusWhenFlagged =
+		( flag: { current: boolean } ) =>
+		( node: HTMLButtonElement | null ) => {
+			if ( ! flag.current || ! node ) {
+				return;
+			}
+
+			flag.current = false;
+
+			// Only restore focus if it was lost; don't pull the user back from elsewhere.
+			focusIfLost( node );
+		};
 
 	if ( hasLostContact ) {
 		return (
@@ -89,12 +99,32 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 				<Button
 					__next40pxDefaultSize
 					variant="secondary"
-					onClick={ handleCheckAgain }
+					onClick={ () => {
+						shouldFocusGenerate.current = true;
+						handleCheckAgain();
+					} }
+					ref={ focusIfLost }
 				>
 					{ __( 'Check again', 'ai' ) }
 				</Button>
 			</div>
 		);
+	}
+
+	let generateLabel: string = hasAudio
+		? __( 'Regenerate Audio', 'ai' )
+		: __( 'Generate Audio', 'ai' );
+
+	if ( isGenerating ) {
+		generateLabel =
+			status && status.total > 0
+				? sprintf(
+						/* translators: 1: number of chunks processed, 2: total number of chunks */
+						__( 'Generating audio… (%1$d of %2$d)', 'ai' ),
+						status.done,
+						status.total
+				  )
+				: __( 'Generating audio…', 'ai' );
 	}
 
 	return (
@@ -114,7 +144,7 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 				</Notice>
 			) }
 
-			{ hasAudio && audioUrl && (
+			{ hasAudio && ! isGenerating && audioUrl && (
 				<audio
 					className="ai-text-to-speech-panel__preview"
 					controls
@@ -123,7 +153,7 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 				/>
 			) }
 
-			{ hasAudio && (
+			{ hasAudio && ! isGenerating && (
 				<ToggleControl
 					label={ __(
 						'Display audio player on the front end',
@@ -137,17 +167,23 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 			<Button
 				__next40pxDefaultSize
 				variant="secondary"
-				onClick={ handleGenerate }
+				onClick={ () => {
+					setConfirmingDelete( false );
+					handleGenerate();
+				} }
+				ref={ focusWhenFlagged( shouldFocusGenerate ) }
 				icon={ audio }
-				disabled={ ! hasTtsSupport || isBlockedByUnsavedChanges }
+				isBusy={ isGenerating }
+				disabled={
+					isGenerating || ! hasTtsSupport || isBlockedByUnsavedChanges
+				}
 				accessibleWhenDisabled
 			>
-				{ hasAudio
-					? __( 'Regenerate Audio', 'ai' )
-					: __( 'Generate Audio', 'ai' ) }
+				{ generateLabel }
 			</Button>
 
 			{ hasAudio &&
+				! isGenerating &&
 				( confirmingDelete ? (
 					<div className="ai-text-to-speech-panel__confirm">
 						<span>
@@ -163,6 +199,7 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 								isDestructive
 								onClick={ async () => {
 									await handleDelete();
+									shouldFocusGenerate.current = true;
 									setConfirmingDelete( false );
 								} }
 								isBusy={ isDeleting }
@@ -174,7 +211,11 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 							<Button
 								__next40pxDefaultSize
 								variant="tertiary"
-								onClick={ () => setConfirmingDelete( false ) }
+								onClick={ () => {
+									shouldFocusDelete.current = true;
+									setConfirmingDelete( false );
+								} }
+								ref={ focusWhenFlagged( shouldFocusCancel ) }
 								disabled={ isDeleting }
 								accessibleWhenDisabled
 							>
@@ -187,7 +228,11 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 						__next40pxDefaultSize
 						variant="secondary"
 						isDestructive
-						onClick={ () => setConfirmingDelete( true ) }
+						onClick={ () => {
+							shouldFocusCancel.current = true;
+							setConfirmingDelete( true );
+						} }
+						ref={ focusWhenFlagged( shouldFocusDelete ) }
 					>
 						{ __( 'Delete Audio', 'ai' ) }
 					</Button>
@@ -202,7 +247,7 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 				</p>
 			) }
 
-			{ hasAudio && (
+			{ hasAudio && ! isGenerating && (
 				<p className="ai-text-to-speech-panel__help">
 					{ __(
 						'Regenerating deletes the current audio and creates a new version.',

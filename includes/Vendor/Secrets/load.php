@@ -2,7 +2,7 @@
 /**
  * Loads the vendored copy of core's Secrets API.
  *
- * If WordPress core (7.2+) or the standalone Secrets API feature plugin already
+ * If WordPress core or the standalone Secrets API feature plugin already
  * provides wp_get_secret(), this loader stands down completely to avoid collision.
  * Only core's files are loaded, and no store, keyring, or provider is overridden,
  * so the API behaves here exactly as it does in core.
