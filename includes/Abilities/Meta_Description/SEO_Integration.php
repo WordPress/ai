@@ -53,21 +53,25 @@ class SEO_Integration {
 	 */
 	public static function get_supported_plugins(): array {
 		$plugins = array(
-			'yoast-seo'      => array(
+			'yoast-seo'         => array(
 				'file'     => 'wordpress-seo/wp-seo.php',
 				'meta_key' => '_yoast_wpseo_metadesc',
 			),
-			'rank-math'      => array(
+			'rank-math'         => array(
 				'file'     => 'seo-by-rank-math/rank-math.php',
 				'meta_key' => 'rank_math_description',
 			),
-			'all-in-one-seo' => array(
+			'all-in-one-seo'    => array(
 				'file'     => 'all-in-one-seo-pack/all_in_one_seo_pack.php',
 				'meta_key' => '_aioseo_description',
 			),
-			'seopress'       => array(
+			'seopress'          => array(
 				'file'     => 'wp-seopress/seopress.php',
 				'meta_key' => '_seopress_titles_desc',
+			),
+			'the-seo-framework' => array(
+				'file'     => 'autodescription/autodescription.php',
+				'meta_key' => '_genesis_description',
 			),
 		);
 
