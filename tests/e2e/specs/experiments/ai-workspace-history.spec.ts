@@ -18,6 +18,7 @@ import {
 	deactivateMockScenario,
 	seedCredentials,
 	setExperimentEnabled,
+	openSpacesPanel,
 } from '../../utils/helpers';
 
 const EXPERIMENT_ID = 'ai-workspace';
@@ -81,13 +82,24 @@ test.describe( 'AI Workspace chat history', () => {
 		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, false );
 	} );
 
+	test( 'starts with the Spaces panel closed', async ( { admin, page } ) => {
+		await admin.visitAdminPage( WORKSPACE_PAGE );
+
+		await expect(
+			page.getByRole( 'button', { name: 'Spaces', exact: true } )
+		).toHaveAttribute( 'aria-expanded', 'false' );
+		await expect(
+			page.getByRole( 'complementary', { name: 'Spaces' } )
+		).toBeHidden();
+	} );
+
 	test( 'shows the empty state when there are no chats', async ( {
 		admin,
 		page,
 	} ) => {
 		await admin.visitAdminPage( WORKSPACE_PAGE );
 
-		const panel = page.getByRole( 'complementary', { name: 'Spaces' } );
+		const panel = await openSpacesPanel( page );
 
 		await expect( panel ).toContainText( 'No spaces yet.' );
 	} );
@@ -101,7 +113,7 @@ test.describe( 'AI Workspace chat history', () => {
 		await sendAndWait( page, 'Plan the spring newsletter' );
 		await sendAndWait( page, 'And the summer one' );
 
-		const panel = page.getByRole( 'complementary', { name: 'Spaces' } );
+		const panel = await openSpacesPanel( page );
 		const row = panel.getByRole( 'button', {
 			name: 'Plan the spring newsletter',
 			exact: true,
@@ -141,7 +153,7 @@ test.describe( 'AI Workspace chat history', () => {
 		await admin.visitAdminPage( WORKSPACE_PAGE );
 		await sendAndWait( page, 'Original name' );
 
-		const panel = page.getByRole( 'complementary', { name: 'Spaces' } );
+		const panel = await openSpacesPanel( page );
 
 		await panel
 			.getByRole( 'button', { name: 'Actions for “Original name”' } )
@@ -171,7 +183,10 @@ test.describe( 'AI Workspace chat history', () => {
 
 		await page.reload();
 		await expect(
-			panel.getByRole( 'button', { name: 'Launch plan', exact: true } )
+			( await openSpacesPanel( page ) ).getByRole( 'button', {
+				name: 'Launch plan',
+				exact: true,
+			} )
 		).toBeVisible();
 	} );
 
@@ -179,7 +194,7 @@ test.describe( 'AI Workspace chat history', () => {
 		await admin.visitAdminPage( WORKSPACE_PAGE );
 		await sendAndWait( page, 'Old idea' );
 
-		const panel = page.getByRole( 'complementary', { name: 'Spaces' } );
+		const panel = await openSpacesPanel( page );
 
 		await panel
 			.getByRole( 'button', { name: 'Actions for “Old idea”' } )
@@ -212,7 +227,7 @@ test.describe( 'AI Workspace chat history', () => {
 		await admin.visitAdminPage( WORKSPACE_PAGE );
 		await sendAndWait( page, 'Throwaway' );
 
-		const panel = page.getByRole( 'complementary', { name: 'Spaces' } );
+		const panel = await openSpacesPanel( page );
 		const row = panel.getByRole( 'button', {
 			name: 'Throwaway',
 			exact: true,
@@ -278,7 +293,7 @@ test.describe( 'AI Workspace chat history', () => {
 		await admin.visitAdminPage( WORKSPACE_PAGE );
 		await sendAndWait( page, 'A chat to come back to' );
 
-		const panel = page.getByRole( 'complementary', { name: 'Spaces' } );
+		const panel = await openSpacesPanel( page );
 
 		await panel.getByRole( 'button', { name: 'New space' } ).click();
 
@@ -354,8 +369,7 @@ test.describe( 'AI Workspace chat history', () => {
 		await page.getByRole( 'button', { name: 'Send' } ).click();
 		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 2 );
 
-		await page
-			.getByRole( 'complementary', { name: 'Spaces' } )
+		await ( await openSpacesPanel( page ) )
 			.getByRole( 'button', { name: 'New space' } )
 			.click();
 
@@ -449,7 +463,7 @@ test.describe( 'AI Workspace chat history with proposals', () => {
 			page.getByRole( 'link', { name: 'Open draft' } )
 		).toBeVisible();
 
-		const panel = page.getByRole( 'complementary', { name: 'Spaces' } );
+		const panel = await openSpacesPanel( page );
 
 		await panel.getByRole( 'button', { name: 'New space' } ).click();
 		await panel

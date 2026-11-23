@@ -13,7 +13,7 @@ import {
 /**
  * Internal dependencies
  */
-import { setExperimentEnabled } from '../../utils/helpers';
+import { openSpacesPanel, setExperimentEnabled } from '../../utils/helpers';
 
 const EXPERIMENT_ID = 'ai-workspace';
 const WORKSPACE_PAGE = 'admin.php?page=ai-workspace';
@@ -133,7 +133,7 @@ test.describe( 'AI Workspace turn with a dropped connection', () => {
 			timeout: 30000,
 		} );
 
-		const panel = page.getByRole( 'complementary', { name: 'Spaces' } );
+		const panel = await openSpacesPanel( page );
 
 		await expect(
 			panel.getByRole( 'button', {

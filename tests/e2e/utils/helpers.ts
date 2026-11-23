@@ -568,6 +568,25 @@ export const getMockScenarioReport = async (
 	} ) ) as ScenarioReport;
 
 /**
+ * Opens the AI Workspace Spaces panel, which starts closed, and returns it.
+ *
+ * @param page The page.
+ * @return The Spaces panel.
+ */
+export const openSpacesPanel = async ( page: Page ): Promise< Locator > => {
+	const toggle = page.getByRole( 'button', { name: 'Spaces', exact: true } );
+	const panel = page.getByRole( 'complementary', { name: 'Spaces' } );
+
+	if ( 'true' !== ( await toggle.getAttribute( 'aria-expanded' ) ) ) {
+		await toggle.click();
+	}
+
+	await expect( panel ).toBeVisible();
+
+	return panel;
+};
+
+/**
  * Enables the Model Selection feature via the Developer Tools menu.
  *
  * Opens the Developer Tools menu, checks whether Model Selection is already

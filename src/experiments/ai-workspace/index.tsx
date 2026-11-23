@@ -210,9 +210,9 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 	const { ref: transcriptRef, stick: stickToBottom } =
 		useStickToBottom< HTMLElement >( entries );
 
-	// The panel starts open as a sidebar, and closed as a drawer.
+	// The panel starts closed at every width: most sites have few or no spaces yet.
 	const [ narrow, setNarrow ] = useState( isNarrow );
-	const [ historyOpen, setHistoryOpen ] = useState( () => ! isNarrow() );
+	const [ historyOpen, setHistoryOpen ] = useState( false );
 	const [ missing, setMissing ] = useState( '' );
 	const historyId = useInstanceId( WorkspaceApp, 'ai-workspace-history' );
 	const historyToggle = useRef< HTMLButtonElement | null >( null );
@@ -224,10 +224,10 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 		}
 
 		const query = window.matchMedia( DRAWER_QUERY );
-		// Crossing the breakpoint resets the panel to that width's default.
+		// Crossing the breakpoint closes the panel, so an open sidebar never becomes a drawer over the chat.
 		const update = (): void => {
 			setNarrow( query.matches );
-			setHistoryOpen( ! query.matches );
+			setHistoryOpen( false );
 		};
 
 		query.addEventListener( 'change', update );
