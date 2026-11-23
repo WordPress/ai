@@ -210,7 +210,6 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 	const { ref: transcriptRef, stick: stickToBottom } =
 		useStickToBottom< HTMLElement >( entries );
 
-	// The panel starts closed at every width: most sites have few or no spaces yet.
 	const [ narrow, setNarrow ] = useState( isNarrow );
 	const [ historyOpen, setHistoryOpen ] = useState( false );
 	const [ missing, setMissing ] = useState( '' );
@@ -224,7 +223,7 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 		}
 
 		const query = window.matchMedia( DRAWER_QUERY );
-		// Crossing the breakpoint closes the panel, so an open sidebar never becomes a drawer over the chat.
+		// Crossing the breakpoint resets the panel to that width's default.
 		const update = (): void => {
 			setNarrow( query.matches );
 			setHistoryOpen( false );

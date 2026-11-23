@@ -42,7 +42,7 @@ test.describe( 'AI Workspace transcript', () => {
 		);
 		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 0 );
 
-		// The header offers no "New space"; the only one is the Spaces panel's.
+		// The header offers no "New space"; the only one is the Chats panel's.
 		const panel = await openSpacesPanel( page );
 
 		await expect(
