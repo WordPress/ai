@@ -487,6 +487,8 @@ test.describe( 'AI Workspace frame', () => {
 
 	for ( const viewport of [
 		{ width: 1280, height: 800 },
+		// Wide enough that the transcript column no longer fills the space beside Spaces.
+		{ width: 1600, height: 900 },
 		{ width: 390, height: 844 },
 	] ) {
 		test( `fills the viewport at ${ viewport.width }x${ viewport.height }, with the composer at the bottom`, async ( {

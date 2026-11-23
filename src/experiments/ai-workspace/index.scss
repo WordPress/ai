@@ -207,7 +207,8 @@ body.ai-workspace-frame {
 }
 
 .ai-workspace__turns {
-	margin: 0;
+	// Block margins only: the transcript's inline auto margins center the list.
+	margin-block: 0;
 	padding: 0;
 	list-style: none;
 	display: flex;
