@@ -74,30 +74,28 @@ test.describe( 'Image Editing Feature', () => {
 		} );
 
 		// Find the inline Generate Image button.
-		const generateImageButton = editor.canvas.locator(
-			'.wp-block-image button',
-			{
-				hasText: 'Generate Image',
-			}
-		);
+		const generateImageButton = editor.canvas
+			.getByRole( 'document', { name: 'Block: Image' } )
+			.getByRole( 'button', { name: 'Generate Image' } );
 		await expect( generateImageButton ).toBeVisible();
 
 		// Click the generate image inline button.
 		await generateImageButton.click();
 
+		const modal = page.getByRole( 'dialog', { name: 'Generate Image' } );
+
 		// Add a prompt and generate the image.
-		await page
-			.locator( '.ai-image-generation__idle textarea' )
+		await modal
+			.getByRole( 'textbox', { name: 'Prompt' } )
 			.fill( 'A smiling face emoji' );
-		await page.locator( '.ai-image-generation__idle button' ).click();
+		await modal
+			.getByRole( 'button', { name: 'Generate', exact: true } )
+			.click();
 
 		// Ensure the Refine Image button is visible.
-		const refineButton = page.locator(
-			'.ai-image-generation__actions button',
-			{
-				hasText: 'Refine Image',
-			}
-		);
+		const refineButton = modal.getByRole( 'button', {
+			name: 'Refine Image',
+		} );
 		await expect( refineButton ).toBeVisible();
 
 		// Click the Refine Image button.
@@ -109,79 +107,70 @@ test.describe( 'Image Editing Feature', () => {
 		).toBeVisible();
 
 		// Ensure the refine prompt textarea is visible.
-		await expect(
-			page.locator( '.ai-image-generation__refining textarea' )
-		).toBeVisible();
+		const refineTextarea = modal.getByRole( 'textbox', {
+			name: 'Describe the refinements you want to make to the image.',
+		} );
+		await expect( refineTextarea ).toBeVisible();
 
 		// Add our refine prompt and generate the image.
-		await page
-			.locator( '.ai-image-generation__refining textarea' )
-			.fill( 'Add a red hat' );
-		await page
-			.locator( '.ai-image-generation__refining button' )
-			.filter( { hasText: 'Refine' } )
-			.first()
+		await refineTextarea.fill( 'Add a red hat' );
+		await modal
+			.getByRole( 'button', { name: 'Refine', exact: true } )
 			.click();
 
 		// Ensure the images are visible in the modal.
 		await expect(
-			page.locator( '.ai-image-generation__preview-image' )
+			modal.locator( '.ai-image-generation__preview-image' )
 		).toHaveCount( 2 );
 
 		// Click the previous image navigation arrow.
-		const previousBtn = page
-			.locator( '.ai-image-history-nav' )
-			.getByRole( 'button', {
-				name: 'Previous version',
-			} );
+		const previousBtn = modal.getByRole( 'button', {
+			name: 'Previous version',
+		} );
 		await previousBtn.click();
 
 		// Ensure the navigation shows correctly.
 		await expect(
-			page.locator( '.ai-image-history-nav__counter' )
+			modal.locator( '.ai-image-history-nav__counter' )
 		).toHaveText( '1 / 2' );
 
 		// Click the next image navigation arrow.
-		const nextBtn = page
-			.locator( '.ai-image-history-nav' )
-			.getByRole( 'button', {
-				name: 'Next version',
-			} );
+		const nextBtn = modal.getByRole( 'button', {
+			name: 'Next version',
+		} );
 		await nextBtn.click();
 
 		// Ensure the navigation shows correctly.
 		await expect(
-			page.locator( '.ai-image-history-nav__counter' )
+			modal.locator( '.ai-image-history-nav__counter' )
 		).toHaveText( '2 / 2' );
 
-		const useImageButton = page.locator(
-			'.ai-image-generation__actions button',
-			{
-				hasText: 'Use Image',
-			}
-		);
+		const useImageButton = modal.getByRole( 'button', {
+			name: 'Use Image',
+		} );
 		await expect( useImageButton ).toBeVisible();
 
-		useImageButton.click();
+		await useImageButton.click();
 
 		// Ensure the image is inserted into the block.
 		await expect(
-			editor.canvas.locator( '.wp-block-image img' )
+			editor.canvas
+				.getByRole( 'document', { name: 'Block: Image' } )
+				.getByRole( 'img' )
 		).toBeVisible();
 
 		// Ensure the image is in the Media Library.
 		await visitAdminPage( admin, 'upload.php', 'mode=grid' );
 
-		const imageContainer = page
-			.locator( '.attachments-wrapper li' )
+		const imageItem = page
+			.getByRole( 'checkbox', {
+				name: 'Add a red hat',
+				exact: true,
+			} )
 			.first();
 
-		await expect( imageContainer ).toHaveAttribute(
-			'aria-label',
-			'Add a red hat'
-		);
-
-		await expect( imageContainer.locator( 'img' ) ).toBeVisible();
+		await expect( imageItem ).toBeVisible();
+		await expect( imageItem.locator( 'img' ) ).toBeVisible();
 	} );
 
 	test( 'Can refine an image in the stand-alone Generate Image page', async ( {
@@ -199,16 +188,15 @@ test.describe( 'Image Editing Feature', () => {
 
 		// Add a prompt and generate the image.
 		await page
-			.locator( '.ai-image-generation__idle textarea' )
+			.getByRole( 'textbox', { name: 'Prompt' } )
 			.fill( 'A smiley face' );
-		await page.locator( '.ai-image-generation__actions button' ).click();
+		await page
+			.getByRole( 'button', { name: 'Generate', exact: true } )
+			.click();
 
-		const refineButton = page.locator(
-			'.ai-image-generation__actions button',
-			{
-				hasText: 'Refine Image',
-			}
-		);
+		const refineButton = page.getByRole( 'button', {
+			name: 'Refine Image',
+		} );
 		await expect( refineButton ).toBeVisible();
 
 		// Click the refine button.
@@ -220,18 +208,15 @@ test.describe( 'Image Editing Feature', () => {
 		).toBeVisible();
 
 		// Ensure the refine prompt textarea is visible.
-		await expect(
-			page.locator( '.ai-image-generation__refining textarea' )
-		).toBeVisible();
+		const refineTextarea = page.getByRole( 'textbox', {
+			name: 'Describe the refinements you want to make to the image.',
+		} );
+		await expect( refineTextarea ).toBeVisible();
 
 		// Add our refine prompt and generate the image.
+		await refineTextarea.fill( 'Add a red hat' );
 		await page
-			.locator( '.ai-image-generation__refining textarea' )
-			.fill( 'Add a red hat' );
-		await page
-			.locator( '.ai-image-generation__refining button' )
-			.filter( { hasText: 'Refine' } )
-			.first()
+			.getByRole( 'button', { name: 'Refine', exact: true } )
 			.click();
 
 		// Ensure the images are visible in the modal.
@@ -240,11 +225,9 @@ test.describe( 'Image Editing Feature', () => {
 		).toHaveCount( 2 );
 
 		// Click the previous image navigation arrow.
-		const previousBtn = page
-			.locator( '.ai-image-history-nav' )
-			.getByRole( 'button', {
-				name: 'Previous version',
-			} );
+		const previousBtn = page.getByRole( 'button', {
+			name: 'Previous version',
+		} );
 		await previousBtn.click();
 
 		// Ensure the navigation shows correctly.
@@ -253,11 +236,9 @@ test.describe( 'Image Editing Feature', () => {
 		).toHaveText( '1 / 2' );
 
 		// Click the next image navigation arrow.
-		const nextBtn = page
-			.locator( '.ai-image-history-nav' )
-			.getByRole( 'button', {
-				name: 'Next version',
-			} );
+		const nextBtn = page.getByRole( 'button', {
+			name: 'Next version',
+		} );
 		await nextBtn.click();
 
 		// Ensure the navigation shows correctly.
@@ -265,15 +246,12 @@ test.describe( 'Image Editing Feature', () => {
 			page.locator( '.ai-image-history-nav__counter' )
 		).toHaveText( '2 / 2' );
 
-		const saveImageButton = page.locator(
-			'.ai-image-generation__actions button',
-			{
-				hasText: 'Save to Media Library',
-			}
-		);
+		const saveImageButton = page.getByRole( 'button', {
+			name: 'Save to Media Library',
+		} );
 		await expect( saveImageButton ).toBeVisible();
 
-		saveImageButton.click();
+		await saveImageButton.click();
 
 		// Ensure a success message is visible.
 		await expect(
@@ -281,11 +259,15 @@ test.describe( 'Image Editing Feature', () => {
 		).toBeVisible();
 
 		// View the image in the Media Library.
-		page.locator( '.components-notice.is-success a' ).click();
+		await page
+			.getByRole( 'link', { name: 'View in Media Library' } )
+			.click();
 
 		// Ensure alt text is set.
 		await expect(
-			page.locator( '#attachment-details-two-column-alt-text' )
+			page.getByRole( 'textbox', {
+				name: 'Alternative Text',
+			} )
 		).toHaveValue( 'Add a red hat' );
 	} );
 
@@ -310,25 +292,23 @@ test.describe( 'Image Editing Feature', () => {
 
 		// Find the Edit Image button and click on it.
 		const editImageButton = page
-			.locator( '.attachment-actions button', { hasText: 'Edit Image' } )
+			.getByRole( 'button', { name: 'Edit Image' } )
 			.first();
 		await editImageButton.click();
 
 		// Find and click on the Refine Image button.
-		const refineImageButton = page.locator(
-			'.ai-media-library-editor__presets button',
-			{
-				hasText: 'Refine Image',
-			}
-		);
+		const refineImageButton = page.getByRole( 'button', {
+			name: 'Refine Image',
+		} );
 		await refineImageButton.click();
 
 		// Add a prompt and generate the image.
+		const refineTextarea = page.getByRole( 'textbox', {
+			name: 'Describe the refinements you want to make to the image',
+		} );
+		await refineTextarea.fill( 'A smiley face' );
 		await page
-			.locator( '.ai-media-library-editor__idle textarea' )
-			.fill( 'A smiley face' );
-		await page
-			.locator( '.ai-media-library-editor__actions button' )
+			.getByRole( 'button', { name: 'Generate', exact: true } )
 			.click();
 
 		// Ensure the images are visible in the modal.
@@ -341,47 +321,33 @@ test.describe( 'Image Editing Feature', () => {
 			page.locator( '.ai-media-library-editor__actions button' )
 		).toHaveCount( 4 );
 
-		let saveImageBtn = page.locator(
-			'.ai-media-library-editor__actions button',
-			{
-				hasText: 'Save to Media Library',
-			}
-		);
+		const saveImageBtn = page.getByRole( 'button', {
+			name: 'Save to Media Library',
+		} );
 		await expect( saveImageBtn ).toBeVisible();
 
-		const refineBtn = page.locator(
-			'.ai-media-library-editor__actions button',
-			{
-				hasText: 'Refine Image',
-			}
-		);
+		const refineBtn = page.getByRole( 'button', {
+			name: 'Refine Image',
+		} );
 		await expect( refineBtn ).toBeVisible();
 
-		const generateAnotherBtn = page.locator(
-			'.ai-media-library-editor__actions button',
-			{
-				hasText: 'Generate Another Image',
-			}
-		);
+		const generateAnotherBtn = page.getByRole( 'button', {
+			name: 'Generate Another Image',
+		} );
 		await expect( generateAnotherBtn ).toBeVisible();
 
 		// Ensure there's a Start over button.
-		const startOverBtn = page.locator(
-			'.ai-media-library-editor__actions button',
-			{
-				hasText: 'Start over',
-			}
-		);
+		const startOverBtn = page.getByRole( 'button', {
+			name: 'Start over',
+		} );
 		await expect( startOverBtn ).toBeVisible();
 
 		await startOverBtn.click();
 
 		// Add a prompt and generate the image.
+		await refineTextarea.fill( 'A smiley face' );
 		await page
-			.locator( '.ai-media-library-editor__idle textarea' )
-			.fill( 'A smiley face' );
-		await page
-			.locator( '.ai-media-library-editor__actions button' )
+			.getByRole( 'button', { name: 'Generate', exact: true } )
 			.click();
 
 		// Ensure the images are visible in the modal.
@@ -394,15 +360,8 @@ test.describe( 'Image Editing Feature', () => {
 			page.locator( '.ai-media-library-editor__actions button' )
 		).toHaveCount( 4 );
 
-		saveImageBtn = page.locator(
-			'.ai-media-library-editor__actions button',
-			{
-				hasText: 'Save to Media Library',
-			}
-		);
 		await expect( saveImageBtn ).toBeVisible();
-
-		saveImageBtn.click();
+		await saveImageBtn.click();
 
 		// Ensure a success message is visible.
 		await expect(
@@ -410,11 +369,13 @@ test.describe( 'Image Editing Feature', () => {
 		).toBeVisible();
 
 		// View the image in the Media Library.
-		page.locator( '.components-notice.is-success a' ).click();
+		await page.getByRole( 'link', { name: 'View new image' } ).click();
 
 		// Ensure alt text is set.
 		await expect(
-			page.locator( '#attachment-details-two-column-alt-text' )
+			page.getByRole( 'textbox', {
+				name: 'Alternative Text',
+			} )
 		).toHaveValue( 'A smiley face' );
 	} );
 
@@ -439,7 +400,7 @@ test.describe( 'Image Editing Feature', () => {
 
 		// Find the Edit Image button and click on it.
 		const editImageButton = page
-			.locator( '.attachment-actions button', { hasText: 'Edit Image' } )
+			.getByRole( 'button', { name: 'Edit Image' } )
 			.first();
 		await editImageButton.click();
 
@@ -449,11 +410,9 @@ test.describe( 'Image Editing Feature', () => {
 		).toHaveCount( 5 );
 
 		// Find the Expand Background button and click on it.
-		const expandBGBtn = page
-			.locator( '.ai-media-library-editor__presets button', {
-				hasText: 'Expand Background',
-			} )
-			.first();
+		const expandBGBtn = page.getByRole( 'button', {
+			name: 'Expand Background',
+		} );
 		await expandBGBtn.click();
 
 		// Ensure the images are visible in the modal.
@@ -467,22 +426,17 @@ test.describe( 'Image Editing Feature', () => {
 		).toHaveCount( 4 );
 
 		// Ensure there's a Start over button.
-		const startOverBtn = page.locator(
-			'.ai-media-library-editor__actions button',
-			{
-				hasText: 'Start over',
-			}
-		);
+		const startOverBtn = page.getByRole( 'button', {
+			name: 'Start over',
+		} );
 		await expect( startOverBtn ).toBeVisible();
 
 		await startOverBtn.click();
 
 		// Find the Remove Item button and click on it.
-		const removeItemBtn = page
-			.locator( '.ai-media-library-editor__presets button', {
-				hasText: 'Remove Item',
-			} )
-			.first();
+		const removeItemBtn = page.getByRole( 'button', {
+			name: 'Remove Item',
+		} );
 		await removeItemBtn.click();
 
 		// Wait a second.
@@ -494,20 +448,16 @@ test.describe( 'Image Editing Feature', () => {
 		).toBeVisible();
 
 		// Click the Cancel button.
-		let cancelBtn = page.locator(
-			'.ai-media-library-editor__masking-sidebar-actions button',
-			{
-				hasText: 'Cancel',
-			}
-		);
+		const cancelBtn = page.getByRole( 'button', {
+			name: 'Cancel',
+			exact: true,
+		} );
 		await cancelBtn.click();
 
 		// Find the Replace Item button and click on it.
-		const replaceItemBtn = page
-			.locator( '.ai-media-library-editor__presets button', {
-				hasText: 'Replace Item',
-			} )
-			.first();
+		const replaceItemBtn = page.getByRole( 'button', {
+			name: 'Replace Item',
+		} );
 		await replaceItemBtn.click();
 
 		// Wait a second.
@@ -519,20 +469,12 @@ test.describe( 'Image Editing Feature', () => {
 		).toBeVisible();
 
 		// Click the Cancel button.
-		cancelBtn = page.locator(
-			'.ai-media-library-editor__masking-sidebar-actions button',
-			{
-				hasText: 'Cancel',
-			}
-		);
 		await cancelBtn.click();
 
 		// Find the Remove background button and click on it.
-		const removeBGBtn = page
-			.locator( '.ai-media-library-editor__presets button', {
-				hasText: 'Remove Background',
-			} )
-			.first();
+		const removeBGBtn = page.getByRole( 'button', {
+			name: 'Remove Background',
+		} );
 		await removeBGBtn.click();
 
 		// Ensure the images are visible in the modal.
@@ -545,12 +487,9 @@ test.describe( 'Image Editing Feature', () => {
 			page.locator( '.ai-media-library-editor__actions button' )
 		).toHaveCount( 4 );
 
-		const generateAnotherBtn = page.locator(
-			'.ai-media-library-editor__actions button',
-			{
-				hasText: 'Generate Another Image',
-			}
-		);
+		const generateAnotherBtn = page.getByRole( 'button', {
+			name: 'Generate Another Image',
+		} );
 		await expect( generateAnotherBtn ).toBeVisible();
 
 		await generateAnotherBtn.click();
@@ -566,11 +505,9 @@ test.describe( 'Image Editing Feature', () => {
 		).toHaveText( '2 / 2' );
 
 		// Click the previous image navigation arrow.
-		let previousImgBtn = page
-			.locator( '.ai-image-history-nav' )
-			.getByRole( 'button', {
-				name: 'Previous version',
-			} );
+		const previousImgBtn = page.getByRole( 'button', {
+			name: 'Previous version',
+		} );
 		await previousImgBtn.click();
 
 		// Ensure the navigation shows correctly.
@@ -579,11 +516,9 @@ test.describe( 'Image Editing Feature', () => {
 		).toHaveText( '1 / 2' );
 
 		// Click the next image navigation arrow.
-		let nextImgBtn = page
-			.locator( '.ai-image-history-nav' )
-			.getByRole( 'button', {
-				name: 'Next version',
-			} );
+		const nextImgBtn = page.getByRole( 'button', {
+			name: 'Next version',
+		} );
 		await nextImgBtn.click();
 
 		// Ensure the navigation shows correctly.
@@ -600,11 +535,6 @@ test.describe( 'Image Editing Feature', () => {
 		).toHaveCount( 2 );
 
 		// Click the previous image navigation arrow.
-		previousImgBtn = page
-			.locator( '.ai-image-history-nav' )
-			.getByRole( 'button', {
-				name: 'Previous version',
-			} );
 		await previousImgBtn.click();
 
 		// Ensure the navigation shows correctly.
@@ -613,11 +543,6 @@ test.describe( 'Image Editing Feature', () => {
 		).toHaveText( '2 / 3' );
 
 		// Click the next image navigation arrow.
-		nextImgBtn = page
-			.locator( '.ai-image-history-nav' )
-			.getByRole( 'button', {
-				name: 'Next version',
-			} );
 		await nextImgBtn.click();
 
 		// Ensure the navigation shows correctly.
