@@ -113,6 +113,9 @@ class AI_Request_Log_Page {
 		}
 		?>
 		<div class="wrap ai-request-logs">
+			<div id="ai-request-logs-admin-notices">
+				<hr class="wp-header-end" />
+			</div>
 			<div id="ai-request-logs-root"></div>
 		</div>
 		<?php
