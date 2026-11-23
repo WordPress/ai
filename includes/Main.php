@@ -21,6 +21,7 @@ use WordPress\AI\Admin\Tools_Page;
 use WordPress\AI\Admin\Upgrades;
 use WordPress\AI\CLI\Embedding_Sync_Command;
 use WordPress\AI\CLI\Embeddings_Command;
+use WordPress\AI\CLI\Jobs_Command;
 use WordPress\AI\Cache\Cache_Integration;
 use WordPress\AI\Connectors\Featured_Connectors;
 use WordPress\AI\Embeddings\Sync\Embedding_Sync;
@@ -170,6 +171,7 @@ final class Main {
 
 			\WP_CLI::add_command( 'ai embeddings', Embeddings_Command::class );
 			\WP_CLI::add_command( 'ai embeddings sync', Embedding_Sync_Command::class );
+			\WP_CLI::add_command( 'ai jobs', Jobs_Command::class );
 		} catch ( \Throwable $e ) {
 			_doing_it_wrong(
 				__METHOD__,

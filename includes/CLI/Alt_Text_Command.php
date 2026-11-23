@@ -13,6 +13,8 @@ namespace WordPress\AI\CLI;
 
 use WP_CLI;
 use WP_CLI\Utils;
+use WordPress\AI\Jobs\Job_Types\Alt_Text_Job_Type;
+use WordPress\AI\Jobs\Jobs;
 use function WordPress\AI\has_ai_credentials;
 
 // Exit if accessed directly.
@@ -126,6 +128,113 @@ class Alt_Text_Command {
 
 		$stats = $this->process_images( $ability, $explicit_ids, $total, $batch_size, $delay_ms, $force );
 		$this->print_summary( $stats );
+	}
+
+	/**
+	 * Queues background alt text generation for images.
+	 *
+	 * Enqueues one async job per image and returns immediately. Use
+	 * `wp ai jobs status <job-id>` to poll, or `wp ai jobs run <job-id>` to
+	 * run a job without waiting for WP-Cron.
+	 *
+	 * ## OPTIONS
+	 *
+	 * [--ids=<ids>]
+	 * : Comma-separated list of specific attachment IDs to queue.
+	 *
+	 * [--limit=<number>]
+	 * : Maximum number of matching images to queue when --ids is omitted.
+	 * ---
+	 * default: 20
+	 * ---
+	 *
+	 * [--force]
+	 * : Include images that already have alt text.
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     # Queue alt text for two images
+	 *     $ wp ai alt-text queue --ids=42,55
+	 *
+	 *     # Queue the next 10 images missing alt text
+	 *     $ wp ai alt-text queue --limit=10
+	 *
+	 * @when after_wp_load
+	 *
+	 * @param array<int, string>   $args       Positional arguments.
+	 * @param array<string, mixed> $assoc_args Associative arguments.
+	 */
+	public function queue( $args, $assoc_args ): void {
+		$this->ensure_admin_user();
+
+		$ids_flag = (string) Utils\get_flag_value( $assoc_args, 'ids', '' );
+		$force    = (bool) Utils\get_flag_value( $assoc_args, 'force', false );
+		$limit    = max( 1, (int) Utils\get_flag_value( $assoc_args, 'limit', 20 ) );
+
+		$ids = '' !== $ids_flag
+			? $this->parse_ids_flag( $ids_flag )
+			: array_values(
+				array_map(
+					static function ( $id ): int {
+						return is_scalar( $id ) ? (int) $id : 0;
+					},
+					get_posts( // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.get_posts_get_posts -- Only IDs are requested and filters are not suppressed.
+						array_merge(
+							$this->get_attachment_query_args( $force ),
+							array(
+								'posts_per_page'   => $limit,
+								'suppress_filters' => false,
+							)
+						)
+					)
+				)
+			);
+
+		if ( empty( $ids ) ) {
+			WP_CLI::success( 'No images found matching the criteria.' );
+			return;
+		}
+
+		$queued = array();
+		$failed = array();
+
+		foreach ( $ids as $attachment_id ) {
+			$job_id = Jobs::instance()->get_queue()->enqueue(
+				Alt_Text_Job_Type::ID,
+				array( 'attachment_id' => (int) $attachment_id ),
+				array( 'user_id' => get_current_user_id() )
+			);
+
+			if ( is_wp_error( $job_id ) ) {
+				$failed[] = array(
+					'id'    => (int) $attachment_id,
+					'error' => $job_id->get_error_message(),
+				);
+				continue;
+			}
+
+			$queued[] = array(
+				'id'     => (int) $attachment_id,
+				'job_id' => $job_id,
+			);
+		}
+
+		if ( ! empty( $queued ) ) {
+			Utils\format_items( 'table', $queued, array( 'id', 'job_id' ) );
+		}
+
+		foreach ( $failed as $failure ) {
+			WP_CLI::warning(
+				sprintf(
+					/* translators: 1: Attachment ID, 2: Error message. */
+					__( 'Attachment %1$d was not queued: %2$s', 'ai' ),
+					$failure['id'],
+					$failure['error']
+				)
+			);
+		}
+
+		WP_CLI::success( sprintf( 'Queued %d image(s) for background alt text generation.', count( $queued ) ) );
 	}
 
 	/**

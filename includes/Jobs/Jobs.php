@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace WordPress\AI\Jobs;
 
 use WordPress\AI\Jobs\Job_Types\Ability_Job_Type;
+use WordPress\AI\Jobs\Job_Types\Alt_Text_Job_Type;
 use WordPress\AI\Jobs\REST\Jobs_Controller;
 
 defined( 'ABSPATH' ) || exit;
@@ -77,6 +78,7 @@ final class Jobs {
 
 		// The generic ability job is always available.
 		$this->registry->register( new Ability_Job_Type() );
+		$this->registry->register( new Alt_Text_Job_Type() );
 	}
 
 	/**
