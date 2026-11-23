@@ -11,6 +11,7 @@ declare( strict_types=1 );
 namespace WordPress\AI\Admin;
 
 use WordPress\AI\Experiments\Key_Encryption\Key_Encryption;
+use WordPress\AI\Jobs\Job_Schema;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
@@ -35,6 +36,10 @@ final class Activation {
 	public static function activation_callback( ?bool $network_wide = false ): void {
 		// Check and run any pending upgrades.
 		Upgrades::do_upgrades();
+
+		// Create the async jobs table during activation so the first enqueue
+		// never races a schema write.
+		( new Job_Schema() )->maybe_upgrade_table();
 
 		// Schedule the Key Encryption experiment to re-encrypt plaintext keys on the next request.
 		Key_Encryption::for_each_site( true === $network_wide, array( Key_Encryption::class, 'flag_resume_migration' ) );

@@ -27,6 +27,7 @@ use WordPress\AI\Embeddings\Sync\Embedding_Sync;
 use WordPress\AI\Experiments\Experiments;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
+use WordPress\AI\Jobs\Jobs;
 use WordPress\AI\Settings\Settings_Page;
 use WordPress\AI\Settings\Settings_Registration;
 
@@ -94,6 +95,9 @@ final class Main {
 
 		// Handle any pending upgrades.
 		( new Upgrades() )->init();
+
+		// Async job queue and worker.
+		Jobs::instance()->init();
 
 		// Cache raw provider responses when the site opts in.
 		Cache_Integration::init();

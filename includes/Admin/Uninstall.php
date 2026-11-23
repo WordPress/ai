@@ -18,6 +18,8 @@ use WordPress\AI\Experiments\C2pa_Monitor\Sidecar_Writer;
 use WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation;
 use WordPress\AI\Experiments\Key_Encryption\Secrets_Bridge;
 use WordPress\AI\Experiments\Text_To_Speech\Job_Manager;
+use WordPress\AI\Jobs\Job_Queue;
+use WordPress\AI\Jobs\Job_Schema;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
 
 // Exit if accessed directly.
@@ -125,6 +127,7 @@ final class Uninstall {
 		self::drop_request_logs_table();
 		self::drop_embeddings_table();
 		self::drop_embedding_queue_table();
+		self::drop_jobs_table();
 		self::delete_options();
 		self::delete_meta();
 		self::delete_c2pa_sidecars();
@@ -178,6 +181,15 @@ final class Uninstall {
 	 */
 	private static function drop_embedding_queue_table(): void {
 		( new Sync_Queue_Schema() )->drop_table();
+	}
+
+	/**
+	 * Drops the async jobs table.
+	 *
+	 * @since 1.6.0
+	 */
+	private static function drop_jobs_table(): void {
+		( new Job_Schema() )->drop_table();
 	}
 
 	/**
@@ -463,6 +475,8 @@ final class Uninstall {
 		wp_clear_scheduled_hook( Sync_Worker::CRON_HOOK );
 
 		wp_unschedule_hook( Job_Manager::CRON_HOOK );
+		wp_clear_scheduled_hook( Job_Queue::CLEANUP_HOOK );
+		wp_unschedule_hook( Job_Queue::RUN_HOOK );
 	}
 
 	/**
