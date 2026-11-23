@@ -21,6 +21,7 @@ use WordPress\AI\Admin\Tools_Page;
 use WordPress\AI\Admin\Upgrades;
 use WordPress\AI\CLI\Embedding_Sync_Command;
 use WordPress\AI\CLI\Embeddings_Command;
+use WordPress\AI\Cache\Cache_Integration;
 use WordPress\AI\Connectors\Featured_Connectors;
 use WordPress\AI\Embeddings\Sync\Embedding_Sync;
 use WordPress\AI\Experiments\Experiments;
@@ -93,6 +94,9 @@ final class Main {
 
 		// Handle any pending upgrades.
 		( new Upgrades() )->init();
+
+		// Cache raw provider responses when the site opts in.
+		Cache_Integration::init();
 
 		// Keep the detected SEO plugin cache fresh regardless of experiment state.
 		SEO_Integration::register_cache_invalidation();
