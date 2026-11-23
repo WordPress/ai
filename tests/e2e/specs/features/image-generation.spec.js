@@ -43,28 +43,23 @@ test.describe( 'Image Generation Feature', () => {
 		// Ensure the sidebar is visible.
 		await editor.openDocumentSettingsSidebar();
 
+		const generateFaturedImageButton = page.getByRole( 'button', {
+			name: 'Generate featured image',
+		} );
+
 		// Ensure the generate featured image button exists.
-		await expect(
-			page.locator(
-				'.ai-featured-image .ai-featured-image__container button',
-				{
-					hasText: 'Generate featured image',
-				}
-			)
-		).toBeVisible();
+		await expect( generateFaturedImageButton ).toBeVisible();
 
 		// Click the generate featured image button.
-		await page
-			.locator(
-				'.ai-featured-image .ai-featured-image__container button'
-			)
-			.click();
+		await generateFaturedImageButton.click();
 
 		// Ensure the generated image is visible.
 		await expect(
-			page.locator(
-				'.editor-post-featured-image .editor-post-featured-image__container img'
-			)
+			page
+				.getByRole( 'button', {
+					name: 'Edit or replace the featured image',
+				} )
+				.getByRole( 'img' )
 		).toBeVisible();
 
 		// Save the post.
@@ -73,16 +68,14 @@ test.describe( 'Image Generation Feature', () => {
 		// Ensure the image is in the Media Library.
 		await visitAdminPage( admin, 'upload.php', 'mode=grid' );
 
-		const imageContainer = page
-			.locator( '.attachments-wrapper li' )
+		const imageItem = page
+			.getByRole( 'checkbox', {
+				name: 'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure',
+			} )
 			.first();
 
-		await expect( imageContainer ).toHaveAttribute(
-			'aria-label',
-			'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure'
-		);
-
-		await expect( imageContainer.locator( 'img' ) ).toBeVisible();
+		await expect( imageItem ).toBeVisible();
+		await expect( imageItem.locator( 'img' ) ).toBeVisible();
 	} );
 
 	test( 'Can generate an image using the inline button', async ( {
@@ -110,31 +103,30 @@ test.describe( 'Image Generation Feature', () => {
 		} );
 
 		// Find the inline Generate Image button.
-		const generateImageButton = editor.canvas.locator(
-			'.wp-block-image button',
-			{
-				hasText: 'Generate Image',
-			}
-		);
+		const generateImageButton = editor.canvas
+			.getByRole( 'document', { name: 'Block: Image' } )
+			.getByRole( 'button', { name: 'Generate Image' } );
+
 		await expect( generateImageButton ).toBeVisible();
 
 		// Click the generate image inline button.
 		await generateImageButton.click();
 
 		// Ensure the modal is visible.
-		await expect(
-			page.locator( '.ai-generate-image-inline-modal' )
-		).toBeVisible();
+		const modal = page.getByRole( 'dialog', { name: 'Generate Image' } );
+		await expect( modal ).toBeVisible();
 
 		// Add a prompt and generate the image.
-		await page
-			.locator( '.ai-image-generation__idle textarea' )
+		await modal
+			.getByRole( 'textbox', { name: 'Prompt' } )
 			.fill( 'A smiling face emoji' );
-		await page.locator( '.ai-image-generation__idle button' ).click();
+		await modal
+			.getByRole( 'button', { name: 'Generate', exact: true } )
+			.click();
 
 		// Ensure the image is visible in the modal.
 		await expect(
-			page.locator( '.ai-image-generation__preview-image' )
+			modal.getByRole( 'img', { name: 'A smiling face emoji' } )
 		).toBeVisible();
 
 		// Ensure the buttons we want are there.
@@ -142,36 +134,24 @@ test.describe( 'Image Generation Feature', () => {
 			page.locator( '.ai-image-generation__actions button' )
 		).toHaveCount( 4 );
 
-		let useImageButton = page.locator(
-			'.ai-image-generation__actions button',
-			{
-				hasText: 'Use Image',
-			}
-		);
+		const useImageButton = modal.getByRole( 'button', {
+			name: 'Use Image',
+		} );
 		await expect( useImageButton ).toBeVisible();
 
-		const refineButton = page.locator(
-			'.ai-image-generation__actions button',
-			{
-				hasText: 'Refine Image',
-			}
-		);
+		const refineButton = modal.getByRole( 'button', {
+			name: 'Refine Image',
+		} );
 		await expect( refineButton ).toBeVisible();
 
-		const generateAnotherButton = page.locator(
-			'.ai-image-generation__actions button',
-			{
-				hasText: 'Generate Another Image',
-			}
-		);
+		const generateAnotherButton = modal.getByRole( 'button', {
+			name: 'Generate Another Image',
+		} );
 		await expect( generateAnotherButton ).toBeVisible();
 
-		const editPromptButton = page.locator(
-			'.ai-image-generation__actions button',
-			{
-				hasText: 'Edit Prompt',
-			}
-		);
+		const editPromptButton = modal.getByRole( 'button', {
+			name: 'Edit Prompt',
+		} );
 		await expect( editPromptButton ).toBeVisible();
 
 		// Click the Edit Prompt button.
@@ -184,23 +164,25 @@ test.describe( 'Image Generation Feature', () => {
 
 		// Ensure the prompt textarea is visible.
 		await expect(
-			page.locator( '.ai-image-generation__idle textarea' )
+			modal.getByRole( 'textbox', { name: 'Prompt' } )
 		).toBeVisible();
 
 		// Ensure the prompt textarea has the correct value.
 		await expect(
-			page.locator( '.ai-image-generation__idle textarea' )
+			modal.getByRole( 'textbox', { name: 'Prompt' } )
 		).toHaveValue( 'A smiling face emoji' );
 
 		// Add another prompt and generate the image.
-		await page
-			.locator( '.ai-image-generation__idle textarea' )
+		await modal
+			.getByRole( 'textbox', { name: 'Prompt' } )
 			.fill( 'A smiling face' );
-		await page.locator( '.ai-image-generation__idle button' ).click();
+		await modal
+			.getByRole( 'button', { name: 'Generate', exact: true } )
+			.click();
 
 		// Ensure the image is visible in the modal.
 		await expect(
-			page.locator( '.ai-image-generation__preview-image' )
+			modal.getByRole( 'img', { name: 'A smiling face' } )
 		).toBeVisible();
 
 		// Ensure the buttons we want are there.
@@ -208,31 +190,29 @@ test.describe( 'Image Generation Feature', () => {
 			page.locator( '.ai-image-generation__actions button' )
 		).toHaveCount( 4 );
 
-		useImageButton = page.locator( '.ai-image-generation__actions button', {
-			hasText: 'Use Image',
-		} );
+		// Ensure "Use Image" button is visible, and click it.
 		await expect( useImageButton ).toBeVisible();
-
 		useImageButton.click();
 
 		// Ensure the image is inserted into the block.
 		await expect(
-			editor.canvas.locator( '.wp-block-image img' )
+			editor.canvas
+				.getByRole( 'document', { name: 'Block: Image' } )
+				.getByRole( 'img' )
 		).toBeVisible();
 
 		// Ensure the image is in the Media Library.
 		await visitAdminPage( admin, 'upload.php', 'mode=grid' );
 
-		const imageContainer = page
-			.locator( '.attachments-wrapper li' )
+		const imageItem = page
+			.getByRole( 'checkbox', {
+				name: 'A smiling face',
+				exact: true,
+			} )
 			.first();
 
-		await expect( imageContainer ).toHaveAttribute(
-			'aria-label',
-			'A smiling face'
-		);
-
-		await expect( imageContainer.locator( 'img' ) ).toBeVisible();
+		await expect( imageItem ).toBeVisible();
+		await expect( imageItem.locator( 'img' ) ).toBeVisible();
 	} );
 
 	test( 'Can generate an image using the toolbar button', async ( {
@@ -261,41 +241,39 @@ test.describe( 'Image Generation Feature', () => {
 
 		// Find the toolbar Add image button (aria-label is the accessible name).
 		const addImageButton = page
-			.locator( '.block-editor-block-toolbar' )
-			.getByRole( 'button', {
-				name: 'Add image',
-			} );
+			.getByRole( 'toolbar', {
+				name: 'Block tools',
+			} )
+			.getByRole( 'button', { name: 'Add image' } );
 		await expect( addImageButton ).toBeVisible();
 
 		// Click the Add image toolbar button.
 		await addImageButton.click();
 
 		// Ensure the menu dropdown shows with our Generate Image option.
-		const generateImageButton = page.locator(
-			'.block-editor-media-replace-flow__options button',
-			{
-				hasText: 'Generate Image',
-			}
-		);
+		const generateImageButton = page.getByRole( 'menuitem', {
+			name: 'Generate Image',
+		} );
 		await expect( generateImageButton ).toBeVisible();
 
 		// Click the Generate Image button.
 		await generateImageButton.click();
 
 		// Ensure the modal is visible.
-		await expect(
-			page.locator( '.ai-generate-image-inline-modal' )
-		).toBeVisible();
+		const modal = page.getByRole( 'dialog', { name: 'Generate Image' } );
+		await expect( modal ).toBeVisible();
 
 		// Add a prompt and generate the image.
-		await page
-			.locator( '.ai-image-generation__idle textarea' )
+		await modal
+			.getByRole( 'textbox', { name: 'Prompt' } )
 			.fill( 'A smiley face' );
-		await page.locator( '.ai-image-generation__idle button' ).click();
+		await modal
+			.getByRole( 'button', { name: 'Generate', exact: true } )
+			.click();
 
 		// Ensure the image is visible in the modal.
 		await expect(
-			page.locator( '.ai-image-generation__preview-image' )
+			modal.getByRole( 'img', { name: 'A smiley face' } )
 		).toBeVisible();
 
 		// Ensure the buttons we want are there.
@@ -303,43 +281,30 @@ test.describe( 'Image Generation Feature', () => {
 			page.locator( '.ai-image-generation__actions button' )
 		).toHaveCount( 4 );
 
-		let useImageButton = page.locator(
-			'.ai-image-generation__actions button',
-			{
-				hasText: 'Use Image',
-			}
-		);
+		const useImageButton = modal.getByRole( 'button', {
+			name: 'Use Image',
+		} );
 		await expect( useImageButton ).toBeVisible();
 
-		const refineButton = page.locator(
-			'.ai-image-generation__actions button',
-			{
-				hasText: 'Refine Image',
-			}
-		);
+		const refineButton = modal.getByRole( 'button', {
+			name: 'Refine Image',
+		} );
 		await expect( refineButton ).toBeVisible();
 
-		const generateAnotherButton = page.locator(
-			'.ai-image-generation__actions button',
-			{
-				hasText: 'Generate Another Image',
-			}
-		);
+		const generateAnotherButton = modal.getByRole( 'button', {
+			name: 'Generate Another Image',
+		} );
 		await expect( generateAnotherButton ).toBeVisible();
 
 		// Ensure there's a close button in the modal.
-		const closeButton = page
-			.locator( '.ai-generate-image-inline-modal' )
-			.getByRole( 'button', { name: 'Close' } );
+		const closeButton = modal.getByRole( 'button', { name: 'Close' } );
 		await expect( closeButton ).toBeVisible();
 
 		// Click the close button.
 		await closeButton.click();
 
 		// Ensure the modal is closed.
-		await expect(
-			page.locator( '.ai-generate-image-inline-modal' )
-		).not.toBeVisible();
+		await expect( modal ).not.toBeVisible();
 
 		// Click the Add image toolbar button.
 		await addImageButton.click();
@@ -348,14 +313,16 @@ test.describe( 'Image Generation Feature', () => {
 		await generateImageButton.click();
 
 		// Add another prompt and generate the image.
-		await page
-			.locator( '.ai-image-generation__idle textarea' )
+		await modal
+			.getByRole( 'textbox', { name: 'Prompt' } )
 			.fill( 'A smiley face' );
-		await page.locator( '.ai-image-generation__idle button' ).click();
+		await modal
+			.getByRole( 'button', { name: 'Generate', exact: true } )
+			.click();
 
 		// Ensure the image is visible in the modal.
 		await expect(
-			page.locator( '.ai-image-generation__preview-image' )
+			modal.getByRole( 'img', { name: 'A smiley face' } )
 		).toBeVisible();
 
 		// Ensure the buttons we want are there.
@@ -363,31 +330,27 @@ test.describe( 'Image Generation Feature', () => {
 			page.locator( '.ai-image-generation__actions button' )
 		).toHaveCount( 4 );
 
-		useImageButton = page.locator( '.ai-image-generation__actions button', {
-			hasText: 'Use Image',
-		} );
 		await expect( useImageButton ).toBeVisible();
-
 		useImageButton.click();
 
 		// Ensure the image is inserted into the block.
 		await expect(
-			editor.canvas.locator( '.wp-block-image img' )
+			editor.canvas
+				.getByRole( 'document', { name: 'Block: Image' } )
+				.getByRole( 'img' )
 		).toBeVisible();
 
 		// Ensure the image is in the Media Library.
 		await visitAdminPage( admin, 'upload.php', 'mode=grid' );
 
-		const imageContainer = page
-			.locator( '.attachments-wrapper li' )
+		const imageItem = page
+			.getByRole( 'checkbox', {
+				name: 'A smiley face',
+			} )
 			.first();
 
-		await expect( imageContainer ).toHaveAttribute(
-			'aria-label',
-			'A smiley face'
-		);
-
-		await expect( imageContainer.locator( 'img' ) ).toBeVisible();
+		await expect( imageItem ).toBeVisible();
+		await expect( imageItem.locator( 'img' ) ).toBeVisible();
 	} );
 
 	test( 'Can generate an image directly in the Media Library', async ( {
@@ -424,13 +387,15 @@ test.describe( 'Image Generation Feature', () => {
 
 		// Add a prompt and generate the image.
 		await page
-			.locator( '.ai-image-generation__idle textarea' )
+			.getByRole( 'textbox', { name: 'Prompt' } )
 			.fill( 'A smiley face' );
-		await page.locator( '.ai-image-generation__actions button' ).click();
+		await page
+			.getByRole( 'button', { name: 'Generate', exact: true } )
+			.click();
 
 		// Ensure the image is visible.
 		await expect(
-			page.locator( '.ai-image-generation__preview-image' )
+			page.getByRole( 'img', { name: 'A smiley face' } )
 		).toBeVisible();
 
 		// Ensure the buttons we want are there.
@@ -438,37 +403,26 @@ test.describe( 'Image Generation Feature', () => {
 			page.locator( '.ai-image-generation__actions button' )
 		).toHaveCount( 5 );
 
-		let saveImageButton = page.locator(
-			'.ai-image-generation__actions button',
-			{
-				hasText: 'Save to Media Library',
-			}
-		);
+		const saveImageButton = page.getByRole( 'button', {
+			name: 'Save to Media Library',
+		} );
 		await expect( saveImageButton ).toBeVisible();
 
-		const refineButton = page.locator(
-			'.ai-image-generation__actions button',
-			{
-				hasText: 'Refine Image',
-			}
-		);
+		const refineButton = page.getByRole( 'button', {
+			name: 'Refine Image',
+		} );
 		await expect( refineButton ).toBeVisible();
 
-		const generateAnotherButton = page.locator(
-			'.ai-image-generation__actions button',
-			{
-				hasText: 'Generate Another Image',
-			}
-		);
+		const generateAnotherButton = page.getByRole( 'button', {
+			name: 'Generate Another Image',
+		} );
 		await expect( generateAnotherButton ).toBeVisible();
 
 		// Ensure there's a cancel button.
-		const cancelButton = page.locator(
-			'.ai-image-generation__actions button',
-			{
-				hasText: 'Cancel',
-			}
-		);
+		const cancelButton = page.getByRole( 'button', {
+			name: 'Cancel',
+			exact: true,
+		} );
 		await expect( cancelButton ).toBeVisible();
 
 		// Click the cancel button.
@@ -476,13 +430,15 @@ test.describe( 'Image Generation Feature', () => {
 
 		// Add another prompt and generate the image.
 		await page
-			.locator( '.ai-image-generation__idle textarea' )
+			.getByRole( 'textbox', { name: 'Prompt' } )
 			.fill( 'A smiley face' );
-		await page.locator( '.ai-image-generation__idle button' ).click();
+		await page
+			.getByRole( 'button', { name: 'Generate', exact: true } )
+			.click();
 
 		// Ensure the image is visible.
 		await expect(
-			page.locator( '.ai-image-generation__preview-image' )
+			page.getByRole( 'img', { name: 'A smiley face' } )
 		).toBeVisible();
 
 		// Ensure the buttons we want are there.
@@ -490,14 +446,7 @@ test.describe( 'Image Generation Feature', () => {
 			page.locator( '.ai-image-generation__actions button' )
 		).toHaveCount( 5 );
 
-		saveImageButton = page.locator(
-			'.ai-image-generation__actions button',
-			{
-				hasText: 'Save to Media Library',
-			}
-		);
 		await expect( saveImageButton ).toBeVisible();
-
 		saveImageButton.click();
 
 		// Ensure a success message is visible.
@@ -538,9 +487,7 @@ test.describe( 'Image Generation Feature', () => {
 
 		// Ensure the generate featured image button doesn't exist.
 		await expect(
-			page.locator(
-				'.ai-featured-image .ai-featured-image__container button'
-			)
+			page.getByRole( 'button', { name: 'Generate featured image' } )
 		).not.toBeVisible();
 
 		// Visit the Media Library.

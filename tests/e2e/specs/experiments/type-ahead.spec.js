@@ -168,6 +168,40 @@ test.describe( 'Type-ahead Text Experiment', () => {
 		expect( requests ).toBe( 1 );
 	} );
 
+	test( 'Adds no space before a suggestion in a language written without spaces', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await enableExperiment( admin, page, 'Type-ahead Text' );
+
+		await page.route(
+			/\/wp-abilities\/v1\/abilities\/ai\/type-ahead\/run/,
+			( route ) =>
+				route.fulfill( {
+					json: { suggestion: 'いいですね。', confidence: 1 },
+				} )
+		);
+
+		await admin.createNewPost();
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: { content: '今日は天気が' },
+		} );
+
+		const paragraph = editor.canvas.getByRole( 'document', {
+			name: 'Block: Paragraph',
+		} );
+		await paragraph.click();
+
+		await expect( editor.canvas.getByRole( 'status' ) ).toHaveText(
+			'いいですね。'
+		);
+		await page.keyboard.press( 'Tab' );
+
+		await expect( paragraph ).toHaveText( '今日は天気がいいですね。' );
+	} );
+
 	test( 'Ensure the Type-ahead Text Experiment UI is not visible when the experiment is disabled', async ( {
 		admin,
 		editor,

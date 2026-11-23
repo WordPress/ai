@@ -657,10 +657,10 @@ final class Users {
 	 * Accepts arrays and CSV strings, which it parses with wp_parse_list(), as schema
 	 * validation does. Schema validation accepts a CSV string for an array, and only the
 	 * REST run controller converts input to the schema types, so callers that bypass it,
-	 * such as a direct WP_Ability::execute() call, can pass one. Empty strings name
-	 * nothing, so they are dropped, and a list that holds only empty strings comes back
-	 * empty. Duplicate items need no handling here, because validation has already
-	 * rejected them.
+	 * such as a direct WP_Ability::execute() call, can pass one. Empty and whitespace-only
+	 * strings name nothing, so they are dropped, and a list that holds only such strings
+	 * comes back empty. Duplicate items need no handling here, because validation has
+	 * already rejected them.
 	 *
 	 * @since 1.2.0
 	 *
@@ -675,7 +675,7 @@ final class Users {
 		return array_values(
 			array_filter(
 				wp_parse_list( $value ),
-				static fn( $item ) => is_string( $item ) && '' !== $item
+				static fn( $item ) => is_string( $item ) && '' !== trim( $item )
 			)
 		);
 	}
