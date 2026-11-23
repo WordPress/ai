@@ -68,7 +68,7 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 
 	// The active SEO plugin decides how the description is written to and read from the
 	// editor. The default adapter uses core/editor post meta; Yoast and Rank Math target
-	// their own stores.
+	// their own stores, and The SEO Framework targets its meta box field.
 	const adapter = useMemo( () => getAdapter( seoPlugin ), [ seoPlugin ] );
 
 	const externalDescription = useSyncExternalStore(
