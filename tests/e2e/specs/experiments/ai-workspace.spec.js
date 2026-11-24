@@ -354,6 +354,75 @@ test.describe( 'AI Workspace Wapuu', () => {
 	} );
 } );
 
+test.describe( 'AI Workspace composer during a turn', () => {
+	const DRAFT = 'Now list three more ideas.';
+
+	test.beforeEach( async ( { admin, requestUtils } ) => {
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, true );
+		await admin.visitAdminPage( WORKSPACE_PAGE );
+	} );
+
+	test.afterEach( async ( { requestUtils } ) => {
+		await setExperimentEnabled( requestUtils, EXPERIMENT_ID, false );
+	} );
+
+	test( 'the next message can be drafted while a turn runs, and sent after it', async ( {
+		page,
+	} ) => {
+		const turns = await holdTurns( page );
+		const input = page.getByLabel( 'Message', { exact: true } );
+		const send = page.getByRole( 'button', { name: 'Send' } );
+		const stop = page.getByRole( 'button', { name: 'Stop' } );
+
+		await input.fill( 'What should I write about next?' );
+		await send.click();
+		await expect( page.locator( '.ai-workspace__progress' ) ).toBeVisible();
+
+		await expect( input ).toBeEnabled();
+		await input.fill( DRAFT );
+		await expect( send ).toBeDisabled();
+		await expect( stop ).toBeEnabled();
+
+		// The shortcut does not send the draft mid-turn, nor clear it.
+		await input.press( 'ControlOrMeta+Enter' );
+		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 1 );
+		await expect( input ).toHaveValue( DRAFT );
+
+		await turns.release();
+		await expect(
+			page.locator( '.ai-workspace__turn' ).first()
+		).toContainText( MOCKED_RESPONSE, { timeout: 30000 } );
+
+		await expect( input ).toHaveValue( DRAFT );
+		await expect( input ).toBeFocused();
+		await expect( send ).toBeEnabled();
+
+		await send.click();
+		await expect(
+			page.locator( '.ai-workspace__turn' ).nth( 1 )
+		).toContainText( DRAFT );
+	} );
+
+	test( 'a draft written during a turn survives Stop', async ( { page } ) => {
+		await holdTurns( page );
+		const input = page.getByLabel( 'Message', { exact: true } );
+
+		await input.fill( 'What should I write about next?' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+		await input.fill( DRAFT );
+
+		await page.getByRole( 'button', { name: 'Stop' } ).click();
+
+		await expect( page.locator( '.ai-workspace__progress' ) ).toHaveCount(
+			0
+		);
+		await expect( input ).toHaveValue( DRAFT );
+		await expect(
+			page.getByRole( 'button', { name: 'Send' } )
+		).toBeEnabled();
+	} );
+} );
+
 // The last line of the `workspace-long-reply` scenario, served only by the Anthropic mock.
 const LONG_REPLY_END = 'That is the last idea on the list.';
 
