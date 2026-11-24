@@ -127,9 +127,13 @@ describe( 'AI Workspace proposal card select all', () => {
 	test( 'selects every draft or pending item in a batch', () => {
 		expect(
 			bulkSelectable(
-				proposal( [ item(), item( { key: 'b', status: 'pending' } ) ] )
+				proposal( [
+					item(),
+					item( { key: 'b', status: 'pending' } ),
+					item( { key: 'c' } ),
+				] )
 			)
-		).toEqual( [ 'a', 'b' ] );
+		).toEqual( [ 'a', 'b', 'c' ] );
 	} );
 
 	test( 'leaves out an item that would be published or made private', () => {
