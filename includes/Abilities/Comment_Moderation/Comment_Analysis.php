@@ -94,10 +94,28 @@ class Comment_Analysis extends Abstract_Ability {
 	 *
 	 * @since 0.9.0
 	 *
-	 * @return array{comment_id: int, toxicity_score: float, sentiment: string, value_score: float}|\WP_Error The result of the ability execution.
+	 * @return array{comment_id: int|null, toxicity_score: float, sentiment: string, value_score: float}|\WP_Error The result of the ability execution.
 	 */
 	protected function execute_callback( $input ) {
-		return $this->analyze_comment_by_id( absint( $input['comment_id'] ?? 0 ) );
+		$comment_id = absint( $input['comment_id'] ?? 0 );
+
+		if ( $comment_id > 0 ) {
+			return $this->analyze_comment_by_id( $comment_id );
+		}
+
+		$comment_text = $input['comment_text'] ?? '';
+
+		if ( is_string( $comment_text ) && '' !== trim( $comment_text ) ) {
+			$author  = isset( $input['author'] ) && is_string( $input['author'] ) ? $input['author'] : '';
+			$post_id = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : null;
+
+			return $this->analyze_comment_text( $comment_text, $author, $post_id );
+		}
+
+		return new WP_Error(
+			'missing_comment_id',
+			esc_html__( 'Comment ID or comment text is required.', 'ai' )
+		);
 	}
 
 	/**
@@ -340,11 +358,18 @@ class Comment_Analysis extends Abstract_Ability {
 			return $this->sanitize_analysis_result( $pre_result );
 		}
 
-		$prompt = sprintf(
-			"<comment>\n<author>%s</author>\n<content>%s</content>\n</comment>",
-			$this->escape_prompt_value( $author ),
-			$this->escape_prompt_value( $content )
-		);
+		if ( '' !== $author ) {
+			$prompt = sprintf(
+				"<comment>\n<author>%s</author>\n<content>%s</content>\n</comment>",
+				$this->escape_prompt_value( $author ),
+				$this->escape_prompt_value( $content )
+			);
+		} else {
+			$prompt = sprintf(
+				"<comment>\n<content>%s</content>\n</comment>",
+				$this->escape_prompt_value( $content )
+			);
+		}
 
 		$post_context = $post_id ? $this->get_post_context( $post_id ) : null;
 
