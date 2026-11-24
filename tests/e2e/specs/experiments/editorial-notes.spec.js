@@ -261,9 +261,7 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 			.click();
 
 		await expect(
-			page.locator( '.components-notice.is-error', {
-				hasText: NOTE_SAVE_ERROR,
-			} )
+			page.getByRole( 'main' ).getByText( NOTE_SAVE_ERROR )
 		).toBeVisible();
 		await expect( page.getByText( /suggestions? added/ ) ).toHaveCount( 0 );
 	} );
@@ -308,9 +306,12 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 			.click();
 
 		await expect(
-			page.locator( '.components-notice.is-error', {
-				hasText: `1 block could not be reviewed: ${ NOTE_SAVE_ERROR }`,
-			} )
+			page
+				.getByRole( 'main' )
+				.getByText(
+					`1 block could not be reviewed: ${ NOTE_SAVE_ERROR }`,
+					{ exact: true }
+				)
 		).toBeVisible();
 		await expect(
 			page.getByTestId( 'snackbar' ).filter( {
@@ -343,9 +344,7 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 		await editor.clickBlockOptionsMenuItem( 'Generate Editorial Note' );
 
 		await expect(
-			page.locator( '.components-notice.is-error', {
-				hasText: NOTE_SAVE_ERROR,
-			} )
+			page.getByRole( 'main' ).getByText( NOTE_SAVE_ERROR )
 		).toBeVisible();
 		await expect( page.getByText( /suggestions? added/ ) ).toHaveCount( 0 );
 	} );
@@ -454,8 +453,13 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 		);
 
 		// Select the first block and open options menu
-		const paragraphs = editor.canvas.locator( '.wp-block-paragraph' );
-		await paragraphs.nth( 0 ).click();
+		const paragraphs = editor.canvas.getByRole( 'document', {
+			name: 'Block: Paragraph',
+			exact: true,
+		} );
+		await paragraphs
+			.filter( { hasText: 'This is paragraph number one.' } )
+			.click();
 		// Click into the more menu for the block.
 		await editor.clickBlockToolbarButton( 'Options' );
 
@@ -475,12 +479,15 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 
 		await expect( menuitem1 ).toBeVisible();
 		await expect( menuitem1 ).toBeDisabled();
+		// The spinner is decorative, so retain its class for this visual check.
 		await expect(
 			menuitem1.locator( '.components-spinner' )
 		).toBeVisible();
 
 		// Select second block and open options menu
-		await paragraphs.nth( 1 ).click();
+		await paragraphs
+			.filter( { hasText: 'This is paragraph number two.' } )
+			.click();
 		await editor.clickBlockToolbarButton( 'Options' );
 
 		// Verify block 2 displays the help text/info and no spinner.
@@ -496,8 +503,8 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 			0
 		);
 		await expect(
-			page.locator( '.components-menu-item__info', {
-				hasText: 'Another block is currently being reviewed.',
+			menuitem2.getByText( 'Another block is currently being reviewed.', {
+				exact: true,
 			} )
 		).toBeVisible();
 
@@ -637,14 +644,17 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 			await expect( reviewButton ).toBeVisible();
 			await reviewButton.click();
 
-			const errorNotice = page.locator( '.components-notice.is-error', {
-				hasText:
+			const errorNotice = page
+				.getByRole( 'main' )
+				.getByText(
 					'Unable to generate notes: the current template does not contain a post content block.',
-			} );
+					{ exact: true }
+				);
 			await expect( errorNotice ).toBeVisible();
 			await expect(
-				errorNotice.getByRole( 'button', {
+				page.getByRole( 'main' ).getByRole( 'button', {
 					name: 'Close',
+					exact: true,
 				} )
 			).toBeVisible();
 		} );
