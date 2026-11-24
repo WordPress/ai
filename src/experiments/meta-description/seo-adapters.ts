@@ -38,6 +38,17 @@ export interface ApplyContext extends ReadContext {
  */
 export interface SeoEditorAdapter {
 	/**
+	 * Optional source for a description held outside the data stores, such as a meta box field.
+	 *
+	 * A snapshot of `undefined` means the source is unavailable, and the modal then
+	 * disables Apply and offers copy only.
+	 */
+	externalDescription?: {
+		subscribe: ( onChange: () => void ) => () => void;
+		getSnapshot: () => string | undefined;
+	};
+
+	/**
 	 * Writes the description so the SEO plugin UI updates and the value persists on save.
 	 *
 	 * @param text Description to apply.
@@ -155,11 +166,53 @@ export const rankMathAdapter: SeoEditorAdapter = {
 };
 
 /**
+ * Returns The SEO Framework's meta box description field.
+ *
+ * @return The description textarea, or null when the meta box is unavailable.
+ */
+function getTsfDescriptionField(): HTMLTextAreaElement | null {
+	return document.querySelector( '#autodescription_description' );
+}
+
+/**
+ * The SEO Framework adapter: writes to its meta box field.
+ */
+const theSeoFrameworkAdapter: SeoEditorAdapter = {
+	externalDescription: {
+		subscribe: ( onChange ) => {
+			const onInput = ( event: Event ) => {
+				if ( event.target === getTsfDescriptionField() ) {
+					onChange();
+				}
+			};
+
+			document.addEventListener( 'input', onInput, true );
+			return () => document.removeEventListener( 'input', onInput, true );
+		},
+		getSnapshot: () => getTsfDescriptionField()?.value,
+	},
+	apply: ( text, context ) => {
+		const field = getTsfDescriptionField();
+		if ( ! field ) {
+			return;
+		}
+
+		field.value = text;
+		field.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+
+		// Mark the post dirty so WordPress saves the metabox with the post.
+		defaultAdapter.apply( text, context );
+	},
+	read: defaultAdapter.read,
+};
+
+/**
  * Registry of SEO plugin adapters, keyed by the plugin slug from `SEO_Integration`.
  */
 const ADAPTERS: Record< string, SeoEditorAdapter > = {
 	'yoast-seo': yoastAdapter,
 	'rank-math': rankMathAdapter,
+	'the-seo-framework': theSeoFrameworkAdapter,
 };
 
 /**

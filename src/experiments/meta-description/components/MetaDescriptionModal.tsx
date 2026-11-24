@@ -20,6 +20,7 @@ interface MetaDescriptionModalProps {
 	isGenerating: boolean;
 	suggestion: MetaDescriptionSuggestion | null;
 	editableText: string;
+	canApply: boolean;
 	isContentTooShort: boolean;
 	tooShortLabel: string;
 	onEditableTextChange: ( text: string ) => void;
@@ -66,6 +67,7 @@ function CopyButton( {
  * @param props.isGenerating         Whether generation is in progress.
  * @param props.suggestion           The generated suggestion.
  * @param props.editableText         The current editable text value.
+ * @param props.canApply             Whether the description field is available.
  * @param props.isContentTooShort    Whether the content is too short to generate a suggestion.
  * @param props.tooShortLabel        Label to show when content is too short.
  * @param props.onEditableTextChange Callback to update the editable text.
@@ -77,6 +79,7 @@ export default function MetaDescriptionModal( {
 	isGenerating,
 	suggestion,
 	editableText,
+	canApply,
 	isContentTooShort,
 	tooShortLabel,
 	onEditableTextChange,
@@ -114,6 +117,15 @@ export default function MetaDescriptionModal( {
 					</Notice>
 				) }
 
+				{ ! canApply && (
+					<Notice status="info" isDismissible={ false }>
+						{ __(
+							'The SEO description field is unavailable. You can copy the description to your clipboard.',
+							'ai'
+						) }
+					</Notice>
+				) }
+
 				{ /* Editable textarea */ }
 				<div className="ai-meta-description-modal__editor">
 					<TextareaControl
@@ -141,6 +153,7 @@ export default function MetaDescriptionModal( {
 						} }
 						accessibleWhenDisabled
 						disabled={
+							! canApply ||
 							isGenerating ||
 							( !! editableText &&
 								editableText.trim().length === 0 )
