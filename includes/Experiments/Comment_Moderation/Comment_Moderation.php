@@ -333,11 +333,13 @@ class Comment_Moderation extends Abstract_Feature {
 		// Moderate new comments.
 		add_action( 'wp_insert_comment', array( $this, 'moderate_comment' ) );
 
-		if ( $this->should_check_drafts() ) {
-			$draft_check = new Draft_Check( $this );
-			add_action( 'comment_form', array( $draft_check, 'render' ) );
-			add_action( 'rest_api_init', array( $draft_check, 'register_route' ) );
+		if ( ! $this->should_check_drafts() ) {
+			return;
 		}
+
+		$draft_check = new Draft_Check( $this );
+		add_action( 'comment_form', array( $draft_check, 'render' ) );
+		add_action( 'rest_api_init', array( $draft_check, 'register_route' ) );
 	}
 
 	/**
