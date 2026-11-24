@@ -190,7 +190,7 @@ final class Draft_Check {
 		// An unsent draft can contain text the visitor later removes or never posts.
 		add_filter( 'wpai_request_log_include_content', '__return_false' );
 		try {
-			$result = $this->experiment->get_comment_analysis_ability()->analyze_draft( $text );
+			$result = $this->experiment->get_comment_analysis_ability()->analyze_comment_text( $text );
 		} finally {
 			remove_filter( 'wpai_request_log_include_content', '__return_false' );
 		}
