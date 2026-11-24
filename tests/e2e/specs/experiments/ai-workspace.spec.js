@@ -9,6 +9,7 @@ import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 import {
 	activateMockScenario,
 	deactivateMockScenario,
+	openSpacesPanel,
 	seedCredentials,
 	setExperimentEnabled,
 } from '../../utils/helpers';
@@ -42,13 +43,13 @@ test.describe( 'AI Workspace transcript', () => {
 		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 0 );
 
 		// The header offers no "New space"; the only one is the Chats panel's.
+		const panel = await openSpacesPanel( page );
+
 		await expect(
 			page.getByRole( 'button', { name: 'New space' } )
 		).toHaveCount( 1 );
 		await expect(
-			page
-				.getByRole( 'complementary', { name: 'Spaces' } )
-				.getByRole( 'button', { name: 'New space' } )
+			panel.getByRole( 'button', { name: 'New space' } )
 		).toBeVisible();
 	} );
 
@@ -132,7 +133,9 @@ test.describe( 'AI Workspace transcript', () => {
 			page.getByLabel( 'Message', { exact: true } )
 		).toBeFocused();
 
-		await page.getByRole( 'button', { name: 'New space' } ).click();
+		await ( await openSpacesPanel( page ) )
+			.getByRole( 'button', { name: 'New space' } )
+			.click();
 
 		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 0 );
 		await expect( page.locator( '.ai-workspace__empty' ) ).toBeVisible();
@@ -148,7 +151,7 @@ test.describe( 'AI Workspace transcript', () => {
 		page,
 	} ) => {
 		await expect(
-			page.getByRole( 'button', { name: 'New space' } )
+			page.getByLabel( 'Message', { exact: true } )
 		).toBeVisible();
 
 		await page.getByLabel( 'Message', { exact: true } ).focus();
@@ -487,6 +490,7 @@ test.describe( 'AI Workspace frame', () => {
 
 	for ( const viewport of [
 		{ width: 1280, height: 800 },
+		{ width: 1600, height: 900 },
 		{ width: 390, height: 844 },
 	] ) {
 		test( `fills the viewport at ${ viewport.width }x${ viewport.height }, with the composer at the bottom`, async ( {

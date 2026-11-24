@@ -210,9 +210,8 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 	const { ref: transcriptRef, stick: stickToBottom } =
 		useStickToBottom< HTMLElement >( entries );
 
-	// The panel starts open as a sidebar, and closed as a drawer.
 	const [ narrow, setNarrow ] = useState( isNarrow );
-	const [ historyOpen, setHistoryOpen ] = useState( () => ! isNarrow() );
+	const [ historyOpen, setHistoryOpen ] = useState( false );
 	const [ missing, setMissing ] = useState( '' );
 	const historyId = useInstanceId( WorkspaceApp, 'ai-workspace-history' );
 	const historyToggle = useRef< HTMLButtonElement | null >( null );
@@ -227,7 +226,7 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 		// Crossing the breakpoint resets the panel to that width's default.
 		const update = (): void => {
 			setNarrow( query.matches );
-			setHistoryOpen( ! query.matches );
+			setHistoryOpen( false );
 		};
 
 		query.addEventListener( 'change', update );
