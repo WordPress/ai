@@ -89,7 +89,7 @@ export function bulkSelectable( proposal: Proposal ): string[] {
 		'pending' !== proposal.status ||
 		isUpdate( proposal ) ||
 		'template' === proposal.kind ||
-		proposal.items.length < 2
+		proposal.items.length < 3
 	) {
 		return [];
 	}
