@@ -2,7 +2,7 @@
 
 ## Summary
 
-The Meta Description experiment adds AI-powered meta description generation to the WordPress post editor. It provides a "Meta Description" sidebar panel with a modal workflow for generating, selecting, editing, and applying meta descriptions. The experiment automatically detects active SEO plugins (Yoast SEO, Rank Math, All in One SEO, SEOPress) and writes to the correct meta field. It registers a WordPress Ability (`ai/meta-description`) that can be used both through the admin UI and directly via REST API requests.
+The Meta Description experiment adds AI-powered meta description generation to the WordPress post editor. It provides a "Meta Description" sidebar panel with a modal workflow for generating, selecting, editing, and applying meta descriptions. The experiment automatically detects active SEO plugins (Yoast SEO, Rank Math, All in One SEO, SEOPress, The SEO Framework) and writes to the correct meta field. It registers a WordPress Ability (`ai/meta-description`) that can be used both through the admin UI and directly via REST API requests.
 
 ## At a Glance
 
@@ -24,7 +24,7 @@ When enabled, the Meta Description experiment adds a "Meta Description" panel to
 - Suggestions target the optimal 140–160 character range for search engine display
 - Editable textarea allows fine-tuning the suggestion before applying
 - Live character count with color-coded indicator (green for 140–160, yellow outside range)
-- Automatic SEO plugin detection — writes to the correct meta field for Yoast SEO, Rank Math, All in One SEO, and SEOPress
+- Automatic SEO plugin detection — writes to the correct meta field for Yoast SEO, Rank Math, All in One SEO, SEOPress, and The SEO Framework
 - Falls back to a standard post meta field (`wpai_meta_description`) when no SEO plugin is active
 - Copy to clipboard functionality for use with unsupported SEO plugins or external tools
 - Works with any post type that has `show_in_rest` enabled
@@ -144,6 +144,7 @@ The `SEO_Integration` utility class detects active SEO plugins and resolves the 
 | Rank Math | `rank-math` | `rank_math_description` |
 | All in One SEO | `all-in-one-seo` | `_aioseo_description` |
 | SEOPress | `seopress` | `_seopress_titles_desc` |
+| The SEO Framework | `the-seo-framework` | `_genesis_description` |
 | None (fallback) | — | `wpai_meta_description` |
 
 When no SEO plugin is active, the experiment registers the fallback `wpai_meta_description` meta key for REST-enabled post types so it can be read and written through the WordPress data layer.

@@ -28,6 +28,7 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 		isGenerating,
 		suggestion,
 		currentDescription,
+		canApply,
 		isContentTooShort,
 		tooShortLabel,
 		ensureProviderAvailable,
@@ -161,6 +162,7 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 					isGenerating={ isGenerating }
 					suggestion={ suggestion }
 					editableText={ editableText }
+					canApply={ canApply }
 					isContentTooShort={ isContentTooShort }
 					tooShortLabel={ tooShortLabel }
 					onEditableTextChange={ setEditableText }
