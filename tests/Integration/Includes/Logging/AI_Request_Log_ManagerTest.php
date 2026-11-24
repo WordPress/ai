@@ -135,6 +135,8 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 
 	/**
 	 * Tests that request metrics can be kept without retaining draft content.
+	 *
+	 * @since x.x.x
 	 */
 	public function test_log_can_omit_request_and_response_content(): void {
 		add_filter( 'wpai_request_log_include_content', '__return_false' );
