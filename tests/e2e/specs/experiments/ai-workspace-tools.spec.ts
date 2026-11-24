@@ -690,6 +690,8 @@ test.describe( 'AI Workspace proposal card', () => {
 		page,
 	} ) => {
 		const card = page.getByRole( 'region', { name: 'Create 3 drafts' } );
+		const selectedCount = card.getByRole( 'status' );
+		await expect( selectedCount ).toHaveText( '0 items selected' );
 
 		// Each item in a batch is chosen deliberately, so none starts checked,
 		// and neither does "Select all".
@@ -710,14 +712,17 @@ test.describe( 'AI Workspace proposal card', () => {
 
 		await card.getByRole( 'checkbox', { name: SERIES[ 1 ] } ).check();
 		await expect( create ).toHaveText( 'Create 1 draft' );
+		await expect( selectedCount ).toHaveText( '1 item selected' );
 		await expect( create ).toBeEnabled();
 
 		await card.getByRole( 'checkbox', { name: SERIES[ 0 ] } ).check();
 		await card.getByRole( 'checkbox', { name: SERIES[ 2 ] } ).check();
 		await expect( create ).toHaveText( 'Create 3 drafts' );
+		await expect( selectedCount ).toHaveText( '3 items selected' );
 
 		await card.getByRole( 'checkbox', { name: SERIES[ 0 ] } ).uncheck();
 		await expect( create ).toHaveText( 'Create 2 drafts' );
+		await expect( selectedCount ).toHaveText( '2 items selected' );
 
 		// "Select all" checks what is left, and clearing it unchecks everything.
 		const all = card.getByRole( 'checkbox', { name: 'Select all' } );
@@ -731,6 +736,7 @@ test.describe( 'AI Workspace proposal card', () => {
 		}
 		await all.uncheck();
 		await expect( create ).toHaveText( 'Create 0 drafts' );
+		await expect( selectedCount ).toHaveText( '0 items selected' );
 
 		await expect(
 			card.getByText( 'Blocks are the pieces a page is built from.', {
