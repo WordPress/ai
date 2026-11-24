@@ -42,31 +42,43 @@ Readers can still submit if the check fails, times out, or reaches the server's 
 
 ### Input Schema
 
-The `ai/comment-analysis` ability accepts:
+The `ai/comment-analysis` ability accepts either a saved `comment_id` or non-empty `comment_text`. When a positive `comment_id` is supplied, the ability analyzes that saved comment and ignores the raw-text fields.
+
+For raw text, `author` and `post_id` are optional. Without a post ID, no post context is included. Raw-text analysis does not create a comment or save comment metadata.
 
 ```php
 array(
     'type'       => 'object',
     'properties' => array(
-        'comment_id' => array(
+        'comment_id'   => array(
             'type'        => 'integer',
             'description' => 'The ID of the comment to analyze.',
-            'required'    => true,
+        ),
+        'comment_text' => array(
+            'type'        => 'string',
+            'description' => 'The text of the comment to analyze.',
+        ),
+        'author'       => array(
+            'type'        => 'string',
+            'description' => 'The author of the comment.',
+        ),
+        'post_id'      => array(
+            'type'        => 'integer',
+            'description' => 'The ID of the post the comment was left on, if known.',
         ),
     ),
-    'required'   => array( 'comment_id' ),
 )
 ```
 
 ### Output Schema
 
-The ability returns:
+The ability returns the same three scores for saved comments and raw text. `comment_id` is `null` when analyzing raw text.
 
 ```php
 array(
     'type'       => 'object',
     'properties' => array(
-        'comment_id'     => array( 'type' => 'integer' ),
+        'comment_id'     => array( 'type' => array( 'integer', 'null' ) ),
         'toxicity_score' => array(
             'type'    => 'number',
             'minimum' => 0,
@@ -133,11 +145,23 @@ curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/comment-
 }
 ```
 
+To analyze text before it has been saved, use the same endpoint and authentication with this request body:
+
+```json
+{
+  "input": {
+    "comment_text": "This plugin did not work for me. Please improve the error messages."
+  }
+}
+```
+
+The response has the same score fields, with `"comment_id": null`. This ability still requires moderation permissions; the public comment form uses its separate, restricted draft-check endpoint.
+
 ### Error Responses
 
 The ability may return:
 
-- `missing_comment_id`: `comment_id` was not provided
+- `missing_comment_id`: neither a positive `comment_id` nor non-empty `comment_text` was provided
 - `comment_not_found`: no comment exists for the given ID
 - `already_processing`: comment is currently being analyzed
 - `parse_error`: AI output could not be parsed as expected JSON
