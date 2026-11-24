@@ -12,7 +12,7 @@ import {
 	Spinner,
 } from '@wordpress/components';
 import { useCallback, useEffect, useRef, useState } from '@wordpress/element';
-import { __, sprintf } from '@wordpress/i18n';
+import { __, _n, sprintf } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
@@ -911,37 +911,58 @@ export default function ConfirmProposal( {
 			</p>
 
 			{ bulk.length > 0 && (
-				<CheckboxControl
-					__nextHasNoMarginBottom
-					className="ai-workspace__proposal-select-all"
-					checked={ bulkChosen.length === bulk.length }
-					indeterminate={
-						bulkChosen.length > 0 && bulkChosen.length < bulk.length
-					}
-					onChange={ ( isChecked: boolean ) =>
-						setSelected( ( current ) =>
-							isChecked
-								? [
-										...current,
-										...bulk.filter(
-											( key ) => ! current.includes( key )
-										),
-								  ]
-								: current.filter(
-										( key ) => ! bulk.includes( key )
+				<div className="ai-workspace__proposal-actions">
+					<CheckboxControl
+						__nextHasNoMarginBottom
+						className="ai-workspace__proposal-select-all"
+						checked={ bulkChosen.length === bulk.length }
+						disabled={ 'working' === state }
+						indeterminate={
+							bulkChosen.length > 0 &&
+							bulkChosen.length < bulk.length
+						}
+						onChange={ ( isChecked: boolean ) =>
+							setSelected( ( current ) =>
+								isChecked
+									? [
+											...current,
+											...bulk.filter(
+												( key ) =>
+													! current.includes( key )
+											),
+									  ]
+									: current.filter(
+											( key ) => ! bulk.includes( key )
+									  )
+							)
+						}
+						label={ __( 'Select all', 'ai' ) }
+						help={
+							bulkSkips
+								? __(
+										'Items that would be published or made private are not included. Check those one by one.',
+										'ai'
 								  )
-						)
-					}
-					label={ __( 'Select all', 'ai' ) }
-					help={
-						bulkSkips
-							? __(
-									'Items that would be published or made private are not included. Check those one by one.',
-									'ai'
-							  )
-							: undefined
-					}
-				/>
+								: undefined
+						}
+					/>
+					<span
+						className="ai-workspace__proposal-hint"
+						role="status"
+						aria-atomic="true"
+					>
+						{ sprintf(
+							/* translators: %d: number of selected proposal items. */
+							_n(
+								'%d item selected',
+								'%d items selected',
+								selected.length,
+								'ai'
+							),
+							selected.length
+						) }
+					</span>
+				</div>
 			) }
 
 			{ proposal.items.map( ( item ) => (
@@ -949,6 +970,7 @@ export default function ConfirmProposal( {
 					<CheckboxControl
 						__nextHasNoMarginBottom
 						checked={ selected.includes( item.key ) }
+						disabled={ 'working' === state }
 						onChange={ ( isChecked: boolean ) =>
 							toggle( item.key, isChecked )
 						}
