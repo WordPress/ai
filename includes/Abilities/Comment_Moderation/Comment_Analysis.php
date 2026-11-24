@@ -35,12 +35,23 @@ class Comment_Analysis extends Abstract_Ability {
 		return array(
 			'type'       => 'object',
 			'properties' => array(
-				'comment_id' => array(
+				'comment_id'   => array(
 					'type'        => 'integer',
 					'description' => esc_html__( 'The ID of the comment to analyze.', 'ai' ),
 				),
+				'comment_text' => array(
+					'type'        => 'string',
+					'description' => esc_html__( 'The text of the comment to analyze.', 'ai' ),
+				),
+				'author'       => array(
+					'type'        => 'string',
+					'description' => esc_html__( 'The author of the comment.', 'ai' ),
+				),
+				'post_id'      => array(
+					'type'        => 'integer',
+					'description' => esc_html__( 'The ID of the post the comment was left on, if known.', 'ai' ),
+				),
 			),
-			'required'   => array( 'comment_id' ),
 		);
 	}
 
@@ -54,8 +65,8 @@ class Comment_Analysis extends Abstract_Ability {
 			'type'       => 'object',
 			'properties' => array(
 				'comment_id'     => array(
-					'type'        => 'integer',
-					'description' => esc_html__( 'The analyzed comment ID.', 'ai' ),
+					'type'        => array( 'integer', 'null' ),
+					'description' => esc_html__( 'The analyzed comment ID, or null when analyzing raw comment text.', 'ai' ),
 				),
 				'toxicity_score' => array(
 					'type'        => 'number',
