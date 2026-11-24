@@ -47,6 +47,47 @@ test.describe( 'AI Request Logging Experiment', () => {
 		await expect( page.getByLabel( 'Time period' ) ).toHaveValue( 'day' );
 	} );
 
+	test( 'WordPress admin notices appear below the Request Logs header', async ( {
+		admin,
+		page,
+	} ) => {
+		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+
+		const noticeText = 'Test WordPress admin notice';
+		await page.route(
+			'**/tools.php?page=ai-request-logs',
+			async ( route ) => {
+				const response = await route.fetch();
+				const body = ( await response.text() ).replace(
+					'<div class="wrap ai-request-logs">',
+					`<div class="notice notice-warning"><p>${ noticeText }</p></div>$&`
+				);
+				await route.fulfill( { response, body } );
+			}
+		);
+		await visitRequestLogsPage( admin );
+
+		const layout = page.getByRole( 'region', { name: PAGE_HEADING } );
+		const heading = layout.getByRole( 'heading', { name: PAGE_HEADING } );
+		const notice = layout
+			.locator( '.notice' )
+			.filter( { hasText: noticeText } );
+		await expect( notice ).toBeVisible();
+		expect(
+			await heading.evaluate(
+				( title ) => title.scrollWidth <= title.clientWidth
+			)
+		).toBe( true );
+
+		const headerBox = await layout
+			.locator( ':scope > :first-child' )
+			.boundingBox();
+		const noticeBox = await notice.boundingBox();
+		expect( noticeBox.y ).toBeGreaterThanOrEqual(
+			headerBox.y + headerBox.height
+		);
+	} );
+
 	test( 'Tools menu does not list AI Request Logs when the experiment is disabled', async ( {
 		admin,
 		page,

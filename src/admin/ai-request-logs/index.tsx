@@ -65,6 +65,13 @@ apiFetch.use( apiFetch.createRootURLMiddleware( settings.rest.root ) );
 // Keeps this page's snackbars apart from global notices other scripts create.
 const NOTICES_CONTEXT = 'ai-request-logs';
 
+const adminNotices = document.getElementById( 'ai-request-logs-admin-notices' );
+const attachAdminNotices = ( container: HTMLDivElement | null ) => {
+	if ( container && adminNotices ) {
+		container.appendChild( adminNotices );
+	}
+};
+
 const showNotice = (
 	status: 'success' | 'error' | 'warning',
 	message: string
@@ -358,6 +365,7 @@ const App: React.FC = () => {
 				/>
 			}
 		>
+			<div ref={ attachAdminNotices } />
 			<div className="ai-request-logs__app">
 				{ error && (
 					<Notice status="error" onRemove={ () => setError( null ) }>
