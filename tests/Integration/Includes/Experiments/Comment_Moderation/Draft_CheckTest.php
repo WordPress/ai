@@ -274,7 +274,7 @@ class Draft_CheckTest extends WP_UnitTestCase {
 		return array(
 			'provider request failed' => array( new WP_Error( 'provider_failed' ) ),
 			'invalid JSON'            => array( 'unstructured response' ),
-			'score outside the range' => array( '{"toxicity_score":1.2,"sentiment":"negative"}' ),
+			'empty response'          => array( '' ),
 		);
 	}
 
