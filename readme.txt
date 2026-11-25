@@ -64,6 +64,7 @@ Experiments marked "runs automatically" do their work without you clicking anyth
 * **Suggest Reply** – Adds a "Suggest Reply" action to the Comments screen and Activity widget to draft replies to comments.
 * **Text to Speech** – Generates an audio version of a post that visitors can listen to instead of reading.
 * **Title Generation** – Generates title suggestions for your posts.
+* **Topic Pages** – Adds summaries, narrative overviews, and chronological timelines to eligible category archives, with generation and review on the Category edit screen.
 * **Type-ahead Text** (runs automatically) – Suggests text as you type in the Block Editor.
 * **WebMCP** – Lets an agent browser work in the Block Editor through WebMCP, with every change visible on the page as it happens.
 

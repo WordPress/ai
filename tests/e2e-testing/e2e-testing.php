@@ -539,7 +539,9 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		$body = $parsed_args['body'] ?? '';
 
 		// Route editorial-notes and editorial-updates requests to their own fixture.
-		if ( is_string( $body ) && str_contains( $body, 'Category guidance by block type' ) ) {
+		if ( is_string( $body ) && str_contains( $body, 'You are a topic overview editor' ) ) {
+			$response = wpai_e2e_topic_response( $body, 'responses' );
+		} elseif ( is_string( $body ) && str_contains( $body, 'Category guidance by block type' ) ) {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/editorial-notes-responses.json' );
 		} elseif ( is_string( $body ) && str_contains( $body, 'You are an editorial assistant for WordPress. Your task is to update a single block' ) ) {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/editorial-updates-responses.json' );
@@ -612,7 +614,9 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		$body = $parsed_args['body'] ?? '';
 
 		// Route editorial-notes and editorial-updates requests to their own fixture.
-		if ( is_string( $body ) && str_contains( $body, 'Category guidance by block type' ) ) {
+		if ( is_string( $body ) && str_contains( $body, 'You are a topic overview editor' ) ) {
+			$response = wpai_e2e_topic_response( $body, 'completions' );
+		} elseif ( is_string( $body ) && str_contains( $body, 'Category guidance by block type' ) ) {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/editorial-notes-completions.json' );
 		} elseif ( is_string( $body ) && str_contains( $body, 'You are an editorial assistant for WordPress. Your task is to update a single block' ) ) {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/editorial-updates-completions.json' );
@@ -672,4 +676,64 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 function ai_e2e_markdown_conflicting_plugins( array $plugins ): array {
 	$plugins['hello.php'] = 'Hello Dolly';
 	return $plugins;
+}
+
+/**
+ * Builds a topic response using the actual source IDs from the request.
+ *
+ * @since x.x.x
+ *
+ * @param string $body Provider request JSON.
+ * @param string $format Provider endpoint format.
+ * @return string Provider response JSON.
+ */
+function wpai_e2e_topic_response( string $body, string $format ): string {
+	$context = array();
+	$request = json_decode( $body, true );
+	array_walk_recursive(
+		$request,
+		static function ( $value ) use ( &$context ) {
+			if ( ! is_string( $value ) ) {
+				return;
+			}
+
+			$start = strpos( $value, '{"topic":' );
+
+			if ( false === $start ) {
+				return;
+			}
+
+			$context = json_decode( substr( $value, $start ), true );
+		}
+	);
+	$section  = $context['sections'][0];
+	$first    = $context['sources'][0];
+	$last     = end( $context['sources'] );
+	$entries  = 'summary' === $section
+		? array(
+			array(
+				'text'       => 'The latest report is ' . $last['title'] . '. Neighbours continue to develop the shared garden.',
+				'source_ids' => array( $last['id'] ),
+			),
+		)
+		: array(
+			array(
+				'text'       => 'The garden began with ' . $first['title'] . '. Residents agreed to share the work and prepare the site.',
+				'source_ids' => array( $first['id'] ),
+			),
+			array(
+				'text'       => 'Later coverage describes ' . $last['title'] . '. Volunteers now share produce and plan the next season.',
+				'source_ids' => array( $last['id'] ),
+			),
+		);
+	$response = json_decode( file_get_contents( __DIR__ . '/responses/OpenAI/' . $format . '.json' ), true );
+	$content  = wp_json_encode( array( $section => $entries ) );
+
+	if ( 'responses' === $format ) {
+		$response['output'][0]['content'][0]['text'] = $content;
+	} else {
+		$response['choices'][0]['message']['content'] = $content;
+	}
+
+	return wp_json_encode( $response );
 }
