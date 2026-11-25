@@ -55,3 +55,5 @@ addAction(
 		}
 	}
 );
+
+registerAltTextField();
