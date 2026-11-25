@@ -1,0 +1,22 @@
+{
+	"name": "@ai/alt-text-field",
+	"version": "1.0.0",
+	"private": true,
+	"description": "Adds alt text generation to the alt text field of the Media Editor.",
+	"wpScriptModuleExports": "./src/index.tsx",
+	"dependencies": {
+		"@wordpress/api-fetch": "*",
+		"@wordpress/block-editor": "*",
+		"@wordpress/blocks": "*",
+		"@wordpress/components": "*",
+		"@wordpress/data": "*",
+		"@wordpress/dataviews": "*",
+		"@wordpress/editor": "*",
+		"@wordpress/element": "*",
+		"@wordpress/i18n": "*",
+		"@wordpress/icons": "*",
+		"@wordpress/notices": "*",
+		"@wordpress/ui": "*",
+		"@wordpress/url": "*"
+	}
+}

@@ -48,6 +48,15 @@ class Alt_Text_Generation extends Abstract_Feature {
 	private const BULK_NONCE_ACTION = 'wpai_bulk_alt_text';
 
 	/**
+	 * The id of the script module used in WordPress 7.2+.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const ALT_TEXT_FIELD_MODULE = '@ai/alt-text-field';
+
+	/**
 	 * {@inheritDoc}
 	 */
 	public static function get_id(): string {
@@ -102,6 +111,8 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 */
 	public function register_ui(): void {
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_editor_assets' ) );
+		add_action( 'media-editor-wp-admin_init', array( $this, 'maybe_enqueue_media_editor_script' ) );
+		add_action( 'wp_entity_fields_api_init', array( $this, 'update_alt_text_field' ) );
 		add_action( 'wp_enqueue_media', array( $this, 'enqueue_media_frame_assets' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'maybe_enqueue_media_library_assets' ) );
 		add_action( 'add_meta_boxes_attachment', array( $this, 'setup_attachment_meta_box' ) );
@@ -212,7 +223,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 *
 	 * @since 1.0.0
 	 */
-	private function maybe_enqueue_media_editor_script(): void {
+	public function maybe_enqueue_media_editor_script(): void {
 		if ( ! is_plugin_active( 'gutenberg/gutenberg.php' ) ) {
 			return;
 		}
@@ -225,9 +236,41 @@ class Alt_Text_Generation extends Abstract_Feature {
 			return;
 		}
 
+		if ( $this->uses_entity_fields_api() ) {
+			// Ensure the module's strings can be translated.
+			wp_enqueue_script_module( self::ALT_TEXT_FIELD_MODULE );
+			wp_set_script_module_translations( self::ALT_TEXT_FIELD_MODULE, 'ai' );
+			return;
+		}
+
 		Asset_Loader::enqueue_script(
 			'alt_text_generation_media_editor',
 			'experiments/alt-text-generation-media-editor'
+		);
+	}
+
+	/**
+	 * Hands the `Edit` part of the attachment `alt_text` field to the script module.
+	 *
+	 * @since x.x.x
+	 */
+	public function update_alt_text_field(): void {
+		if ( ! $this->is_enabled() ) {
+			return;
+		}
+
+		// Only registered fields can be updated.
+		$fields = wp_get_registered_entity_fields( 'postType', 'attachment' );
+		if ( ! in_array( 'alt_text', array_column( $fields, 'id' ), true ) ) {
+			return;
+		}
+
+		wp_update_entity_fields(
+			'ai',
+			'postType',
+			'attachment',
+			array( array( 'id' => 'alt_text' ) ),
+			self::ALT_TEXT_FIELD_MODULE
 		);
 	}
 
@@ -435,5 +478,14 @@ class Alt_Text_Generation extends Abstract_Feature {
 		);
 
 		return $fields;
+	}
+
+	/**
+	 * Whether the editor renders the attachment alt text with the Entity Fields API.
+	 *
+	 * @since x.x.x
+	 */
+	private function uses_entity_fields_api(): bool {
+		return function_exists( 'wp_update_entity_fields' );
 	}
 }
