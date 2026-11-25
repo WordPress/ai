@@ -13,6 +13,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Abilities_Explorer;
 
+use WordPress\AI\Experiments\AI_Workspace\Tool_Policy;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -71,8 +73,11 @@ class Ability_Handler {
 
 		$formatted = array();
 
+		// Computed once: deriving reasons per row rebuilds the candidate map per ability.
+		$reasons = ( new Tool_Policy() )->get_exclusion_reasons();
+
 		foreach ( $abilities as $ability ) {
-			$formatted[] = self::format_single_ability( $ability );
+			$formatted[] = self::format_single_ability( $ability, $reasons );
 		}
 
 		return $formatted;
@@ -82,24 +87,40 @@ class Ability_Handler {
 	 * Format a single ability.
 	 *
 	 * @since 0.2.0
+	 * @since x.x.x Added the `$reasons` parameter and the conversational-surface fields.
 	 *
-	 * @param \WP_Ability $ability Ability object.
+	 * @param \WP_Ability                     $ability Ability object.
+	 * @param array<string,string|null>|null  $reasons Optional. `Tool_Policy::get_exclusion_reasons()` output. Default null.
 	 * @return array<string,mixed> Formatted ability data.
 	 */
-	private static function format_single_ability( \WP_Ability $ability ): array {
-		$name = $ability->get_name();
-		$meta = $ability->get_meta();
+	private static function format_single_ability( \WP_Ability $ability, ?array $reasons = null ): array {
+		$name   = $ability->get_name();
+		$meta   = $ability->get_meta();
+		$policy = new Tool_Policy();
+
+		if ( null !== $reasons && array_key_exists( $name, $reasons ) ) {
+			$reason = $reasons[ $name ];
+		} else {
+			$reason = $policy->get_exclusion_reason( $ability );
+		}
 
 		return array(
-			'slug'          => $name,
-			'name'          => $ability->get_label(),
-			'description'   => $ability->get_description(),
-			'provider'      => self::detect_provider( $name, $meta ),
-			'origin'        => self::detect_origin( $name ),
-			'category'      => self::get_ability_category( $ability ),
-			'input_schema'  => $ability->get_input_schema(),
-			'output_schema' => $ability->get_output_schema(),
-			'raw_data'      => array(
+			'slug'                   => $name,
+			'name'                   => $ability->get_label(),
+			// Unescaped, so it matches the description the model is sent.
+			'description'            => $ability->get_description(),
+			'conversational_surface' => null === $reason,
+			'surface_reason'         => $reason,
+			'owner_excluded'         => $policy->is_owner_excluded( $name ),
+			// Core resolves `show_in_rest` at registration; `mcp.public` must fall back to `meta.public` here.
+			'show_in_rest'           => true === ( $meta['show_in_rest'] ?? null ),
+			'show_in_mcp'            => true === ( $meta['mcp']['public'] ?? $meta['public'] ?? null ),
+			'provider'               => self::detect_provider( $name, $meta ),
+			'origin'                 => self::detect_origin( $name ),
+			'category'               => self::get_ability_category( $ability ),
+			'input_schema'           => $ability->get_input_schema(),
+			'output_schema'          => $ability->get_output_schema(),
+			'raw_data'               => array(
 				'name'          => $name,
 				'label'         => $ability->get_label(),
 				'description'   => $ability->get_description(),
@@ -127,14 +148,18 @@ class Ability_Handler {
 		$raw_data = isset( $ability['raw_data'] ) && is_array( $ability['raw_data'] ) ? $ability['raw_data'] : array();
 
 		$item = array(
-			'slug'           => (string) ( $ability['slug'] ?? '' ),
-			'name'           => (string) ( $ability['name'] ?? '' ),
-			'description'    => (string) ( $ability['description'] ?? '' ),
-			'provider'       => $provider,
-			'provider_label' => self::get_provider_label( $provider ),
-			'origin'         => (string) ( $ability['origin'] ?? '' ),
-			'category'       => wp_specialchars_decode( (string) ( $ability['category'] ?? '' ), ENT_QUOTES ),
-			'meta'           => $raw_data['meta'] ?? array(),
+			'slug'                   => (string) ( $ability['slug'] ?? '' ),
+			'name'                   => (string) ( $ability['name'] ?? '' ),
+			'description'            => (string) ( $ability['description'] ?? '' ),
+			'provider'               => $provider,
+			'provider_label'         => self::get_provider_label( $provider ),
+			'origin'                 => (string) ( $ability['origin'] ?? '' ),
+			'category'               => wp_specialchars_decode( (string) ( $ability['category'] ?? '' ), ENT_QUOTES ),
+			'show_in_rest'           => ! empty( $ability['show_in_rest'] ),
+			'show_in_mcp'            => ! empty( $ability['show_in_mcp'] ),
+			'conversational_surface' => ! empty( $ability['conversational_surface'] ),
+			'owner_excluded'         => ! empty( $ability['owner_excluded'] ),
+			'meta'                   => $raw_data['meta'] ?? array(),
 		);
 
 		if ( ! $with_details ) {

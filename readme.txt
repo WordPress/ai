@@ -42,6 +42,7 @@ Experiments marked "runs automatically" do their work without you clicking anyth
 
 * **Abilities Explorer** – Browse and test registered AI abilities from a dedicated admin screen.
 * **AI Request Logging** – Logs AI requests, including short previews of prompts and responses, for observability and debugging.
+* **AI Workspace** – Hold a multi-step conversation about your own site from a dedicated admin screen. It searches and reads your content under your own capabilities, answers questions about the site and links the admin screen for a task, and changes nothing until you approve a proposal showing the exact values that will be written. It also adds an AI fallback and an "Ask in AI Workspace" row to the Command Palette.
 * **Alt Text Generation** – Generate descriptive alt text for images to improve accessibility.
 * **Block Container Label Generation** – Generates short List View labels for Group, Columns, and other container blocks.
 * **Comment Moderation** (runs automatically) – Checks each new comment for toxicity and sentiment, gives it a value score, and can hold comments for moderation. Includes comments from site visitors by default.
@@ -73,7 +74,6 @@ We're actively developing new features to enhance your WordPress workflow:
 
 * **AI Playground** – Experiment with different AI models and providers.
 * **Content Assistant** – AI-powered writing and editing in Gutenberg.
-* **Site Agent** – Natural language WordPress administration.
 * **Workflow Automation** – AI-driven task automation.
 
 **Roadmap**

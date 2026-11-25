@@ -26,6 +26,12 @@ export interface AbilityListItem {
 	origin: AbilityOrigin;
 	/** Sent unescaped: render as text. */
 	category: string | null;
+	show_in_rest: boolean;
+	show_in_mcp: boolean;
+	/** True when the AI Workspace offers this ability to the model. */
+	conversational_surface: boolean;
+	/** True when the site owner removed it from the AI Workspace. */
+	owner_excluded: boolean;
 	meta: JsonObjectOrEmpty | null;
 	unencodable_fields: string[];
 }
@@ -45,6 +51,21 @@ export interface AbilityDetailItem extends AbilityListItem {
  */
 export interface AbilitiesListResponse {
 	items: AbilityListItem[];
+	/** Orders responses: one with a lower sequence than one already applied is stale. */
+	sequence: number;
+}
+
+export type SurfaceChange = 'remove' | 'restore';
+
+/**
+ * The surface route's payload: the updated row.
+ */
+export interface SurfaceResponse {
+	change: SurfaceChange;
+	/** False when the stored state already matched; still a success. */
+	changed: boolean;
+	item: AbilityListItem;
+	sequence: number;
 }
 
 /**
@@ -86,6 +107,7 @@ export interface LocalizedSettings {
 			abilities: string;
 			item: string;
 			invoke: string;
+			surface: string;
 		};
 	};
 	pageSlug: string;

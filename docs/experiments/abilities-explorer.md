@@ -2,9 +2,9 @@
 
 ## Summary
 
-The Abilities Explorer experiment adds an admin screen for finding, inspecting and testing every ability registered through the WordPress Abilities API. It lives at **Tools → Abilities Explorer** (`tools.php?page=ai-abilities-explorer`) and requires the `manage_options` capability.
+The Abilities Explorer experiment adds an admin screen for finding, inspecting and testing every ability registered through the WordPress Abilities API. When the AI Workspace uses an ability, the screen also lets you remove it from the AI Workspace and restore it later. It lives at **Tools → Abilities Explorer** (`tools.php?page=ai-abilities-explorer`) and requires the `manage_options` capability.
 
-The screen is a React application built on `@wordpress/dataviews`, backed by three `ai/v1` REST routes.
+The screen is a React application built on `@wordpress/dataviews`, backed by four `ai/v1` REST routes.
 
 ## At a Glance
 
@@ -19,11 +19,27 @@ The screen is a React application built on `@wordpress/dataviews`, backed by thr
 ### List
 
 - Statistics for Total, Core, Plugins and Theme, counted by each ability's origin. They are computed in the browser from the whole list, so search and filters do not change them.
-- A table of every registered ability, including abilities that are not opted into REST, with Name, Slug and Provider columns. Search covers name, slug and description. The table sorts by name, slug and provider, shows 20 rows per page, and has a **Refresh** button.
+- A table of every registered ability, including abilities that are not opted into REST, with Name, Slug, Provider and "Exposed in" columns. Search covers name, slug and description. The table sorts by name, slug and provider, shows 20 rows per page, and has a **Refresh** button.
 - Filters:
   - **Provider** (single choice). Core, Plugin and Theme match the ability's origin; any other option is a custom `meta.provider` label and matches that exact label. An ability with a custom label from a plugin therefore appears under both "Plugin" and its own label.
   - **Category**. Each category label is listed once and rendered as text.
-- Row actions under each ability's name, shown on hover or keyboard focus as in `WP_List_Table` (always shown on small screens): **View** and **Test**.
+  - **Exposed in**. Shows only abilities that are "Used by AI Workspace" or "Removed from AI Workspace".
+- The "Exposed in" column shows REST and MCP badges, and whether the AI Workspace uses the ability (see below).
+- Row actions under each ability's name, shown on hover or keyboard focus as in `WP_List_Table` (always shown on small screens): **View**, **Test**, and, where it applies, **Remove from AI Workspace** or **Restore to AI Workspace**.
+
+### What you can do about the AI Workspace
+
+The AI Workspace can call a small set of abilities while it answers questions. Each row of the list is in one of three states:
+
+| The "Exposed in" column shows | What it means | What you can do |
+|---|---|---|
+| **Used by AI Workspace** | The AI Workspace can call this ability. Open **Description AI Workspace sees** to read the exact description it is given. | **Remove from AI Workspace**. The AI Workspace stops using it from its next reply. |
+| **Removed from AI Workspace** | You removed it. The AI Workspace does not call it. | **Restore to AI Workspace**. The AI Workspace can use it again from its next reply. |
+| Nothing | The AI Workspace does not use this ability. | Nothing. You cannot add an ability to the AI Workspace from this screen. |
+
+While a change is being saved, its button shows a busy state and cannot be clicked again. When the change is saved, a notice confirms it. If it fails, an error appears under the ability's name and the row stays as it was.
+
+Removing an ability only affects the AI Workspace. The ability is still registered, and REST, MCP and the **Test** view can still use it.
 
 ### Detail view and test runner
 
@@ -45,17 +61,20 @@ The list remembers its layout, visible columns, sort and page size in the browse
 
 ## REST routes
 
-All three routes are registered only while the experiment is enabled. They share one permission check: the user must have `manage_options` and must be authenticated by the logged-in cookie with the REST nonce. Requests authenticated any other way, including application passwords, are refused with a 403. None of the routes is registered as an ability.
+All four routes are registered only while the experiment is enabled. They share one permission check: the user must have `manage_options` and must be authenticated by the logged-in cookie with the REST nonce. Requests authenticated any other way, including application passwords, are refused with a 403. None of the routes is registered as an ability.
 
 Ability names are passed as a parameter, never in the path, because names contain `/`.
 
 | Method | Route | Parameters | Returns |
 |---|---|---|---|
-| `GET` | `ai/v1/abilities` | none | `items` (summary fields and `meta` for every ability) |
+| `GET` | `ai/v1/abilities` | none | `items` (summary fields and `meta` for every ability), `sequence` |
 | `GET` | `ai/v1/abilities/item` | `name` | One ability with `input_schema`, `output_schema`, `raw_data` and `example_input` |
 | `POST` | `ai/v1/abilities/invoke` | `name`, `input` (a JSON string; empty means no input) | `success` with `data`, or `success: false` with `error.code`, `error.message` and `error.data` |
+| `POST` | `ai/v1/abilities/surface` | `change` (`remove` or `restore`), `name` | The updated row (`item`), `changed` and `sequence` |
 
 The invoke route answers 404 for an unknown ability and 400 for malformed JSON or input that fails the Explorer's schema check. The ability's own outcome, including its permission check and core's input validation, is a 200 with `success: false`. Invoking writes no AI request log row.
+
+Each item carries two AI Workspace flags: `conversational_surface` is true when the AI Workspace uses the ability, and `owner_excluded` is true when a site owner removed it. Any other value of `change` is refused with a 400.
 
 A field of a list item that cannot be encoded as JSON is sent as `null` and named in that item's `unencodable_fields`, so one ability cannot stop the list from loading.
 
@@ -71,7 +90,7 @@ The screen used to be a PHP `WP_List_Table` with admin-ajax handlers. Compared w
 
 ## Permissions
 
-- The screen and all three routes require `manage_options`.
+- The screen and all four routes require `manage_options`.
 - Invoking an ability still runs that ability's own permission check and input validation through `WP_Ability::execute()`.
 
 ## Testing
@@ -79,14 +98,15 @@ The screen used to be a PHP `WP_List_Table` with admin-ajax handlers. Compared w
 ### Automated
 
 - PHP: `tests/Integration/Includes/Experiments/Abilities_Explorer/` (`Admin_PageTest`, `Ability_HandlerTest`, `Abilities_ExplorerTest`, `REST/Abilities_ControllerTest`).
-- End to end: `tests/e2e/specs/experiments/abilities-explorer-*.spec.js` (list, runner, navigation), with helpers in `tests/e2e/utils/abilities-explorer.js`, fixture abilities from `tests/e2e-testing/e2e-testing.php` and the field extension fixture in `tests/e2e-plugins/abilities-explorer-field`.
+- End to end: `tests/e2e/specs/experiments/abilities-explorer-*.spec.js` (list, surface, runner, navigation), with helpers in `tests/e2e/utils/abilities-explorer.js`, fixture abilities from `tests/e2e-testing/e2e-testing.php` and the field extension fixture in `tests/e2e-plugins/abilities-explorer-field`.
 
 ### Manual
 
 1. Go to **Settings → AI** and enable **Abilities Explorer**.
-2. Open **Tools → Abilities Explorer**. Check the statistics, search, the Provider and Category filters, and sorting.
+2. Open **Tools → Abilities Explorer**. Check the statistics, search, the Provider, Category and "Exposed in" filters, and sorting.
 3. Use **View** on a row. Check the schemas and the Copy buttons.
 4. Use **Test** on a row. Edit the input, then use **Validate Input**, **Invoke Ability** and **Clear Result**.
+5. Turn on the **AI Workspace** experiment too. On a row whose "Exposed in" column reads "Used by AI Workspace", use **Remove from AI Workspace**. Check that a notice appears and the column reads "Removed from AI Workspace". Then use **Restore to AI Workspace** and check that the column reads "Used by AI Workspace" again.
 
 ## Adding fields to the table
 
@@ -142,6 +162,6 @@ Each row (`item`) is one ability as returned by `GET ai/v1/abilities`, so a fiel
 
 An extension field keeps only these DataViews properties: `id`, `type`, `label`, `header`, `description`, `render`, `getValue`, `getValueFormatted`, `sort`, `format`, `elements`, `filterBy`, `enableSorting`, `enableHiding` and `enableGlobalSearch`. Anything else is dropped, including edit controls (`Edit`, `setValue`, `isValid`) and anything like `actions`, and every extension field is marked `readOnly`. Extension fields never add row actions.
 
-- **Built-in fields win.** A field whose ID matches a built-in field (`name`, `slug`, `provider`, `category`, `description`) is ignored, and returning a list without the built-ins does not remove them. If two extensions use the same ID, the first one wins.
+- **Built-in fields win.** A field whose ID matches a built-in field (`name`, `slug`, `provider`, `category`, `surface`, `description`) is ignored, and returning a list without the built-ins does not remove them. If two extensions use the same ID, the first one wins.
 - **Failures fall back.** If a filter callback throws or returns something other than an array, the list shows only the built-in fields. A `getValue`, `getValueFormatted` or `sort` callback that throws yields an empty value (or no reordering), and a `render` callback that throws renders an empty cell, so one extension cannot break the table.
 - **Saved views keep your column.** A new field is added to the visible columns the first time the Explorer sees it, including on a first visit with nothing saved. After that it is the user's choice to hide it. If your plugin is deactivated, its column's place in the user's saved view is kept, and it shows again when the plugin is reactivated.

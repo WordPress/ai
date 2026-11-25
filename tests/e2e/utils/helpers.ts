@@ -211,6 +211,25 @@ export const disableAllFeatures = async ( requestUtils: RequestUtils ) => {
 };
 
 /**
+ * Turns an experiment on or off over REST, skipping the settings screen.
+ *
+ * @param requestUtils The requestUtils fixture from the test context.
+ * @param featureId    The feature ID, e.g. 'ai-workspace'.
+ * @param enabled      Whether the experiment should be on.
+ */
+export const setExperimentEnabled = async (
+	requestUtils: RequestUtils,
+	featureId: string,
+	enabled: boolean
+) => {
+	await requestUtils.rest( {
+		method: 'POST',
+		path: '/wp/v2/settings',
+		data: { [ `wpai_feature_${ featureId }_enabled` ]: enabled },
+	} );
+};
+
+/**
  * Enables a specific experiment.
  *
  * @param admin           The admin fixture from the test context.
@@ -429,14 +448,19 @@ export const selectFirstParagraph = async ( editor: Editor ) => {
 };
 
 /**
- * Seeds a dummy OpenAI API key.
+ * Seeds dummy provider API keys (OpenAI by default).
  *
  * @param requestUtils The requestUtils fixture from the test context.
+ * @param providers    Optional. Provider IDs to seed; all others are cleared.
  */
-export const seedCredentials = async ( requestUtils: RequestUtils ) => {
+export const seedCredentials = async (
+	requestUtils: RequestUtils,
+	providers?: string[]
+) => {
 	await requestUtils.rest( {
 		path: '/ai-e2e/v1/credentials/seed',
 		method: 'POST',
+		...( providers ? { data: { providers } } : {} ),
 	} );
 };
 
@@ -460,7 +484,7 @@ export const setMinContentLength = async (
 };
 
 /**
- * Clears the dummy OpenAI API key.
+ * Clears every dummy provider API key.
  *
  * @param requestUtils The requestUtils fixture from the test context.
  */
@@ -468,6 +492,31 @@ export const clearCredentials = async ( requestUtils: RequestUtils ) => {
 	await requestUtils.rest( {
 		path: '/ai-e2e/v1/credentials/clear',
 		method: 'POST',
+	} );
+};
+
+/**
+ * The call counts a mock scenario has served, keyed by `Provider/scenario`.
+ */
+export type ScenarioReport = {
+	scenario: string;
+	calls: Record< string, number >;
+};
+
+/**
+ * Activates a sequenced mock scenario and resets its call counters.
+ *
+ * @param requestUtils The requestUtils fixture from the test context.
+ * @param scenario     Fixture filename under `responses/{Provider}/scenarios/`.
+ */
+export const activateMockScenario = async (
+	requestUtils: RequestUtils,
+	scenario: string
+) => {
+	await requestUtils.rest( {
+		path: '/ai-e2e/v1/mock/scenario',
+		method: 'POST',
+		data: { scenario },
 	} );
 };
 
@@ -491,6 +540,32 @@ export const resetFeatureAccessSettings = async (
 		},
 	} );
 };
+
+/**
+ * Deactivates whatever mock scenario is active.
+ *
+ * @param requestUtils The requestUtils fixture from the test context.
+ */
+export const deactivateMockScenario = async ( requestUtils: RequestUtils ) => {
+	await requestUtils.rest( {
+		path: '/ai-e2e/v1/mock/scenario',
+		method: 'DELETE',
+	} );
+};
+
+/**
+ * Reports the active scenario and how many entries of it have been served.
+ *
+ * @param requestUtils The requestUtils fixture from the test context.
+ * @return The scenario report.
+ */
+export const getMockScenarioReport = async (
+	requestUtils: RequestUtils
+): Promise< ScenarioReport > =>
+	( await requestUtils.rest( {
+		path: '/ai-e2e/v1/mock/scenario',
+		method: 'GET',
+	} ) ) as ScenarioReport;
 
 /**
  * Enables the Model Selection feature via the Developer Tools menu.

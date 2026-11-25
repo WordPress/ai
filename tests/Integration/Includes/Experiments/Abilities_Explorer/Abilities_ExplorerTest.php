@@ -200,6 +200,7 @@ class Abilities_ExplorerTest extends WP_UnitTestCase {
 			'/' . Abilities_Controller::ABILITIES_ROUTE,
 			'/' . Abilities_Controller::ITEM_ROUTE,
 			'/' . Abilities_Controller::INVOKE_ROUTE,
+			'/' . Abilities_Controller::SURFACE_ROUTE,
 		);
 
 		sort( $routes );

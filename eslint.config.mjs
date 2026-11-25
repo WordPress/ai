@@ -60,7 +60,7 @@ export default [
 				{
 					devDependencies: [
 						'**/*.@(spec|test).@(j|t)s?(x)',
-						'**/@(webpack|jest).config.@(j|t)s',
+						'**/@(webpack|jest|vitest).config.@(j|t)s',
 						'**/scripts/**',
 						'**/tests/**',
 						'.prettierrc.js',

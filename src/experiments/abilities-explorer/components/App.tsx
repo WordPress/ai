@@ -24,6 +24,7 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import {
 	classifyError,
+	createResponseSequencer,
 	fetchAbilities,
 	fetchAbility,
 	isFatalError,
@@ -36,7 +37,11 @@ import {
 	type ReportErrorOptions,
 } from '../context';
 import { routeToUrl, useRouter } from '../router';
-import type { AbilityDetailItem, AbilityListItem } from '../types';
+import type {
+	AbilityDetailItem,
+	AbilityListItem,
+	SurfaceResponse,
+} from '../types';
 import DetailView from './DetailView';
 import ListView from './ListView';
 import LoadError from './LoadError';
@@ -101,6 +106,7 @@ export default function App() {
 	const fatalRef = useRef( false );
 
 	const [ list, setList ] = useState< ListState >( INITIAL_LIST );
+	const sequencer = useRef( createResponseSequencer() );
 	const [ itemState, setItemState ] = useState< ItemState >( INITIAL_ITEM );
 	const itemRequest = useRef( 0 );
 
@@ -150,11 +156,17 @@ export default function App() {
 		try {
 			const response = await fetchAbilities();
 
-			setList( {
-				status: 'ready',
-				items: response.items,
-				error: null,
-			} );
+			if ( sequencer.current.claimList( response.sequence ) ) {
+				setList( ( previous ) => ( {
+					status: 'ready',
+					items: sequencer.current.mergeRows(
+						response.sequence,
+						response.items,
+						previous.items
+					),
+					error: null,
+				} ) );
+			}
 		} catch ( error ) {
 			const classified = reportError( error, { notice: false } );
 
@@ -165,6 +177,29 @@ export default function App() {
 			} ) );
 		}
 	}, [ reportError ] );
+
+	const applySurfaceResponse = useCallback(
+		( response: SurfaceResponse ): boolean => {
+			if (
+				! sequencer.current.claimRow(
+					response.item.slug,
+					response.sequence
+				)
+			) {
+				return false;
+			}
+
+			setList( ( previous ) => ( {
+				...previous,
+				items: previous.items.map( ( row ) =>
+					row.slug === response.item.slug ? response.item : row
+				),
+			} ) );
+
+			return true;
+		},
+		[]
+	);
 
 	const loadItem = useCallback(
 		async ( name: string ) => {
@@ -264,6 +299,7 @@ export default function App() {
 				<ListView
 					items={ list.items }
 					isLoading={ 'ready' !== list.status }
+					onSurfaceResponse={ applySurfaceResponse }
 				/>
 			);
 		}

@@ -23,8 +23,10 @@
 			<directory suffix=".php">includes</directory>
 		</include>
 		<!-- Vendored third-party code; see includes/Vendor/AiClient/README.md. -->
+		<!-- Admin_Screens.php is a data map, covered through Find_Admin_Screens. -->
 		<exclude>
 			<directory suffix=".php">includes/Vendor</directory>
+			<file>includes/Abilities/Utilities/Admin_Screens.php</file>
 		</exclude>
 		<report>
 			<clover outputFile="tests/_output/php-coverage.xml" />

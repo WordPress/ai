@@ -40,6 +40,7 @@
 		"start:routes": "node tools/ensure-boot-asset.cjs && wp-build --watch",
 		"start": "concurrently -k -n legacy,routes \"npm run start:legacy\" \"npm run start:routes\"",
 		"test:e2e:debug": "wp-scripts test-playwright --config tests/e2e/playwright.config.ts --wp-env-config=.wp-env.test.json --ui",
+		"test:unit": "wp-scripts test-unit-js",
 		"test:e2e": "wp-scripts test-playwright --config tests/e2e/playwright.config.ts --wp-env-config=.wp-env.test.json",
 		"test:php": "wp-env --config=.wp-env.test.json run cli --env-cwd=wp-content/plugins/ai vendor/bin/phpunit -c phpunit.xml.dist",
 		"test:php:multisite": "wp-env --config=.wp-env.test.json run cli --env-cwd=wp-content/plugins/ai env WP_MULTISITE=1 vendor/bin/phpunit -c phpunit.xml.dist",
@@ -50,6 +51,7 @@
 	},
 	"devDependencies": {
 		"@playwright/test": "1.65.0",
+		"@types/node": "24.19.2",
 		"@types/react": "18.3.31",
 		"@types/react-dom": "18.3.7",
 		"@types/wordpress__block-editor": "15.0.6",
@@ -64,6 +66,8 @@
 		"concurrently": "10.0.7",
 		"filenamify": "7.0.3",
 		"typescript": "5.9.3",
+		"vite": "8.3.5",
+		"vitest": "5.1.0",
 		"webpack-remove-empty-scripts": "1.1.1"
 	},
 	"dependencies": {
@@ -74,6 +78,7 @@
 		"@wordpress/block-editor": "15.17.0",
 		"@wordpress/block-library": "12.0.0",
 		"@wordpress/blocks": "15.27.0",
+		"@wordpress/commands": "1.57.0",
 		"@wordpress/components": "32.6.0",
 		"@wordpress/compose": "7.44.0",
 		"@wordpress/core-abilities": "0.10.0",

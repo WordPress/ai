@@ -146,7 +146,13 @@ test.describe( 'Abilities Explorer', () => {
 			await expect( dataRows( page ).first() ).toBeVisible();
 			await expect(
 				page.getByRole( 'table' ).getByRole( 'columnheader' )
-			).toHaveText( [ /^Name/, 'Description', 'Slug', 'Provider' ] );
+			).toHaveText( [
+				/^Name/,
+				'Description',
+				'Slug',
+				'Provider',
+				'Exposed in',
+			] );
 
 			await search( page, 'ai-e2e/' );
 			await expect( dataRows( page ) ).toHaveCount( 2 );
@@ -198,7 +204,12 @@ test.describe( 'Abilities Explorer', () => {
 			await expect( dataRows( page ).first() ).toBeVisible();
 			await expect(
 				page.getByRole( 'table' ).getByRole( 'columnheader' )
-			).toHaveText( [ /^Name/, 'Provider', 'Description' ] );
+			).toHaveText( [
+				/^Name/,
+				'Provider',
+				'Description',
+				'Exposed in',
+			] );
 			await expect( columnHeader( page, 'Slug' ) ).toHaveCount( 0 );
 
 			await columnMenu( page, 'Name', 'Sort ascending' );
@@ -210,6 +221,7 @@ test.describe( 'Abilities Explorer', () => {
 				'provider',
 				'description',
 				'e2e/slug-length',
+				'surface',
 			] );
 			expect( stored.seenFields ).toEqual( [
 				'name',
@@ -218,6 +230,7 @@ test.describe( 'Abilities Explorer', () => {
 				'provider',
 				'category',
 				'e2e/slug-length',
+				'surface',
 			] );
 			expect( stored.perPage ).toBe( 10 );
 			expect( stored.layout.styles.description.width ).toBe( '35%' );
@@ -269,6 +282,28 @@ test.describe( 'Abilities Explorer', () => {
 				0
 			);
 			await expect( row( page, 'Acme Provider Fixture' ) ).toBeVisible();
+		} );
+
+		test( 'offers only the two AI Workspace states in the "Exposed in" filter', async ( {
+			admin,
+			page,
+		} ) => {
+			await openExplorer( admin, page );
+			await expect( dataRows( page ).first() ).toBeVisible();
+
+			await page
+				.getByRole( 'button', { name: /^Exposed in/ } )
+				.first()
+				.click();
+			await expect(
+				page
+					.getByRole( 'listbox', { name: 'List of: Exposed in' } )
+					.getByRole( 'option' )
+			).toHaveText( [
+				'Used by AI Workspace',
+				'Removed from AI Workspace',
+			] );
+			await page.keyboard.press( 'Escape' );
 		} );
 
 		test( 'matches "Plugin" by origin and "Acme" by its exact label', async ( {

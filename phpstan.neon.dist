@@ -45,6 +45,10 @@ parameters:
 			- '#class cli\\progress\\Bar#'
 			- '#Function wp_supports_ai not found\.#'
 			- '#Function wp_set_script_module_translations not found\.#'
+			# Stubs (v6.9.4) predate the $args parameter WP 7.1 added (Trac #64990); remove once they declare it.
+			-
+				message: '#Function wp_get_abilities invoked with 1 parameter, 0 required\.#'
+				reportUnmatched: false
 			# Provided by the Jetpack plugin at runtime; guarded by class_exists() checks since
 			# Jetpack isn't a composer/analysis dependency.
 			- '#Automattic\\Jetpack\\Stats\\WPCOM_Stats#'

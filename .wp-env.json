@@ -4,6 +4,7 @@
 	"core": null,
 	"plugins": [
 		".",
+		"https://downloads.wordpress.org/plugin/ai-provider-for-anthropic.zip",
 		"https://downloads.wordpress.org/plugin/ai-provider-for-google.zip",
 		"https://downloads.wordpress.org/plugin/ai-provider-for-openai.zip"
 	],
