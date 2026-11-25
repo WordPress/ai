@@ -11,7 +11,9 @@ const { visitAdminPage } = require( '../../utils/helpers' );
 test.describe( 'Plugin activation', () => {
 	test( 'Can deactivate the plugin', async ( { admin, page } ) => {
 		await visitAdminPage( admin, 'plugins.php' );
-		await page.locator( '#deactivate-ai' ).click();
+		await page
+			.getByRole( 'link', { name: 'Deactivate AI', exact: true } )
+			.click();
 		await expect( page.getByText( 'Plugin deactivated.' ) ).toHaveCount(
 			1
 		);
@@ -19,7 +21,9 @@ test.describe( 'Plugin activation', () => {
 
 	test( 'Can activate the plugin', async ( { admin, page } ) => {
 		await visitAdminPage( admin, 'plugins.php' );
-		await page.locator( '#activate-ai' ).click();
+		await page
+			.getByRole( 'link', { name: 'Activate AI', exact: true } )
+			.click();
 		await expect( page.getByText( 'Plugin activated.' ) ).toHaveCount( 1 );
 	} );
 
@@ -30,16 +34,19 @@ test.describe( 'Plugin activation', () => {
 		// Visit the plugins page.
 		await visitAdminPage( admin, 'plugins.php' );
 
+		const plugin = page.getByRole( 'row' ).filter( {
+			has: page.getByRole( 'link', {
+				name: 'Deactivate AI',
+				exact: true,
+			} ),
+		} );
+
 		// Ensure the Connectors and Settings links are visible.
 		await expect(
-			page.locator( 'tr[data-slug="ai"] .row-actions a', {
-				hasText: 'Connectors',
-			} )
+			plugin.getByRole( 'link', { name: 'Connectors', exact: true } )
 		).toHaveCount( 1 );
 		await expect(
-			page.locator( 'tr[data-slug="ai"] .row-actions a', {
-				hasText: 'Settings',
-			} )
+			plugin.getByRole( 'link', { name: 'Settings', exact: true } )
 		).toHaveCount( 1 );
 	} );
 } );
