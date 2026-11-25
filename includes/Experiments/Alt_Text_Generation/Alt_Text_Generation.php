@@ -14,6 +14,9 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\CLI\Alt_Text_Command;
 use WordPress\AI\Experiments\Experiment_Category;
+use WordPress\AI\Jobs\Job_Status;
+use WordPress\AI\Jobs\Job_Types\Alt_Text_Job_Type;
+use WordPress\AI\Jobs\Jobs;
 
 use function WordPress\AI\get_bulk_action_max_items;
 
@@ -125,6 +128,94 @@ class Alt_Text_Generation extends Abstract_Feature {
 				'category'      => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'ability_class' => Alt_Text_Generation_Ability::class,
 			),
+		);
+
+		$this->register_enqueue_ability();
+	}
+
+	/**
+	 * Registers the ability that queues alt text generation in the background.
+	 *
+	 * @since 1.6.0
+	 */
+	private function register_enqueue_ability(): void {
+		$this->register_feature_ability(
+			'ai/enqueue-alt-text',
+			array(
+				'label'               => __( 'Enqueue Alt Text Generation', 'ai' ),
+				'description'         => __( 'Queues alt text generation for an image and returns a job ID to poll.', 'ai' ),
+				'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'attachment_id' ),
+					'properties' => array(
+						'attachment_id' => array(
+							'type'              => 'integer',
+							'sanitize_callback' => 'absint',
+							'description'       => esc_html__( 'The attachment ID of the image to generate alt text for.', 'ai' ),
+						),
+						'context'       => array(
+							'type'              => 'string',
+							'sanitize_callback' => 'sanitize_textarea_field',
+							'description'       => esc_html__( 'Optional context about how the image is used.', 'ai' ),
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'job_id'     => array( 'type' => 'string' ),
+						'status'     => array( 'type' => 'string' ),
+						'status_url' => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => static function ( $input ) {
+					$attachment_id = is_array( $input ) && isset( $input['attachment_id'] ) ? absint( $input['attachment_id'] ) : 0;
+
+					if ( $attachment_id <= 0 ) {
+						return new \WP_Error(
+							'wpai_alt_text_invalid_attachment',
+							__( 'A valid image attachment is required.', 'ai' )
+						);
+					}
+
+					if ( ! current_user_can( 'upload_files' ) || ! current_user_can( 'edit_post', $attachment_id ) ) {
+						return new \WP_Error(
+							'wpai_alt_text_forbidden',
+							__( 'You do not have permission to generate alt text for this image.', 'ai' )
+						);
+					}
+
+					return true;
+				},
+				'execute_callback'    => static function ( $input ) {
+					$input         = is_array( $input ) ? $input : array();
+					$attachment_id = isset( $input['attachment_id'] ) ? absint( $input['attachment_id'] ) : 0;
+					$context       = isset( $input['context'] ) && is_string( $input['context'] ) ? $input['context'] : '';
+
+					$job_id = Jobs::instance()->get_queue()->enqueue(
+						Alt_Text_Job_Type::ID,
+						array(
+							'attachment_id' => $attachment_id,
+							'context'       => $context,
+						),
+						array( 'user_id' => get_current_user_id() )
+					);
+
+					if ( is_wp_error( $job_id ) ) {
+						return $job_id;
+					}
+
+					return array(
+						'job_id'     => $job_id,
+						'status'     => Job_Status::ENQUEUED,
+						'status_url' => rest_url( 'ai/v1/jobs/' . rawurlencode( $job_id ) ),
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+				),
+			)
 		);
 	}
 

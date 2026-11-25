@@ -18,9 +18,12 @@ ai/
 ├── includes/                         # Core plugin code
 │   ├── Abilities/                    # AI Ability implementations (Excerpt, Image, etc.)
 │   ├── Abstracts/                    # Base implementations (Abstract_Ability, Abstract_Feature)
+│   ├── Background/                   # WP-Cron scheduling and single-runner locks
+│   ├── Cache/                        # Provider response cache and HTTP transporter decorator
 │   ├── Contracts/                    # Interfaces (Feature contract)
 │   ├── Experiments/                  # Experiment implementations (Abilities_Explorer, etc.)
 │   ├── Features/                     # Feature registration and loading (Loader.php, Registry.php, Feature_Category.php)
+│   ├── Jobs/                         # Async job queue, job types and REST routes
 │   ├── Services/                     # Service classes (Guidelines)
 │   ├── Settings/                     # Plugin settings and admin pages
 │   ├── Asset_Loader.php              # Asset loader utility class
