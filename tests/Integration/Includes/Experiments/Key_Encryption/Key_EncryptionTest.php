@@ -693,6 +693,37 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A key the Secrets API does not store, while it is usable, is neither written in plaintext
+	 * nor allowed to replace the stored secret.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_write_keeps_the_stored_key_when_the_secrets_api_does_not_store_it() {
+		update_option( self::TOGGLE, true );
+		update_option( self::SETTING_NAME, 'sk-stored' );
+		$this->assertSame( 'sk-stored', $this->secret_value(), 'The key should be stored as a secret.' );
+
+		// The secret's record cannot be written, as with a read-only provider or a failed write.
+		$refuse = static function ( $value, $old_value ) {
+			return $old_value;
+		};
+		add_filter( 'pre_update_option__wp_secret_' . self::SECRET_KEY, $refuse, 10, 2 );
+		add_filter( 'wp_trigger_error_trigger_error', '__return_false' );
+
+		try {
+			$this->assertTrue( Key_Encryption::get_bridge()->is_secrets_api_usable(), 'The Secrets API should be usable.' );
+
+			update_option( self::SETTING_NAME, 'sk-refused' );
+		} finally {
+			remove_filter( 'pre_update_option__wp_secret_' . self::SECRET_KEY, $refuse, 10 );
+		}
+
+		$this->assertSame( '', $this->raw_option( self::SETTING_NAME ), 'The refused key must not be written in plaintext.' );
+		$this->assertSame( 'sk-stored', $this->secret_value(), 'The stored secret must be kept.' );
+		$this->assertSame( 'sk-stored', get_option( self::SETTING_NAME ), 'The option should still read the stored key.' );
+	}
+
+	/**
 	 * Deactivation completes when a secret is undecryptable, leaving the secret in place.
 	 *
 	 * @since 1.5.0
@@ -874,7 +905,7 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 		$bridge = Key_Encryption::get_bridge();
 		remove_filter( "pre_update_option_{$option}", array( $bridge, 'on_write' ), 10 );
 		update_option( $option, $value );
-		add_filter( "pre_update_option_{$option}", array( $bridge, 'on_write' ), 10, 1 );
+		add_filter( "pre_update_option_{$option}", array( $bridge, 'on_write' ), 10, 2 );
 	}
 
 	/**

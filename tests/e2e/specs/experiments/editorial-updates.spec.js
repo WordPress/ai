@@ -218,9 +218,7 @@ test.describe( 'Editorial Updates Experiment', () => {
 		expect( blockContent ).toContain( 'refined block content' );
 
 		// Click the success snackbar's "Review in Revisions" action and
-		// verify the visual revisions view actually opens in the editor
-		// (not just that the action exists). `.editor-revisions-header`
-		// is the container Core renders only while reviewing a revision.
+		// verify the visual revisions view opens with its Show changes control.
 		const reviewInRevisionsButton = page.getByRole( 'button', {
 			name: 'Review in Revisions',
 		} );
@@ -229,9 +227,11 @@ test.describe( 'Editorial Updates Experiment', () => {
 		} );
 		await reviewInRevisionsButton.click();
 
-		await expect( page.locator( '.editor-revisions-header' ) ).toBeVisible(
-			{ timeout: 10000 }
-		);
+		await expect(
+			page
+				.getByRole( 'region', { name: 'Editor top bar', exact: true } )
+				.getByRole( 'button', { name: 'Show changes', exact: true } )
+		).toBeVisible( { timeout: 10000 } );
 	} );
 
 	test( 'Keeps Editorial Notes and Updates grouped with Content Summarization enabled', async ( {
