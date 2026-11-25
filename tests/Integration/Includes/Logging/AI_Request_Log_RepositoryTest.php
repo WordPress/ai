@@ -758,4 +758,33 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 
 		$this->assertFalse( get_transient( 'wpai_request_logs_filter_options' ) );
 	}
+
+	/**
+	 * Tests that get_tokens_since sums tokens from the given time onwards.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_tokens_since_counts_only_recent_tokens(): void {
+		global $wpdb;
+
+		$this->insert_log(
+			array(
+				'tokens_input'  => 100,
+				'tokens_output' => 50,
+			)
+		);
+		$old_id = $this->insert_log(
+			array(
+				'tokens_input'  => 1000,
+				'tokens_output' => 0,
+			)
+		);
+
+		$table = $this->schema->get_table_name();
+		$wpdb->update( $table, array( 'timestamp' => gmdate( 'Y-m-d H:i:s', time() - 40 * DAY_IN_SECONDS ) ), array( 'log_id' => $old_id ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+
+		$this->assertSame( 150, $this->repository->get_tokens_since( gmdate( 'Y-m-d H:i:s', time() - DAY_IN_SECONDS ) ) );
+		$this->assertSame( 1150, $this->repository->get_tokens_since( '1970-01-01 00:00:00' ) );
+		$this->assertSame( 0, $this->repository->get_tokens_since( gmdate( 'Y-m-d H:i:s', time() + HOUR_IN_SECONDS ) ) );
+	}
 }

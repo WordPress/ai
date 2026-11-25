@@ -313,6 +313,29 @@ class AI_Request_Log_Repository {
 	}
 
 	/**
+	 * Gets the total tokens used since a point in time.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $since_gmt GMT MySQL datetime (Y-m-d H:i:s) to count from, inclusive.
+	 * @return int Total tokens used since the given time.
+	 */
+	public function get_tokens_since( string $since_gmt ): int {
+		global $wpdb;
+
+		$table_name = $this->schema->get_table_name();
+
+		$total = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Cached by the caller.
+			$wpdb->prepare(
+				"SELECT COALESCE(SUM(tokens_total), 0) FROM {$table_name} WHERE timestamp >= %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$since_gmt
+			)
+		);
+
+		return (int) $total;
+	}
+
+	/**
 	 * Gets distinct values for filter dropdowns.
 	 *
 	 * @since 1.0.0

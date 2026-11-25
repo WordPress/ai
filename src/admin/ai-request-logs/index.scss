@@ -28,6 +28,80 @@
 	margin: 24px 0;
 }
 
+.ai-request-logs__usage-limit {
+	--wpai-usage-limit-color: #00a32a;
+	margin-top: 24px;
+
+	&.is-warning {
+		--wpai-usage-limit-color: #dba617;
+	}
+
+	&.is-exceeded {
+		--wpai-usage-limit-color: #d63638;
+	}
+}
+
+.ai-request-logs__usage-limit-header {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
+	align-items: center;
+	gap: 8px;
+
+	h2 {
+		margin: 0;
+		font-size: 14px;
+		font-weight: 600;
+	}
+}
+
+.ai-request-logs__usage-limit-state {
+	font-size: 13px;
+	font-weight: 500;
+	color: #1e1e1e;
+
+	&::before {
+		content: "";
+		display: inline-block;
+		width: 8px;
+		height: 8px;
+		margin-right: 6px;
+		border-radius: 50%;
+		background: var(--wpai-usage-limit-color);
+	}
+}
+
+.ai-request-logs__usage-limit-meter {
+	position: relative;
+	height: 8px;
+	margin: 12px 0 8px;
+	border-radius: 4px;
+	background: #f0f0f0;
+	overflow: hidden;
+}
+
+.ai-request-logs__usage-limit-fill {
+	display: block;
+	height: 100%;
+	background: var(--wpai-usage-limit-color);
+}
+
+.ai-request-logs__usage-limit-marker {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	width: 2px;
+	margin-left: -1px;
+	background: #1e1e1e;
+	opacity: 0.4;
+}
+
+.ai-request-logs__usage-limit-text {
+	margin: 0;
+	font-size: 13px;
+	color: #757575;
+}
+
 .ai-request-logs__summary-cards {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
