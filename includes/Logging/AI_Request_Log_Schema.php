@@ -33,7 +33,16 @@ class AI_Request_Log_Schema {
 	/**
 	 * Current log table schema version.
 	 */
-	private const SCHEMA_VERSION = '1';
+	private const SCHEMA_VERSION = '2';
+
+	/**
+	 * Whether each log table (keyed by name) has the `source` column.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var array<string, bool>
+	 */
+	private static array $source_column_cache = array();
 
 	/**
 	 * Ensures the request log table matches the current schema version.
@@ -47,7 +56,8 @@ class AI_Request_Log_Schema {
 
 		$this->maybe_create_table();
 
-		if ( ! $this->table_exists() ) {
+		// Leave the version unchanged when the table or the `source` column is missing so the upgrade is retried.
+		if ( ! $this->table_exists() || ! $this->has_source_column( true ) ) {
 			return;
 		}
 
@@ -82,6 +92,51 @@ class AI_Request_Log_Schema {
 	}
 
 	/**
+	 * Checks whether the current site's log table has the `source` column.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param bool $force_refresh Whether to re-check the database instead of using the cached result.
+	 * @return bool True when the column exists.
+	 */
+	public function has_source_column( bool $force_refresh = false ): bool {
+		global $wpdb;
+
+		$table_name = $this->get_table_name();
+
+		if ( ! $force_refresh && isset( self::$source_column_cache[ $table_name ] ) ) {
+			return self::$source_column_cache[ $table_name ];
+		}
+
+		$wpdb->suppress_errors( true );
+		$column = $wpdb->get_var( "SHOW COLUMNS FROM {$table_name} LIKE 'source'" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->suppress_errors( false );
+
+		self::$source_column_cache[ $table_name ] = 'source' === $column;
+
+		return self::$source_column_cache[ $table_name ];
+	}
+
+	/**
+	 * Returns the `source` column definition.
+	 *
+	 * Uses a binary collation so sources that differ only by case or accents are not merged.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string Column definition for CREATE TABLE and ALTER TABLE statements.
+	 */
+	private function get_source_column_definition(): string {
+		global $wpdb;
+
+		$collation = in_array( $wpdb->charset, array( 'utf8mb4', 'utf8' ), true )
+			? " CHARACTER SET {$wpdb->charset} COLLATE {$wpdb->charset}_bin"
+			: '';
+
+		return "source VARCHAR(191){$collation} DEFAULT NULL";
+	}
+
+	/**
 	 * Checks whether the request log table already exists.
 	 *
 	 * @since 1.0.0
@@ -112,6 +167,7 @@ class AI_Request_Log_Schema {
 
 		$table_name      = $this->get_table_name();
 		$charset_collate = $wpdb->get_charset_collate();
+		$source_column   = $this->get_source_column_definition();
 
 		$sql = "CREATE TABLE {$table_name} (
 			id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -128,6 +184,7 @@ class AI_Request_Log_Schema {
 			status VARCHAR(32) NOT NULL,
 			error_message TEXT DEFAULT NULL,
 			user_id BIGINT UNSIGNED DEFAULT NULL,
+			{$source_column},
 			context LONGTEXT DEFAULT NULL,
 			request_preview TEXT DEFAULT NULL,
 			response_preview TEXT DEFAULT NULL,
@@ -139,7 +196,8 @@ class AI_Request_Log_Schema {
 			INDEX idx_provider (provider),
 			INDEX idx_operation (operation(191)),
 			INDEX idx_timestamp_type_status (timestamp, type, status),
-			INDEX idx_timestamp_provider (timestamp, provider)
+			INDEX idx_timestamp_provider (timestamp, provider),
+			INDEX idx_timestamp_source (timestamp, source)
 		) {$charset_collate};";
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
@@ -172,11 +230,17 @@ class AI_Request_Log_Schema {
 			$wpdb->query( "ALTER TABLE {$table_name} ADD COLUMN request_preview TEXT DEFAULT NULL AFTER context" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		}
 
-		if ( isset( $existing_columns['response_preview'] ) ) {
+		if ( ! isset( $existing_columns['response_preview'] ) ) {
+			$wpdb->query( "ALTER TABLE {$table_name} ADD COLUMN response_preview TEXT DEFAULT NULL AFTER request_preview" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		}
+
+		if ( isset( $existing_columns['source'] ) ) {
 			return;
 		}
 
-		$wpdb->query( "ALTER TABLE {$table_name} ADD COLUMN response_preview TEXT DEFAULT NULL AFTER request_preview" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// Add the column and its index in one statement so large tables are rebuilt only once.
+		$source_column = $this->get_source_column_definition();
+		$wpdb->query( "ALTER TABLE {$table_name} ADD COLUMN {$source_column} AFTER user_id, ADD INDEX idx_timestamp_source (timestamp, source)" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 	}
 
 	/**
@@ -203,6 +267,7 @@ class AI_Request_Log_Schema {
 			'idx_operation'             => "ALTER TABLE {$table_name} ADD INDEX idx_operation (operation(191))",
 			'idx_timestamp_type_status' => "ALTER TABLE {$table_name} ADD INDEX idx_timestamp_type_status (timestamp, type, status)",
 			'idx_timestamp_provider'    => "ALTER TABLE {$table_name} ADD INDEX idx_timestamp_provider (timestamp, provider)",
+			'idx_timestamp_source'      => "ALTER TABLE {$table_name} ADD INDEX idx_timestamp_source (timestamp, source)",
 		);
 
 		foreach ( $indexes_to_add as $index_name => $sql ) {

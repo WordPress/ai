@@ -115,7 +115,7 @@ class AI_Request_Log_SchemaTest extends WP_UnitTestCase {
 		$this->schema->maybe_upgrade_table();
 
 		$this->assertTrue( $this->invoke_private_method( 'table_exists' ) );
-		$this->assertSame( '1', get_option( 'wpai_request_logs_schema_version' ) );
+		$this->assertSame( '2', get_option( 'wpai_request_logs_schema_version' ) );
 	}
 
 	/**
@@ -130,7 +130,7 @@ class AI_Request_Log_SchemaTest extends WP_UnitTestCase {
 		// Second invocation should safely no-op without errors or duplicate schema modifications.
 		$this->schema->maybe_upgrade_table();
 		$this->assertTrue( $this->invoke_private_method( 'table_exists' ) );
-		$this->assertSame( '1', get_option( 'wpai_request_logs_schema_version' ) );
+		$this->assertSame( '2', get_option( 'wpai_request_logs_schema_version' ) );
 	}
 
 	/**
@@ -178,6 +178,7 @@ class AI_Request_Log_SchemaTest extends WP_UnitTestCase {
 			'status',
 			'error_message',
 			'user_id',
+			'source',
 			'context',
 			'request_preview',
 			'response_preview',
@@ -214,6 +215,7 @@ class AI_Request_Log_SchemaTest extends WP_UnitTestCase {
 		$this->assertContains( 'idx_operation', $index_names );
 		$this->assertContains( 'idx_timestamp_type_status', $index_names );
 		$this->assertContains( 'idx_timestamp_provider', $index_names );
+		$this->assertContains( 'idx_timestamp_source', $index_names );
 	}
 
 	/**
@@ -247,6 +249,37 @@ class AI_Request_Log_SchemaTest extends WP_UnitTestCase {
 
 		$this->assertContains( 'request_preview', $restored_columns );
 		$this->assertContains( 'response_preview', $restored_columns );
+	}
+
+	/**
+	 * Tests that upgrading a legacy table adds the source column.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_maybe_upgrade_table_adds_source_column_to_legacy_table(): void {
+		global $wpdb;
+
+		$this->schema->maybe_upgrade_table();
+
+		$table_name = $this->schema->get_table_name();
+
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query( "ALTER TABLE {$table_name} DROP INDEX idx_timestamp_source" );
+		$wpdb->query( "ALTER TABLE {$table_name} DROP COLUMN source" );
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		update_option( 'wpai_request_logs_schema_version', '1', false );
+
+		$this->schema->maybe_upgrade_table();
+
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$columns = $wpdb->get_col( "SHOW COLUMNS FROM {$table_name}" );
+		$indexes = $wpdb->get_col( "SHOW INDEX FROM {$table_name}", 2 );
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		$this->assertContains( 'source', $columns );
+		$this->assertContains( 'idx_timestamp_source', $indexes );
+		$this->assertSame( '2', get_option( 'wpai_request_logs_schema_version' ) );
 	}
 
 	/**
@@ -291,5 +324,30 @@ class AI_Request_Log_SchemaTest extends WP_UnitTestCase {
 
 		$result = $this->schema->has_fulltext_index();
 		$this->assertIsBool( $result );
+	}
+
+	/**
+	 * Tests that the source column only adds a binary collation for UTF-8 charsets.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_source_column_definition_depends_on_charset(): void {
+		global $wpdb;
+
+		$method = new \ReflectionMethod( AI_Request_Log_Schema::class, 'get_source_column_definition' );
+		$method->setAccessible( true );
+
+		$charset = $wpdb->charset;
+
+		$wpdb->charset = 'utf8mb4';
+		$utf8          = $method->invoke( $this->schema );
+
+		$wpdb->charset = 'latin1';
+		$latin1        = $method->invoke( $this->schema );
+
+		$wpdb->charset = $charset;
+
+		$this->assertSame( 'source VARCHAR(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL', $utf8 );
+		$this->assertSame( 'source VARCHAR(191) DEFAULT NULL', $latin1 );
 	}
 }
