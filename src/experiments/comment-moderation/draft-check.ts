@@ -26,6 +26,7 @@ async function checkDraft(
 	const timeout = window.setTimeout( () => controller.abort(), TIMEOUT_MS );
 
 	let verdict: Verdict = 'unavailable';
+
 	try {
 		const response = await fetch( url, {
 			method: 'POST',
@@ -39,6 +40,7 @@ async function checkDraft(
 
 		if ( response.ok ) {
 			const result = await response.json();
+
 			if ( typeof result?.blocked === 'boolean' ) {
 				verdict = result.blocked ? 'blocked' : 'allowed';
 			}
@@ -74,6 +76,7 @@ function enhanceCommentForm( marker: HTMLElement, index: number ): void {
 	if ( ! form || ! textarea || ! button || ! url || ! postId ) {
 		return;
 	}
+
 	const field = textarea;
 	const submitButton = button;
 	const endpoint = url;
@@ -98,16 +101,20 @@ function enhanceCommentForm( marker: HTMLElement, index: number ): void {
 	loading.setAttribute( 'role', 'status' );
 	loading.setAttribute( 'aria-atomic', 'true' );
 	loading.hidden = true;
+
 	const spinner = document.createElement( 'span' );
 	spinner.className = 'wpai-comment-draft-spinner';
 	spinner.setAttribute( 'aria-hidden', 'true' );
+
 	loading.append( spinner, __( 'Checking your comment…', 'ai' ) );
 	submitButton.after( loading );
 	( textarea.closest( '.comment-form-comment' ) ?? textarea ).before(
 		notice,
 		status
 	);
+
 	const descriptions = textarea.getAttribute( 'aria-describedby' );
+
 	textarea.setAttribute(
 		'aria-describedby',
 		[ descriptions, notice.id, status.id ].filter( Boolean ).join( ' ' )
@@ -127,6 +134,7 @@ function enhanceCommentForm( marker: HTMLElement, index: number ): void {
 		if ( verdict === 'blocked' ) {
 			const restoreFocus =
 				submitButton.ownerDocument.activeElement === submitButton;
+
 			// Only undo a disabled state we set ourselves.
 			locked ||= ! submitButton.disabled;
 			submitButton.disabled = true;
@@ -135,15 +143,19 @@ function enhanceCommentForm( marker: HTMLElement, index: number ): void {
 				'ai'
 			);
 			status.hidden = false;
+
 			if ( restoreFocus ) {
 				field.focus();
 			}
+
 			return;
 		}
+
 		if ( locked ) {
 			submitButton.disabled = false;
 			locked = false;
 		}
+
 		status.textContent = '';
 		status.hidden = true;
 	}
@@ -175,6 +187,7 @@ function enhanceCommentForm( marker: HTMLElement, index: number ): void {
 				) {
 					return 'unavailable';
 				}
+
 				return analyze( text, attempt );
 			} );
 		}
@@ -196,18 +209,23 @@ function enhanceCommentForm( marker: HTMLElement, index: number ): void {
 					if ( verdict !== 'unavailable' ) {
 						checked = { text, verdict };
 					}
+
 					showVerdict( verdict );
 				}
+
 				return verdict;
 			}
 		);
+
 		running = { text, result };
+
 		return result;
 	}
 
 	function onEdit(): void {
 		clearTimeout( timer );
 		const text = field.value;
+
 		if ( submitting?.text !== text ) {
 			submitting = undefined;
 		}
@@ -218,6 +236,7 @@ function enhanceCommentForm( marker: HTMLElement, index: number ): void {
 		if ( ! text.trim() || composing || ( ! running && ! submitting ) ) {
 			hideChecking();
 		}
+
 		if ( ! composing && text.trim().length >= MIN_IDLE_LENGTH ) {
 			timer = setTimeout( () => {
 				if ( field.value === text ) {
@@ -286,11 +305,13 @@ function enhanceCommentForm( marker: HTMLElement, index: number ): void {
 				}
 				return;
 			}
+
 			// A reused request may belong to an earlier, cancelled submit attempt.
 			if ( verdict !== 'unavailable' ) {
 				checked = { text, verdict };
 			}
 			showVerdict( verdict );
+
 			if ( verdict === 'blocked' ) {
 				field.focus();
 				return;
