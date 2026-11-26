@@ -145,11 +145,11 @@ class Comment_Moderation extends Abstract_Feature {
 	public const DEFAULT_MODERATE_GUESTS = true;
 
 	/**
-	 * Minimum toxicity score, as a percentage, for blocking a draft in the form.
+	 * Default minimum toxicity score for blocking a draft in the form.
 	 *
 	 * @since x.x.x
 	 */
-	public const DEFAULT_DRAFT_TOXICITY_THRESHOLD = 70;
+	public const DEFAULT_DRAFT_TOXICITY_THRESHOLD = 0.7;
 
 	/**
 	 * Value score level: low.
@@ -314,8 +314,8 @@ class Comment_Moderation extends Abstract_Feature {
 			'access_control' => true,
 			'usage'          => array(
 				'trigger'  => 'automatic',
-				'runs'     => __( 'On new comments and when requested in Comments. If draft checks are enabled, also while readers write or submit a comment.', 'ai' ),
-				'sends'    => __( 'Comment text, author name, and post context for saved comments. Only comment text for drafts.', 'ai' ),
+				'runs'     => __( 'Automatically, on each new comment, including guest comments by default. You can also run it from the "Analyze Sentiment, Toxicity, and Value" row action or bulk action in Comments. If draft checks are enabled, it also runs while readers write or submit a comment.', 'ai' ),
+				'sends'    => __( 'Comment text, author name, and a post excerpt, AI-generated summary, or trimmed post content for saved comments. Only comment text for drafts.', 'ai' ),
 				'requests' => __( 'One request per new comment, plus optional requests for drafts as readers revise them.', 'ai' ),
 			),
 		);
@@ -417,23 +417,6 @@ class Comment_Moderation extends Abstract_Feature {
 
 		register_setting(
 			Settings_Registration::OPTION_GROUP,
-			static::get_field_option_name( 'draft_toxicity_threshold' ),
-			array(
-				'type'              => 'integer',
-				'default'           => self::DEFAULT_DRAFT_TOXICITY_THRESHOLD,
-				'sanitize_callback' => array( $this, 'sanitize_draft_toxicity_threshold' ),
-				'show_in_rest'      => array(
-					'schema' => array(
-						'type'    => 'integer',
-						'minimum' => 1,
-						'maximum' => 100,
-					),
-				),
-			)
-		);
-
-		register_setting(
-			Settings_Registration::OPTION_GROUP,
 			static::get_field_option_name( 'moderate_guests' ),
 			array(
 				'type'              => 'boolean',
@@ -466,17 +449,6 @@ class Comment_Moderation extends Abstract_Feature {
 				'description' => __( 'Sends draft text to your AI provider after a pause or on submission. Applies to guests if automatic guest moderation is enabled.', 'ai' ),
 				'default'     => false,
 			),
-			array(
-				'id'          => 'draft_toxicity_threshold',
-				'label'       => __( 'Draft toxicity threshold (%)', 'ai' ),
-				'type'        => 'integer',
-				'description' => __( 'A draft is blocked in the form if its sentiment is negative and its toxicity meets or exceeds this score.', 'ai' ),
-				'default'     => self::DEFAULT_DRAFT_TOXICITY_THRESHOLD,
-				'isValid'     => array(
-					'min' => 1,
-					'max' => 100,
-				),
-			),
 		);
 	}
 
@@ -492,18 +464,6 @@ class Comment_Moderation extends Abstract_Feature {
 	}
 
 	/**
-	 * Normalizes the draft threshold to a percentage between 1 and 100.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param mixed $value Saved setting value.
-	 * @return int Draft toxicity threshold.
-	 */
-	public function sanitize_draft_toxicity_threshold( $value ): int {
-		return is_numeric( $value ) ? max( 1, min( 100, (int) $value ) ) : self::DEFAULT_DRAFT_TOXICITY_THRESHOLD;
-	}
-
-	/**
 	 * Returns the draft toxicity threshold on the model's 0 to 1 scale.
 	 *
 	 * @since x.x.x
@@ -511,9 +471,16 @@ class Comment_Moderation extends Abstract_Feature {
 	 * @return float Draft toxicity threshold.
 	 */
 	public function get_draft_toxicity_threshold(): float {
-		return $this->sanitize_draft_toxicity_threshold(
-			get_option( static::get_field_option_name( 'draft_toxicity_threshold' ), self::DEFAULT_DRAFT_TOXICITY_THRESHOLD )
-		) / 100;
+		/**
+		 * Filters the minimum toxicity score for blocking negative drafts in the form.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param float $threshold Toxicity threshold from 0 to 1. Default 0.7.
+		 */
+		$threshold = apply_filters( 'wpai_comment_moderation_draft_toxicity_threshold', self::DEFAULT_DRAFT_TOXICITY_THRESHOLD );
+
+		return is_numeric( $threshold ) ? max( 0.0, min( 1.0, (float) $threshold ) ) : self::DEFAULT_DRAFT_TOXICITY_THRESHOLD;
 	}
 
 	/**
