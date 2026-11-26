@@ -69,9 +69,7 @@ test.describe( 'AI Request Logging Experiment', () => {
 
 		const layout = page.getByRole( 'region', { name: PAGE_HEADING } );
 		const heading = layout.getByRole( 'heading', { name: PAGE_HEADING } );
-		const notice = layout
-			.locator( '.notice' )
-			.filter( { hasText: noticeText } );
+		const notice = layout.getByText( noticeText, { exact: true } );
 		await expect( notice ).toBeVisible();
 		expect(
 			await heading.evaluate(
