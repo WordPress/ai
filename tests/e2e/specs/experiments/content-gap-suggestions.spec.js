@@ -64,8 +64,13 @@ test.describe( 'Content Gap Suggestions Experiment', () => {
 
 		// The mocked outline contains "- Mix %20 compost into your soil".
 		await expect(
-			page.locator( '.ai-content-gap-suggestions__outline' )
-		).toContainText( 'Mix %20 compost into your soil', {
+			page
+				.getByRole( 'listitem' )
+				.filter( {
+					has: page.getByText( SUGGESTION_TITLE, { exact: true } ),
+				} )
+				.getByText( 'Mix %20 compost into your soil' )
+		).toBeVisible( {
 			timeout: 15000,
 		} );
 	} );
@@ -93,7 +98,7 @@ test.describe( 'Content Gap Suggestions Experiment', () => {
 
 		await expect(
 			page
-				.locator( '#ai-content-gap-suggestions-root' )
+				.getByRole( 'main' )
 				.getByText( 'No connected analytics plugin was found.' )
 		).toBeVisible();
 		await expect(
@@ -125,7 +130,7 @@ test.describe( 'Content Gap Suggestions Experiment', () => {
 
 		await expect(
 			page
-				.locator( '#ai-content-gap-suggestions-root' )
+				.getByRole( 'main' )
 				.getByText( 'did not report any search terms' )
 		).toBeVisible();
 		await expect(
