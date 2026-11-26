@@ -1,9 +1,7 @@
 /**
  * WordPress dependencies
  */
-import { Notice } from '@wordpress/components';
 import domReady from '@wordpress/dom-ready';
-import { createRoot } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
 /**
@@ -93,8 +91,18 @@ function enhanceCommentForm( marker: HTMLElement, index: number ): void {
 	status.className = 'wpai-comment-draft-status';
 	status.setAttribute( 'role', 'status' );
 	status.setAttribute( 'aria-atomic', 'true' );
-	const statusRoot = createRoot( status );
-	const checkingMessage = __( 'Checking your comment…', 'ai' );
+	status.hidden = true;
+
+	const loading = document.createElement( 'span' );
+	loading.className = 'wpai-comment-draft-loading';
+	loading.setAttribute( 'role', 'status' );
+	loading.setAttribute( 'aria-atomic', 'true' );
+	loading.hidden = true;
+	const spinner = document.createElement( 'span' );
+	spinner.className = 'wpai-comment-draft-spinner';
+	spinner.setAttribute( 'aria-hidden', 'true' );
+	loading.append( spinner, __( 'Checking your comment…', 'ai' ) );
+	submitButton.after( loading );
 	( textarea.closest( '.comment-form-comment' ) ?? textarea ).before(
 		notice,
 		status
@@ -122,14 +130,11 @@ function enhanceCommentForm( marker: HTMLElement, index: number ): void {
 			// Only undo a disabled state we set ourselves.
 			locked ||= ! submitButton.disabled;
 			submitButton.disabled = true;
-			statusRoot.render(
-				<Notice status="error" isDismissible={ false } spokenMessage="">
-					{ __(
-						'Your comment may contain abusive language. Please revise your comment and try again.',
-						'ai'
-					) }
-				</Notice>
+			status.textContent = __(
+				'Your comment may contain abusive language. Please revise your comment and try again.',
+				'ai'
 			);
+			status.hidden = false;
 			if ( restoreFocus ) {
 				field.focus();
 			}
@@ -139,7 +144,16 @@ function enhanceCommentForm( marker: HTMLElement, index: number ): void {
 			submitButton.disabled = false;
 			locked = false;
 		}
-		statusRoot.render( null );
+		status.textContent = '';
+		status.hidden = true;
+	}
+
+	function showChecking(): void {
+		loading.hidden = false;
+	}
+
+	function hideChecking(): void {
+		loading.hidden = true;
 	}
 
 	function analyze(
@@ -150,8 +164,9 @@ function enhanceCommentForm( marker: HTMLElement, index: number ): void {
 			return running.result;
 		}
 
-		// A newer draft can wait for an older check, but never use its verdict.
+		// Give the current draft its own timeout after any older check finishes.
 		if ( running ) {
+			showChecking();
 			return running.result.then( () => {
 				if (
 					field.value !== text ||
@@ -168,10 +183,11 @@ function enhanceCommentForm( marker: HTMLElement, index: number ): void {
 			return Promise.resolve( checked.verdict );
 		}
 
-		statusRoot.render( checkingMessage );
+		showChecking();
 		const result = checkDraft( endpoint, nonce, postId, text ).then(
 			( verdict ) => {
 				running = undefined;
+				hideChecking();
 				if (
 					field.value === text &&
 					! composing &&
@@ -198,6 +214,9 @@ function enhanceCommentForm( marker: HTMLElement, index: number ): void {
 		if ( checked?.text !== text ) {
 			checked = undefined;
 			showVerdict( undefined );
+		}
+		if ( ! text.trim() || composing || ( ! running && ! submitting ) ) {
+			hideChecking();
 		}
 		if ( ! composing && text.trim().length >= MIN_IDLE_LENGTH ) {
 			timer = setTimeout( () => {
@@ -249,60 +268,49 @@ function enhanceCommentForm( marker: HTMLElement, index: number ): void {
 		const attempt = { text, submitter: event.submitter };
 		const parent = parentField?.value;
 		submitting = attempt;
-		statusRoot.render( checkingMessage );
+		showChecking();
 
-		let submitTimeout: ReturnType< typeof setTimeout >;
-		const deadline = new Promise< Verdict >( ( resolve ) => {
-			submitTimeout = setTimeout(
-				() => resolve( 'unavailable' ),
-				TIMEOUT_MS
-			);
-		} );
-
-		void Promise.race( [ analyze( text, attempt ), deadline ] ).then(
-			( verdict ) => {
-				clearTimeout( submitTimeout );
-				if ( submitting !== attempt ) {
-					return;
-				}
-				submitting = undefined;
-
-				if (
-					textarea.value !== text ||
-					composing ||
-					parentField?.value !== parent
-				) {
-					if ( verdict !== 'blocked' && textarea.value === text ) {
-						showVerdict( undefined );
-					}
-					return;
-				}
-				if ( verdict !== 'unavailable' ) {
-					checked = { text, verdict };
-				}
-				showVerdict( verdict );
-				if ( verdict === 'blocked' ) {
-					textarea.focus();
-					return;
-				}
-
-				// Use the native form flow, including validation and other submit listeners.
-				resubmitting = true;
-				try {
-					if (
-						( attempt.submitter instanceof HTMLButtonElement ||
-							attempt.submitter instanceof HTMLInputElement ) &&
-						attempt.submitter.form === form
-					) {
-						form.requestSubmit( attempt.submitter );
-					} else {
-						form.requestSubmit();
-					}
-				} finally {
-					resubmitting = false;
-				}
+		void analyze( text, attempt ).then( ( verdict ) => {
+			if ( submitting !== attempt ) {
+				return;
 			}
-		);
+			submitting = undefined;
+
+			if (
+				textarea.value !== text ||
+				composing ||
+				parentField?.value !== parent
+			) {
+				if ( verdict !== 'blocked' && textarea.value === text ) {
+					showVerdict( undefined );
+				}
+				return;
+			}
+			if ( verdict !== 'unavailable' ) {
+				checked = { text, verdict };
+			}
+			showVerdict( verdict );
+			if ( verdict === 'blocked' ) {
+				textarea.focus();
+				return;
+			}
+
+			// Use the native form flow, including validation and other submit listeners.
+			resubmitting = true;
+			try {
+				if (
+					( attempt.submitter instanceof HTMLButtonElement ||
+						attempt.submitter instanceof HTMLInputElement ) &&
+					attempt.submitter.form === form
+				) {
+					form.requestSubmit( attempt.submitter );
+				} else {
+					form.requestSubmit();
+				}
+			} finally {
+				resubmitting = false;
+			}
+		} );
 	} );
 }
 

@@ -138,7 +138,7 @@ module.exports = {
 		'experiments/comment-draft-check': path.resolve(
 			process.cwd(),
 			'src/experiments/comment-moderation',
-			'draft-check.tsx'
+			'draft-check.ts'
 		),
 		'experiments/suggest-reply': path.resolve(
 			process.cwd(),
