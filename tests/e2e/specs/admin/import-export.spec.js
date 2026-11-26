@@ -22,14 +22,30 @@ const {
  * Opens the "Developer Tools" actions dropdown menu on the settings page.
  *
  * @param {import('@playwright/test').Page} page The page object.
+ * @return {Promise<import('@playwright/test').Locator>} The Settings menu group.
  */
 async function openSettingsMenu( page ) {
 	await page.getByRole( 'button', { name: 'Developer Tools' } ).click();
-	await expect(
+	const menu = page.getByRole( 'group', { name: 'Settings', exact: true } );
+	await expect( menu ).toBeVisible();
+	return menu;
+}
+
+/**
+ * Selects a settings export through the Import settings action.
+ *
+ * @param {import('@playwright/test').Page} page     The page object.
+ * @param {string}                          filePath The settings file path.
+ */
+async function selectImportFile( page, filePath ) {
+	const [ fileChooser ] = await Promise.all( [
+		page.waitForEvent( 'filechooser' ),
 		page
-			.locator( '.components-menu-group__label' )
-			.filter( { hasText: /^Settings$/ } )
-	).toBeVisible();
+			.getByRole( 'group', { name: 'Settings', exact: true } )
+			.getByRole( 'menuitem', { name: 'Import settings', exact: true } )
+			.click(),
+	] );
+	await fileChooser.setFiles( filePath );
 }
 
 /**
@@ -79,19 +95,13 @@ test.describe( 'Settings import/export', () => {
 	} ) => {
 		await visitSettingsPage( admin );
 
-		await openSettingsMenu( page );
+		const settingsMenu = await openSettingsMenu( page );
 
-		// The "Settings" menu group and both actions should be visible.
-		await expect(
-			page
-				.locator( '.components-menu-group__label' )
-				.filter( { hasText: /^Settings$/ } )
-		).toBeVisible();
-
-		const exportItem = page.getByRole( 'menuitem', {
+		// Both actions should be visible within the Settings menu group.
+		const exportItem = settingsMenu.getByRole( 'menuitem', {
 			name: 'Export settings',
 		} );
-		const importItem = page.getByRole( 'menuitem', {
+		const importItem = settingsMenu.getByRole( 'menuitem', {
 			name: 'Import settings',
 		} );
 
@@ -145,10 +155,7 @@ test.describe( 'Settings import/export', () => {
 		tempFiles.push( filePath );
 
 		await openSettingsMenu( page );
-		await page.getByRole( 'menuitem', { name: 'Import settings' } ).click();
-
-		// Set the file directly on the hidden file input.
-		await page.locator( 'input[type="file"]' ).setInputFiles( filePath );
+		await selectImportFile( page, filePath );
 
 		// The confirmation modal should appear before anything is imported.
 		const dialog = page.getByRole( 'dialog', {
@@ -181,8 +188,7 @@ test.describe( 'Settings import/export', () => {
 		tempFiles.push( filePath );
 
 		await openSettingsMenu( page );
-		await page.getByRole( 'menuitem', { name: 'Import settings' } ).click();
-		await page.locator( 'input[type="file"]' ).setInputFiles( filePath );
+		await selectImportFile( page, filePath );
 
 		const dialog = page.getByRole( 'dialog', {
 			name: 'Import AI Settings',
@@ -214,8 +220,7 @@ test.describe( 'Settings import/export', () => {
 		tempFiles.push( filePath );
 
 		await openSettingsMenu( page );
-		await page.getByRole( 'menuitem', { name: 'Import settings' } ).click();
-		await page.locator( 'input[type="file"]' ).setInputFiles( filePath );
+		await selectImportFile( page, filePath );
 
 		const dialog = page.getByRole( 'dialog', {
 			name: 'Import AI Settings',
@@ -226,9 +231,9 @@ test.describe( 'Settings import/export', () => {
 
 		// Success notice confirms the request completed.
 		await expect(
-			page.getByTestId( 'snackbar' ).filter( {
-				hasText: 'Settings imported successfully.',
-			} )
+			page
+				.getByRole( 'main' )
+				.getByText( 'Settings imported successfully.', { exact: true } )
 		).toBeVisible();
 
 		await expect( dialog ).not.toBeVisible();
@@ -260,8 +265,7 @@ test.describe( 'Settings import/export', () => {
 		tempFiles.push( filePath );
 
 		await openSettingsMenu( page );
-		await page.getByRole( 'menuitem', { name: 'Import settings' } ).click();
-		await page.locator( 'input[type="file"]' ).setInputFiles( filePath );
+		await selectImportFile( page, filePath );
 
 		// No confirmation modal should appear for a malformed export file.
 		await expect(
@@ -269,9 +273,9 @@ test.describe( 'Settings import/export', () => {
 		).not.toBeVisible();
 
 		await expect(
-			page.getByTestId( 'snackbar' ).filter( {
-				hasText: 'not a valid AI settings export',
-			} )
+			page
+				.getByRole( 'main' )
+				.getByText( 'not a valid AI settings export' )
 		).toBeVisible();
 	} );
 } );
