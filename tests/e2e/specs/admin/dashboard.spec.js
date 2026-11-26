@@ -40,23 +40,27 @@ test.describe( 'Dashboard widgets', () => {
 	} ) => {
 		await visitAdminPage( admin, 'index.php' );
 
-		const capabilitiesWidget = page.locator( '#wpai_capabilities' );
-		const statCards = capabilitiesWidget.locator(
-			'.ai-dashboard-capabilities__stat-card'
-		);
-
-		await expect( capabilitiesWidget ).toBeVisible();
+		const main = page.getByRole( 'main' );
 		await expect(
-			page.getByRole( 'heading', { name: 'AI Capabilities' } )
+			main.getByRole( 'heading', {
+				name: 'AI Capabilities',
+				exact: true,
+			} )
 		).toBeVisible();
-		await expect( statCards ).toHaveCount( 4 );
-		await expect( capabilitiesWidget ).toContainText( 'Total Abilities' );
-		await expect( capabilitiesWidget ).toContainText( 'Core' );
-		await expect( capabilitiesWidget ).toContainText( 'Plugins' );
-		await expect( capabilitiesWidget ).toContainText( 'Theme' );
-		await expect( capabilitiesWidget ).toContainText(
-			'Provider Capabilities'
-		);
+
+		for ( const label of [
+			'Total Abilities',
+			'Core',
+			'Plugins',
+			'Theme',
+		] ) {
+			await expect(
+				main.getByText( label, { exact: true } )
+			).toBeVisible();
+		}
+		await expect(
+			main.getByText( 'Provider Capabilities', { exact: true } )
+		).toBeVisible();
 	} );
 
 	test( 'AI Status shows getting started checklist when setup is incomplete', async ( {

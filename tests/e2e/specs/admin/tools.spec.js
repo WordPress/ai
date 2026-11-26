@@ -24,10 +24,20 @@ test( 'Available Tools lists only enabled AI tools', async ( {
 	const keys = tools.map( ( [ id ] ) => `wpai_feature_${ id }_enabled` );
 	const updateSettings = ( data ) =>
 		requestUtils.rest( { path: settingsPath, method: 'POST', data } );
-	const card = page.locator( '.card' ).filter( {
-		has: page.getByRole( 'heading', { name: 'AI Tools', exact: true } ),
+	const main = page.getByRole( 'main' );
+	const heading = main.getByRole( 'heading', {
+		name: 'AI Tools',
+		exact: true,
 	} );
-	const menu = page.locator( '#menu-tools' );
+	const toolList = main.getByRole( 'list' ).filter( {
+		has: page.getByRole( 'link', {
+			name: /^(Abilities Explorer|AI Request Logs|MCP Access|Connector Approvals)$/,
+		} ),
+	} );
+	const menu = page.getByRole( 'navigation', {
+		name: 'Main menu',
+		exact: true,
+	} );
 
 	try {
 		for ( const enabled of [ [ 0, 1, 2, 3 ], [ 1 ], [] ] ) {
@@ -43,13 +53,16 @@ test( 'Available Tools lists only enabled AI tools', async ( {
 				'tools.php',
 				'ai-e2e-skip-mcp-install=1'
 			);
-			await expect( card ).toHaveCount( enabled.length ? 1 : 0 );
-			await expect( card.getByRole( 'link' ) ).toHaveCount(
+			await expect( heading ).toHaveCount( enabled.length ? 1 : 0 );
+			await expect( toolList.getByRole( 'link' ) ).toHaveCount(
 				enabled.length
 			);
 
 			for ( const [ index, [ , name, slug ] ] of tools.entries() ) {
-				const link = card.getByRole( 'link', { name, exact: true } );
+				const link = toolList.getByRole( 'link', {
+					name,
+					exact: true,
+				} );
 				const menuLink = menu.getByRole( 'link', {
 					name,
 					exact: true,

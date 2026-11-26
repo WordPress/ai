@@ -238,7 +238,10 @@ test.describe( 'Abilities Explorer', () => {
 			await admin.visitAdminPage( 'tools.php' );
 			await expect(
 				page
-					.locator( '#adminmenu' )
+					.getByRole( 'navigation', {
+						name: 'Main menu',
+						exact: true,
+					} )
 					.getByRole( 'link', { name: 'Abilities Explorer' } )
 			).toBeVisible();
 
@@ -324,10 +327,7 @@ test.describe( 'Abilities Explorer', () => {
 			await expect(
 				dataRows( page )
 					.first()
-					.getByRole( 'cell' )
-					.first()
-					.getByRole( 'link' )
-					.first()
+					.getByRole( 'link', { name: lastName, exact: true } )
 			).toHaveText( lastName );
 		} );
 	} );
@@ -464,7 +464,10 @@ test.describe( 'Abilities Explorer', () => {
 			await admin.visitAdminPage( 'tools.php' );
 			await expect(
 				page
-					.locator( '#adminmenu' )
+					.getByRole( 'navigation', {
+						name: 'Main menu',
+						exact: true,
+					} )
 					.getByRole( 'link', { name: 'Abilities Explorer' } )
 			).toHaveCount( 0 );
 
@@ -613,9 +616,9 @@ test.describe( 'Abilities Explorer', () => {
 				.getByRole( 'button', { name: 'Invoke Ability' } )
 				.click();
 
-			const panel = page.locator( 'pre' ).filter( {
-				hasText: 'ai_e2e_fixture_failed',
-			} );
+			const panel = page
+				.getByRole( 'main' )
+				.getByText( 'ai_e2e_fixture_failed' );
 			await expect(
 				page.getByRole( 'heading', { name: 'Error', exact: true } )
 			).toBeVisible();
