@@ -61,6 +61,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 		// Gutenberg media editor experiment
 		wp_dequeue_script( 'ai_alt_text_generation_media_editor' );
 		wp_deregister_script( 'ai_alt_text_generation_media_editor' );
+		wp_dequeue_script_module( '@ai/alt-text-field' );
 		delete_option( 'gutenberg-experiments' );
 		delete_option( 'active_plugins' );
 
@@ -539,12 +540,20 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 
 		$this->invoke_maybe_enqueue_media_editor_script( new Alt_Text_Generation() );
 
-		$enqueued = wp_script_is( 'ai_alt_text_generation_media_editor', 'enqueued' );
+		// With the Entity Fields API (WordPress 7.2+), the script module replaces the script.
+		$entity_fields_api = function_exists( 'wp_update_entity_fields' );
 
-		$this->assertTrue(
-			$enqueued,
+		$this->assertSame(
+			! $entity_fields_api,
+			wp_script_is( 'ai_alt_text_generation_media_editor', 'enqueued' ),
 			'Media editor script should enqueue when the route-based experiment is enabled.'
 		);
+
+		if ( ! $entity_fields_api ) {
+			return;
+		}
+
+		$this->assertContains( '@ai/alt-text-field', wp_script_modules()->get_queue() );
 	}
 
 	/**
@@ -558,12 +567,47 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 
 		$this->invoke_maybe_enqueue_media_editor_script( new Alt_Text_Generation() );
 
-		$enqueued = wp_script_is( 'ai_alt_text_generation_media_editor', 'enqueued' );
+		// With the Entity Fields API (WordPress 7.2+), the script module replaces the script.
+		$entity_fields_api = function_exists( 'wp_update_entity_fields' );
 
-		$this->assertTrue(
-			$enqueued,
+		$this->assertSame(
+			! $entity_fields_api,
+			wp_script_is( 'ai_alt_text_generation_media_editor', 'enqueued' ),
 			'Media editor script should enqueue when the Modal experiment is enabled.'
 		);
+
+		if ( ! $entity_fields_api ) {
+			return;
+		}
+
+		$this->assertContains( '@ai/alt-text-field', wp_script_modules()->get_queue() );
+	}
+
+	/**
+	 * Tests that update_alt_text_field() hands the attachment alt text field
+	 * to the plugin's script module (WordPress 7.2+).
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_alt_text_field_hands_the_alt_text_field_to_the_script_module(): void {
+		if ( ! function_exists( 'wp_update_entity_fields' ) ) {
+			$this->markTestSkipped( 'The Entity Fields API needs WordPress 7.2.' );
+		}
+
+		// Registers the entity fields anew, so that the experiment's
+		// `wp_entity_fields_api_init` callback (hooked in setUp) runs.
+		$instance = new \ReflectionProperty( \WP_Entity_Fields_Registry::class, 'instance' );
+		$instance->setAccessible( true );
+		$original = $instance->getValue();
+		$instance->setValue( null, null );
+
+		try {
+			$modules = array_column( wp_get_registered_entity_field_modules( 'postType', 'attachment' ), 'fields', 'id' );
+			$this->assertSame( array( 'alt_text' ), $modules['@ai/alt-text-field'] ?? null );
+		} finally {
+			// Restores the registry, so the rebuilt one doesn't leak into later tests.
+			$instance->setValue( null, $original );
+		}
 	}
 
 	/**
