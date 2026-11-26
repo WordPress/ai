@@ -14,6 +14,7 @@ use WP_REST_Request;
 use WP_REST_Server;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Background\Lock;
+use WordPress\AiClient\Providers\Http\DTO\RequestOptions;
 
 use function WordPress\AI\has_ai_credentials;
 
@@ -87,7 +88,7 @@ final class Draft_Check {
 		}
 
 		Asset_Loader::enqueue_script( 'comment_draft_check', 'experiments/comment-draft-check' );
-		Asset_Loader::enqueue_style( 'comment_draft_check', 'experiments/comment-draft-check', array( 'wp-components' ) );
+		Asset_Loader::enqueue_style( 'comment_draft_check', 'experiments/comment-draft-check' );
 		printf(
 			'<span hidden data-wpai-comment-draft-check="%1$s" data-nonce="%2$s"></span>',
 			esc_url( rest_url( 'ai/v1' . self::ROUTE ) ),
@@ -188,10 +189,17 @@ final class Draft_Check {
 		}
 
 		// An unsent draft can contain text the visitor later removes or never posts.
+		$limit_timeout = static function ( \WP_AI_Client_Prompt_Builder $builder ): \WP_AI_Client_Prompt_Builder {
+			$options = new RequestOptions();
+			$options->setTimeout( 4 );
+			return $builder->using_request_options( $options );
+		};
+		add_filter( 'wpai_comment_analysis_prompt_builder', $limit_timeout );
 		add_filter( 'wpai_request_log_include_content', '__return_false' );
 		try {
 			$result = $this->experiment->get_comment_analysis_ability()->analyze_comment_text( $text );
 		} finally {
+			remove_filter( 'wpai_comment_analysis_prompt_builder', $limit_timeout );
 			remove_filter( 'wpai_request_log_include_content', '__return_false' );
 		}
 
@@ -213,6 +221,23 @@ final class Draft_Check {
 	 * @return bool Whether a request slot is available.
 	 */
 	private function take_request_slot(): bool {
+		/**
+		 * Filters the maximum draft checks per minute across the site.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param int $limit Site limit. Default 90. Zero pauses draft checks.
+		 */
+		$site_limit = max( 0, (int) apply_filters( 'wpai_comment_moderation_draft_site_limit', self::SITE_LIMIT ) );
+		/**
+		 * Filters the maximum draft checks per minute per user or guest address.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param int $limit Visitor limit. Default 20. Guests behind a proxy may share it.
+		 */
+		$visitor_limit = max( 0, (int) apply_filters( 'wpai_comment_moderation_draft_visitor_limit', self::VISITOR_LIMIT ) );
+
 		$lock = new Lock( 'comment_draft_check_budget', 5 );
 		if ( ! $lock->acquire() ) {
 			return false;
@@ -236,7 +261,7 @@ final class Draft_Check {
 			}
 
 			$visitor_count = $budget['visitors'][ $key ] ?? 0;
-			if ( $budget['total'] >= self::SITE_LIMIT || $visitor_count >= self::VISITOR_LIMIT ) {
+			if ( $budget['total'] >= $site_limit || $visitor_count >= $visitor_limit ) {
 				return false;
 			}
 

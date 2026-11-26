@@ -12,6 +12,7 @@ use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_UnitTestCase;
+use WordPress\AiClient\Providers\Http\DTO\RequestOptions;
 use WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation;
 
 /**
@@ -169,7 +170,9 @@ class Draft_CheckTest extends WP_UnitTestCase {
 	 */
 	public function test_applies_the_configured_threshold_to_negative_drafts( float $score, string $sentiment, bool $blocked ): void {
 		$this->register_experiment();
-		update_option( Comment_Moderation::get_field_option_name( 'draft_toxicity_threshold' ), 80 );
+		add_filter( 'wpai_comment_moderation_draft_toxicity_threshold', static function (): float {
+			return 0.8;
+		} );
 		$this->stub_provider(
 			wp_json_encode(
 				array(
@@ -328,6 +331,59 @@ class Draft_CheckTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Checks that a filtered request cap prevents calls before the default limit.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_filtered_site_limit_prevents_provider_calls(): void {
+		$this->register_experiment();
+		$this->stub_provider( '', 0 );
+		add_filter( 'wpai_comment_moderation_draft_site_limit', '__return_zero' );
+
+		$this->assertSame( 429, $this->check_draft()->get_status() );
+	}
+
+	/**
+	 * Checks that forwarded headers cannot bypass a shared guest address limit.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_guest_limit_uses_the_server_address(): void {
+		$this->register_experiment();
+		$this->stub_provider( '{"toxicity_score":0.1,"sentiment":"negative","value_score":0.5}', 2 );
+		add_filter( 'wpai_comment_moderation_draft_visitor_limit', static function (): int {
+			return 1;
+		} );
+		$server = $_SERVER;
+
+		try {
+			$_SERVER['REMOTE_ADDR'] = '192.0.2.1';
+			$this->assertSame( 200, $this->check_draft()->get_status() );
+			$_SERVER['HTTP_X_FORWARDED_FOR'] = '192.0.2.2';
+			$this->assertSame( 429, $this->check_draft()->get_status() );
+			$_SERVER['REMOTE_ADDR'] = '192.0.2.2';
+			$this->assertSame( 200, $this->check_draft()->get_status() );
+		} finally {
+			$_SERVER = $server;
+		}
+	}
+
+	/**
+	 * Checks that draft-only logging and timeout filters are removed after failure.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_provider_failure_restores_shared_filters(): void {
+		$this->register_experiment();
+		$this->stub_provider( new WP_Error( 'provider_failed', 'Provider unavailable.' ), 1 );
+		$filters = $GLOBALS['wp_filter']['wpai_comment_analysis_prompt_builder']->callbacks;
+
+		$this->assertSame( 503, $this->check_draft()->get_status() );
+		$this->assertTrue( apply_filters( 'wpai_request_log_include_content', true ) );
+		$this->assertSame( $filters, $GLOBALS['wp_filter']['wpai_comment_analysis_prompt_builder']->callbacks );
+	}
+
+	/**
 	 * Registers the experiment and initializes a fresh REST server.
 	 *
 	 * @since x.x.x
@@ -391,9 +447,15 @@ class Draft_CheckTest extends WP_UnitTestCase {
 	private function stub_provider( $result, int $calls ): void {
 		$builder = $this->getMockBuilder( WP_AI_Client_Prompt_Builder::class )
 			->disableOriginalConstructor()
-			->addMethods( array( 'is_supported_for_text_generation', 'generate_text' ) )
+			->addMethods( array( 'is_supported_for_text_generation', 'generate_text', 'using_request_options' ) )
 			->getMock();
 		$builder->method( 'is_supported_for_text_generation' )->willReturn( true );
+		$builder->expects( $this->exactly( $calls ) )
+			->method( 'using_request_options' )
+			->with( $this->callback( static function ( RequestOptions $options ): bool {
+				return 4.0 === $options->getTimeout();
+			} ) )
+			->willReturnSelf();
 		$builder->expects( $this->exactly( $calls ) )
 			->method( 'generate_text' )
 			->willReturn( $result );
