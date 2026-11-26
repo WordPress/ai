@@ -51,6 +51,7 @@ export function MediaEditorAltTextControl( {
 	const hasExistingAlt =
 		typeof currentAlt === 'string' && currentAlt.trim().length > 0;
 	const canGenerate = !! attachmentId || !! imageUrl;
+	const isDisabled = field.isDisabled?.( { item: data, field } ) ?? false;
 
 	/**
 	 * Handles the generate/regenerate button click.
@@ -90,9 +91,11 @@ export function MediaEditorAltTextControl( {
 			{ /* Core alt text textarea (mirrors the field being replaced). */ }
 			<TextareaControl
 				label={ field.label }
+				help={ field.description }
 				hideLabelFromVision={ !! hideLabelFromVision }
 				value={ currentAlt || '' }
 				onChange={ ( value ) => onChange( { alt_text: value } ) }
+				disabled={ isDisabled }
 				rows={ 2 }
 			/>
 
@@ -113,7 +116,7 @@ export function MediaEditorAltTextControl( {
 				<Button
 					variant="secondary"
 					onClick={ handleGenerate }
-					disabled={ isGenerating }
+					disabled={ isGenerating || isDisabled }
 					style={ {
 						width: '100%',
 						justifyContent: 'center',
