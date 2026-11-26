@@ -598,10 +598,16 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 		// `wp_entity_fields_api_init` callback (hooked in setUp) runs.
 		$instance = new \ReflectionProperty( \WP_Entity_Fields_Registry::class, 'instance' );
 		$instance->setAccessible( true );
+		$original = $instance->getValue();
 		$instance->setValue( null, null );
 
-		$modules = array_column( wp_get_registered_entity_field_modules( 'postType', 'attachment' ), 'fields', 'id' );
-		$this->assertSame( array( 'alt_text' ), $modules['@ai/alt-text-field'] ?? null );
+		try {
+			$modules = array_column( wp_get_registered_entity_field_modules( 'postType', 'attachment' ), 'fields', 'id' );
+			$this->assertSame( array( 'alt_text' ), $modules['@ai/alt-text-field'] ?? null );
+		} finally {
+			// Restores the registry, so the rebuilt one doesn't leak into later tests.
+			$instance->setValue( null, $original );
+		}
 	}
 
 	/**

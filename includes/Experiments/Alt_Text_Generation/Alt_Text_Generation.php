@@ -255,10 +255,6 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 * @since x.x.x
 	 */
 	public function update_alt_text_field(): void {
-		if ( ! $this->is_enabled() ) {
-			return;
-		}
-
 		// Only registered fields can be updated.
 		$fields = wp_get_registered_entity_fields( 'postType', 'attachment' );
 		if ( ! in_array( 'alt_text', array_column( $fields, 'id' ), true ) ) {
