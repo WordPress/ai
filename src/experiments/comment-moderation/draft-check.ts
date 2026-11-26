@@ -227,12 +227,12 @@ function enhanceCommentForm( marker: HTMLElement, index: number ): void {
 		}
 	}
 
-	textarea.addEventListener( 'input', onEdit );
-	textarea.addEventListener( 'compositionstart', () => {
+	field.addEventListener( 'input', onEdit );
+	field.addEventListener( 'compositionstart', () => {
 		composing = true;
 		onEdit();
 	} );
-	textarea.addEventListener( 'compositionend', () => {
+	field.addEventListener( 'compositionend', () => {
 		composing = false;
 		onEdit();
 	} );
@@ -248,7 +248,7 @@ function enhanceCommentForm( marker: HTMLElement, index: number ): void {
 			return;
 		}
 
-		const text = textarea.value;
+		const text = field.value;
 		if (
 			! text.trim() ||
 			( checked?.text === text && checked.verdict !== 'blocked' )
@@ -258,7 +258,7 @@ function enhanceCommentForm( marker: HTMLElement, index: number ): void {
 
 		event.preventDefault();
 		if ( checked?.text === text && checked.verdict === 'blocked' ) {
-			textarea.focus();
+			field.focus();
 			return;
 		}
 		if ( submitting?.text === text ) {
@@ -277,21 +277,17 @@ function enhanceCommentForm( marker: HTMLElement, index: number ): void {
 			submitting = undefined;
 
 			if (
-				textarea.value !== text ||
+				field.value !== text ||
 				composing ||
 				parentField?.value !== parent
 			) {
-				if ( verdict !== 'blocked' && textarea.value === text ) {
+				if ( verdict !== 'blocked' && field.value === text ) {
 					showVerdict( undefined );
 				}
 				return;
 			}
-			if ( verdict !== 'unavailable' ) {
-				checked = { text, verdict };
-			}
-			showVerdict( verdict );
 			if ( verdict === 'blocked' ) {
-				textarea.focus();
+				field.focus();
 				return;
 			}
 

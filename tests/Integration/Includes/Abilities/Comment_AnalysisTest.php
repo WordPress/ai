@@ -181,7 +181,7 @@ class Comment_AnalysisTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that execute_callback() succeeds with valid comment_text.
+	 * Tests that execute_callback() succeeds with valid comment_text.
 	 *
 	 * @since x.x.x
 	 */
@@ -211,7 +211,7 @@ class Comment_AnalysisTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that analyze_comment_text() returns error when text is empty.
+	 * Tests that analyze_comment_text() returns error when text is empty.
 	 *
 	 * @since x.x.x
 	 */

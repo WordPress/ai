@@ -110,6 +110,7 @@ class Draft_CheckTest extends WP_UnitTestCase {
 	 * Checks that guest moderation and comment availability apply to the form and endpoint.
 	 *
 	 * @since x.x.x
+	 *
 	 * @dataProvider ineligible_comment_forms
 	 *
 	 * @param string $restriction Restriction to apply.
@@ -162,6 +163,7 @@ class Draft_CheckTest extends WP_UnitTestCase {
 	 * Checks that the route returns a verdict for drafts and leaves comments unsaved.
 	 *
 	 * @since x.x.x
+	 *
 	 * @dataProvider draft_verdicts
 	 *
 	 * @param float  $score     Provider toxicity score.
@@ -252,6 +254,7 @@ class Draft_CheckTest extends WP_UnitTestCase {
 	 * Checks that an unusable provider response gives the browser no verdict.
 	 *
 	 * @since x.x.x
+	 *
 	 * @dataProvider unavailable_provider_responses
 	 *
 	 * @param string|\WP_Error $result Provider response.
@@ -285,6 +288,7 @@ class Draft_CheckTest extends WP_UnitTestCase {
 	 * Checks that exhausted visitor and site budgets reject requests before generation.
 	 *
 	 * @since x.x.x
+	 *
 	 * @dataProvider exhausted_budgets
 	 *
 	 * @param int $site_count    Requests already made on the site.
