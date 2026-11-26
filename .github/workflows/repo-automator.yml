@@ -1,0 +1,48 @@
+name: Repo Automator
+
+permissions:
+  contents: read
+  pull-requests: write
+
+on:
+  issues:
+    types:
+      - opened
+  push:
+    branches:
+      - develop
+  pull_request:
+    types:
+      - opened
+      - edited
+      - synchronize
+      - converted_to_draft
+      - ready_for_review
+    branches:
+      - develop
+
+jobs:
+  Validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: 10up/action-repo-automator@ffe5293adff3ebf042156b2290d63f22bef5d7d4 # v2.2.0
+        with:
+          fail-label: "Needs Feedback"
+          pass-label: "Needs Code Review"
+          conflict-label: "Needs Refresh"
+          comment-template: "{author} thanks for the PR!  Could you please fill out the PR template with description, AI tool usage, and changelog information so that we can properly review and merge this?"
+          conflict-comment: "{author} could you please rebase your PR on top of the latest changes from the `develop` branch?"
+          reviewers: |
+            team:ai-maintainers
+          validate-description: false
+          validate-changelog: false
+          validate-credits: false
+          validate-pr-template-sections: |
+            What?
+            Why?
+            Use of AI Tools
+            Testing Instructions
+            Changelog Entry
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
