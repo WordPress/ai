@@ -194,8 +194,10 @@ final class Draft_Check {
 			$options->setTimeout( 4 );
 			return $builder->using_request_options( $options );
 		};
+
 		add_filter( 'wpai_comment_analysis_prompt_builder', $limit_timeout );
 		add_filter( 'wpai_request_log_include_content', '__return_false' );
+
 		try {
 			$result = $this->experiment->get_comment_analysis_ability()->analyze_comment_text( $text );
 		} finally {
