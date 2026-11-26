@@ -286,6 +286,11 @@ function enhanceCommentForm( marker: HTMLElement, index: number ): void {
 				}
 				return;
 			}
+			// A reused request may belong to an earlier, cancelled submit attempt.
+			if ( verdict !== 'unavailable' ) {
+				checked = { text, verdict };
+			}
+			showVerdict( verdict );
 			if ( verdict === 'blocked' ) {
 				field.focus();
 				return;

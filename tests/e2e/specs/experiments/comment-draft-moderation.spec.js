@@ -212,6 +212,41 @@ test.describe( 'Comment draft moderation', () => {
 		expect( calls ).toBe( 1 );
 	} );
 
+	test( 'shows a reused verdict after the reader restores and resubmits the original draft', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const post = await createPost( requestUtils );
+		let calls = 0;
+		let respond;
+		await page.route( route, ( draftRequest ) => {
+			calls++;
+			return new Promise( ( resolve ) => {
+				respond = async () => {
+					await draftRequest.fulfill( { json: { blocked: true } } );
+					resolve();
+				};
+			} );
+		} );
+		await page.goto( post.link );
+		const comment = page.locator( '#comment' );
+		const submit = page.getByRole( 'button', { name: 'Post Comment' } );
+		const requested = page.waitForRequest( draftRoute );
+		await comment.fill( toxic );
+		await submit.click();
+		await requested;
+		await comment.fill( constructive );
+		await comment.fill( toxic );
+		await submit.click();
+		await respond();
+		await expect( submit ).toBeDisabled();
+		await expect(
+			page.locator( '.wpai-comment-draft-status' )
+		).toContainText( 'Please revise your comment' );
+		await expect( page.locator( '.comment-content' ) ).toHaveCount( 0 );
+		expect( calls ).toBe( 1 );
+	} );
+
 	test( 'ignores an old response after the reader changes the draft', async ( {
 		page,
 		requestUtils,
