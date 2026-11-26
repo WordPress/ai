@@ -134,7 +134,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that request metrics can be kept without retaining draft content.
+	 * Tests that previews can be omitted while preserving request errors and metrics.
 	 *
 	 * @since x.x.x
 	 */
@@ -146,7 +146,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 					'type'          => 'ai_client',
 					'operation'     => 'completion',
 					'status'        => 'error',
-					'error_message' => 'Error containing the unpublished draft.',
+					'error_message' => 'The provider request timed out.',
 					'context'       => array(
 						'input_preview'  => 'Unpublished draft.',
 						'output_preview' => 'Response quoting the draft.',
@@ -162,7 +162,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 		$log = $this->manager->get_log( $log_id );
 		$this->assertIsArray( $log );
 		$this->assertSame( array( 'request_kind' => 'text' ), $log['context'] );
-		$this->assertNull( $log['error_message'] );
+		$this->assertSame( 'The provider request timed out.', $log['error_message'] );
 	}
 
 	/**

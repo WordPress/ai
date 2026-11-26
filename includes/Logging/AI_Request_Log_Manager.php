@@ -204,7 +204,7 @@ class AI_Request_Log_Manager {
 		 * @param bool $include_content Whether to include content. Default true.
 		 */
 		if ( ! apply_filters( 'wpai_request_log_include_content', true ) ) {
-			unset( $data['context']['input_preview'], $data['context']['output_preview'], $data['error_message'] );
+			unset( $data['context']['input_preview'], $data['context']['output_preview'] );
 		}
 
 		return $this->repository->insert( $data );
