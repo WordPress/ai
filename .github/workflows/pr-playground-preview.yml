@@ -67,6 +67,12 @@ jobs:
 
             core.setOutput('pr-number', String(pr.number));
             core.setOutput('commit-sha', trustedSha);
+            // Where the PR's files live, for the sample content. A fork that
+            // was deleted has no head repo; its commit is still reachable here.
+            core.setOutput(
+              'head-repo',
+              pr.head.repo ? pr.head.repo.full_name : `${context.repo.owner}/${context.repo.repo}`
+            );
             core.setOutput('artifact-name', artifact.name);
 
       - name: Expose built artifact
@@ -80,36 +86,69 @@ jobs:
           artifact-source-run-id: ${{ github.event.workflow_run.id }}
           artifacts-to-keep: '2'
 
+      # Trusted copy of the Live Preview blueprint from the default branch,
+      # never the PR's own files.
+      - name: Checkout Live Preview blueprint
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .wordpress-org/blueprints
+          sparse-checkout-cone-mode: false
+
       - name: Generate Playground blueprint JSON
         id: blueprint
         run: |
           node - <<'NODE' >> "$GITHUB_OUTPUT"
+          const fs = require('fs');
+
           const url = process.env.ARTIFACT_URL;
           if (!url) {
             throw new Error('ARTIFACT_URL is required');
           }
 
-          const blueprint = {
-            preferredVersions: {
-              wp: 'latest',
-            },
-            login: true,
-            landingPage: '/wp-admin/admin.php?page=ai-wp-admin',
-            steps: [
-              {
+          // Reuse the Live Preview's steps, so PR previews get the same
+          // sample content (tests/playground/README.md). The content and its
+          // images come from the PR's own commit instead of trunk.
+          const livePreview = JSON.parse(
+            fs.readFileSync('.wordpress-org/blueprints/blueprint.json', 'utf8')
+          );
+          const trunkBase = 'https://raw.githubusercontent.com/WordPress/ai/trunk/';
+          const prBase = `https://raw.githubusercontent.com/${process.env.HEAD_REPO}/${process.env.HEAD_SHA}/`;
+
+          const steps = livePreview.steps.map((step) => {
+            if (step.step === 'installPlugin') {
+              return {
                 step: 'installPlugin',
                 pluginData: {
                   resource: 'url',
                   url,
                 },
-              },
-            ],
+              };
+            }
+            if (step.step === 'importWxr') {
+              return {
+                ...step,
+                file: { ...step.file, url: step.file.url.replace(trunkBase, prBase) },
+                urlMapping: { [trunkBase]: prBase },
+              };
+            }
+            return step;
+          });
+
+          const blueprint = {
+            preferredVersions: livePreview.preferredVersions,
+            features: livePreview.features,
+            login: true,
+            landingPage: '/wp-admin/admin.php?page=ai-wp-admin',
+            steps,
           };
 
           console.log(`blueprint=${JSON.stringify(blueprint)}`);
           NODE
         env:
           ARTIFACT_URL: ${{ steps.expose.outputs.artifact-url }}
+          HEAD_REPO: ${{ steps.pr-metadata.outputs.head-repo }}
+          HEAD_SHA: ${{ steps.pr-metadata.outputs.commit-sha }}
 
       - name: Post Playground preview button
         uses: WordPress/action-wp-playground-pr-preview@1b15093d61b5e98cdfeb31466f34ade495762cd7 # v4.0.0
