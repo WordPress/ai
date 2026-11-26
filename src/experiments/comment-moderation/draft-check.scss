@@ -1,0 +1,45 @@
+.wpai-comment-draft-notice {
+	font-size: 0.875em;
+}
+
+.wpai-comment-draft-status:not([hidden]) {
+	margin-block-end: 1em;
+	border-inline-start: var(--wpds-border-width-md, 4px) solid
+		var(--wpds-color-stroke-surface-error-strong, #d63638);
+	padding: var(--wpds-dimension-padding-md, 12px)
+		var(--wpds-dimension-padding-lg, 16px);
+	background: var(--wpds-color-background-surface-error-weak, #fcf0f1);
+	color: var(--wpds-color-foreground-content-neutral, #1e1e1e);
+}
+
+.wpai-comment-draft-loading:not([hidden]) {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5em;
+	margin-inline-start: 0.75em;
+	font-size: 0.875em;
+	vertical-align: middle;
+}
+
+.wpai-comment-draft-spinner {
+	box-sizing: border-box;
+	flex-shrink: 0;
+	width: 1em;
+	height: 1em;
+	border: var(--wpds-border-width-sm, 2px) solid currentColor;
+	border-inline-end-color: transparent;
+	border-radius: 50%;
+	animation: wpai-comment-draft-spin 1s linear infinite;
+}
+
+@keyframes wpai-comment-draft-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.wpai-comment-draft-spinner {
+		animation: none;
+	}
+}

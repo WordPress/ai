@@ -34,12 +34,23 @@ class Comment_Analysis extends Abstract_Ability {
 		return array(
 			'type'       => 'object',
 			'properties' => array(
-				'comment_id' => array(
+				'comment_id'   => array(
 					'type'        => 'integer',
 					'description' => esc_html__( 'The ID of the comment to analyze.', 'ai' ),
 				),
+				'comment_text' => array(
+					'type'        => 'string',
+					'description' => esc_html__( 'The text of the comment to analyze.', 'ai' ),
+				),
+				'author'       => array(
+					'type'        => 'string',
+					'description' => esc_html__( 'The author of the comment.', 'ai' ),
+				),
+				'post_id'      => array(
+					'type'        => 'integer',
+					'description' => esc_html__( 'The ID of the post the comment was left on, if known.', 'ai' ),
+				),
 			),
-			'required'   => array( 'comment_id' ),
 		);
 	}
 
@@ -53,8 +64,8 @@ class Comment_Analysis extends Abstract_Ability {
 			'type'       => 'object',
 			'properties' => array(
 				'comment_id'     => array(
-					'type'        => 'integer',
-					'description' => esc_html__( 'The analyzed comment ID.', 'ai' ),
+					'type'        => array( 'integer', 'null' ),
+					'description' => esc_html__( 'The analyzed comment ID, or null when analyzing raw comment text.', 'ai' ),
 				),
 				'toxicity_score' => array(
 					'type'        => 'number',
@@ -82,10 +93,28 @@ class Comment_Analysis extends Abstract_Ability {
 	 *
 	 * @since 0.9.0
 	 *
-	 * @return array{comment_id: int, toxicity_score: float, sentiment: string, value_score: float}|\WP_Error The result of the ability execution.
+	 * @return array{comment_id: int|null, toxicity_score: float, sentiment: string, value_score: float}|\WP_Error The result of the ability execution.
 	 */
 	protected function execute_callback( $input ) {
-		return $this->analyze_comment_by_id( absint( $input['comment_id'] ?? 0 ) );
+		$comment_id = absint( $input['comment_id'] ?? 0 );
+
+		if ( $comment_id > 0 ) {
+			return $this->analyze_comment_by_id( $comment_id );
+		}
+
+		$comment_text = $input['comment_text'] ?? '';
+
+		if ( is_string( $comment_text ) && '' !== trim( $comment_text ) ) {
+			$author  = isset( $input['author'] ) && is_string( $input['author'] ) ? $input['author'] : '';
+			$post_id = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : null;
+
+			return $this->analyze_comment_text( $comment_text, $author, $post_id );
+		}
+
+		return new WP_Error(
+			'missing_comment_id',
+			esc_html__( 'Comment ID or comment text is required.', 'ai' )
+		);
 	}
 
 	/**
@@ -328,11 +357,18 @@ class Comment_Analysis extends Abstract_Ability {
 			return $this->sanitize_analysis_result( $pre_result );
 		}
 
-		$prompt = sprintf(
-			"<comment>\n<author>%s</author>\n<content>%s</content>\n</comment>",
-			$this->escape_prompt_value( $author ),
-			$this->escape_prompt_value( $content )
-		);
+		if ( '' !== $author ) {
+			$prompt = sprintf(
+				"<comment>\n<author>%s</author>\n<content>%s</content>\n</comment>",
+				$this->escape_prompt_value( $author ),
+				$this->escape_prompt_value( $content )
+			);
+		} else {
+			$prompt = sprintf(
+				"<comment>\n<content>%s</content>\n</comment>",
+				$this->escape_prompt_value( $content )
+			);
+		}
 
 		$post_context = $post_id ? $this->get_post_context( $post_id ) : null;
 
@@ -342,7 +378,57 @@ class Comment_Analysis extends Abstract_Ability {
 
 		$prompt         = $this->filter_prompt( $prompt, $content, $author );
 		$prompt_builder = $this->get_prompt_builder( $prompt );
+		$parsed         = $this->generate_analysis( $prompt_builder );
 
+		return is_wp_error( $parsed ) ? $parsed : $this->sanitize_analysis_result( $parsed );
+	}
+
+	/**
+	 * Analyzes comment text from trusted internal plugin flows.
+	 *
+	 * This method intentionally does not perform user capability checks. User-invoked
+	 * ability execution must go through execute(), which runs permission_callback().
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string   $content Comment content.
+	 * @param string   $author  Comment author name.
+	 * @param int|null $post_id The ID of the post the comment was left on, if known.
+	 * @return array{comment_id: null, toxicity_score: float, sentiment: string, value_score: float}|\WP_Error The result of the analysis.
+	 */
+	public function analyze_comment_text( string $content, string $author = '', ?int $post_id = null ) {
+		$content = trim( $content );
+
+		if ( '' === $content ) {
+			return new WP_Error(
+				'missing_comment_text',
+				esc_html__( 'Comment text is required.', 'ai' )
+			);
+		}
+
+		$result = $this->analyze_comment( $content, $author, $post_id );
+
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return array(
+			'comment_id'     => null,
+			'toxicity_score' => $result['toxicity_score'],
+			'sentiment'      => $result['sentiment'],
+			'value_score'    => $result['value_score'],
+		);
+	}
+
+	/**
+	 * Generates and parses a structured analysis.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_AI_Client_Prompt_Builder|\WP_Error $prompt_builder Configured prompt builder.
+	 * @return array<string, mixed>|\WP_Error Parsed analysis.
+	 */
+	private function generate_analysis( $prompt_builder ) {
 		if ( is_wp_error( $prompt_builder ) ) {
 			return $prompt_builder;
 		}
@@ -363,7 +449,7 @@ class Comment_Analysis extends Abstract_Ability {
 			);
 		}
 
-		return $this->sanitize_analysis_result( $parsed );
+		return $parsed;
 	}
 
 	/**

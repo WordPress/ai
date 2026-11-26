@@ -127,7 +127,8 @@ class Comment_AnalysisTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'properties', $schema );
 		$this->assertArrayHasKey( 'comment_id', $schema['properties'] );
 		$this->assertSame( 'integer', $schema['properties']['comment_id']['type'] );
-		$this->assertContains( 'comment_id', $schema['required'] );
+		$this->assertArrayHasKey( 'comment_text', $schema['properties'] );
+		$this->assertSame( 'string', $schema['properties']['comment_text']['type'] );
 	}
 
 	/**
@@ -177,6 +178,48 @@ class Comment_AnalysisTest extends WP_UnitTestCase {
 
 		$this->assertInstanceOf( WP_Error::class, $result );
 		$this->assertSame( 'missing_comment_id', $result->get_error_code() );
+	}
+
+	/**
+	 * Tests that execute_callback() succeeds with valid comment_text.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_with_comment_text() {
+		add_filter(
+			'wpai_comment_analysis_result',
+			static function () {
+				return array(
+					'toxicity_score' => 0.1,
+					'sentiment'      => 'positive',
+					'value_score'    => 0.8,
+				);
+			}
+		);
+
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $this->ability, array( 'comment_text' => 'Great post!' ) );
+
+		$this->assertIsArray( $result );
+		$this->assertNull( $result['comment_id'] );
+		$this->assertSame( 0.1, $result['toxicity_score'] );
+		$this->assertSame( 'positive', $result['sentiment'] );
+		$this->assertSame( 0.8, $result['value_score'] );
+	}
+
+	/**
+	 * Tests that analyze_comment_text() returns error when text is empty.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_analyze_comment_text_with_empty_text() {
+		$result = $this->ability->analyze_comment_text( '   ' );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'missing_comment_text', $result->get_error_code() );
 	}
 
 	/**

@@ -145,6 +145,13 @@ class Comment_Moderation extends Abstract_Feature {
 	public const DEFAULT_MODERATE_GUESTS = true;
 
 	/**
+	 * Default minimum toxicity score for blocking a draft in the form.
+	 *
+	 * @since x.x.x
+	 */
+	public const DEFAULT_DRAFT_TOXICITY_THRESHOLD = 0.7;
+
+	/**
 	 * Value score level: low.
 	 *
 	 * @var string
@@ -307,9 +314,9 @@ class Comment_Moderation extends Abstract_Feature {
 			'access_control' => true,
 			'usage'          => array(
 				'trigger'  => 'automatic',
-				'runs'     => __( 'Automatically, on each new comment, including guest comments by default. You can also run it from the "Analyze Sentiment, Toxicity, and Value" row action or bulk action in Comments', 'ai' ),
-				'sends'    => __( 'Comment text, author name, and a post excerpt', 'ai' ),
-				'requests' => __( 'One request per new comment', 'ai' ),
+				'runs'     => __( 'Automatically, on each new comment, including guest comments by default. You can also run it from the "Analyze Sentiment, Toxicity, and Value" row action or bulk action in Comments. If draft checks are enabled, it also runs while readers write or submit a comment.', 'ai' ),
+				'sends'    => __( 'Comment text, author name, and a post excerpt, AI-generated summary, or trimmed post content for saved comments. Only comment text for drafts.', 'ai' ),
+				'requests' => __( 'One request per new comment, plus optional requests for drafts as readers revise them.', 'ai' ),
 			),
 		);
 	}
@@ -325,6 +332,14 @@ class Comment_Moderation extends Abstract_Feature {
 
 		// Moderate new comments.
 		add_action( 'wp_insert_comment', array( $this, 'moderate_comment' ) );
+
+		if ( ! $this->should_check_drafts() ) {
+			return;
+		}
+
+		$draft_check = new Draft_Check( $this );
+		add_action( 'comment_form', array( $draft_check, 'render' ) );
+		add_action( 'rest_api_init', array( $draft_check, 'register_route' ) );
 	}
 
 	/**
@@ -391,6 +406,17 @@ class Comment_Moderation extends Abstract_Feature {
 	public function register_settings(): void {
 		register_setting(
 			Settings_Registration::OPTION_GROUP,
+			static::get_field_option_name( 'check_drafts' ),
+			array(
+				'type'              => 'boolean',
+				'default'           => false,
+				'sanitize_callback' => 'rest_sanitize_boolean',
+				'show_in_rest'      => true,
+			)
+		);
+
+		register_setting(
+			Settings_Registration::OPTION_GROUP,
 			static::get_field_option_name( 'moderate_guests' ),
 			array(
 				'type'              => 'boolean',
@@ -416,7 +442,45 @@ class Comment_Moderation extends Abstract_Feature {
 				'type'    => 'boolean',
 				'default' => self::DEFAULT_MODERATE_GUESTS,
 			),
+			array(
+				'id'          => 'check_drafts',
+				'label'       => __( 'Check comments before submission', 'ai' ),
+				'type'        => 'boolean',
+				'description' => __( 'Sends draft text to your AI provider after a pause or on submission. Applies to guests if automatic guest moderation is enabled.', 'ai' ),
+				'default'     => false,
+			),
 		);
+	}
+
+	/**
+	 * Checks whether to enable analysis in public comment forms.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool Whether the administrator opted in.
+	 */
+	private function should_check_drafts(): bool {
+		return (bool) get_option( static::get_field_option_name( 'check_drafts' ), false );
+	}
+
+	/**
+	 * Returns the draft toxicity threshold on the model's 0 to 1 scale.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return float Draft toxicity threshold.
+	 */
+	public function get_draft_toxicity_threshold(): float {
+		/**
+		 * Filters the minimum toxicity score for blocking negative drafts in the form.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param float $threshold Toxicity threshold from 0 to 1. Default 0.7.
+		 */
+		$threshold = apply_filters( 'wpai_comment_moderation_draft_toxicity_threshold', self::DEFAULT_DRAFT_TOXICITY_THRESHOLD );
+
+		return is_numeric( $threshold ) ? max( 0.0, min( 1.0, (float) $threshold ) ) : self::DEFAULT_DRAFT_TOXICITY_THRESHOLD;
 	}
 
 	/**
@@ -534,7 +598,7 @@ class Comment_Moderation extends Abstract_Feature {
 	 *
 	 * @return \WordPress\AI\Abilities\Comment_Moderation\Comment_Analysis Comment analysis ability.
 	 */
-	private function get_comment_analysis_ability(): Comment_Analysis_Ability {
+	public function get_comment_analysis_ability(): Comment_Analysis_Ability {
 		if ( ! $this->comment_analysis_ability ) {
 			$this->comment_analysis_ability = new Comment_Analysis_Ability(
 				'ai/comment-analysis',

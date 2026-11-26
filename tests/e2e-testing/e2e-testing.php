@@ -581,7 +581,9 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 				'\"value_score\":0.15',
 			);
 
-			if ( str_contains( $body, 'This is a positive comment' ) ) {
+			if ( str_contains( $body, 'This plugin did not work for me.' ) ) {
+				$response = str_replace( $search[0], '\\"toxicity_score\\":0.1', $response );
+			} elseif ( str_contains( $body, 'This is a positive comment' ) ) {
 				$response = str_replace(
 					$search,
 					array(

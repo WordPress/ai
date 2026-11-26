@@ -8,9 +8,9 @@ The Comment Moderation experiment adds sentiment, toxicity, and value analysis t
 
 - **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
 - **Runs without a user action:** Yes, once enabled
-- **When it runs:** Automatically, on each new comment, including guest comments by default. You can also run it from the "Analyze Sentiment, Toxicity, and Value" row action or bulk action in Comments
-- **Sent to your AI provider:** Comment text, author name, and a post excerpt
-- **Requests and data:** One request per new comment
+- **When it runs:** Automatically, on each new comment, including guest comments by default. You can also run it from the "Analyze Sentiment, Toxicity, and Value" row action or bulk action in Comments. If draft checks are enabled, it also runs while readers write or submit a comment.
+- **Sent to your AI provider:** Comment text, author name, and a post excerpt, AI-generated summary, or trimmed post content for saved comments. Only comment text for drafts.
+- **Requests and data:** One request per new comment, plus optional requests for drafts as readers revise them.
 - **Good to know:** Comments already marked as spam or trash are skipped. Comments from logged-in users are always checked; turn off "Automatically moderate guest comments" to stop checking guest comments. A comment is held for moderation when it scores as toxic and negative.
 
 ## Overview
@@ -27,38 +27,84 @@ The **Value** score rates how relevant and substantive a comment is to the post 
 - Automatically moderates newly created comments when analysis indicates high risk
 - Uses one shared ability (`ai/comment-analysis`) for both automated and manual workflows
 
-**Automatic moderation rule (default):**
+### Check drafts on the comment form
+
+In **Settings → AI**, turn on **Advanced settings**, then enable **Check comments before submission** under **Comment Moderation**. This setting is off by default. It applies to standard WordPress comment forms in classic and block themes. Guests are included when the site allows guest comments and **Automatically moderate guest comments** is enabled.
+
+The form sends only the draft text to the configured AI provider after the reader pauses for 1.5 seconds or tries to submit text that hasn't been checked. Drafts shorter than 20 characters are checked on submit. The form reuses the result for unchanged text. When the sentiment is negative and the toxicity score reaches 0.7 (70%) by default, the form asks the reader to revise their comment. Editing lets them check the new text.
+
+A spinner and checking message appear next to **Post Comment** while a request runs. Checks run one at a time. When a reader submits revised text during an older check, the current text gets its own four-second timeout after the older check finishes. This can take up to eight seconds in total.
+
+Readers can still submit if the check fails, times out, or reaches the server's request limit. The draft threshold only applies to the browser form. WordPress still accepts submissions made without JavaScript and the automatic moderation rule below applies to eligible comments after they're saved.
+
+### Draft request limits and logging
+
+Draft checks allow up to 20 requests per minute per logged-in user or guest network address, with a site-wide limit of 90 per minute. These are fixed one-minute windows. Reaching either limit skips the draft check and leaves WordPress's existing moderation flow available.
+
+For guests, the address comes from `REMOTE_ADDR` and is stored only as a keyed hash. Guests sharing a network or a reverse proxy, load balancer, or service such as Cloudflare may share the same limit. Forwarded address headers are not trusted automatically. If your site needs individual guest limits, configure your trusted proxy to restore the client address or use infrastructure-level rate limiting. These limits reduce provider traffic; they are not a complete abuse-prevention system.
+
+Developers can change the limits and the draft toxicity threshold with filters:
+
+```php
+add_filter( 'wpai_comment_moderation_draft_visitor_limit', function () {
+    return 40;
+} );
+add_filter( 'wpai_comment_moderation_draft_site_limit', function () {
+    return 180;
+} );
+add_filter( 'wpai_comment_moderation_draft_toxicity_threshold', function () {
+    return 0.8;
+} );
+```
+
+Limit values are non-negative request counts; zero pauses draft checks. The toxicity threshold uses the 0–1 score range and affects only the browser form. It has no settings field and does not change the saved-comment moderation rule.
+
+When AI Request Logging is enabled, draft prompt and response previews are omitted. Request metrics and error messages remain available for debugging. Provider error messages may themselves quote submitted content, so those logs should be treated as potentially sensitive.
+
+### Automatic moderation rule
 
 - If `toxicity_score >= 0.7` **and** `sentiment === 'negative'`, the comment is set to pending moderation (`comment_approved = '0'`).
 - Only regular comments are analyzed automatically. Pingbacks, trackbacks, and block editor notes (including AI-authored Editorial Notes) are skipped.
 
 ### Input Schema
 
-The `ai/comment-analysis` ability accepts:
+The `ai/comment-analysis` ability accepts either a saved `comment_id` or non-empty `comment_text`. When a positive `comment_id` is supplied, the ability analyzes that saved comment and ignores the raw-text fields.
+
+For raw text, `author` and `post_id` are optional. Without a post ID, no post context is included. Raw-text analysis does not create a comment or save comment metadata.
 
 ```php
 array(
     'type'       => 'object',
     'properties' => array(
-        'comment_id' => array(
+        'comment_id'   => array(
             'type'        => 'integer',
             'description' => 'The ID of the comment to analyze.',
-            'required'    => true,
+        ),
+        'comment_text' => array(
+            'type'        => 'string',
+            'description' => 'The text of the comment to analyze.',
+        ),
+        'author'       => array(
+            'type'        => 'string',
+            'description' => 'The author of the comment.',
+        ),
+        'post_id'      => array(
+            'type'        => 'integer',
+            'description' => 'The ID of the post the comment was left on, if known.',
         ),
     ),
-    'required'   => array( 'comment_id' ),
 )
 ```
 
 ### Output Schema
 
-The ability returns:
+The ability returns the same three scores for saved comments and raw text. `comment_id` is `null` when analyzing raw text.
 
 ```php
 array(
     'type'       => 'object',
     'properties' => array(
-        'comment_id'     => array( 'type' => 'integer' ),
+        'comment_id'     => array( 'type' => array( 'integer', 'null' ) ),
         'toxicity_score' => array(
             'type'    => 'number',
             'minimum' => 0,
@@ -125,11 +171,23 @@ curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/comment-
 }
 ```
 
+To analyze text before it has been saved, use the same endpoint and authentication with this request body:
+
+```json
+{
+  "input": {
+    "comment_text": "This plugin did not work for me. Please improve the error messages."
+  }
+}
+```
+
+The response has the same score fields, with `"comment_id": null`. This ability still requires moderation permissions; the public comment form uses its separate, restricted draft-check endpoint.
+
 ### Error Responses
 
 The ability may return:
 
-- `missing_comment_id`: `comment_id` was not provided
+- `missing_comment_id`: neither a positive `comment_id` nor non-empty `comment_text` was provided
 - `comment_not_found`: no comment exists for the given ID
 - `already_processing`: comment is currently being analyzed
 - `parse_error`: AI output could not be parsed as expected JSON
