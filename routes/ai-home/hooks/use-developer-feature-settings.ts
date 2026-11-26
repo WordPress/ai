@@ -22,18 +22,20 @@ interface UseDeveloperFeatureSettingsReturn {
 const EMPTY_SETTINGS: DeveloperFeatureSettings = { provider: '', model: '' };
 
 /**
- * Reads and writes the developer feature settings for a specific feature.
+ * Reads and writes a provider/model selection for a specific feature.
  *
- * Settings are stored in the WordPress option `wpai_feature_{featureId}_field_developer`
+ * Settings are stored in the WordPress option `wpai_feature_{featureId}_field_{settingsField}`
  * and exposed via the REST API settings endpoint.
  *
- * @param {string} featureId The feature ID.
+ * @param {string} featureId     The feature ID.
+ * @param {string} settingsField The provider/model setting to read and write.
  * @return {UseDeveloperFeatureSettingsReturn} The settings and update functions.
  */
 export function useDeveloperFeatureSettings(
-	featureId: string
+	featureId: string,
+	settingsField: 'developer' | 'embedding' = 'developer'
 ): UseDeveloperFeatureSettingsReturn {
-	const fieldKey = `wpai_feature_${ featureId }_field_developer`;
+	const fieldKey = `wpai_feature_${ featureId }_field_${ settingsField }`;
 
 	const { editedRecord, isSaving } = useSelect( ( select ) => {
 		const store: any = select( coreStore );
@@ -85,18 +87,23 @@ export function useDeveloperFeatureSettings(
 				);
 
 				createSuccessNotice(
-					__( 'Developer settings saved successfully.', 'ai' ),
+					settingsField === 'embedding'
+						? __( 'Embedding settings saved successfully.', 'ai' )
+						: __( 'Developer settings saved successfully.', 'ai' ),
 					{ type: 'snackbar' }
 				);
 			} catch {
 				createErrorNotice(
-					__( 'Failed to save developer settings.', 'ai' ),
+					settingsField === 'embedding'
+						? __( 'Failed to save embedding settings.', 'ai' )
+						: __( 'Failed to save developer settings.', 'ai' ),
 					{ type: 'snackbar' }
 				);
 			}
 		},
 		[
 			fieldKey,
+			settingsField,
 			editEntityRecord,
 			saveSpecifiedEdits,
 			createErrorNotice,
