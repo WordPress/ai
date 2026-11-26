@@ -19,7 +19,7 @@ Nothing is turned on when you activate the plugin. You choose what to enable in 
 * **Feature** – Stable and supported. Changes avoid breaking existing behavior. Image Generation and Editing is currently the only Feature.
 * **Experiment** – Early-stage and actively being developed. Experiments may change significantly or be removed in any release, so we recommend trying them on a staging site before using them on a live site.
 
-Once enabled, most Experiments only send a request to your AI provider when you click a button, but some run on their own. Comment Moderation, for example, checks every new comment, including comments from site visitors. In `Settings -> AI`, Experiments that run on their own are marked "Runs automatically", and the info icon next to each item's name shows when it runs, what it sends to your AI provider, and how many requests it makes.
+Once enabled, most Experiments only send a request to your AI provider when you click a button, but some run on their own. Comment Moderation, for example, checks every new comment, including comments from site visitors. Optional comment-form checks also send draft text after a pause or before submission. In `Settings -> AI`, Experiments that run on their own are marked "Runs automatically", and the info icon next to each item's name shows when it runs, what it sends to your AI provider, and how many requests it makes.
 
 Read the [Feature and Experiment Lifecycle](https://github.com/WordPress/ai/blob/trunk/docs/FEATURE_EXPERIMENT_LIFECYCLE.md) to learn how Experiments are evaluated and how they can become Features.
 
@@ -44,7 +44,7 @@ Experiments marked "runs automatically" do their work without you clicking anyth
 * **AI Request Logging** – Logs AI requests, including short previews of prompts and responses, for observability and debugging.
 * **Alt Text Generation** – Generate descriptive alt text for images to improve accessibility.
 * **Block Container Label Generation** – Generates short List View labels for Group, Columns, and other container blocks.
-* **Comment Moderation** (runs automatically) – Checks each new comment for toxicity and sentiment, gives it a value score, and can hold comments for moderation. Includes comments from site visitors by default.
+* **Comment Moderation** (runs automatically) – Checks each new comment for toxicity and sentiment, gives it a value score, and can hold comments for moderation. Includes comments from site visitors by default. Optional draft checks send comment text after a pause or before submission so readers can revise it before posting.
 * **Connector Approval** – Require administrator approval before other plugins or themes can use the AI connectors configured on this site.
 * **Content Classification** – Suggests relevant tags and categories to organize content.
 * **Content Resizing** – Shorten, expand, or rephrase selected block content.
@@ -145,7 +145,7 @@ Image Generation and Editing is a stable Feature that only runs when you ask for
 
 Experiments may change or be removed in any release, so we recommend trying them on a staging site before enabling them on a live site. Once enabled, most Experiments only run when you click a button. A few run automatically:
 
-* **Comment Moderation** sends every new comment, including comments from site visitors, to your AI provider and can hold comments for moderation.
+* **Comment Moderation** sends every new comment, including comments from site visitors, to your AI provider and can hold comments for moderation. If you enable comment-form checks, it also sends unsaved comment text after a pause or before submission. Draft prompt and response previews are omitted from request logs, but error messages are retained.
 * **Type-ahead Text** requests suggestions while you type in the Block Editor.
 * **Content Verification** checks each new image upload for Content Credentials. It doesn't send anything to your AI provider.
 
@@ -165,7 +165,7 @@ Yes, currently you need to provide your own API key for the configured AI Connec
 
 The plugin itself is free, but you'll need to pay for API usage from your chosen AI provider. Costs vary by provider and usage. Most providers offer free trial credits to get started. There are some local, open source, and free providers (like [Ollama](https://wordpress.org/plugins/ai-provider-for-ollama/)) that can be used as well.
 
-Experiments that run automatically can use requests without anyone clicking a button. Comment Moderation, for example, makes one request for each new comment, including comments from site visitors and spam that your spam filter hasn't already caught. Check your provider's usage dashboard after enabling an Experiment, and turn on AI Request Logging to see each request the plugin makes.
+Experiments that run automatically can use requests without anyone clicking a button. Comment Moderation, for example, makes one request for each new comment, including comments from site visitors and spam that your spam filter hasn't already caught. Optional comment-form checks make additional requests as readers revise their drafts. Draft checks have per-visitor and site-wide limits; guests sharing a proxy or network address may share a limit. If a check fails or reaches a limit, WordPress still accepts the submission for its usual moderation. Check your provider's usage dashboard after enabling an Experiment, and turn on AI Request Logging to see each request the plugin makes.
 
 = Can I use this without coding knowledge? =
 
