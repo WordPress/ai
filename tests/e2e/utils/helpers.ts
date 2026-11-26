@@ -26,7 +26,7 @@ const getConnectorItem = ( page: Page, connectorId: string ) => {
 		return null;
 	}
 
-	return page.locator( '[role="listitem"]', {
+	return page.getByRole( 'listitem' ).filter( {
 		has: page.getByRole( 'heading', { name: label, exact: true } ),
 	} );
 };
@@ -237,9 +237,9 @@ export const enableExperiment = async (
 
 	// Ensure the save was successful.
 	await expect(
-		page.locator( '.components-snackbar__content', {
-			hasText: `${ experimentLabel } enabled.`,
-		} )
+		page
+			.getByRole( 'button', { name: 'Dismiss this notice', exact: true } )
+			.getByText( `${ experimentLabel } enabled.`, { exact: true } )
 	).toBeVisible();
 };
 
@@ -270,11 +270,16 @@ export const disableExperiment = async (
 
 	// Ensure the save was successful.
 	await expect(
-		page.locator( '.components-snackbar__content', {
-			hasText: `${ experimentLabel } disabled.`,
-		} )
+		page
+			.getByRole( 'button', { name: 'Dismiss this notice', exact: true } )
+			.getByText( `${ experimentLabel } disabled.`, { exact: true } )
 	).toBeVisible();
 };
+
+const getExperimentGroup = ( page: Page, groupName: string ) =>
+	page.locator( '.dataforms-layouts-card__field' ).filter( {
+		has: page.getByRole( 'button', { name: groupName, exact: true } ),
+	} );
 
 /**
  * Gets the "Enable all" button for a specific experiment group.
@@ -284,12 +289,7 @@ export const disableExperiment = async (
  * @return The "Enable all" button locator.
  */
 export const getEnableAllButton = ( page: Page, groupName: string ) => {
-	// Find the section by its heading.
-	const section = page
-		.locator(
-			'.ai-settings-page .dataforms-layouts__wrapper .dataforms-layouts-card__field'
-		)
-		.filter( { has: page.getByText( groupName, { exact: true } ) } );
+	const section = getExperimentGroup( page, groupName );
 
 	return section.getByRole( 'button', { name: 'Enable all' } );
 };
@@ -302,12 +302,7 @@ export const getEnableAllButton = ( page: Page, groupName: string ) => {
  * @return The "Disable all" button locator.
  */
 export const getDisableAllButton = ( page: Page, groupName: string ) => {
-	// Find the section by its heading.
-	const section = page
-		.locator(
-			'.ai-settings-page .dataforms-layouts__wrapper .dataforms-layouts-card__field'
-		)
-		.filter( { has: page.getByText( groupName, { exact: true } ) } );
+	const section = getExperimentGroup( page, groupName );
 
 	return section.getByRole( 'button', { name: 'Disable all' } );
 };
@@ -340,9 +335,9 @@ export const enableAllExperimentsInGroup = async (
 	await expect( enableAllButton ).toBeDisabled();
 	await expect( disableAllButton ).toBeEnabled();
 	await expect(
-		page.getByTestId( 'snackbar' ).filter( {
-			hasText: /enabled/i,
-		} )
+		page
+			.getByRole( 'button', { name: 'Dismiss this notice', exact: true } )
+			.filter( { hasText: /enabled/i } )
 	).toBeVisible();
 };
 
@@ -374,9 +369,9 @@ export const disableAllExperimentsInGroup = async (
 	await expect( disableAllButton ).toBeDisabled();
 	await expect( enableAllButton ).toBeEnabled();
 	await expect(
-		page.getByTestId( 'snackbar' ).filter( {
-			hasText: /disabled/i,
-		} )
+		page
+			.getByRole( 'button', { name: 'Dismiss this notice', exact: true } )
+			.filter( { hasText: /disabled/i } )
 	).toBeVisible();
 };
 
@@ -391,15 +386,10 @@ export const getExperimentTogglesInGroup = async (
 	page: Page,
 	groupName: string
 ) => {
-	// Find the section by its heading.
-	const section = page
-		.locator(
-			'.ai-settings-page .dataforms-layouts__wrapper .dataforms-layouts-card__field'
-		)
-		.filter( { has: page.getByText( groupName, { exact: true } ) } );
+	const section = getExperimentGroup( page, groupName );
 
 	// Get all checkboxes in that section (experiment toggles are checkboxes, buttons are for bulk actions).
-	const allToggles = section.locator( '.components-form-toggle__input' );
+	const allToggles = section.getByRole( 'checkbox' );
 	const count = await allToggles.count();
 	const experimentToggles: Locator[] = [];
 
@@ -422,7 +412,7 @@ export const getExperimentTogglesInGroup = async (
  */
 export const selectFirstParagraph = async ( editor: Editor ) => {
 	const paragraph = editor.canvas
-		.locator( '[data-type="core/paragraph"]' )
+		.getByRole( 'document', { name: 'Block: Paragraph', exact: true } )
 		.first();
 	await editor.selectBlocks( paragraph );
 	return paragraph;
@@ -712,7 +702,7 @@ export const openListView = async ( page: Page ) => {
 		await documentOverviewBtn.click();
 	}
 	await expect(
-		page.locator( '.editor-list-view-sidebar__list-view-container' )
+		page.getByRole( 'tabpanel', { name: 'List View', exact: true } )
 	).toBeVisible();
 };
 
