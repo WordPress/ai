@@ -18,7 +18,7 @@ test.describe( 'Featured connectors', () => {
 		await visitConnectorsPage( admin );
 
 		for ( const name of FEATURED_CONNECTORS ) {
-			const connector = page.locator( '[role="listitem"]', {
+			const connector = page.getByRole( 'listitem' ).filter( {
 				has: page.getByRole( 'heading', { name, exact: true } ),
 			} );
 
