@@ -13,8 +13,6 @@ const {
 } = require( '../../utils/helpers' );
 
 const setting = 'wpai_feature_comment-moderation_field_check_drafts';
-const threshold =
-	'wpai_feature_comment-moderation_field_draft_toxicity_threshold';
 const route = '**/*ai/v1/comment-draft-check*';
 const toxic = 'This is a mean and toxic comment.';
 const constructive = 'This plugin did not work for me.';
@@ -46,7 +44,6 @@ test.describe( 'Comment draft moderation', () => {
 		await updateSettings( requestUtils, {
 			'wpai_feature_comment-moderation_enabled': true,
 			[ setting ]: true,
-			[ threshold ]: 70,
 		} );
 	} );
 
@@ -54,7 +51,6 @@ test.describe( 'Comment draft moderation', () => {
 		await updateSettings( requestUtils, {
 			'wpai_feature_comment-moderation_enabled': false,
 			[ setting ]: false,
-			[ threshold ]: 70,
 		} );
 		await Promise.all(
 			postIds.splice( 0 ).map( ( postId ) =>
@@ -116,14 +112,12 @@ test.describe( 'Comment draft moderation', () => {
 
 		const comment = page.locator( '#comment' );
 		const submit = page.getByRole( 'button', { name: 'Post Comment' } );
-		const status = page.locator( 'form [role="status"]' );
+		const status = page.locator( '.wpai-comment-draft-status' );
 
 		await comment.fill( toxic );
 		await submit.focus();
 		await expect( status ).toContainText( 'Please revise your comment' );
-		await expect(
-			status.locator( '.components-notice.is-error' )
-		).toBeVisible();
+		await expect( status ).toBeVisible();
 		await expect( submit ).toBeDisabled();
 		await expect( comment ).toBeFocused();
 
@@ -204,13 +198,13 @@ test.describe( 'Comment draft moderation', () => {
 		const requested = page.waitForRequest( draftRoute );
 		await page.locator( '#comment' ).fill( constructive );
 		await requested;
-		await expect( page.getByRole( 'status' ) ).toContainText(
-			'Checking your comment'
-		);
+		await expect(
+			page.locator( '.wpai-comment-draft-loading' )
+		).toContainText( 'Checking your comment' );
 		await page.getByRole( 'button', { name: 'Post Comment' } ).click();
-		await expect( page.getByRole( 'status' ) ).toContainText(
-			'Checking your comment'
-		);
+		await expect(
+			page.locator( '.wpai-comment-draft-loading' )
+		).toContainText( 'Checking your comment' );
 		await respond();
 		await expect(
 			page.locator( '.comment-content' ).getByText( constructive )
@@ -240,11 +234,16 @@ test.describe( 'Comment draft moderation', () => {
 		await submit.click();
 		await requested;
 		await comment.fill( '   ' );
+		await expect(
+			page.locator( '.wpai-comment-draft-loading' )
+		).toBeHidden();
 		const finished = page.waitForResponse( draftRoute );
 		await respond();
 		await finished;
 		await expect( submit ).toBeEnabled();
-		await expect( page.getByRole( 'status' ) ).toBeEmpty();
+		await expect(
+			page.locator( '.wpai-comment-draft-status' )
+		).toBeEmpty();
 		await expect( page.locator( '.comment-content' ) ).toHaveCount( 0 );
 	} );
 
@@ -261,21 +260,21 @@ test.describe( 'Comment draft moderation', () => {
 		await page.goto( post.link );
 		await page.locator( '#comment' ).fill( constructive );
 		await page.getByRole( 'button', { name: 'Post Comment' } ).click();
-		await expect( page.getByRole( 'status' ) ).toContainText(
-			'Checking your comment'
-		);
+		await expect(
+			page.locator( '.wpai-comment-draft-loading' )
+		).toContainText( 'Checking your comment' );
 		await expect(
 			page.locator( '.comment-content' ).getByText( constructive )
 		).toBeVisible();
 		expect( calls ).toBe( 1 );
 	} );
 
-	test( 'bounds the submit wait when an older draft check is still running', async ( {
+	test( 'gives each queued check its own bounded timeout', async ( {
 		page,
 		requestUtils,
 	} ) => {
 		const post = await createPost( requestUtils );
-		// Neither request responds. The first request must not extend the submit deadline.
+		// Neither request responds. Each check gets four seconds, including the revised text.
 		await page.route( route, () => {} );
 		await page.goto( post.link );
 		const first = page.waitForRequest( draftRoute );
@@ -286,7 +285,7 @@ test.describe( 'Comment draft moderation', () => {
 		await page.getByRole( 'button', { name: 'Post Comment' } ).click();
 		await expect(
 			page.locator( '.comment-content' ).getByText( constructive )
-		).toBeVisible( { timeout: 5500 } );
+		).toBeVisible( { timeout: 9500 } );
 	} );
 
 	test( 'does not post to a different thread when the reader cancels a reply during a check', async ( {
@@ -317,28 +316,14 @@ test.describe( 'Comment draft moderation', () => {
 		await requested;
 		await page.getByRole( 'link', { name: /cancel reply/i } ).click();
 		await respond();
-		await expect( page.getByRole( 'status' ) ).toBeEmpty();
+		await expect(
+			page.locator( '.wpai-comment-draft-status' )
+		).toBeEmpty();
 		await expect( page.locator( '#comment' ) ).toHaveValue( constructive );
 		await expect( page.locator( '.comment-content' ) ).toHaveCount( 1 );
 		await submit.click();
 		await expect(
 			page.locator( '.comment-content' ).getByText( constructive )
-		).toBeVisible();
-	} );
-
-	test( 'applies the configured threshold only to the form', async ( {
-		page,
-		requestUtils,
-	} ) => {
-		await updateSettings( requestUtils, { [ threshold ]: 96 } );
-		const post = await createPost( requestUtils );
-		await page.goto( post.link );
-		await page.locator( '#comment' ).fill( toxic );
-		const response = page.waitForResponse( draftRoute );
-		await page.getByRole( 'button', { name: 'Post Comment' } ).click();
-		expect( ( await response ).ok() ).toBe( true );
-		await expect(
-			page.getByText( /your comment is awaiting moderation/i )
 		).toBeVisible();
 	} );
 
@@ -355,9 +340,9 @@ test.describe( 'Comment draft moderation', () => {
 			const post = await createPost( requestUtils );
 			await page.goto( post.link );
 			await page.locator( '#comment' ).fill( toxic );
-			await expect( page.getByRole( 'status' ) ).toContainText(
-				'Please revise your comment'
-			);
+			await expect(
+				page.locator( '.wpai-comment-draft-status' )
+			).toContainText( 'Please revise your comment' );
 			await expect(
 				page.getByRole( 'button', { name: 'Post Comment' } )
 			).toBeDisabled();
@@ -398,11 +383,11 @@ test.describe( 'Comment draft moderation', () => {
 			} );
 			await expect( toggle ).not.toBeChecked();
 			await toggle.check();
-			await page
-				.getByRole( 'spinbutton', {
+			await expect(
+				page.getByRole( 'spinbutton', {
 					name: 'Draft toxicity threshold (%)',
 				} )
-				.fill( '85' );
+			).toHaveCount( 0 );
 			await page
 				.getByRole( 'button', {
 					name: 'Save Comment Moderation settings',
@@ -417,9 +402,88 @@ test.describe( 'Comment draft moderation', () => {
 				path: '/wp/v2/settings',
 			} );
 			expect( settings[ setting ] ).toBe( true );
-			expect( settings[ threshold ] ).toBe( 85 );
 		} finally {
 			await disableAdvancedSettings( page );
+		}
+	} );
+
+	test( 'finishes checking revised text even when an older check used most of the wait', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const post = await createPost( requestUtils );
+		const drafts = [];
+		await page.route( route, async ( draftRequest ) => {
+			const text = draftRequest.request().postDataJSON().text;
+			drafts.push( text );
+			await new Promise( ( resolve ) =>
+				setTimeout( resolve, text === constructive ? 3000 : 2000 )
+			);
+			await draftRequest.fulfill( { json: { blocked: text === toxic } } );
+		} );
+		await page.goto( post.link );
+		const first = page.waitForRequest( draftRoute );
+		await page.locator( '#comment' ).fill( constructive );
+		await first;
+		await page.locator( '#comment' ).fill( toxic );
+		const submit = page.getByRole( 'button', { name: 'Post Comment' } );
+		await submit.click();
+		await expect(
+			page.locator( '.wpai-comment-draft-loading' )
+		).toBeVisible();
+		await expect( submit ).toBeDisabled( { timeout: 8000 } );
+		await expect( page.locator( '.comment-content' ) ).toHaveCount( 0 );
+		expect( drafts ).toEqual( [ constructive, toxic ] );
+	} );
+
+	test( 'shows the spinner beside submit on a guest form with required fields', async ( {
+		browser,
+		requestUtils,
+	} ) => {
+		const post = await createPost( requestUtils );
+		const context = await browser.newContext( {
+			storageState: { cookies: [], origins: [] },
+			viewport: { width: 390, height: 520 },
+		} );
+		try {
+			const page = await context.newPage();
+			let respond;
+			await page.route(
+				route,
+				( draftRequest ) =>
+					new Promise( ( resolve ) => {
+						respond = async () => {
+							await draftRequest.fulfill( {
+								json: { blocked: true },
+							} );
+							resolve();
+						};
+					} )
+			);
+			await page.goto( post.link );
+			await page.locator( '#author' ).fill( 'Draft reviewer' );
+			await page.locator( '#email' ).fill( 'draft-review@example.com' );
+			await page.locator( '#comment' ).fill( toxic );
+			const requested = page.waitForRequest( draftRoute );
+			const submit = page.getByRole( 'button', { name: 'Post Comment' } );
+			await submit.click();
+			await requested;
+			const loading = page.locator( '.wpai-comment-draft-loading' );
+			await expect( loading ).toBeInViewport();
+			await expect(
+				loading.locator( '.wpai-comment-draft-spinner' )
+			).toBeVisible();
+			expect(
+				await submit.evaluate(
+					( button ) => button.nextElementSibling.className
+				)
+			).toBe( 'wpai-comment-draft-loading' );
+			await respond();
+			await expect( submit ).toBeDisabled();
+			await expect( loading ).toBeHidden();
+			await expect( page.locator( '#comment' ) ).toBeFocused();
+		} finally {
+			await context.close();
 		}
 	} );
 
