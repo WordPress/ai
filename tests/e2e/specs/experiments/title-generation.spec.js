@@ -204,6 +204,8 @@ test.describe( 'Title Generation Experiment', () => {
 			content: LONG_CONTENT,
 		} );
 
+		await editor.saveDraft();
+
 		const titleInput = editor.canvas.getByRole( 'textbox', {
 			name: 'Add Title',
 		} );
@@ -220,8 +222,14 @@ test.describe( 'Title Generation Experiment', () => {
 		).toBeVisible();
 		await pageUtils.pressKeys( 'secondary+M' );
 
-		await titleInput.click();
-		await expect( generateTitleToolbar ).toBeVisible();
+		// The toolbar is attached shortly after the new editor iframe loads,
+		// so retry if the title was clicked before that.
+		await expect( async () => {
+			await titleInput.click();
+			await expect( generateTitleToolbar ).toBeVisible( {
+				timeout: 1000,
+			} );
+		} ).toPass();
 	} );
 
 	test( 'Ensure the Title Generation Experiment UI is not visible when the experiment is disabled', async ( {
