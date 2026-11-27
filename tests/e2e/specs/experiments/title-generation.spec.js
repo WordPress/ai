@@ -190,6 +190,48 @@ test.describe( 'Title Generation Experiment', () => {
 		).toBeDisabled();
 	} );
 
+	test( 'Title toolbar is shown again after switching to the Code editor and back', async ( {
+		admin,
+		editor,
+		page,
+		pageUtils,
+	} ) => {
+		await enableExperiment( admin, page, 'Title Generation' );
+
+		await admin.createNewPost( {
+			postType: 'post',
+			title: '',
+			content: LONG_CONTENT,
+		} );
+
+		await editor.saveDraft();
+
+		const titleInput = editor.canvas.getByRole( 'textbox', {
+			name: 'Add Title',
+		} );
+		const generateTitleToolbar = editor.canvas.getByRole( 'toolbar', {
+			name: 'Generate title toolbar',
+		} );
+
+		await titleInput.click();
+		await expect( generateTitleToolbar ).toBeVisible();
+
+		await pageUtils.pressKeys( 'secondary+M' );
+		await expect(
+			page.getByRole( 'button', { name: 'Exit code editor' } )
+		).toBeVisible();
+		await pageUtils.pressKeys( 'secondary+M' );
+
+		// The toolbar is attached shortly after the new editor iframe loads,
+		// so retry if the title was clicked before that.
+		await expect( async () => {
+			await titleInput.click();
+			await expect( generateTitleToolbar ).toBeVisible( {
+				timeout: 1000,
+			} );
+		} ).toPass();
+	} );
+
 	test( 'Ensure the Title Generation Experiment UI is not visible when the experiment is disabled', async ( {
 		admin,
 		editor,

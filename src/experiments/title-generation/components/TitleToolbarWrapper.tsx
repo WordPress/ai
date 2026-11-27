@@ -8,6 +8,8 @@
 /**
  * WordPress dependencies
  */
+import { select, subscribe } from '@wordpress/data';
+import { store as editorStore } from '@wordpress/editor';
 import { createRoot, useEffect } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
@@ -422,8 +424,31 @@ function TitleToolbarWrapper(): React.JSX.Element {
 		// own until the iframe's document body is ready.
 		const observerTimeout = setTimeout( setupObserver, 100 );
 
+		// The Code editor removes the editor iframe; the Visual editor creates a new one.
+		let lastEditorMode = select( editorStore ).getEditorMode();
+		const unsubscribe = subscribe( () => {
+			const editorMode = select( editorStore ).getEditorMode();
+
+			if ( editorMode === lastEditorMode ) {
+				return;
+			}
+
+			lastEditorMode = editorMode;
+			if ( editorMode !== 'visual' ) {
+				return;
+			}
+
+			observer?.disconnect();
+			observer = null;
+			observerRetryCount = 0;
+			resetAttachmentState();
+			setupObserver();
+			findAndAttachToolbar();
+		}, 'core/preferences' );
+
 		// Cleanup function
 		return () => {
+			unsubscribe();
 			if ( observer ) {
 				observer.disconnect();
 			}
