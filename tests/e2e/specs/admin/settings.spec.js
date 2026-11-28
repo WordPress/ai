@@ -32,6 +32,18 @@ const EXPERIMENT_GROUPS = {
 	admin: 'Admin Experiments',
 };
 
+// Feature containers have no named group or region. Keep a narrow class scope
+// and identify the intended feature by its accessible checkbox name.
+const getFeatureSection = ( page, name ) =>
+	page.locator( '.dataforms-layouts-regular__field' ).filter( {
+		has: page.getByRole( 'checkbox', { name, exact: true } ),
+	} );
+
+const getSnackbar = ( page, text ) =>
+	page
+		.getByRole( 'button', { name: 'Dismiss this notice', exact: true } )
+		.filter( { hasText: text } );
+
 test.describe( 'Plugin settings', () => {
 	test.beforeAll( async ( { requestUtils } ) => {
 		await requestUtils.deactivatePlugin( 'e2e-testing' );
@@ -66,7 +78,7 @@ test.describe( 'Plugin settings', () => {
 		// Ensure the no AI Connectors error message is displayed.
 		await expect(
 			page
-				.locator( '#ai-wp-admin-app' )
+				.getByRole( 'region', { name: 'AI', exact: true } )
 				.getByText(
 					'The AI plugin requires a valid AI Connector to function properly'
 				)
@@ -83,7 +95,7 @@ test.describe( 'Plugin settings', () => {
 
 		await visitConnectorsPage( admin );
 
-		const openAIConnector = page.locator( '[role="listitem"]', {
+		const openAIConnector = page.getByRole( 'listitem' ).filter( {
 			has: page.getByRole( 'heading', { name: 'OpenAI', exact: true } ),
 		} );
 
@@ -92,8 +104,7 @@ test.describe( 'Plugin settings', () => {
 			.getByRole( 'button', { name: /Set up|Edit/i } )
 			.click();
 		await openAIConnector
-			.getByRole( 'textbox' )
-			.first()
+			.getByRole( 'textbox', { name: 'API Key', exact: true } )
 			.fill( 'valid-api-key' );
 
 		// Save the credentials.
@@ -110,12 +121,18 @@ test.describe( 'Plugin settings', () => {
 
 		// Ensure we see the editor experiments section.
 		await expect(
-			page.getByText( 'Editor Experiments', { exact: true } )
+			page.getByRole( 'button', {
+				name: 'Editor Experiments',
+				exact: true,
+			} )
 		).toBeVisible();
 
 		// Ensure we see the admin experiments section.
 		await expect(
-			page.getByText( 'Admin Experiments', { exact: true } )
+			page.getByRole( 'button', {
+				name: 'Admin Experiments',
+				exact: true,
+			} )
 		).toBeVisible();
 	} );
 
@@ -135,14 +152,20 @@ test.describe( 'Plugin settings', () => {
 			name: 'Title Generation',
 		} );
 		await expect( featureToggle ).toBeVisible( { timeout: 10000 } );
+		const wasEnabled = await featureToggle.isChecked();
 		await featureToggle.click();
 
-		const snackbar = page.getByTestId( 'snackbar' ).first();
+		const snackbar = getSnackbar(
+			page,
+			`Title Generation ${ wasEnabled ? 'disabled' : 'enabled' }.`
+		);
 		await expect( snackbar ).toBeVisible();
 
 		// The snackbar must sit to the inline-start of the centered settings
 		// content, not on top of it (regression guard for #800).
 		const snackBox = await snackbar.boundingBox();
+		// Keep the exact content box selector for the overlap measurement;
+		// the surrounding AI region also includes the full-width header.
 		const contentBox = await page
 			.locator( '.ai-settings-page' )
 			.boundingBox();
@@ -183,9 +206,10 @@ test.describe( 'Plugin settings', () => {
 		await strategySelect.selectOption( newValue );
 
 		// Verify the Save button appears (confirms pending edits exist).
-		const saveButton = page
-			.locator( '.ai-feature-settings-form' )
-			.getByRole( 'button', { name: 'Save' } );
+		const saveButton = getFeatureSection(
+			page,
+			'Content Classification'
+		).getByRole( 'button', { name: 'Save' } );
 		await expect( saveButton ).toBeVisible();
 
 		// Toggle another experiment to trigger auto-save (changes siteSettings).
@@ -196,9 +220,7 @@ test.describe( 'Plugin settings', () => {
 
 		// Wait for the auto-save snackbar to confirm siteSettings changed.
 		await expect(
-			page.getByTestId( 'snackbar' ).filter( {
-				hasText: 'Title Generation enabled.',
-			} )
+			getSnackbar( page, 'Title Generation enabled.' )
 		).toBeVisible();
 
 		// Assert: inline settings must still show the pending edit (not reset).
@@ -242,9 +264,7 @@ test.describe( 'Plugin settings', () => {
 		const count = experimentToggles.length;
 
 		await expect(
-			page.getByTestId( 'snackbar' ).filter( {
-				hasText: `${ count } experiments enabled`,
-			} )
+			getSnackbar( page, `${ count } experiments enabled` )
 		).toBeVisible();
 
 		// Verify all experiments in the group are now enabled.
@@ -286,9 +306,7 @@ test.describe( 'Plugin settings', () => {
 		const count = experimentToggles.length;
 
 		await expect(
-			page.getByTestId( 'snackbar' ).filter( {
-				hasText: `${ count } experiments disabled`,
-			} )
+			getSnackbar( page, `${ count } experiments disabled` )
 		).toBeVisible();
 
 		// Verify all experiments in the group are now disabled.
@@ -337,9 +355,7 @@ test.describe( 'Plugin settings', () => {
 
 		const count = editorToggles.length;
 		await expect(
-			page.getByTestId( 'snackbar' ).filter( {
-				hasText: `${ count } experiments enabled`,
-			} )
+			getSnackbar( page, `${ count } experiments enabled` )
 		).toBeVisible();
 
 		// Verify Editor Experiments are enabled.
@@ -461,7 +477,10 @@ test.describe( 'Plugin settings', () => {
 
 		// Verify the Excerpt Generation Experiment has developer settings.
 		await expect(
-			page.locator( '.ai-developer-mode-fields' ).first()
+			getFeatureSection( page, 'Excerpt Generation' ).getByRole(
+				'combobox',
+				{ name: 'Provider', exact: true }
+			)
 		).toBeVisible();
 
 		// Toggle off model selection.
@@ -469,7 +488,7 @@ test.describe( 'Plugin settings', () => {
 
 		// Verify the developer settings are no longer visible.
 		await expect(
-			page.locator( '.ai-developer-mode-fields' )
+			page.getByRole( 'combobox', { name: /^(Provider|Model)$/ } )
 		).not.toBeVisible();
 
 		// Disable the Excerpt Generation Experiment.
@@ -524,12 +543,18 @@ test.describe( 'Plugin settings', () => {
 		// Enable developer mode (Model selection).
 		await enableModelSelection( page );
 
-		// Scope all selectors to the first developer settings form (Content Classification).
-		const developerFields = page
-			.locator( '.ai-developer-mode-fields' )
-			.first();
+		// Scope controls to Content Classification by its named feature checkbox.
+		const developerFields = getFeatureSection(
+			page,
+			'Content Classification'
+		);
 
-		await expect( developerFields ).toBeVisible( { timeout: 10000 } );
+		await expect(
+			developerFields.getByRole( 'combobox', {
+				name: 'Provider',
+				exact: true,
+			} )
+		).toBeVisible( { timeout: 10000 } );
 
 		const providerSelect = developerFields.getByLabel( 'Provider' );
 		const saveButton = developerFields.getByRole( 'button', {
@@ -550,9 +575,10 @@ test.describe( 'Plugin settings', () => {
 
 		await visitSettingsPage( admin );
 
-		const developerFieldsAfterReload = page
-			.locator( '.ai-developer-mode-fields' )
-			.first();
+		const developerFieldsAfterReload = getFeatureSection(
+			page,
+			'Content Classification'
+		);
 
 		await expect(
 			developerFieldsAfterReload.getByLabel( 'Provider' )
@@ -579,7 +605,7 @@ test.describe( 'Plugin settings', () => {
 		// Cleanup: Toggle off model selection.
 		await disableModelSelection( page );
 		await expect(
-			page.locator( '.ai-developer-mode-fields' )
+			page.getByRole( 'combobox', { name: /^(Provider|Model)$/ } )
 		).not.toBeVisible();
 
 		// Cleanup: Disable the Content Classification experiment.
@@ -615,12 +641,18 @@ test.describe( 'Plugin settings', () => {
 		// Enable developer mode (Model selection).
 		await enableModelSelection( page );
 
-		// Scope all selectors to the first developer settings form (Content Classification).
-		const developerFields = page
-			.locator( '.ai-developer-mode-fields' )
-			.first();
+		// Scope controls to Content Classification by its named feature checkbox.
+		const developerFields = getFeatureSection(
+			page,
+			'Content Classification'
+		);
 
-		await expect( developerFields ).toBeVisible( { timeout: 10000 } );
+		await expect(
+			developerFields.getByRole( 'combobox', {
+				name: 'Provider',
+				exact: true,
+			} )
+		).toBeVisible( { timeout: 10000 } );
 
 		// Select provider and model but do NOT click Save.
 		const providerSelect = developerFields.getByLabel( 'Provider' );
@@ -637,9 +669,10 @@ test.describe( 'Plugin settings', () => {
 		// Reload the page WITHOUT saving.
 		await visitSettingsPage( admin );
 
-		const developerFieldsAfterReload = page
-			.locator( '.ai-developer-mode-fields' )
-			.first();
+		const developerFieldsAfterReload = getFeatureSection(
+			page,
+			'Content Classification'
+		);
 
 		// Verify the provider has reverted to the default.
 		await expect(
@@ -649,7 +682,7 @@ test.describe( 'Plugin settings', () => {
 		// Cleanup: Toggle off model selection.
 		await disableModelSelection( page );
 		await expect(
-			page.locator( '.ai-developer-mode-fields' )
+			page.getByRole( 'combobox', { name: /^(Provider|Model)$/ } )
 		).not.toBeVisible();
 
 		// Cleanup: Disable the Content Classification experiment.
@@ -669,15 +702,18 @@ test.describe( 'Plugin settings', () => {
 		// Disable the visual feature card.
 		await disableExperiment( admin, page, 'Image Generation and Editing' );
 
-		const imageGenerationCard = page.locator( '.ai-showcase-card', {
-			has: page.getByText( 'Image Generation and Editing' ),
-		} );
+		const imageGenerationCard = getFeatureSection(
+			page,
+			'Image Generation and Editing'
+		);
 
 		await expect( imageGenerationCard ).toBeVisible();
 
 		// The disabled visual feature card should not expose active provider/model controls.
 		await expect(
-			imageGenerationCard.locator( '.ai-developer-mode-fields' )
+			imageGenerationCard.getByRole( 'combobox', {
+				name: /^(Provider|Model)$/,
+			} )
 		).not.toBeVisible();
 
 		// Restore state.
@@ -694,14 +730,9 @@ test.describe( 'Plugin settings', () => {
 			await visitSettingsPage( admin );
 			await enableAccessControls( page );
 
-			const section = page
-				.locator( '.dataforms-layouts-regular__field', {
-					has: page.getByText( 'Title Generation', { exact: true } ),
-				} )
-				.first();
-			const form = section.locator( '.ai-access-control-mode-fields' );
+			const section = getFeatureSection( page, 'Title Generation' );
 
-			const toggle = form.getByRole( 'checkbox', {
+			const toggle = section.getByRole( 'checkbox', {
 				name: 'Enable access control',
 			} );
 
@@ -709,7 +740,7 @@ test.describe( 'Plugin settings', () => {
 			await toggle.check();
 			await toggle.uncheck();
 			await expect(
-				form.getByRole( 'button', { name: 'Save' } )
+				section.getByRole( 'button', { name: 'Save' } )
 			).toBeHidden();
 
 			await toggle.check();
@@ -724,19 +755,17 @@ test.describe( 'Plugin settings', () => {
 
 			// Administrator and Editor are pre-checked, and saving them untouched persists them.
 			await expect(
-				form.getByRole( 'checkbox', { name: 'Administrator' } )
+				section.getByRole( 'checkbox', { name: 'Administrator' } )
 			).toBeChecked();
 			await expect(
-				form.getByRole( 'checkbox', { name: 'Editor' } )
+				section.getByRole( 'checkbox', { name: 'Editor' } )
 			).toBeChecked();
 			await expect(
-				form.getByRole( 'checkbox', { name: 'Author' } )
+				section.getByRole( 'checkbox', { name: 'Author' } )
 			).not.toBeChecked();
-			await form.getByRole( 'button', { name: 'Save' } ).click();
+			await section.getByRole( 'button', { name: 'Save' } ).click();
 			await expect(
-				page
-					.getByTestId( 'snackbar' )
-					.filter( { hasText: 'Access control settings saved.' } )
+				getSnackbar( page, 'Access control settings saved.' )
 			).toBeVisible();
 			const settingsAfterSave = await requestUtils.rest( {
 				path: '/wp/v2/settings',
@@ -749,24 +778,24 @@ test.describe( 'Plugin settings', () => {
 				].sort()
 			).toEqual( [ 'administrator', 'editor' ] );
 
-			await form.getByRole( 'checkbox', { name: 'Editor' } ).uncheck();
-			await form.getByRole( 'checkbox', { name: 'Author' } ).check();
-			await form.getByRole( 'button', { name: 'Save' } ).click();
+			await section.getByRole( 'checkbox', { name: 'Editor' } ).uncheck();
+			await section.getByRole( 'checkbox', { name: 'Author' } ).check();
+			await section.getByRole( 'button', { name: 'Save' } ).click();
 			await expect(
-				page
-					.getByTestId( 'snackbar' )
-					.filter( { hasText: 'Access control settings saved.' } )
+				getSnackbar( page, 'Access control settings saved.' )
 			).toBeVisible();
 
 			await page.reload();
 			await expect(
-				form.getByRole( 'checkbox', { name: 'Enable access control' } )
+				section.getByRole( 'checkbox', {
+					name: 'Enable access control',
+				} )
 			).toBeChecked();
 			await expect(
-				form.getByRole( 'checkbox', { name: 'Author' } )
+				section.getByRole( 'checkbox', { name: 'Author' } )
 			).toBeChecked();
 			await expect(
-				form.getByRole( 'checkbox', { name: 'Editor' } )
+				section.getByRole( 'checkbox', { name: 'Editor' } )
 			).not.toBeChecked();
 
 			await disableAccessControls( page );
